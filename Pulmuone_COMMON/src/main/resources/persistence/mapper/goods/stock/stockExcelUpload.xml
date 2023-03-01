@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.GoodsStockExcelUploadMapper">
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.11  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addExcelUpload">
+    /* stockExcelUpload.addExcelUpload */
+    INSERT INTO IL_ITEM_STOCK_EXPR
+        (
+          IL_ITEM_WAREHOUSE_ID
+        , BASE_DT
+        , EXPIRATION_DT
+        , STOCK_QTY
+        , STOCK_TP
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{ilItemWarehouseId}
+        , DATE_ADD(NOW(),INTERVAL 1 DAY)/* 기준일-현재일에서 하루를 더 함 */
+        , #{expirationDt}
+        , #{stockQty}
+        , #{stockTp}
+        , #{userVo.userId}
+        , NOW()
+        )
+
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목정보 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.1.11   이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStockInfoList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockExcelUploadResultVo">
+    /* stockExcelUpload.getStockInfoList */
+    SELECT  A.IL_ITEM_WAREHOUSE_ID
+	       ,B.IL_ITEM_CD
+	       ,#{expirationDt} AS EXPIRATION_DT
+	       ,#{stockQty} AS STOCK_QTY
+	 FROM IL_ITEM_WAREHOUSE A
+	INNER JOIN IL_ITEM B
+	      ON A.IL_ITEM_CD = B.IL_ITEM_CD
+	      AND B.IL_ITEM_CD = #{ilItemCd} /* 품목 코드 */
+	INNER JOIN UR_SUPPLIER_WAREHOUSE C
+	      ON A.UR_SUPPLIER_WAREHOUSE_ID = C.UR_SUPPLIER_WAREHOUSE_ID
+	      AND C.UR_WAREHOUSE_ID = #{urWarehouseId}  /* 용인 출고처 */
+	      AND C.UR_SUPPLIER_ID  = B.UR_SUPPLIER_ID  /* 공급처ID */
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 용인물류 유통기한별 재고리스트 엑셀 다운로드
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.17  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStockExprList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockExcelUploadResultVo">
+    /* stockExcelUpload.getStockExprList */
+     SELECT
+			T.BASE_DT
+			, T.IL_ITEM_CD
+			, T.IL_GOODS_ID
+			, T.ITEM_NM
+			, T.EXPIRATION_DT
+			, '' AS STOCK_QTY
+	  FROM (
+			SELECT
+				CURRENT_DATE() AS BASE_DT
+				, A.IL_ITEM_CD AS IL_ITEM_CD
+				, IFNULL(B.IL_GOODS_ID, '') AS IL_GOODS_ID
+				, A.ITEM_NM AS ITEM_NM
+				, CURRENT_DATE() AS EXPIRATION_DT
+				, C.IL_ITEM_WAREHOUSE_ID AS IL_ITEM_WAREHOUSE_ID
+				, G.SORT AS SORT
+				, IFNULL((
+					SELECT
+						ATTR3
+					FROM ST_COMN_CODE
+					WHERE
+						ST_COMN_CODE_MST_CD = 'ERP_STORAGE_TYPE'
+						AND ST_COMN_CODE_ID = A.STORAGE_METHOD_TP
+				), 999) AS SORT_STORAGE
+				, A.DISTRIBUTION_PERIOD
+			FROM
+				IL_ITEM A
+				INNER JOIN IL_GOODS B
+					ON B.IL_ITEM_CD = A.IL_ITEM_CD
+					AND B.SALE_STATUS IN ('SALE_STATUS.WAIT', 'SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER')
+					AND B.GOODS_TP IN ('GOODS_TYPE.NORMAL', 'GOODS_TYPE.GIFT', 'GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+				INNER JOIN IL_ITEM_WAREHOUSE C
+					ON C.IL_ITEM_CD = A.IL_ITEM_CD
+				INNER JOIN UR_SUPPLIER_WAREHOUSE D
+					ON D.UR_SUPPLIER_WAREHOUSE_ID = C.UR_SUPPLIER_WAREHOUSE_ID
+					AND D.UR_SUPPLIER_ID = A.UR_SUPPLIER_ID
+					AND D.UR_WAREHOUSE_ID = B.UR_WAREHOUSE_ID
+				INNER JOIN UR_WAREHOUSE E
+					ON E.UR_WAREHOUSE_ID = D.UR_WAREHOUSE_ID
+					AND E.STOCK_ORDER_YN = 'Y'
+				INNER JOIN UR_SUPPLIER F
+					ON F.UR_SUPPLIER_ID = D.UR_SUPPLIER_ID
+				INNER JOIN IL_PO_TP G
+					ON G.IL_PO_TP_ID = C.IL_PO_TP_ID
+				INNER JOIN IL_CTGRY_STD_PRNTS_INFO J
+					ON J.IL_CTGRY_STD_ID = A.IL_CTGRY_STD_ID
+			WHERE
+				A.EXTINCTION_YN = 'N'
+				AND E.UR_WAREHOUSE_ID = (
+					SELECT
+						PS_VAL
+					FROM
+						PS_CONFIG
+					WHERE
+						PS_KEY = 'WAREHOUSE_YONGIN_ID'
+						AND USE_YN = 'Y'
+				)
+			ORDER BY
+				(
+					CASE
+						WHEN B.GOODS_TP = 'GOODS_TYPE.NORMAL' THEN 1
+						WHEN B.GOODS_TP = 'GOODS_TYPE.GIFT' THEN 2
+						WHEN B.GOODS_TP = 'GOODS_TYPE.ADDITIONAL' THEN 3
+                        WHEN B.GOODS_TP = 'GOODS_TYPE.GIFT_FOOD_MARKETING' THEN 4
+						ELSE 5
+					END
+				)
+			LIMIT 999999999999999999
+		) T
+		GROUP BY T.IL_ITEM_WAREHOUSE_ID
+		ORDER BY
+			T.SORT, T.SORT_STORAGE, T.DISTRIBUTION_PERIOD, T.IL_ITEM_CD
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 용인 출고처 품목 유통기한별 재고 삭제
+     * @
+     * @ 수정일		수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.07	원종한	최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<delete id="delStockExprYongin">
+	/* stockExcelUpload.delStockExprInfo */
+		DELETE IISE FROM IL_ITEM_STOCK_EXPR IISE
+			INNER JOIN IL_ITEM_WAREHOUSE IIW
+				ON IIW.IL_ITEM_WAREHOUSE_ID = IISE.IL_ITEM_WAREHOUSE_ID
+			INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+				ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+				AND USW.UR_WAREHOUSE_ID = (
+					SELECT
+						PS_VAL
+					FROM PS_CONFIG
+					WHERE
+						PS_KEY = 'WAREHOUSE_YONGIN_ID'
+				)
+		WHERE
+			BASE_DT = #{baseDt}
+	</delete>
+
+
+     <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드 로그 상세 저장(성공)
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSuccessExcelDetlLog">
+     <selectKey resultType="string" keyProperty="ilStockExcelUploadLogId" order="BEFORE">
+        SELECT MAX(IL_STOCK_EXCEL_UPLOAD_LOG_ID) FROM IL_STOCK_EXCEL_UPLOAD_LOG
+     </selectKey>
+    /* stockExcelUpload.addSuccessExcelDetlLog */
+    INSERT INTO IL_STOCK_EXCEL_UPLOAD_DETL_LOG
+        (
+          IL_ITEM_CD
+        , IL_STOCK_EXCEL_UPLOAD_LOG_ID
+        , BASE_DT
+        , EXPIRATION_DT
+        , STOCK_QTY
+        , SUCCESS_YN
+        , MSG
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{ilItemCd}                   /* 품목코드 */
+        , #{ilStockExcelUploadLogId}    /* 재고 엑셀 업로드 로그 순번 */
+        , DATE_ADD(NOW(),INTERVAL 1 DAY)/* 기준일-현재일에서 하루를 더 함 */
+        , #{expirationDt}               /* 유통기한 */
+        , #{stockQty}                   /* 재고수량 */
+        , #{successYn}                  /* 성공여부 */
+        , #{msg}                        /* 에러내용 */
+        , #{userVo.userId}              /* 등록자 */
+        , NOW()                         /* 등록일 */
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드 로그 상세 저장(실패)
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addFailExcelDetlLog">
+     <selectKey resultType="string" keyProperty="ilStockExcelUploadLogId" order="BEFORE">
+        SELECT MAX(IL_STOCK_EXCEL_UPLOAD_LOG_ID) FROM IL_STOCK_EXCEL_UPLOAD_LOG
+     </selectKey>
+    /* stockExcelUpload.addFailExcelDetlLog */
+    INSERT INTO IL_STOCK_EXCEL_UPLOAD_DETL_LOG
+        (
+          IL_ITEM_CD
+        , IL_STOCK_EXCEL_UPLOAD_LOG_ID
+        , BASE_DT
+        , EXPIRATION_DT
+        , STOCK_QTY
+        , SUCCESS_YN
+        , MSG
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{ilItemCd}                   /* 품목코드 */
+        , #{ilStockExcelUploadLogId}    /* 재고 엑셀 업로드 로그 순번 */
+        , DATE_ADD(NOW(),INTERVAL 1 DAY)/* 기준일-현재일에서 하루를 더 함 */
+        , #{expirationDt}               /* 유통기한 */
+        , #{stockQty}                   /* 재고수량 */
+        , #{successYn}                  /* 성공여부 */
+        , #{msg}                        /* 에러내용 */
+        , #{userVo.userId}              /* 등록자 */
+        , NOW()                         /* 등록일 */
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드 로그 최초저장
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addExcelUploadLog">
+    /* stockExcelUpload.addExcelUploadLog */
+    INSERT INTO IL_STOCK_EXCEL_UPLOAD_LOG
+        (
+          CREATE_ID
+        )
+        VALUES
+        (
+          NOW() /* 등록일 */
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드 로그 수정
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putExcelUploadLog">
+     <selectKey resultType="string" keyProperty="ilStockExcelUploadLogId" order="BEFORE">
+        SELECT MAX(IL_STOCK_EXCEL_UPLOAD_LOG_ID) FROM IL_STOCK_EXCEL_UPLOAD_LOG
+     </selectKey>
+    /* stockExcelUpload.putExcelUploadLog */
+    UPDATE IL_STOCK_EXCEL_UPLOAD_LOG
+       SET FILE_NM     = #{fileNm}     /* 파일명 */
+          ,SUCCESS_CNT = #{successCnt} /* 성공건수 */
+          ,FAIL_CNT    = #{failCnt}    /* 실패건수 */
+          ,CREATE_ID   = #{userId}     /* 사용자ID */
+          ,MODIFY_ID   = #{userId}     /* 사용자ID */
+     WHERE IL_STOCK_EXCEL_UPLOAD_LOG_ID = #{ilStockExcelUploadLogId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 성공건수 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.29  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSuccessCnt" resultType="int">
+    /* stockExcelUpload.getSuccessCnt */
+    SELECT COUNT(*)
+      FROM IL_STOCK_EXCEL_UPLOAD_DETL_LOG
+     WHERE IL_STOCK_EXCEL_UPLOAD_LOG_ID = (SELECT MAX(IL_STOCK_EXCEL_UPLOAD_LOG_ID) FROM IL_STOCK_EXCEL_UPLOAD_LOG)
+       AND SUCCESS_YN = 'Y'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 실패건수 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.29  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getFailCnt" resultType="int">
+    /* stockExcelUpload.getFailCnt */
+    SELECT COUNT(*)
+      FROM IL_STOCK_EXCEL_UPLOAD_DETL_LOG
+     WHERE IL_STOCK_EXCEL_UPLOAD_LOG_ID = (SELECT MAX(IL_STOCK_EXCEL_UPLOAD_LOG_ID) FROM IL_STOCK_EXCEL_UPLOAD_LOG)
+       AND SUCCESS_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 엑설업로드 설정시간 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.1.7    이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+   <select id="getEnvironment" resultType="String">
+   /* stockExcelUpload.getEnvironmentList */
+   SELECT ENV_VAL   /* 설정시간 */
+	 FROM ST_ENV
+	WHERE ENV_KEY = 'STOCK_UPLOAD_TIME'
+   </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description   : 출고처 정보 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.1.13  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getConfigValue" resultType="java.lang.String">
+	/* stockExcelUpload.getConfigValue	*/
+	SELECT PS_VAL
+	  FROM PS_CONFIG
+     WHERE PS_KEY = #{psKey}
+	   AND USE_YN = 'Y'
+	   AND ST_SHOP_ID = 1
+     LIMIT 1
+	</select>
+
+</mapper>

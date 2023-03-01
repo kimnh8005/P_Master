@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.calculate.CalculateMapper">
+
+    <!-- 전일 임직원정산 마감여부 체크 -->
+    <select id="selectDayBeforeEmployeeCalculateDeadlineCheck" resultType="int">
+        /* CalculateMapper.selectDayBeforeEmployeeCalculateDeadlineCheck */
+        SELECT
+            COUNT(CA_SETTLE_EMPLOYEE_DAY_ID) AS checkCount
+        FROM CA_SETTLE_EMPLOYEE_DAY
+        WHERE SETTLE_DAY = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 DAY), '%Y%m%d')
+    </select>
+
+    <!-- 전일 임직원정산 일마감 -->
+    <insert id="addDayBeforeEmployeeCalculateDayDeadline">
+        INSERT INTO CA_SETTLE_EMPLOYEE_DAY
+        (
+            SETTLE_DAY
+            , ORDER_STATUS
+            , UR_ERP_EMPLOYEE_CD
+            , ERP_NM
+            , ERP_REGAL_CD
+            , ERP_REGAL_NM
+            , ERP_ORGANIZATION_CD
+            , ERP_ORGANIZATION_NM
+            , OU_ID
+            , OU_NM
+            , FIN_REGAL_CD
+            , FIN_ORGANIZATION_CD
+            , FIN_ACCOUNT_CD
+            , SOB
+            , OD_ORDER_ID
+            , ODID
+            , OD_ORDER_DETL_ID
+            , SALE_PRICE
+            , ORDER_CNT
+            , TOTAL_SALE_PRICE
+            , TOTAL_EMPLOYEE_DISCOUNT_PRICE
+            , TOTAL_EMPLOYEE_PRICE
+            , UR_BRAND_ID
+        )
+        SELECT
+            DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 DAY), '%Y%m%d')
+            , x.ORDER_STATUS
+            , x.UR_ERP_EMPLOYEE_CD
+            , x.ERP_NM
+            , x.ERP_REGAL_CD
+            , x.ERP_REGAL_NM
+            , x.ERP_ORGANIZATION_CD
+            , x.ERP_ORGANIZATION_NM
+            , x.OU_ID
+            , x.OU_NAME
+            , x.FIN_REGAL_CD
+            , x.FIN_ORGANIZATION_CD
+            , x.FIN_ACCOUNT_CD
+            , x.SOB
+            , x.OD_ORDER_ID
+            , x.ODID
+            , x.OD_ORDER_DETL_ID
+            , x.SALE_PRICE
+            , x.ORDER_CNT
+            , x.TOTAL_SALE_PRICE
+            , x.TOTAL_EMPLOYEE_DISCOUNT_PRICE
+            , x.TOTAL_EMPLOYEE_PRICE
+            , x.UR_BRAND_ID
+        FROM
+        (
+            SELECT
+                'ORDER' AS ORDER_STATUS
+                , uee.UR_ERP_EMPLOYEE_CD
+                , FN_DECRYPT(uee.ERP_NM) AS ERP_NM
+                , uee.ERP_REGAL_CD
+                , uee.ERP_REGAL_NM
+                , uee.ERP_ORGANIZATION_CD
+                , uee.ERP_ORGANIZATION_NM
+                , uee.OU_ID
+                , uee.OU_NAME
+                , uee.FIN_REGAL_CD
+                , uee.FIN_ORGANIZATION_CD
+                , uee.FIN_ACCOUNT_CD
+                , uee.SOB
+                , oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.SALE_PRICE
+                , ood.ORDER_CNT
+                , ood.SALE_PRICE*ood.ORDER_CNT AS TOTAL_SALE_PRICE
+                , oodd.DISCOUNT_PRICE AS TOTAL_EMPLOYEE_DISCOUNT_PRICE
+                , (ood.SALE_PRICE * ood.ORDER_CNT) - oodd.DISCOUNT_PRICE AS TOTAL_EMPLOYEE_PRICE
+                , oodd.UR_BRAND_ID
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND OD_ORDER_DETL_DEPTH_ID <![CDATA[ < ]]> 3
+            INNER JOIN OD_ORDER_DT oot ON oo.OD_ORDER_ID = oot.OD_ORDER_ID
+            INNER JOIN OD_ORDER_DETL_DISCOUNT oodd ON ood.OD_ORDER_DETL_ID = oodd.OD_ORDER_DETL_ID and oodd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+            INNER JOIN UR_ERP_EMPLOYEE uee on oo.UR_EMPLOYEE_CD = uee.UR_ERP_EMPLOYEE_CD
+            WHERE oot.IC_DT BETWEEN DATE_ADD(CURDATE(), INTERVAL -1 DAY) AND DATE_ADD(CURDATE(), INTERVAL -1 SECOND)
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+
+            UNION ALL
+
+            SELECT
+                'RETURN' AS ORDER_STATUS
+                , uee.UR_ERP_EMPLOYEE_CD
+                , FN_DECRYPT(uee.ERP_NM) AS ERP_NM
+                , uee.ERP_REGAL_CD
+                , uee.ERP_REGAL_NM
+                , uee.ERP_ORGANIZATION_CD
+                , uee.ERP_ORGANIZATION_NM
+                , uee.OU_ID
+                , uee.OU_NAME
+                , uee.FIN_REGAL_CD
+                , uee.FIN_ORGANIZATION_CD
+                , uee.FIN_ACCOUNT_CD
+                , uee.SOB
+                , oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.SALE_PRICE
+                , ocd.CLAIM_CNT AS ORDER_CNT
+                , ood.SALE_PRICE*ocd.CLAIM_CNT * -1 AS TOTAL_SALE_PRICE
+                , ocdd.DISCOUNT_PRICE * -1 AS TOTAL_EMPLOYEE_DISCOUNT_PRICE
+                , ((ood.SALE_PRICE*ocd.CLAIM_CNT) - ocdd.DISCOUNT_PRICE) * -1 AS TOTAL_EMPLOYEE_PRICE
+                , ocdd.UR_BRAND_ID
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+            INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+            INNER JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON ocd.OD_CLAIM_DETL_ID = ocdd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+            INNER JOIN UR_ERP_EMPLOYEE uee on oo.UR_EMPLOYEE_CD = uee.UR_ERP_EMPLOYEE_CD
+            WHERE (
+                  ocd.CC_DT BETWEEN DATE_ADD(CURDATE(), INTERVAL -1 DAY) AND DATE_ADD(CURDATE(), INTERVAL -1 SECOND)
+                  OR
+                  ocd.RC_DT BETWEEN DATE_ADD(CURDATE(), INTERVAL -1 DAY) AND DATE_ADD(CURDATE(), INTERVAL -1 SECOND)
+                  )
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+        ) x
+    </insert>
+
+    <!-- 정산용 OU 목록 조회 -->
+    <select id="selectCalculateOuList" resultType="kr.co.pulmuone.v1.batch.order.calculate.dto.vo.CaSettleOuMngVo">
+        /* CalculateMapper.selectCalculateOuList */
+        SELECT
+            OU_ID AS ouId
+            , OU_NM AS ouNm
+            , USE_YN AS useYn
+            , CREATE_DT AS createDt
+        FROM CA_SETTLE_OU_MNG
+        WHERE USE_YN = 'Y'
+    </select>
+
+    <!-- 임직원정산 마스터 저장여부 체크 -->
+    <select id="selectEmployeeCalculateMasterCheck" resultType="int">
+        /* CalculateMapper.selectEmployeeCalculateMasterCheck */
+        SELECT
+            COUNT(CA_SETTLE_EMPLOYEE_MONTH_ID) AS checkCount
+        FROM CA_SETTLE_EMPLOYEE_MASTER
+        WHERE SETTLE_MONTH = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 DAY), '%Y%m')
+        AND OU_ID = #{ouId}
+        AND CONFIRM_YN = 'N'
+    </select>
+
+    <!-- 임직원정산 마스터 저장 -->
+    <insert id="addEmployeeCalculateMaster">
+        /* CalculateMapper.addEmployeeCalculateMaster */
+        INSERT INTO CA_SETTLE_EMPLOYEE_MASTER
+        (
+            SETTLE_MONTH
+            , START_DT
+            , END_DT
+            , OU_ID
+            , OU_NM
+            , SALE_PRICE
+            , SESSION_ID
+        )
+        SELECT
+            DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 DAY), '%Y%m') AS SETTLE_MONTH
+            , MIN(SETTLE_DAY) AS START_DT
+            , MAX(SETTLE_DAY) AS END_DT
+            , OU_ID
+            , OU_NM
+            , SUM(TOTAL_EMPLOYEE_DISCOUNT_PRICE) AS SALE_PRICE
+            , CONCAT(MAX(SETTLE_DAY), OU_ID) AS SESSION_ID
+        FROM CA_SETTLE_EMPLOYEE_DAY
+        WHERE DATE_FORMAT(SETTLE_DAY, '%Y%m') = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 DAY), '%Y%m')
+        AND SETTLE_YN = 'N'
+        AND OU_ID = #{ouId}
+        GROUP BY OU_ID, OU_NM
+    </insert>
+
+    <!-- 임직원정산 마스터 수정 -->
+    <update id="putEmployeeCalculateMaster">
+        /* CalculateMapper.putEmployeeCalculateMaster */
+        UPDATE CA_SETTLE_EMPLOYEE_MASTER csem
+               INNER JOIN (
+                    SELECT
+                        DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 DAY), '%Y%m') AS SETTLE_MONTH
+                        , MIN(SETTLE_DAY) AS START_DT
+                        , MAX(SETTLE_DAY) AS END_DT
+                        , OU_ID
+                        , OU_NM
+                        , SUM(TOTAL_EMPLOYEE_DISCOUNT_PRICE) AS SALE_PRICE
+                        , CONCAT(MAX(SETTLE_DAY), OU_ID) AS SESSION_ID
+                    FROM CA_SETTLE_EMPLOYEE_DAY
+                    WHERE DATE_FORMAT(SETTLE_DAY, '%Y%m') = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 DAY), '%Y%m')
+                    AND SETTLE_YN = 'N'
+                    AND OU_ID = #{ouId}
+                    GROUP BY OU_ID, OU_NM
+                ) csed
+               ON csem.OU_ID = csed.OU_ID
+               AND csem.SETTLE_MONTH = csed.SETTLE_MONTH
+        SET csem.START_DT = csed.START_DT
+            , csem.END_DT = csed.END_DT
+            , csem.SALE_PRICE = csed.SALE_PRICE
+            , csem.SESSION_ID = csed.SESSION_ID
+        WHERE csem.CONFIRM_YN = 'N'
+    </update>
+
+    <!-- 정산을 위한 임직원 정보 저장 -->
+    <insert id="addEmployeeCalculateInfo">
+        /* CalculateMapper.addEmployeeCalculateInfo */
+        INSERT INTO CA_SETTLE_EMPLOYEE
+        (
+            SETTLE_MONTH
+            , UR_ERP_EMPLOYEE_CD
+            , ERP_NM
+            , ERP_PHONE
+            , ERP_EMAIL
+            , ERP_REGAL_CD
+            , ERP_REGAL_NM
+            , ERP_ORGANIZATION_CD
+            , ERP_ORGANIZATION_NM
+            , ERP_GRADE_CD
+            , ERP_GRADE_NM
+            , ERP_POSITION_NM
+            , ERP_USER_STATUS
+            , USE_YN
+            , FIN_REGAL_CD
+            , FIN_ORGANIZATION_CD
+            , FIN_ACCOUNT_CD
+            , SOB
+            , OU_ID
+            , OU_NAME
+        )
+        SELECT
+            DATE_FORMAT(NOW(), '%Y%m')
+            , UR_ERP_EMPLOYEE_CD
+            , ERP_NM
+            , ERP_PHONE
+            , ERP_EMAIL
+            , ERP_REGAL_CD
+            , ERP_REGAL_NM
+            , ERP_ORGANIZATION_CD
+            , ERP_ORGANIZATION_NM
+            , ERP_GRADE_CD
+            , ERP_GRADE_NM
+            , ERP_POSITION_NM
+            , ERP_USER_STATUS
+            , USE_YN
+            , FIN_REGAL_CD
+            , FIN_ORGANIZATION_CD
+            , FIN_ACCOUNT_CD
+            , SOB
+            , OU_ID
+            , OU_NAME
+        FROM UR_ERP_EMPLOYEE
+    </insert>
+
+    <!-- 정산을 위한 임직원 정보 삭제-->
+    <update id="putEmployeeCalculateInfo">
+        /* CalculateMapper.putEmployeeCalculateInfo */
+        DELETE FROM CA_SETTLE_EMPLOYEE
+        WHERE SETTLE_MONTH = DATE_FORMAT(NOW(), '%Y%m')
+    </update>
+
+    <!-- 매출확정된 데이터 저장 -->
+    <insert id="addSalesConfirm">
+        /* CalculateMapper.addSalesConfirm */
+        INSERT INTO IF_SALES_SETTLE_INFO
+        (
+            ODID
+            , OD_ORDER_DETL_SEQ
+            , SETTLE_TYPE
+            , OD_CLAIM_DETL_ID
+            , SETTLE_PRICE
+            , SETTLE_DT
+            , SETTLE_ITEM_CNT
+            , SETTLE_ITEM_PRCIE
+            , CREATE_DT
+            , TAX_YN
+        )
+        VALUES
+        (
+            #{lineResponseDto.ordNum}
+            , #{lineResponseDto.ordNoDtl}
+            , CASE #{hdrTyp}
+                WHEN '1' THEN 'ORDER'
+                WHEN '4' THEN 'RETURN'
+                WHEN '5' THEN 'ORDER'
+                ELSE 'ERROR'
+              END
+            , IFNULL(#{lineResponseDto.refVal01}, 0)
+            , #{lineResponseDto.setAmt}
+            , #{lineResponseDto.setDat}
+            , #{lineResponseDto.setItmCnt}
+            , #{lineResponseDto.setItmPrc}
+            , now()
+            , #{lineResponseDto.taxYn}
+        )
+        ON
+            DUPLICATE KEY
+        UPDATE
+            SETTLE_PRICE = IFNULL(SETTLE_PRICE, 0) + #{lineResponseDto.setAmt}
+            , SETTLE_DT = #{lineResponseDto.setDat}
+            , SETTLE_ITEM_CNT = IFNULL(SETTLE_ITEM_CNT, 0) + #{lineResponseDto.setItmCnt}
+            , SETTLE_ITEM_PRCIE = #{lineResponseDto.setItmPrc}
+            , MODIFY_DT = now()
+            , TAX_YN = #{lineResponseDto.taxYn}
+    </insert>
+
+    <!-- 하이톡 매출확정된 데이터 저장 -->
+    <insert id="addHitokSalesConfirm">
+        /* CalculateMapper.addHitokSalesConfirm */
+        INSERT INTO IF_HITOK_SALES_SETTLE_INFO
+        (
+            ODID
+            , OD_ORDER_DETL_SEQ
+            , OD_ORDER_DETL_DAILY_SCH_SEQ
+            , SETTLE_TYPE
+            , OD_CLAIM_DETL_ID
+            , SETTLE_PRICE
+            , SETTLE_DT
+            , SETTLE_ITEM_CNT
+            , SETTLE_ITEM_PRCIE
+            , CREATE_DT
+            , TAX_YN
+        )
+        VALUES
+        (
+            #{lineResponseDto.ordNum}
+            , #{lineResponseDto.ordNoDtl}
+            , IFNULL(#{lineResponseDto.schLinNo}, 0)
+            , CASE #{hdrTyp}
+                WHEN '1' THEN 'ORDER'
+                WHEN '4' THEN 'RETURN'
+                WHEN '5' THEN 'ORDER'
+                ELSE 'ERROR'
+              END
+            , IFNULL(#{lineResponseDto.refVal01}, 0)
+            , #{lineResponseDto.setAmt}
+            , #{lineResponseDto.setDat}
+            , #{lineResponseDto.setItmCnt}
+            , #{lineResponseDto.setItmPrc}
+            , now()
+            , #{lineResponseDto.taxYn}
+        )
+        ON
+            DUPLICATE KEY
+        UPDATE
+            SETTLE_PRICE = IFNULL(SETTLE_PRICE, 0) + #{lineResponseDto.setAmt}
+            , SETTLE_DT = #{lineResponseDto.setDat}
+            , SETTLE_ITEM_CNT = IFNULL(SETTLE_ITEM_CNT, 0) + #{lineResponseDto.setItmCnt}
+            , SETTLE_ITEM_PRCIE = #{lineResponseDto.setItmPrc}
+            , MODIFY_DT = now()
+            , TAX_YN = #{lineResponseDto.taxYn}
+    </insert>
+
+    <!-- 임직원 정산 월마감 대상 조회 -->
+    <select id="selectEmployeeCalculateMonthDeadlineList" resultType="kr.co.pulmuone.v1.batch.order.calculate.dto.vo.CaSettleEmployeeMasterVo">
+        /* CalculateMapper.selectEmployeeCalculateMonthDeadlineList */
+        SELECT
+            CA_SETTLE_EMPLOYEE_MONTH_ID
+            , SETTLE_MONTH
+            , START_DT
+            , END_DT
+            , OU_ID
+            , OU_NM
+            , SALE_PRICE
+            , CONFIRM_YN
+            , CONFIRM_DT
+            , CONFIRM_ID
+            , SESSION_ID
+            , CREATE_DT
+            , MODIFY_DT
+        FROM
+            CA_SETTLE_EMPLOYEE_MASTER
+        WHERE
+            SETTLE_MONTH = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 MONTH), '%Y%m')
+        AND
+            CONFIRM_YN = 'N'
+    </select>
+
+</mapper>

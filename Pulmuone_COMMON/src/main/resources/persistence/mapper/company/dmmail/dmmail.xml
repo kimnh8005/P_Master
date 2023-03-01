@@ -1,0 +1,729 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.company.dmmail.DmMailManageMapper">
+
+    <!-- #################################################################### -->
+    <!-- 조회 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM 리스트조회
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectDmMailList" resultType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailVo">
+        /* dmmail.selectDmMailList */
+        SELECT
+            D.DM_MAIL_ID,
+            D.DM_MAIL_TEMPLATE_TP,
+            GDM.DIC_MST_NM AS DM_MAIL_TEMPLATE_NM,
+            D.TITLE,
+            DATE_FORMAT(D.SEND_DT, '%Y-%m-%d') AS SEND_DT,
+            D.CREATE_ID,
+            CAST(AES_DECRYPT(UNHEX(UU.USER_NM), 'lssCSGhjyCBS!@34')AS CHAR) AS CREATE_NM,
+            IFNULL(D.MODIFY_ID, '') AS MODIFY_ID,
+            IFNULL(CAST(AES_DECRYPT(UNHEX(UU2.USER_NM), 'lssCSGhjyCBS!@34')AS CHAR), '') AS MODIFY_NM
+        FROM DM_MAIL D
+        INNER JOIN ST_COMN_CODE SCC ON D.DM_MAIL_TEMPLATE_TP = SCC.ST_COMN_CODE_ID AND SCC.ST_COMN_CODE_MST_CD = 'MAIL_TEMPLATE_TP'
+        INNER JOIN GB_DIC_MST GDM ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+        INNER JOIN UR_USER UU ON D.CREATE_ID = UU.UR_USER_ID
+        LEFT OUTER JOIN UR_USER UU2 ON D.MODIFY_ID = UU2.UR_USER_ID
+        WHERE D.DEL_YN = 'N'
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDmMailId)">
+           AND D.DM_MAIL_ID = #{searchDmMailId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchTemplateTp)">
+           AND D.DM_MAIL_TEMPLATE_TP = #{searchTemplateTp}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchTitle)">
+          <bind name="searchTitleLike" value="'%'+searchTitle+'%'" />
+           AND D.TITLE LIKE #{searchTitleLike}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchGoodsId)">
+           AND EXISTS (
+             SELECT
+               'X'
+             FROM DM_MAIL_GROUP_DETL DMGD
+             INNER JOIN DM_MAIL_GROUP DMG ON DMGD.DM_MAIL_GROUP_ID = DMG.DM_MAIL_GROUP_ID
+             WHERE DMG.DM_MAIL_ID = D.DM_MAIL_ID
+               AND DMGD.IL_GOODS_ID = #{searchGoodsId}
+           )
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDt)">
+           AND D.SEND_DT <![CDATA[>=]]> STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDt)">
+            AND D.SEND_DT <![CDATA[<=]]> STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchText)">
+          <choose>
+              <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, "ID")'>
+                 AND (D.CREATE_ID = #{searchText}
+                    OR D.MODIFY_ID = #{searchText}
+                   )
+              </when>
+              <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, "NAME")'>
+                 AND (UU.USER_NM = FN_ENCRYPT(#{searchText})
+                    OR UU2.USER_NM = FN_ENCRYPT(#{searchText})
+                   )
+              </when>
+              <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, "ALL")'>
+                  AND (D.CREATE_ID = #{searchText}
+                      OR D.MODIFY_ID = #{searchText}
+                      OR UU.USER_NM = FN_ENCRYPT(#{searchText})
+                      OR UU2.USER_NM = FN_ENCRYPT(#{searchText})
+                  )
+              </when>
+          </choose>
+        </if>
+        ORDER BY D.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM 상세조회 - 기본
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectDmMailInfo" resultType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailVo">
+        /*dmmail.selectDmMailInfo*/
+        SELECT  D.DM_MAIL_ID
+             , D.DM_MAIL_TEMPLATE_TP
+             , D.TITLE
+             , D.DESCRIPTION
+             , D.GOODS_DISP_YN
+             , D.SEND_DT
+             , D.CREATE_ID
+             , D.CREATE_DT
+             , IFNULL(D.MODIFY_ID, '') AS MODIFY_ID
+             , IFNULL(D.MODIFY_DT, '') AS MODIFY_DT
+             , IFNULL(FN_DECRYPT(U.USER_NM) , '')  AS CREATE_NM
+             , IFNULL(U.LOGIN_ID, '')              AS CREATE_LOGIN_ID
+             , IFNULL(FN_DECRYPT(U2.USER_NM), '')  AS MODIFY_NM
+             , IFNULL(U2.LOGIN_ID, '')             AS MODIFY_LOGIN_ID
+             , IFNULL(C1.NAME, '')                 AS DM_MAIL_TEMPLATE_NM
+        FROM    DM_MAIL D
+        LEFT OUTER  JOIN  UR_USER U ON    U.UR_USER_ID = D.CREATE_ID
+        LEFT OUTER  JOIN  UR_USER U2 ON    U2.UR_USER_ID = D.MODIFY_ID
+        LEFT OUTER  JOIN  (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD
+               , GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'MAIL_TEMPLATE_TP'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C1 ON    C1.CODE  = D.DM_MAIL_TEMPLATE_TP
+        WHERE   D.DM_MAIL_ID = #{dmMailId}
+    </select>
+
+    <select id="selectDmMailContents" resultType="java.lang.String">
+        /*dmmail.selectDmMailContents*/
+        SELECT MAIL_CONTENTS
+        FROM DM_MAIL
+        WHERE DM_MAIL_ID = #{dmMailId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM 상세조회 - 그룹리스트
+     * @ param        : dmMailId
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectDmMailGroupList" resultType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailGroupVo">
+        /* dmmail.selectDmMailGroupList */
+        SELECT  DMG.DM_MAIL_GROUP_ID
+             , DMG.DM_MAIL_ID
+             , DMG.GROUP_NM   AS GROUP_NM
+             , IFNULL(DMG.DESCRIPTION, '') AS DESCRIPTION
+             , DMG.DISP_PRICE_TP
+             , DMG.GROUP_SORT
+             , IFNULL(C1.NAME, '')       AS DISP_PRICE_NM
+        FROM    DM_MAIL_GROUP DMG
+        LEFT OUTER JOIN (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD
+               , GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'DISP_PRICE_TP'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C1 ON    C1.CODE  = DMG.DISP_PRICE_TP
+        WHERE   DMG.DM_MAIL_ID = #{dmMailId}
+        ORDER BY CAST(DMG.GROUP_SORT AS SIGNED) ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM 상세조회 - 그룹상품리스트
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectDmMailGroupGoodsList" resultType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailGroupDetlVo">
+        /* dmmail.selectDmMailGroupGoodsList */
+        SELECT  T1.DM_MAIL_GROUP_DETL_ID
+             , T1.DM_MAIL_GROUP_ID
+             , T1.GOODS_SORT
+             , T1.IL_GOODS_ID
+             , T1.GOODS_TP
+             , IFNULL(T1.GOODS_NM, '') AS GOODS_NM
+             , CONCAT(IF(T1.GOODS_TP = 'GOODS_TYPE.RENTAL',CONCAT('[렌탈]',IF(IFNULL(T1.PROMOTION_NAME,'') = '', ' ', '')),'')
+                    , IFNULL(T1.PROMOTION_NAME,'')
+                    , T1.GOODS_NM
+                    , IFNULL(CONCAT(' ', T1.SIZE_UNIT),'')
+                     ) AS GOODS_NAME
+             , T1.GOODS_IMAGE_PATH
+             , T1.GOODS_BIG_IMAGE_PATH
+             , T1.STANDARD_PRICE
+             , T1.RECOMMENDED_PRICE
+             , T1.SALE_PRICE
+             , T1.DISCOUNT_RATE
+             , T1.EMPLOYEE_SALE_PRICE
+             , T1.EMPLOYEE_DISCOUNT_RATE
+             , T1.DISCOUNT_TP
+             , T1.SALE_STATUS
+             , T1.UR_WAREHOUSE_ID
+             , IFNULL(T1.WAREHOUSE_NM, '') AS WAREHOUSE_NM
+             , T1.IL_SHIPPING_TMPL_ID
+             , T1.SHIPPING_TEMPLATE_NAME
+             , T1.BUNDLE_YN
+             , IFNULL(C1.NAME, '')     AS GOODS_TP_NM
+             , IFNULL(C2.NAME, '')     AS DISCOUNT_TP_NM
+             , IFNULL(C3.NAME, '')     AS SALE_STATUS_NM
+             , IFNULL(T1.DP_BRAND_NM, '')  AS DP_BRAND_NM
+        FROM    (
+            SELECT  D.DM_MAIL_GROUP_DETL_ID
+                 , D.DM_MAIL_GROUP_ID
+                 , D.GOODS_SORT
+                 , D.IL_GOODS_ID
+                 , G.GOODS_TP
+                 , G.GOODS_NM
+                 , G.SALE_STATUS
+                 , G.UR_WAREHOUSE_ID
+                 , IFNULL(IG.C_IMG,II.C_IMG)      AS GOODS_IMAGE_PATH
+                 , GP.STANDARD_PRICE
+                 , GP.RECOMMENDED_PRICE
+                 , GP.SALE_PRICE
+                 , truncate((CAST(GP.RECOMMENDED_PRICE AS SIGNED) - CAST(GP.SALE_PRICE AS SIGNED)) / GP.RECOMMENDED_PRICE * 100, 0)  AS DISCOUNT_RATE -- 할인율
+                 , CASE WHEN G.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                            (
+                                SELECT SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)
+                                FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+                                         JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+                                         JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+                                         JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+                                         LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+                                         LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+                                         LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                                         LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+                                WHERE IGPGM.IL_GOODS_ID = G.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                            )
+                        ELSE
+                            TRUNCATE(CAST(GP.RECOMMENDED_PRICE * ((100 - IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                                                                   FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                                                                                                AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT
+                                                                                                                AND IGD.IL_GOODS_ID = G.IL_GOODS_ID AND IGD.USE_YN = 'Y'
+                                                                                ), IFNULL(BG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1)
+                END  AS EMPLOYEE_SALE_PRICE    -- 임직원할인가 원단위 버림
+                 , CASE WHEN G.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                            IFNULL((
+                                       SELECT TRUNCATE(((SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) - SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)) / SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) * 100), 0)
+                                       FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+                                                JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+                                                JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+                                                JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+                                                LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+                                                LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+                                                LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                                                LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+                                       WHERE IGPGM.IL_GOODS_ID = G.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                                   ), 0)
+                        ELSE
+                            IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                      FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                                                   AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT AND IGD.IL_GOODS_ID = G.IL_GOODS_ID AND USE_YN = 'Y'
+                                   ), IFNULL(BG.DISCOUNT_RATIO,0) )
+                END AS EMPLOYEE_DISCOUNT_RATE  -- 임직원할인율
+                 , GP.DISCOUNT_TP
+                 , W.WAREHOUSE_NM
+                 , HH.IL_SHIPPING_TMPL_ID
+                 , HH.NAME             AS SHIPPING_TEMPLATE_NAME
+                 , HH.BUNDLE_YN
+                 , IFNULL(IG.B_IMG,II.B_IMG)      AS GOODS_BIG_IMAGE_PATH
+                 , DB.DP_BRAND_NM
+                 , IF(NOW() BETWEEN G.PROMOTION_NM_START_DT AND G.PROMOTION_NM_END_DT
+                        , IF(G.PROMOTION_NM IS NULL OR TRIM(G.PROMOTION_NM) = '', '', CONCAT('[', G.PROMOTION_NM, '] '))
+                        , '') AS PROMOTION_NAME
+                 , IF(G.PACKAGE_UNIT_DISP_YN = 'Y',
+                        IF(G.GOODS_TP = 'GOODS_TYPE.PACKAGE',
+                              CONCAT('(', G.PACKAGE_UNIT_DESC,')'),
+                              CONCAT('(', CAST(B.SIZE_PER_PACKAGE AS float),
+                                 CASE
+                                     WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+                                     ELSE FN_COMN_CODE_DIC(B.SIZE_UNIT)
+                                     END
+                      , IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+                                                            CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+                                                                 ELSE FN_COMN_CODE_DIC(B.PACKAGE_UNIT)
+                                                                END
+                        ), ''), ')'
+                   )), '') AS SIZE_UNIT
+            FROM    DM_MAIL_GROUP_DETL D
+            INNER JOIN IL_GOODS G ON D.IL_GOODS_ID = G.IL_GOODS_ID
+            INNER JOIN IL_ITEM B ON G.IL_ITEM_CD = B.IL_ITEM_CD
+            LEFT OUTER  JOIN  IL_GOODS_IMG IG ON    IG.IL_GOODS_ID = G.IL_GOODS_ID AND IG.BASIC_YN = 'Y'
+            LEFT OUTER  JOIN  IL_ITEM_IMG II ON    II.IL_ITEM_CD = G.IL_ITEM_CD AND   II.BASIC_YN = 'Y'
+            LEFT OUTER  JOIN  IL_GOODS_PRICE GP  ON    GP.IL_GOODS_ID = G.IL_GOODS_ID AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT AND   GP.USE_YN = 'Y'
+            LEFT OUTER  JOIN  DP_BRAND DB ON B.DP_BRAND_ID = DB.DP_BRAND_ID AND DB.USE_YN = 'Y'
+            LEFT OUTER  JOIN  UR_WAREHOUSE W ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+            LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H ON    H.IL_GOODS_ID = G.IL_GOODS_ID AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+            LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND   HH.DEL_YN = 'N'
+            LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND BGB ON B.UR_BRAND_ID = BGB.UR_BRAND_ID
+            LEFT JOIN PS_EMPL_DISC_BRAND_GRP BG ON BG.PS_EMPL_DISC_BRAND_GRP_ID = BGB.PS_EMPL_DISC_BRAND_GRP_ID
+            WHERE   D.DM_MAIL_GROUP_ID = #{dmMailGroupId}
+              AND   G.IL_GOODS_ID = D.IL_GOODS_ID
+        ) T1
+        LEFT OUTER  JOIN  (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD, GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C1 ON    C1.CODE  = T1.GOODS_TP
+        LEFT OUTER  JOIN  (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD, GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISCOUNT_TP'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C2 ON    C2.CODE  = T1.DISCOUNT_TP
+        LEFT OUTER  JOIN  (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD, GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'SALE_STATUS'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C3 ON    C3.CODE  = T1.SALE_STATUS
+        ORDER BY CAST(T1.GOODS_SORT AS SIGNED) ASC, CAST(T1.IL_GOODS_ID AS SIGNED) DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 상품정보리스트조회(엑셀용)
+     *                  popupCommon.getGoodsList 와 동일
+     * @ param        :
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectGoodsInfoList" resultType="kr.co.pulmuone.v1.base.dto.vo.GoodsSearchVo">
+        /*dmmail.selectGoodsInfoList*/
+        SELECT  A.GOODS_ID                  /* 상품 ID */
+            , A.GOODS_NAME                /* 상품명 */
+            , A.ITEM_CODE                 /* 품목코드 */
+            , A.ITEM_NAME                 /* 품목명 */
+            , A.ITEM_BARCODE              /* 품목바코드 */
+            , A.WAREHOUSE_ID              /* 출고처 ID */
+            , A.WAREHOUSE_NAME            /* 출고처명 */
+            , A.SUPPLIER_ID               /* 공급처 ID */
+            , A.SUPPLIER_COMPANY_ID       /* 공급처 회사 ID */
+            , A.SUPPLIER_NAME             /* 공급처명 */
+            , A.BRAND_ID                  /* 브랜드 ID */
+            , A.BRAND_NAME                /* 브랜드명 */
+            , A.DP_BRAND_NAME             /* 전시 브랜드명 */
+            , A.CATEGORY_STANDARD_ID      /* 표준카테고리 ID */
+            , FN_CTGRY_STD_FULL_NAME(A.CATEGORY_STANDARD_ID) AS CATEGORY_STANDARD_DEPTH_NAME /* 표준카테고리 DEPTH */
+            , A.CATEGORY_ID               /* 전시카테고리 */
+            , (
+                CASE  WHEN A.CATEGORY_ID IS NULL
+                THEN ''
+                ELSE FN_CTGRY_FULL_NAME(A.CATEGORY_ID)
+                END
+            ) AS CATEGORY_DEPTH_NAME    /* 전시카테고리 DEPTH */
+            , A.GOODS_TYPE_CODE           /* 상품유형코드 */
+            , FN_COMN_CODE_DIC(A.GOODS_TYPE_CODE) AS GOODS_TP_NM /* 상품유형명 */
+            , FN_COMN_CODE_DIC(A.GOODS_TYPE_CODE) AS GOODS_TYPE_NAME /* 상품유형명 */
+            , A.SALE_TYPE_CODE            /* 판매유형코드 */
+            , A.ITEM_TYPE_CODE            /* 품목유형코드 */
+            , A.PACKAGE_UNIT_DISPLAY_YN   /* 포장용량 구성정보 노출여부 */
+            , A.PURCHASE_MEMBER_YN        /* 회원 구매여부 */
+            , A.PURCHASE_EMPLOYEE_YN      /* 임직원 구매여부 */
+            , A.PURCHASE_NONMEMBER_YN     /* 비회원 구매여부 */
+            , A.DISPLAY_WEB_PC_YN         /* WEB PC 전시여부 */
+            , A.DISPLAY_WEB_MOBILE_YN     /* WEB 모바일 전시여부 */
+            , A.DISPLAY_APP_YN            /* APP 전시여부 */
+            , A.SALE_START_DATE           /* 판매 시작일 */
+            , A.SALE_END_DATE             /* 판매 종료일 */
+            , A.GOODS_DISPLAY_YN          /* 상품 전시여부 */
+            , A.SALE_STATUS_CODE          /* 상품 판매상태 공통코드 */
+            , FN_COMN_CODE_DIC(A.SALE_STATUS_CODE) AS SALE_STATUS_CODE_NAME
+            , A.ITEM_GROUP                /* 품목 그룹 */
+            , A.STORAGE_METHOD_TYPE_CODE  /* 보관방법 공통코드 */
+            , FN_COMN_CODE_DIC(A.STORAGE_METHOD_TYPE_CODE) AS STORAGE_METHOD_TYPE_NAME /* 보관방법명 */
+            , A.PLACE_ORDER_ID            /* 발주유형 ID */
+            , A.ITEM_IMAGE_PATH           /* 상품 이미지 경로 */
+            , A.IL_SHIPPING_TMPL_ID
+            , A.UNDELIVERABLE_AREA_TP
+            , GP.IL_GOODS_PRICE_ID        /* 가격정보 ID */
+            , GP.STANDARD_PRICE           /* 원가 */
+            , GP.RECOMMENDED_PRICE        /* 정상가 */
+            , GP.SALE_PRICE               /* 판매가 */
+            , GP.DISCOUNT_TP
+            , FN_COMN_CODE_DIC(GP.DISCOUNT_TP) AS DISCOUNT_TP_NAME
+            , A.NAME                      /* 배송정책 */
+            , CASE  WHEN UNDELIVERABLE_AREA_TP = 'UNDELIVERABLE_AREA_TP.NONE' AND STORE_YN = 'N'
+            THEN A.AREA_SHIPPING_DELIVERY_YN
+            ELSE '불가'
+            END AS AREA_SHIPPING_DELIVERY_YN
+        FROM  (
+            SELECT  G.IL_GOODS_ID AS GOODS_ID
+                , G.GOODS_NM AS GOODS_NAME
+                , I.IL_ITEM_CD AS ITEM_CODE
+                , I.ITEM_NM AS ITEM_NAME
+                , IFNULL(I.ITEM_BARCODE, '') AS ITEM_BARCODE
+                , G.UR_WAREHOUSE_ID AS WAREHOUSE_ID
+                , W.WAREHOUSE_NM AS WAREHOUSE_NAME
+                , I.UR_SUPPLIER_ID AS SUPPLIER_ID
+                , S.UR_COMPANY_ID AS SUPPLIER_COMPANY_ID
+                , C.COMP_NM AS SUPPLIER_NAME
+                , I.UR_BRAND_ID AS BRAND_ID
+                , B.BRAND_NM AS BRAND_NAME
+                , I.DP_BRAND_ID
+                , I.UNDELIVERABLE_AREA_TP
+                , DP.DP_BRAND_NM AS DP_BRAND_NAME
+                , I.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID
+                , (
+                    SELECT  T1.IL_CTGRY_ID
+                    FROM    IL_CTGRY_PRNTS_INFO T1
+                    JOIN IL_GOODS_CTGRY T2 ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                    JOIN IL_CTGRY T3 ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                    WHERE   T3.USE_YN = 'Y'
+                        AND   T3.DEL_YN = 'N'
+                        AND   T2.IL_GOODS_ID = G.IL_GOODS_ID
+                        AND   T3.MALL_DIV = 'MALL_DIV.PULMUONE'
+                        AND   T2.BASIC_YN = 'Y'
+                    LIMIT 1
+                ) AS CATEGORY_ID
+                , G.GOODS_TP AS GOODS_TYPE_CODE
+                , G.SALE_TP AS SALE_TYPE_CODE
+                , I.ITEM_TP AS ITEM_TYPE_CODE
+                , G.PACKAGE_UNIT_DISP_YN AS PACKAGE_UNIT_DISPLAY_YN
+                , G.PURCHASE_MEMBER_YN
+                , G.PURCHASE_EMPLOYEE_YN
+                , G.PURCHASE_NONMEMBER_YN
+                , G.DISP_WEB_PC_YN AS DISPLAY_WEB_PC_YN
+                , G.DISP_WEB_MOBILE_YN AS DISPLAY_WEB_MOBILE_YN
+                , G.DISP_APP_YN AS DISPLAY_APP_YN
+                , DATE_FORMAT(G.SALE_START_DT, '%Y-%m-%d %H:%i:%s') AS SALE_START_DATE
+                , DATE_FORMAT(G.SALE_END_DT, '%Y-%m-%d %H:%i:%s') AS SALE_END_DATE
+                , G.DISP_YN AS GOODS_DISPLAY_YN
+                , G.SALE_STATUS AS SALE_STATUS_CODE
+                , I.ITEM_GRP AS ITEM_GROUP
+                , I.STORAGE_METHOD_TP AS STORAGE_METHOD_TYPE_CODE
+                , IIW.IL_PO_TP_ID AS PLACE_ORDER_ID
+                , (
+                    SELECT  II.C_IMG
+                    FROM    IL_ITEM_IMG II
+                    WHERE   II.IL_ITEM_CD = I.IL_ITEM_CD
+                      AND II.BASIC_YN = 'Y'
+                    LIMIT 1
+                ) AS ITEM_IMAGE_PATH
+                , G.CREATE_DT
+                , (
+                    SELECT  IL_GOODS_PRICE_ID
+                    FROM    IL_GOODS_PRICE
+                    WHERE   IL_GOODS_ID = G.IL_GOODS_ID
+                      AND   NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+                    ORDER BY IL_GOODS_PRICE_ID DESC
+                    LIMIT 1
+                ) AS GOODS_PRICE_ID
+                , W.STORE_YN
+                , SP.IL_SHIPPING_TMPL_ID
+                , SP.AREA_SHIPPING_DELIVERY_YN
+                , SP.NAME
+            FROM    IL_GOODS G
+            JOIN  IL_ITEM I ON    I.IL_ITEM_CD = G.IL_ITEM_CD
+            LEFT OUTER  JOIN  UR_WAREHOUSE W ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+            LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H ON    H.IL_GOODS_ID = G.IL_GOODS_ID AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+            LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND   HH.DEL_YN = 'N'
+            JOIN  UR_SUPPLIER S ON    S.UR_SUPPLIER_ID = I.UR_SUPPLIER_ID
+            JOIN  UR_SUPPLIER_WAREHOUSE USW ON    USW.UR_SUPPLIER_ID = S.UR_SUPPLIER_ID AND   USW.UR_WAREHOUSE_ID = W.UR_WAREHOUSE_ID
+            JOIN  IL_ITEM_WAREHOUSE IIW ON    IIW.IL_ITEM_CD = I.IL_ITEM_CD AND   IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+            JOIN  UR_COMPANY C ON    C.UR_COMPANY_ID = S.UR_COMPANY_ID
+            JOIN  UR_BRAND B ON    B.UR_BRAND_ID = I.UR_BRAND_ID
+            JOIN  DP_BRAND DP ON    DP.DP_BRAND_ID = I.DP_BRAND_ID
+            LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE GDSP ON    G.IL_GOODS_ID = GDSP.IL_GOODS_ID AND   G.UR_WAREHOUSE_ID = GDSP.UR_WAREHOUSE_ID
+            LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE SP ON    GDSP.ORIG_IL_SHIPPING_TMPL_ID = SP.ORIG_IL_SHIPPING_TMPL_ID AND   SP.DEL_YN  = 'N'
+        <where>
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsIdList) and ilGoodsIdList.size() > 0'>
+                AND   G.IL_GOODS_ID IN  <foreach collection="ilGoodsIdList" item="ilGoodsId" index="index" separator="," open="(" close=")">
+                #{ilGoodsId}
+            </foreach>
+            </if>
+        </where>
+        ) A
+        JOIN IL_GOODS_PRICE GP
+        ON GP.IL_GOODS_PRICE_ID = A.GOODS_PRICE_ID
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsIdList) and ilGoodsIdList.size() > 0'>
+            ORDER BY FIELD (A.GOODS_ID   <foreach collection="ilGoodsIdList" item="goodsId" index="index" separator="," open="," close=")">
+            #{goodsId}
+        </foreach>
+        </if>
+    </select>
+
+
+    <!-- #################################################################### -->
+    <!-- 등록 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM 등록
+     * @                일반(그룹) / 골라담기(균일가) / 증정행사 공통
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addDmMail" parameterType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailVo">
+        /* dmmail.addDmMail */
+        INSERT INTO DM_MAIL(
+          DM_MAIL_ID
+        , DM_MAIL_TEMPLATE_TP
+        , TITLE
+        , DESCRIPTION
+        , GOODS_DISP_YN
+        , SEND_DT
+        , DEL_YN
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES(
+          #{dmMailId}
+        , #{dmMailTemplateTp}
+        , #{title}
+        , #{description}
+        , #{goodsDispYn}
+        , #{sendDt}
+        , #{delYn}
+        , #{createId}
+        , NOW()
+        )
+        <selectKey keyProperty="dmMailId" resultType="String" order="BEFORE">
+            SELECT
+              CONCAT(DATE_FORMAT(now(), '%y%m%d'),
+                (SELECT LPAD(COUNT(1) + 1,'3','0')
+                   FROM DM_MAIL
+                  WHERE DM_MAIL_ID LIKE CONCAT(DATE_FORMAT(now(), '%y%m%d'),'%')))
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM - 그룹정보 등록
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addDmMailGroup" parameterType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailGroupVo">
+        /* dmmail.addDmMailGroup */
+        INSERT INTO DM_MAIL_GROUP(
+        DM_MAIL_ID
+        , GROUP_NM
+        , DESCRIPTION
+        , GROUP_SORT
+        , DISP_PRICE_TP
+        )
+        VALUES(
+        #{dmMailId}
+        , #{groupNm}
+        , #{groupDesc}
+        , #{groupSort}
+        , #{dispPriceTp}
+        )
+        <selectKey keyProperty="dmMailGroupId" resultType="String" order="AFTER">
+            SELECT CONCAT(LAST_INSERT_ID())
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM - 그룹상세 등록 (상품)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addDmMailGroupDetl" parameterType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailGroupDetlVo">
+        /*dmmail.addDmMailGroupDetl*/
+        INSERT INTO DM_MAIL_GROUP_DETL(
+        DM_MAIL_GROUP_ID
+        , GOODS_SORT
+        , IL_GOODS_ID
+        )
+        VALUES(
+        #{dmMailGroupId}
+        , #{goodsSort}
+        , #{ilGoodsId}
+        )
+        <selectKey keyProperty="dmMailGroupDetlId" resultType="String" order="AFTER">
+            SELECT CONCAT(LAST_INSERT_ID())
+        </selectKey>
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM 수정
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.23   dgyoun    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putDmMail" parameterType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailVo">
+        /* dmmail.putDmMail */
+        UPDATE  DM_MAIL
+        SET
+        DM_MAIL_TEMPLATE_TP       = #{dmMailTemplateTp}
+        , TITLE                   = #{title}
+        , DESCRIPTION             = #{description}
+        , GOODS_DISP_YN           = #{goodsDispYn}
+        , SEND_DT                 = #{sendDt}
+        , MODIFY_ID               = #{modifyId}
+        , MODIFY_DT               = NOW()
+        WHERE   DM_MAIL_ID           = #{dmMailId}
+    </update>
+
+    <update id="putDmMailContents" parameterType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailVo">
+        /* dmmail.putDmMailContents */
+        UPDATE  DM_MAIL
+        SET
+            MAIL_CONTENTS = #{mailContents}
+        WHERE   DM_MAIL_ID           = #{dmMailId}
+    </update>
+
+    <!-- #################################################################### -->
+    <!-- 삭제 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : DM 삭제
+     * @                일반(그룹) / 골라담기(균일가) / 증정행사 공통
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.18   dgyoun    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="delDmMail" parameterType="kr.co.pulmuone.v1.company.dmmail.dto.vo.DmMailVo">
+        /* dmmail.delDmMail */
+        UPDATE  DM_MAIL
+        SET     MODIFY_DT     = NOW()
+          , MODIFY_ID     = #{modifyId}
+          , DEL_YN        = #{delYn}
+        WHERE   DM_MAIL_ID = #{dmMailId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹 삭제 - DM ID기준 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delDmMailGroupByDmMailId" parameterType="java.lang.String">
+        /* dmmail.delDmMailGroupByDmMailId */
+        DELETE FROM DM_MAIL_GROUP
+        WHERE  DM_MAIL_ID = #{dmMailId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹 삭제 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delDmMailGroup" parameterType="java.lang.String">
+        /* dmmail.delDmMailGroup */
+        DELETE FROM DM_MAIL_GROUP
+        WHERE  DM_MAIL_GROUP_ID = #{dmMailGroupId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹상세 삭제 - DM ID기준 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delDmMailGroupDetlByDmMailId" parameterType="java.lang.String">
+        /* dmmail.delDmMailGroupDetlByDmMailId */
+        DELETE FROM DM_MAIL_GROUP_DETL
+        WHERE  DM_MAIL_GROUP_ID  IN  (
+            SELECT  DM_MAIL_GROUP_ID
+            FROM    DM_MAIL_GROUP
+            WHERE   DM_MAIL_ID = #{dmMailId}
+        )
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹상세 삭제 - DM 메일그룹ID기준 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delDmMailGroupDetlByDmMailGroupId" parameterType="java.lang.String">
+        /* dmmail.delDmMailGroupDetlByDmMailGroupId */
+        DELETE FROM DM_MAIL_GROUP_DETL
+        WHERE  DM_MAIL_GROUP_ID = #{dmMailGroupId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹상세 삭제 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.24   mybae    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delDmMailGroupDetl" parameterType="java.lang.String">
+        /* dmmail.delDmMailGroupDetl */
+        DELETE FROM DM_MAIL_GROUP_DETL
+        WHERE  DM_MAIL_GROUP_DETL_ID = #{dmMailGroupDetlId}
+    </delete>
+
+    <select id="selectDmMailTemplateContents" parameterType="java.lang.String" resultType="java.lang.String">
+        /* dmmail.selectDmMailTemplateContents */
+        SELECT TEMPLATE_CONTENTS
+          FROM DM_MAIL_TEMPLATE
+         WHERE DM_MAIL_TEMLPATE_TP = #{dmMailTemplateTp}
+         LIMIT 1
+    </select>
+</mapper>

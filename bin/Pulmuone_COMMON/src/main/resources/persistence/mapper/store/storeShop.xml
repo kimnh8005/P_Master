@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.store.shop.StoreShopMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 매장리스트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.store.shop.dto.vo.ShopListVo" id="getShopListResultMap">
+        <result column="UR_STORE_ID" property="urStoreId"/>
+        <result column="NM" property="name"/>
+        <result column="STORE_CATEGORY" property="storeCategory"/>
+        <result column="ZIP_CD" property="zipCode"/>
+        <result column="ADDRESS1" property="address1"/>
+        <result column="ADDRESS2" property="address2"/>
+        <result column="TEL" property="telephone"/>
+    </resultMap>
+    <select id="getShopList" resultMap="getShopListResultMap">
+        /* storeShop.getShopList */
+        SELECT UR_STORE_ID
+            , NM
+            , FN_COMN_CODE_DIC(STORE_CATEGORY1) AS STORE_CATEGORY
+            , ZIP_CD
+            , ADDRESS1
+            , ADDRESS2
+            , TEL
+        FROM UR_STORE US
+        WHERE STORE_TP = 'STORE_TYPE.DIRECT'
+            AND USE_YN = 'Y'
+            AND STATUS = 'STORE_STATUS.USE'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(areaType)">
+            AND ADDRESS1 LIKE CONCAT('%', #{areaType}, '%')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchText)">
+            AND (NM LIKE CONCAT('%', #{searchText}, '%') OR ADDRESS1 LIKE CONCAT('%', #{searchText}, '%') OR ADDRESS2 LIKE CONCAT('%', #{searchText}, '%'))
+            </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 매장 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.store.shop.dto.vo.ShopVo" id="getShopResultMap">
+        <result column="UR_STORE_ID" property="urStoreId"/>
+        <result column="NM" property="name"/>
+        <result column="STORE_CATEGORY" property="storeCategory"/>
+        <result column="ZIP_CD" property="zipCode"/>
+        <result column="ADDRESS1" property="address1"/>
+        <result column="ADDRESS2" property="address2"/>
+        <result column="TEL" property="telephone"/>
+        <result column="OPEN_TIME" property="openTime"/>
+        <result column="CLOSE_TIME" property="closeTime"/>
+        <result column="LOCATE" property="locate"/>
+        <result column="INTRO_IMAGE" property="introImage"/>
+        <result column="STORE_ORDER_SET" property="storeOrderSet"/>
+        <result column="INTRO_TEXT" property="introText"/>
+    </resultMap>
+    <select id="getShop" resultMap="getShopResultMap">
+        /* storeShop.getShop */
+        SELECT UR_STORE_ID
+            , NM
+            , FN_COMN_CODE_DIC(STORE_CATEGORY1) AS STORE_CATEGORY
+            , ZIP_CD
+            , ADDRESS1
+            , ADDRESS2
+            , TEL
+            , OPEN_TIME
+            , CLOSE_TIME
+            , LOCATE
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    , (SELECT CONCAT(USA.PATH, USA.NM) FROM UR_STORE_ATTC USA WHERE USA.UR_STORE_ID = US.UR_STORE_ID AND USA.STORE_IMG_TYPE = 'PC') AS INTRO_IMAGE
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    , (SELECT CONCAT(USA.PATH, USA.NM) FROM UR_STORE_ATTC USA WHERE USA.UR_STORE_ID = US.UR_STORE_ID AND USA.STORE_IMG_TYPE = 'MOBILE') AS INTRO_IMAGE
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    , (SELECT CONCAT(USA.PATH, USA.NM) FROM UR_STORE_ATTC USA WHERE USA.UR_STORE_ID = US.UR_STORE_ID AND USA.STORE_IMG_TYPE = 'MOBILE') AS INTRO_IMAGE
+                </when>
+            </choose>
+            , STORE_ORDER_SET
+            , INTRO_TEXT
+        FROM UR_STORE US
+        WHERE STORE_TP = 'STORE_TYPE.DIRECT'
+            AND USE_YN = 'Y'
+            AND STATUS = 'STORE_STATUS.USE'
+            AND UR_STORE_ID = #{urStoreId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 픽업가능 매장 리스트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.store.shop.dto.vo.PickUpShopListVo" id="getPickUpShopResultMap">
+        <result column="UR_STORE_ID" property="urStoreId"/>
+        <result column="NM" property="name"/>
+    </resultMap>
+    <select id="getPickUpShopList" resultMap="getPickUpShopResultMap">
+        /* storeShop.getPickUpShopList */
+        SELECT US.UR_STORE_ID
+            , US.NM
+        FROM UR_STORE US
+        WHERE US.STORE_TP = 'STORE_TYPE.DIRECT'
+            AND US.USE_YN = 'Y'
+            AND US.STATUS = 'STORE_STATUS.USE'
+            AND EXISTS (
+            	SELECT 1 FROM UR_STORE_DELIVERY_AREA USDA
+            	WHERE USDA.UR_STORE_ID = US.UR_STORE_ID
+            	AND USDA.STORE_DELIVERY_TP IN ('STORE_DELIVERY_TYPE.PICKUP')
+            	AND USDA.USE_YN = 'Y'
+            	LIMIT 1
+            )
+    </select>
+
+</mapper>

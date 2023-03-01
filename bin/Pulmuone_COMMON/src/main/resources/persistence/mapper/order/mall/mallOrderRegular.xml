@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.regular.MallOrderRegularMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.MallRegularReqInfoResponseDto">
+		/*	mallOrderRegular.getOrderRegularReqInfo	*/
+		WITH OD_REGULAR_REQ_INFO AS (
+			SELECT
+				MAX(OD_REGULAR_REQ_ID) AS OD_REGULAR_REQ_ID
+			FROM
+				OD_REGULAR_REQ
+			WHERE
+				UR_USER_ID = #{urUserId}
+			AND REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING')
+			GROUP BY UR_USER_ID
+		)
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,                                               /* 정기배송주문신청PK */
+			ORR.TOT_CNT,                                                         /* 총회차 */
+			ORR.GOODS_CYCLE_TERM_TP,                                             /* 배송기간코드 */
+			FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TERM_TP) AS GOODS_CYCLE_TERM_TP_NM, /* 배송기간코드명 */
+			ORR.GOODS_CYCLE_TP,                                                  /* 배송주기코드 */
+			FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TP)      AS GOODS_CYCLE_TP_NM,      /* 배송주기코드명 */
+			ORR.WEEK_CD,                                                         /* 요일코드 */
+			FN_COMN_CODE_DIC(ORR.WEEK_CD)             AS WEEK_CD_NM,             /* 요일코드명 */
+			FN_DECRYPT(ORRSZ.RECV_NM)                 AS RECV_NM,                /* 수령인명 */
+			FN_DECRYPT(ORRSZ.RECV_ZIP_CD)             AS RECV_ZIP_CD,            /* 수령인우편번호 */
+			FN_DECRYPT(ORRSZ.RECV_ADDR1)              AS RECV_ADDR1,             /* 수령인주소1 */
+			FN_DECRYPT(ORRSZ.RECV_ADDR2)              AS RECV_ADDR2,             /* 수령인주소2 */
+			ORRSZ.RECV_BLD_NO,                                                   /* 수령인빌딩번호 */
+			FN_DECRYPT(ORRSZ.RECV_HP)                 AS RECV_HP,                /* 수령인핸드폰 */
+			ORRSZ.DELIVERY_MSG,                                                  /* 배송요청사항 */
+			ORRSZ.DOOR_MSG_CD,                                                   /* 출입타입코드 */
+			FN_COMN_CODE_DIC(ORRSZ.DOOR_MSG_CD)       AS DOOR_MSG_CD_NM,         /* 출입타입코드명 */
+			FN_DECRYPT(ORRSZ.DOOR_MSG)                AS DOOR_MSG,               /* 배송출입현관비밀번호 */
+			MIN(ORRT.ARRIVE_DT) AS START_ARRIVE_DT,                              /* 배송시작일자 */
+			MAX(ORRT.ARRIVE_DT) AS END_ARRIVE_DT,                                /* 배송종료일자 */
+			ORR.TERM_EXTENSION_CNT,                                              /* 기간연장횟수 */
+			ORR.BASIC_DISCOUNT_RATE,                                             /* 정기배송 기본 할인율 */
+			IFNULL((
+				SELECT MIN(C.REQ_ROUND) AS REQ_ROUND
+				FROM (
+					SELECT
+						(@rownum := @rownum + 1)AS NO,
+						B.*
+					FROM (
+						SELECT
+							T1.OD_REGULAR_RESULT_ID,
+							T1.OD_ORDER_ID,
+							T1.REQ_ROUND,
+							T1.ARRIVE_DT,
+							CASE WHEN T1.ARRIVE_DT <![CDATA[<=]]> CURRENT_DATE() THEN 'Y' ELSE 'N' END AS END_YN,
+							T1.PAYMENT_FAIL_CNT,
+							IFNULL((
+								SELECT 'Y'
+								FROM OD_PAYMENT OP
+								INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+								WHERE OP.OD_ORDER_ID = T1.OD_ORDER_ID
+								AND OPM.TYPE = 'G'
+								AND OPM.STATUS = 'IC'
+							), 'N') AS PAYMENT_YN,
+							IFNULL((
+								SELECT COUNT(1)
+								FROM OD_REGULAR_RESULT_DETL ORD
+								WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+							), 0) AS DETL_CNT,
+							IFNULL((
+								SELECT COUNT(1)
+								FROM OD_REGULAR_RESULT_DETL ORD
+								WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+								AND ORD.REQ_DETAIL_STATUS_CD != 'REGULAR_DETL_STATUS_CD.APPLY'
+							), 0) AS SKIP_CNT
+						FROM   OD_REGULAR_RESULT T1
+						WHERE  T1.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+						ORDER BY T1.OD_REGULAR_RESULT_ID
+					) B
+					INNER JOIN (SELECT @rownum := 0) R
+					WHERE ((B.END_YN = 'Y' AND B.PAYMENT_YN = 'Y') OR (B.END_YN = 'N' AND (B.DETL_CNT - B.SKIP_CNT) <![CDATA[>]]> 0))
+					ORDER BY NO DESC
+				) C
+				WHERE C.NO <![CDATA[>=]]> ORR.ADD_DISCOUNT_ROUND
+			),	(
+				SELECT MAX(REQ_ROUND) + 1
+				FROM OD_REGULAR_RESULT
+				WHERE OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+			)) AS ADD_DISCOUNT_ROUND,                                            /* 정기배송 추가 할인 회차 */
+			ORR.ADD_DISCOUNT_RATE,                                               /* 정기배송 추가 할인율 */
+			IFNULL(ORRT2.OD_REGULAR_RESULT_ID, MAX(ORRT.OD_REGULAR_RESULT_ID)) AS OD_REGULAR_RESULT_ID,			/* 정기배송신청결과PK */
+			IFNULL(ORRT2.MAX_OD_REGULAR_RESULT_ID, MAX(ORRT.OD_REGULAR_RESULT_ID)) AS MAX_OD_REGULAR_RESULT_ID, /* 마지막정기배송신청결과PK */
+			IFNULL(ORRT2.REQ_ROUND, MAX(ORRT.REQ_ROUND)) AS REQ_ROUND,											/* 현재회차 */
+			IFNULL(ORRT2.NEXT_ARRIVE_DT, MAX(ORRT.ARRIVE_DT)) AS NEXT_ARRIVE_DT									/* 다음배송일자 */
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_REQ_SHIPPING_ZONE ORRSZ ON ORR.OD_REGULAR_REQ_ID = ORRSZ.OD_REGULAR_REQ_ID
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		INNER JOIN
+			(
+				SELECT
+					B.OD_REGULAR_REQ_ID,
+					B.REQ_ROUND,
+					B.ARRIVE_DT AS NEXT_ARRIVE_DT,
+					B.OD_REGULAR_RESULT_ID,
+					MAX(B.OD_REGULAR_RESULT_ID) AS MAX_OD_REGULAR_RESULT_ID
+				FROM (
+					SELECT
+						T1.OD_REGULAR_REQ_ID,
+						T1.OD_REGULAR_RESULT_ID,
+						T1.OD_ORDER_ID,
+						T1.REQ_ROUND,
+						T1.ARRIVE_DT,
+						CASE WHEN T1.ARRIVE_DT <![CDATA[<=]]> CURRENT_DATE() THEN 'Y' ELSE 'N' END AS END_YN,
+						T1.PAYMENT_FAIL_CNT,
+						IFNULL((
+							SELECT 'Y'
+							FROM OD_PAYMENT OP
+							INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+							WHERE OP.OD_ORDER_ID = T1.OD_ORDER_ID
+							AND OPM.TYPE = 'G'
+							AND OPM.STATUS = 'IC'
+						), 'N') AS PAYMENT_YN,
+						IFNULL((
+							SELECT COUNT(1)
+							FROM OD_REGULAR_RESULT_DETL ORD
+							WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+						), 0) AS DETL_CNT,
+						IFNULL((
+							SELECT COUNT(1)
+							FROM OD_REGULAR_RESULT_DETL ORD
+							WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+							AND ORD.REQ_DETAIL_STATUS_CD != 'REGULAR_DETL_STATUS_CD.APPLY'
+						), 0) AS SKIP_CNT
+					FROM   OD_REGULAR_RESULT T1
+					INNER JOIN OD_REGULAR_REQ_INFO ORI ON T1.OD_REGULAR_REQ_ID = ORI.OD_REGULAR_REQ_ID
+					ORDER BY T1.OD_REGULAR_RESULT_ID
+				) B
+				WHERE ((B.END_YN = 'Y' AND B.PAYMENT_YN = 'Y') OR (B.END_YN = 'N' AND (B.DETL_CNT - B.SKIP_CNT)  <![CDATA[>]]> 0))
+				AND B.ARRIVE_DT <![CDATA[>]]> CURRENT_DATE()
+			)  ORRT2 ON ORR.OD_REGULAR_REQ_ID = ORRT2.OD_REGULAR_REQ_ID
+		INNER JOIN OD_REGULAR_REQ_INFO ORI ON ORR.OD_REGULAR_REQ_ID = ORI.OD_REGULAR_REQ_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 회차 총 갯수
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqRoundGoodsListTotCnt" resultType="int">
+		/*	mallOrderRegular.getOrderRegularReqRoundGoodsListTotCnt	*/
+		SELECT
+			COUNT(1) AS TOT_CNT
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		LEFT OUTER JOIN
+			OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+		LEFT OUTER JOIN
+			OD_PAYMENT OP ON OD.OD_ORDER_ID = OP.OD_ORDER_ID
+		LEFT OUTER JOIN
+			OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+								 AND OPM.TYPE = 'G'
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = (	SELECT
+											MAX(OD_REGULAR_REQ_ID)
+										FROM
+											OD_REGULAR_REQ
+										WHERE
+											UR_USER_ID = #{urUserId}
+									)
+			AND ORRT.REQ_ROUND <![CDATA[<=]]>  (
+												SELECT
+													MIN(S1.REQ_ROUND)
+												FROM
+													OD_REGULAR_RESULT S1
+													INNER JOIN OD_REGULAR_RESULT_DETL S2 ON S1.OD_REGULAR_RESULT_ID = S2.OD_REGULAR_RESULT_ID
+												WHERE
+														S1.ARRIVE_DT <![CDATA[>]]> CURRENT_DATE()
+													AND S1.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+													AND S2.REQ_DETAIL_STATUS_CD  = 'REGULAR_DETL_STATUS_CD.APPLY'
+												GROUP BY S1.OD_REGULAR_REQ_ID
+												)
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 회차 상품 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqRoundGoodsList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultReqRoundGoodsListDto">
+		/*	mallOrderRegular.getOrderRegularReqRoundGoodsList	*/
+		SELECT
+			A.OD_REGULAR_REQ_ID,
+			A.OD_REGULAR_RESULT_ID,
+			A.OD_REGULAR_RESULT_DETL_ID,
+			A.REQ_ROUND,
+			A.ARRIVE_DT,
+			A.REQ_DETAIL_STATUS_CD,
+			A.REQ_DETAIL_STATUS_CD_NM,
+			A.REGULAR_SKIP_PSB_YN,
+			A.REGULAR_ROUND_END_YN,
+			A.REQ_ROUND_YN,
+			A.ORDER_CREATE_DT,
+			A.ORDER_CREATE_YN,
+			A.PAYMENT_DT,
+			A.REGULAR_STATUS_CD,
+			A.REGULAR_STATUS_CD_NM,
+			A.TOT_SALE_PRICE,
+			A.TOT_DISCOUNT_PRICE,
+			A.TOT_SHIPPING_PRICE,
+			A.TOT_PAID_PRICE,
+			A.IL_GOODS_ID,
+			IF(A.SIZE_UNIT = '', A.GOODS_NM, CONCAT(A.GOODS_NM, ' ', A.SIZE_UNIT)) AS GOODS_NM,
+			A.IL_ITEM_CD,
+			A.SALE_STATUS,
+			A.SALE_STATUS_NM,
+			A.REGULAR_SALE_STATUS,
+			A.REGULAR_SALE_STATUS_NM,
+			A.PAYMENT_FAIL_CNT,
+			A.RECOMMENDED_PRICE,
+			A.SALE_PRICE,
+			A.UR_WAREHOUSE_ID,
+			A.IL_SHIPPING_TMPL_ID,
+			A.GRP_WAREHOUSE_SHIPPING_TMPL_ID,
+			A.THUMBNAIL_PATH,
+			A.ORDER_CNT,
+			A.GOODS_TP,
+			A.BUNDLE_YN,
+		    A.PARENT_IL_GOODS_ID,
+		    A.REGULAR_CANCEL_PSB_YN,
+		    A.PAYMENT_YN
+		FROM (
+			SELECT
+				ORR.OD_REGULAR_REQ_ID,
+				ORR.OD_REGULAR_RESULT_ID,
+				ORRD.OD_REGULAR_RESULT_DETL_ID,
+				ORR.REQ_ROUND,
+				ORR.ARRIVE_DT,
+				ORRD.REQ_DETAIL_STATUS_CD,
+				FN_COMN_CODE_DIC(ORRD.REQ_DETAIL_STATUS_CD) AS REQ_DETAIL_STATUS_CD_NM,
+				ORR.REGULAR_SKIP_PSB_YN,
+				ORR.REGULAR_ROUND_END_YN,
+				ORR.REQ_ROUND_YN,
+				ORR.ORDER_CREATE_DT,
+				ORR.ORDER_CREATE_YN,
+				ORR.PAYMENT_DT,
+				ORR.REGULAR_STATUS_CD,
+				FN_COMN_CODE_DIC(ORR.REGULAR_STATUS_CD)     AS REGULAR_STATUS_CD_NM,
+				ORR.TOT_SALE_PRICE,
+				ORR.TOT_DISCOUNT_PRICE,
+				ORR.TOT_SHIPPING_PRICE,
+				ORR.TOT_PAID_PRICE,
+				ORRD.IL_GOODS_ID,
+				IG.GOODS_NM,
+				IFNULL(
+					IF(IG.PACKAGE_UNIT_DISP_YN = 'Y',
+						IF(IG.GOODS_TP = 'GOODS_TYPE.PACKAGE',
+							CONCAT('(',IG.PACKAGE_UNIT_DESC,')'),
+							CONCAT('(', CAST(II.SIZE_PER_PACKAGE AS float),
+																		CASE
+																			WHEN II.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.SIZE_UNIT_ETC
+																			ELSE FN_COMN_CODE_DIC(II.SIZE_UNIT)
+																		END
+							, IF(II.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', II.QTY_PER_PACKAGE,
+																		CASE
+																		    WHEN II.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.PACKAGE_UNIT_ETC
+																			ELSE FN_COMN_CODE_DIC(II.PACKAGE_UNIT)
+																		END
+																		)
+								, '')
+							, ')')
+							)
+					, '')
+				, '') AS SIZE_UNIT,
+				IG.IL_ITEM_CD,
+				IG.SALE_STATUS,
+				FN_COMN_CODE_DIC(IG.SALE_STATUS)            AS SALE_STATUS_NM,
+				ORRD.SALE_STATUS AS REGULAR_SALE_STATUS,
+				FN_COMN_CODE_DIC(ORRD.SALE_STATUS)            AS REGULAR_SALE_STATUS_NM,
+				ORR.PAYMENT_FAIL_CNT,
+				IFNULL(OOD.RECOMMENDED_PRICE, IGP.RECOMMENDED_PRICE) 	AS RECOMMENDED_PRICE,
+				IFNULL(OOD.SALE_PRICE, IGP.SALE_PRICE) 		AS SALE_PRICE,
+				IFNULL(OOD.UR_WAREHOUSE_ID, IG.UR_WAREHOUSE_ID) 		AS UR_WAREHOUSE_ID,
+				IFNULL(OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, ST.IL_SHIPPING_TMPL_ID) AS IL_SHIPPING_TMPL_ID,
+				CONCAT(IFNULL(OOD.UR_WAREHOUSE_ID, IG.UR_WAREHOUSE_ID), '∀', IF(ST.BUNDLE_YN = 'N', ORRD.OD_REGULAR_RESULT_DETL_ID, ST.BUNDLE_YN)) AS GRP_WAREHOUSE_SHIPPING_TMPL_ID,
+				FN_GOODS_S_IMG(ORRD.IL_GOODS_ID)            AS THUMBNAIL_PATH,
+				IFNULL(OOD.ORDER_CNT, ORRD.ORDER_CNT) 		AS ORDER_CNT,
+				IFNULL(OOD.GOODS_TP_CD, IG.GOODS_TP) 		AS GOODS_TP,
+				ST.BUNDLE_YN,
+				IFNULL((
+					SELECT
+						IGAGM.IL_GOODS_ID
+					FROM
+						IL_GOODS_ADDITIONAL_GOODS_MAPPING IGAGM
+					WHERE
+						IGAGM.TARGET_GOODS_ID = (IFNULL(OOD.IL_GOODS_ID, IG.IL_GOODS_ID))
+				), 0)                                       AS PARENT_IL_GOODS_ID,
+				CASE	WHEN IFNULL(
+									(
+										SELECT	COUNT(1)
+										FROM	OD_REGULAR_RESULT T1
+										INNER JOIN OD_REGULAR_RESULT_DETL T2 ON T1.OD_REGULAR_RESULT_ID = T2.OD_REGULAR_RESULT_ID
+										WHERE	T1.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+										AND		T1.ORDER_CREATE_DT <![CDATA[>]]> CURRENT_DATE()
+										AND		T1.ORDER_CREATE_YN = 'N'
+										AND		T2.IL_GOODS_ID = ORRD.IL_GOODS_ID
+										AND		T1.REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING')
+										AND		T2.REQ_DETAIL_STATUS_CD IN ( 'REGULAR_DETL_STATUS_CD.APPLY', 'REGULAR_DETL_STATUS_CD.SKIP')
+									), 0) <![CDATA[>]]> 0 THEN 'Y'
+						ELSE 'N'
+				END REGULAR_CANCEL_PSB_YN,
+				ORR.PAYMENT_YN
+			FROM
+				(
+				SELECT
+					ORR.OD_REGULAR_REQ_ID,
+					ORRT.OD_REGULAR_RESULT_ID,
+					OD.OD_ORDER_ID,
+					ORRT.REQ_ROUND,
+					ORRT.ARRIVE_DT,
+					ORRT.ORDER_CREATE_DT,
+					ORRT.ORDER_CREATE_YN,
+					ORRT.PAYMENT_FAIL_CNT,
+					ORRT.PAYMENT_DT,
+					ORRT.REQ_ROUND_YN,
+					ORRT.REGULAR_STATUS_CD,
+					CASE WHEN ORRT.ORDER_CREATE_DT <![CDATA[<=]]> CURRENT_DATE() THEN 'N'
+						 ELSE 'Y'
+					END AS REGULAR_SKIP_PSB_YN,
+					CASE WHEN ORRT.ORDER_CREATE_DT <![CDATA[>]]> CURRENT_DATE() THEN 'N'
+						 ELSE 'Y'
+					END AS REGULAR_ROUND_END_YN,
+					OPM.SALE_PRICE AS TOT_SALE_PRICE,
+					(OPM.CART_COUPON_PRICE + OPM.GOODS_COUPON_PRICE + OPM.DIRECT_PRICE) AS TOT_DISCOUNT_PRICE,
+					OPM.SHIPPING_PRICE AS TOT_SHIPPING_PRICE,
+					OPM.PAYMENT_PRICE AS TOT_PAID_PRICE,
+					CASE WHEN OPM.STATUS = 'IC' THEN 'Y' ELSE 'N' END AS PAYMENT_YN
+				FROM
+					OD_REGULAR_REQ ORR
+				INNER JOIN
+					OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+				LEFT OUTER JOIN
+					OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+				LEFT OUTER JOIN
+					OD_PAYMENT OP ON OD.OD_ORDER_ID = OP.OD_ORDER_ID AND OP.OD_CLAIM_ID = 0
+				LEFT OUTER JOIN
+					OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+										 AND OPM.TYPE = 'G'
+				WHERE
+					ORR.OD_REGULAR_REQ_ID = (	SELECT
+												MAX(OD_REGULAR_REQ_ID)
+											FROM
+												OD_REGULAR_REQ
+											WHERE
+												UR_USER_ID = #{urUserId}
+										)
+					AND ORRT.REQ_ROUND <![CDATA[<=]]>  (
+														SELECT
+															MIN(S1.REQ_ROUND)
+														FROM
+															OD_REGULAR_RESULT S1
+															INNER JOIN OD_REGULAR_RESULT_DETL S2 ON S1.OD_REGULAR_RESULT_ID = S2.OD_REGULAR_RESULT_ID
+														WHERE
+																S1.ARRIVE_DT <![CDATA[>=]]> CURRENT_DATE()
+															AND S1.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+															AND S2.REQ_DETAIL_STATUS_CD  = 'REGULAR_DETL_STATUS_CD.APPLY'
+														GROUP BY S1.OD_REGULAR_REQ_ID
+														)
+				ORDER BY ORRT.REQ_ROUND DESC
+				<include refid="_common.pageSizeLimit" />
+			) ORR
+			INNER JOIN
+				OD_REGULAR_RESULT_DETL ORRD ON ORR.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+			LEFT OUTER JOIN
+				OD_ORDER_DETL OOD ON ORR.OD_ORDER_ID = OOD.OD_ORDER_ID AND ORRD.IL_ITEM_CD = OOD.IL_ITEM_CD AND ORRD.IL_GOODS_ID = OOD.IL_GOODS_ID
+			INNER JOIN
+				IL_GOODS IG ON ORRD.IL_GOODS_ID = IG.IL_GOODS_ID AND ORRD.IL_ITEM_CD = IG.IL_ITEM_CD
+			INNER JOIN
+				IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+			INNER JOIN
+				IL_GOODS_PRICE IGP ON IG.IL_GOODS_ID = IGP.IL_GOODS_ID
+								  AND IGP.USE_YN = 'Y'
+								  AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+			INNER JOIN
+				UR_WAREHOUSE UW ON IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+			INNER JOIN
+				IL_GOODS_SHIPPING_TEMPLATE GST ON IG.IL_GOODS_ID = GST.IL_GOODS_ID
+												 AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID
+			LEFT OUTER JOIN
+				IL_SHIPPING_TEMPLATE ST ON GST.ORIG_IL_SHIPPING_TMPL_ID = ST.ORIG_IL_SHIPPING_TMPL_ID
+									   AND ST.DEL_YN = 'N'
+			WHERE
+				1 = 1
+			AND
+				ORRD.REQ_DETAIL_STATUS_CD IN
+			<foreach item="reqDetailStatusCd" index="index" collection="reqDetailStatusCdList" open="(" separator="," close=")">
+				#{reqDetailStatusCd}
+			</foreach>
+			ORDER BY ORR.REQ_ROUND DESC, UW.UR_WAREHOUSE_ID, GST.IL_GOODS_SHIPPING_TEMPLATE_ID
+		) A
+	</select>
+</mapper>

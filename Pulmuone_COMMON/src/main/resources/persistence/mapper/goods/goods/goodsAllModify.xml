@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsAllModifyMapper">
+
+	<!-- 상품목록 resultMap -->
+    <resultMap id="getGoodsAllModifyResultMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsAllModifyVo">
+    	<result column="IL_ITEM_CD" property="ilItemCd" />
+    	<result column="ITEM_BARCODE" property="itemBarcode" />
+    	<result column="IL_GOODS_ID" property="ilGoodsId" />
+    	<result column="PROMOTION_NM" property="promotionNm" />
+    	<result column="UR_SUPPLIER_ID" property="urSupplierId" />
+    	<result column="SUPPLIER_NAME" property="supplierName" />
+    	<result column="GOODS_NM" property="goodsNm" />
+    	<result column="SALE_STATUS" property="saleStatue" />
+    	<result column="SALE_STATUS_NAME" property="saleStatusName" />
+    	<result column="GOODS_PRICE_ID" property="goodsPriceId" />
+    	<result column="CATEGORY_STANDARD_ID" property="categoryStandardId" />
+    	<result column="CATEGORY_ID" property="categoryId" />
+    	<result column="DISP_YN" property="dispYn" />
+    	<result column="DISPLAY_WEB_PC_YN" property="displayWebPcYn" />
+    	<result column="DISPLAY_WEB_MOBILE_YN" property="displayWebMobileYn" />
+    	<result column="DISPLAY_APP_YN" property="displayAppYn" />
+    	<result column="COUPON_USE_YN" property="couponUseYn" />
+    	<result column="GOODS_ADD_CNT" property="goodsAddCnt" />
+    	<result column="IL_GOODS_ADDITIONAL_GOODS_MAPPING_ID" property="ilGoodsAdditionalGoodsMappingId" />
+    	<result column="GOODS_ADD_INFO" property="goodsAddInfo" />
+    	<result column="CATEGORY_STANDARD_DEPTH_NAME" property="categoryStandardDepthName" />
+    	<result column="CATEGORY_DEPTH_NAME" property="categoryDepthName" />
+    	<result column="ITEM_PRICE_ID" property="itemPriceId" />
+    	<result column="GOODS_DISCOUNT_ID" property="goodsDiscountId" />
+    	<result column="STANDARD_PRICE" property="standardPrice" />
+    	<result column="RECOMMENDED_PRICE" property="recommendedPrice" />
+    	<result column="DISCOUNT_PRICE_RATIO" property="discountPriceRatio" />
+    	<result column="SALE_PRICE" property="salePrice" />
+    	<result column="DISCOUNT_TYPE_CODE" property="discountTypeCode" />
+    	<result column="DISCOUNT_TYPE_NAME" property="discountTypeName" />
+    	<result column="WAREHOUSE_NM" property="warehouseNm" />
+    	<result column="UR_WAREHOUSE_ID" property="urWarehouseId" />
+    	<result column="GOODS_TP" property="goodsTp" />
+    	<result column="DISPLAY_TARGET" property="displayTarget" />
+
+    </resultMap>
+
+<!--───────────────────────────────────────────────────────────────────────
+     * description      : 묶음 상품목록 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20    정형진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsAllModifyList" resultMap="getGoodsAllModifyResultMap">
+    	/* GoodsAllModifyMapper.getGoodsAllModifyList */
+		SELECT
+			GOODS.*,
+			CASE
+				WHEN GOODS.GOODS_ADD_CNT > 1
+					THEN CONCAT((SELECT GOODS_NM FROM IL_GOODS WHERE IL_GOODS_ID = GOODS.ADD_GOODS_ID), '외 ', GOODS.GOODS_ADD_CNT - 1, '건')
+				WHEN GOODS.GOODS_ADD_CNT =  1
+					THEN (SELECT GOODS_NM FROM IL_GOODS WHERE IL_GOODS_ID = GOODS.ADD_GOODS_ID)
+				ELSE ''
+			END GOODS_ADD_INFO,
+			FN_CTGRY_STD_FULL_NAME(GOODS.CATEGORY_STANDARD_ID) AS CATEGORY_STANDARD_DEPTH_NAME,
+			(CASE WHEN GOODS.CATEGORY_ID IS NULL
+				THEN ''
+				ELSE FN_CTGRY_FULL_NAME(GOODS.CATEGORY_ID)
+			END) AS CATEGORY_DEPTH_NAME,
+			GP.IL_ITEM_PRICE_ID AS ITEM_PRICE_ID,
+		    GP.IL_GOODS_DISCOUNT_ID AS GOODS_DISCOUNT_ID,
+			GP.STANDARD_PRICE,
+			GP.RECOMMENDED_PRICE,
+			((CAST(GP.RECOMMENDED_PRICE AS SIGNED) - CAST(GP.SALE_PRICE AS SIGNED)) / GP.RECOMMENDED_PRICE) * 100 AS DISCOUNT_PRICE_RATIO,
+			GP.SALE_PRICE,
+			GP.DISCOUNT_TP AS DISCOUNT_TYPE_CODE,
+			FN_COMN_CODE_DIC(GP.DISCOUNT_TP) AS DISCOUNT_TYPE_NAME
+
+		FROM(
+		SELECT
+			ITEM.IL_ITEM_CD,
+			ITEM.ITEM_BARCODE,
+			GOODS.IL_GOODS_ID,
+			IF(NOW() > GOODS.PROMOTION_NM_END_DT, '', GOODS.PROMOTION_NM) AS PROMOTION_NM,
+			GOODS.GOODS_TP,
+			ITEM.UR_SUPPLIER_ID,
+			COMPANY.COMP_NM AS SUPPLIER_NAME,
+			GOODS.GOODS_NM,
+			GOODS.SALE_STATUS,
+			FN_COMN_CODE_DIC(GOODS.SALE_STATUS) AS SALE_STATUS_NAME,
+			(
+				SELECT
+					IL_GOODS_PRICE_ID
+				FROM
+					IL_GOODS_PRICE
+				WHERE
+					IL_GOODS_ID = GOODS.IL_GOODS_ID
+					AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+				ORDER BY IL_GOODS_PRICE_ID DESC
+				LIMIT 1
+			) AS GOODS_PRICE_ID,
+			ITEM.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID ,
+			(
+				SELECT
+					T1.IL_CTGRY_ID
+				FROM
+					IL_CTGRY_PRNTS_INFO T1
+				JOIN IL_GOODS_CTGRY T2 ON
+					T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				JOIN IL_CTGRY T3 ON
+					T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				WHERE T3.USE_YN = 'Y'
+				AND T3.DEL_YN = 'N'
+				AND T2.IL_GOODS_ID = GOODS.IL_GOODS_ID
+				AND T3.MALL_DIV = 'MALL_DIV.PULMUONE'
+				AND T2.BASIC_YN = 'Y'
+				LIMIT 1
+			) AS CATEGORY_ID,
+			GOODS.DISP_YN ,
+			GOODS.DISP_WEB_PC_YN AS DISPLAY_WEB_PC_YN,
+			GOODS.DISP_WEB_MOBILE_YN AS DISPLAY_WEB_MOBILE_YN,
+			GOODS.DISP_APP_YN AS DISPLAY_APP_YN,
+			GOODS.COUPON_USE_YN,
+			UW.UR_WAREHOUSE_ID,
+			UW.WAREHOUSE_NM,
+			(
+				SELECT
+					COUNT(*)
+				FROM IL_GOODS_ADDITIONAL_GOODS_MAPPING
+				WHERE 1 = 1
+				AND IL_GOODS_ID = GOODS.IL_GOODS_ID
+			) AS GOODS_ADD_CNT,
+			(
+				SELECT
+					TARGET_GOODS_ID
+				FROM IL_GOODS_ADDITIONAL_GOODS_MAPPING
+				WHERE 1 = 1
+				AND IL_GOODS_ID = GOODS.IL_GOODS_ID
+				LIMIT 1
+			) AS ADD_GOODS_ID
+		FROM
+			IL_GOODS GOODS
+		INNER JOIN IL_ITEM ITEM
+			ON GOODS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+		JOIN UR_SUPPLIER SUPPLIER
+			ON SUPPLIER.UR_SUPPLIER_ID = ITEM.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY COMPANY
+			ON COMPANY.UR_COMPANY_ID = SUPPLIER.UR_COMPANY_ID
+
+		INNER JOIN UR_WAREHOUSE UW
+			ON UW.UR_WAREHOUSE_ID = GOODS.UR_WAREHOUSE_ID
+		WHERE 1 = 1
+		AND GOODS.IL_GOODS_ID IN
+			<foreach collection="ilGoodsIds" item="goodsId" index="index" separator="," open="(" close=")">
+				#{goodsId}
+			</foreach>
+
+		) GOODS
+		JOIN IL_GOODS_PRICE GP
+		ON GP.IL_GOODS_PRICE_ID = GOODS.GOODS_PRICE_ID
+
+	</select>
+
+	 <select id="getGoodsAllModifyListExcel" resultMap="getGoodsAllModifyResultMap">
+    	/* GoodsAllModifyMapper.getGoodsAllModifyListExcel */
+		SELECT
+			GOODS.*,
+			CASE
+				WHEN GOODS.GOODS_ADD_CNT > 1
+					THEN CONCAT((SELECT GOODS_NM FROM IL_GOODS WHERE IL_GOODS_ID = GOODS.ADD_GOODS_ID), '외 ', GOODS.GOODS_ADD_CNT - 1, '건')
+				WHEN GOODS.GOODS_ADD_CNT =  1
+					THEN (SELECT GOODS_NM FROM IL_GOODS WHERE IL_GOODS_ID = GOODS.ADD_GOODS_ID)
+				ELSE ''
+			END GOODS_ADD_INFO,
+			FN_CTGRY_STD_FULL_NAME(GOODS.CATEGORY_STANDARD_ID) AS CATEGORY_STANDARD_DEPTH_NAME,
+			(CASE WHEN GOODS.CATEGORY_ID IS NULL
+				THEN ''
+				ELSE FN_CTGRY_FULL_NAME(GOODS.CATEGORY_ID)
+			END) AS CATEGORY_DEPTH_NAME,
+			GP.IL_ITEM_PRICE_ID AS ITEM_PRICE_ID,
+		    GP.IL_GOODS_DISCOUNT_ID AS GOODS_DISCOUNT_ID,
+			GP.STANDARD_PRICE,
+			GP.RECOMMENDED_PRICE,
+			((CAST(GP.RECOMMENDED_PRICE AS SIGNED) - CAST(GP.SALE_PRICE AS SIGNED)) / GP.RECOMMENDED_PRICE) * 100 AS DISCOUNT_PRICE_RATIO,
+			GP.SALE_PRICE,
+			GP.DISCOUNT_TP AS DISCOUNT_TYPE_CODE,
+			FN_COMN_CODE_DIC(GP.DISCOUNT_TP) AS DISCOUNT_TYPE_NAME
+
+		FROM(
+		SELECT
+			ITEM.IL_ITEM_CD,
+			ITEM.ITEM_BARCODE,
+			GOODS.IL_GOODS_ID,
+			IF(NOW() > GOODS.PROMOTION_NM_END_DT, '', GOODS.PROMOTION_NM) AS PROMOTION_NM,
+			GOODS.GOODS_TP,
+			ITEM.UR_SUPPLIER_ID,
+			COMPANY.COMP_NM AS SUPPLIER_NAME,
+			GOODS.GOODS_NM,
+			GOODS.SALE_STATUS,
+			FN_COMN_CODE_DIC(GOODS.SALE_STATUS) AS SALE_STATUS_NAME,
+			(
+				SELECT
+					IL_GOODS_PRICE_ID
+				FROM
+					IL_GOODS_PRICE
+				WHERE
+					IL_GOODS_ID = GOODS.IL_GOODS_ID
+					AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+				ORDER BY IL_GOODS_PRICE_ID DESC
+				LIMIT 1
+			) AS GOODS_PRICE_ID,
+			ITEM.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID ,
+			(
+				SELECT
+					T1.IL_CTGRY_ID
+				FROM
+					IL_CTGRY_PRNTS_INFO T1
+				JOIN IL_GOODS_CTGRY T2 ON
+					T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				JOIN IL_CTGRY T3 ON
+					T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				WHERE T3.USE_YN = 'Y'
+				AND T3.DEL_YN = 'N'
+				AND T2.IL_GOODS_ID = GOODS.IL_GOODS_ID
+				AND T3.MALL_DIV = 'MALL_DIV.PULMUONE'
+				AND T2.BASIC_YN = 'Y'
+				LIMIT 1
+			) AS CATEGORY_ID,
+			IF(GOODS.DISP_YN = 'Y', '전시', '미전시') AS DISP_YN ,
+			CASE
+				WHEN GOODS.DISP_WEB_PC_YN ='Y' AND GOODS.DISP_WEB_MOBILE_YN = 'Y' AND GOODS.DISP_APP_YN = 'Y'
+					THEN '전체'
+				ELSE CONCAT_WS(', ', IF(GOODS.DISP_WEB_PC_YN = 'Y', 'PC Web', NULL), IF(GOODS.DISP_WEB_MOBILE_YN = 'Y', 'M Web', NULL), IF(GOODS.DISP_APP_YN = 'Y', 'APP', NULL))
+				END DISPLAY_TARGET,
+			IF(GOODS.DISP_WEB_PC_YN = 'Y', '전시', '미전시') AS DISPLAY_WEB_PC_YN ,
+			IF(GOODS.DISP_WEB_MOBILE_YN = 'Y', '전시', '미전시') AS DISPLAY_WEB_MOBILE_YN ,
+			IF(GOODS.DISP_APP_YN = 'Y', '전시', '미전시') AS DISPLAY_APP_YN ,
+			GOODS.COUPON_USE_YN,
+			UW.UR_WAREHOUSE_ID,
+			UW.WAREHOUSE_NM,
+			(
+				SELECT
+					COUNT(*)
+				FROM IL_GOODS_ADDITIONAL_GOODS_MAPPING
+				WHERE 1 = 1
+				AND IL_GOODS_ID = GOODS.IL_GOODS_ID
+			) AS GOODS_ADD_CNT,
+			(
+				SELECT
+					TARGET_GOODS_ID
+				FROM IL_GOODS_ADDITIONAL_GOODS_MAPPING
+				WHERE 1 = 1
+				AND IL_GOODS_ID = GOODS.IL_GOODS_ID
+				LIMIT 1
+			) AS ADD_GOODS_ID
+		FROM
+			IL_GOODS GOODS
+		INNER JOIN IL_ITEM ITEM
+			ON GOODS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+		JOIN UR_SUPPLIER SUPPLIER
+			ON SUPPLIER.UR_SUPPLIER_ID = ITEM.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY COMPANY
+			ON COMPANY.UR_COMPANY_ID = SUPPLIER.UR_COMPANY_ID
+		INNER JOIN UR_WAREHOUSE UW
+			ON UW.UR_WAREHOUSE_ID = GOODS.UR_WAREHOUSE_ID
+		WHERE 1 = 1
+		AND GOODS.IL_GOODS_ID IN
+			<foreach collection="ilGoodsIds" item="goodsId" index="index" separator="," open="(" close=")">
+				#{goodsId}
+			</foreach>
+
+		) GOODS
+		JOIN IL_GOODS_PRICE GP
+		ON GP.IL_GOODS_PRICE_ID = GOODS.GOODS_PRICE_ID
+
+	</select>
+
+
+
+	<select id="getGoodsAdditionCount" resultType="int">
+		SELECT
+			COUNT(1)
+		FROM IL_GOODS_ADDITIONAL_GOODS_MAPPING
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+		AND TARGET_GOODS_ID = #{targetGoodsId}
+	</select>
+
+	<resultMap type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsRegistAdditionalGoodsVo" id="goodsAdditionalGoodsMappingMap">
+		<result column="IL_GOODS_ADDITIONAL_GOODS_MAPPING_ID"	property="ilGoodsAdditionalGoodsMappingId"/>
+		<result column="TARGET_GOODS_ID"						property="targetGoodsId"/>
+		<result column="SALE_PRICE"								property="salePrice"/>
+		<result column="GOODS_NM"								property="goodsName"/>
+		<result column="STANDARD_PRICE"							property="standardPrice"/>
+		<result column="RECOMMENDED_PRICE"						property="recommendedPrice"/>
+		<result column="CREATE_ID"								property="createId"/>
+		<result column="CREATE_DT"								property="createDate"/>
+		<result column="MODIFY_ID"								property="modifyId"/>
+		<result column="MODIFY_DT"								property="modifyDate"/>
+		<result column="IL_ITEM_CD"								property="ilItemCode"/>
+		<result column="IL_ITEM_WAREHOUSE_ID"					property="ilItemWarehouseId"/>
+		<result column="STOCK_ORDER_YN"							property="stockOrderYn"/>
+	</resultMap>
+
+	<select id="goodsAdditionalGoodsMappingList" resultMap="goodsAdditionalGoodsMappingMap">
+		/* GoodsAllModifyMapper.goodsAdditionalGoodsMappingList */
+		SELECT
+			A.IL_GOODS_ADDITIONAL_GOODS_MAPPING_ID
+		,	A.TARGET_GOODS_ID
+		,	A.SALE_PRICE
+		,	B.GOODS_NM
+		,	C.STANDARD_PRICE
+		,	C.RECOMMENDED_PRICE
+		,	A.CREATE_ID
+		,	A.CREATE_DT
+		,	A.MODIFY_ID
+		,	A.MODIFY_DT
+		,	II.IL_ITEM_CD
+		,	IIW.IL_ITEM_WAREHOUSE_ID
+		,	UW.STOCK_ORDER_YN
+		FROM
+			IL_GOODS_ADDITIONAL_GOODS_MAPPING A
+		INNER JOIN IL_GOODS B ON A.TARGET_GOODS_ID = B.IL_GOODS_ID
+		INNER JOIN (
+			SELECT * FROM IL_ITEM_PRICE
+			WHERE NOW() BETWEEN START_DT AND END_DT
+		) C ON B.IL_ITEM_CD = C.IL_ITEM_CD
+		INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = B.IL_ITEM_CD
+		INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+		INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+		INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+		WHERE
+			A.IL_GOODS_ID = #{ilGoodsId}
+		AND UW.UR_WAREHOUSE_ID = #{urWarehouseId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 마스터 상품 상세
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.28		임상건		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsRegistVo" id="goodsDetailtMap">
+		<result column="IL_GOODS_ID"						property="ilGoodsId"/>
+		<result column="NOTICE_BELOW_1_IMG_URL"				property="noticeBelow1ImageUrl"/>
+		<result column="NOTICE_BELOW_1_START_DT"			property="noticeBelow1StartDate"/>
+		<result column="NOTICE_BELOW_2_START_DT"			property="noticeBelow2StartDate"/>
+		<result column="NOTICE_BELOW_2_IMG_URL"				property="noticeBelow2ImageUrl"/>
+		<result column="NOTICE_BELOW_1_END_DT"				property="noticeBelow1EndDate"/>
+		<result column="NOTICE_BELOW_2_END_DT"				property="noticeBelow2EndDate"/>
+	</resultMap>
+
+	<select id="getGoodsNoticeInfo" resultMap="goodsDetailtMap">
+		/* GoodsAllModifyMapper.getGoodsNoticeInfo */
+		SELECT
+			A.IL_GOODS_ID
+		,	A.NOTICE_BELOW_1_IMG_URL
+		,	A.NOTICE_BELOW_1_START_DT
+		,	A.NOTICE_BELOW_2_START_DT
+		,	A.NOTICE_BELOW_2_IMG_URL
+		,	A.NOTICE_BELOW_1_END_DT
+		,	A.NOTICE_BELOW_2_END_DT
+
+		FROM
+			IL_GOODS A
+		WHERE
+			A.DEL_YN = 'N'
+			AND A.IL_GOODS_ID = #{ilGoodsId}
+	</select>
+
+
+	<update id="putPromotionInfoModify" >
+    	/* GoodsAllModifyMapper.putPromotionInfoModify */
+		UPDATE
+			IL_GOODS
+		SET
+			PROMOTION_NM = #{promotionNm},
+			PROMOTION_NM_START_DT 	= DATE_FORMAT(CONCAT(#{promotionNameStartDate}, ':00'), '%Y-%m-%d %H:%i:%s'),
+			PROMOTION_NM_END_DT 	= DATE_FORMAT(CONCAT(#{promotionNameEndDate}, ':59'), '%Y-%m-%d %H:%i:%s'),
+			MODIFY_ID               = #{userVo.userId},
+          	MODIFY_DT               = NOW()
+		WHERE 1=1
+		AND IL_GOODS_ID = #{ilGoodsId}
+		AND IL_ITEM_CD = #{ilItemCd}
+    </update>
+
+	<select id="getGoodsInfoByGoodsId" resultType="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsRegistVo">
+		/* GoodsAllModifyMapper.getGoodsInfoByGoodsId */
+		SELECT
+			PROMOTION_NM ,
+			PROMOTION_NM_START_DT,
+			PROMOTION_NM_END_DT,
+			DISP_WEB_PC_YN,
+			DISP_WEB_MOBILE_YN,
+			DISP_APP_YN ,
+			COUPON_USE_YN,
+			NOTICE_BELOW_1_START_DT,
+			NOTICE_BELOW_2_START_DT,
+			NOTICE_BELOW_1_END_DT,
+			NOTICE_BELOW_2_END_DT,
+			NOTICE_BELOW_1_IMG_URL,
+			NOTICE_BELOW_2_IMG_URL
+		FROM
+		     IL_GOODS
+		WHERE
+		  IL_GOODS_ID = #{ilGoodsId}
+	</select>
+
+    <select id="selectBasicDispCategory" resultType="String">
+	/* GoodsAllModifyMapper.selectBasicDispCategory */
+		SELECT
+			IL_CTGRY_ID
+		FROM
+			IL_GOODS_CTGRY
+		WHERE
+			MALL_DIV = 'MALL_DIV.PULMUONE'
+			AND BASIC_YN = 'Y'
+			AND IL_GOODS_ID = #{ilGoodsId}
+		LIMIT 1
+    </select>
+
+    <update id="putResetBasicYnOfDispCategory" >
+	/* GoodsAllModifyMapper.putResetBasicYnOfDispCategory */
+		UPDATE
+			IL_GOODS_CTGRY
+		SET
+			BASIC_YN = 'N'
+		WHERE
+			MALL_DIV = 'MALL_DIV.PULMUONE'
+			AND IL_GOODS_ID = #{ilGoodsId}
+    </update>
+
+    <update id="putCategoryInfoModify" >
+    	/* GoodsAllModifyMapper.putCategoryInfoModify */
+		INSERT INTO
+		      IL_GOODS_CTGRY (
+		      	IL_GOODS_ID
+			,	IL_CTGRY_ID
+			,	MALL_DIV
+			,	BASIC_YN
+		    , CREATE_ID
+		      )
+		   VALUES (
+		      #{ilGoodsId},
+		      #{ilCtgryId},
+		      #{mallDiv},
+		      #{basicYn},
+		      #{createId}
+		   )
+		   ON
+		      DUPLICATE KEY
+		   UPDATE
+		      IL_GOODS_ID = #{ilGoodsId},
+		      IL_CTGRY_ID =#{ilCtgryId},
+		      MALL_DIV = #{mallDiv},
+		      BASIC_YN = #{basicYn},
+		      MODIFY_ID = #{createId},
+		      MODIFY_DT = NOW()
+    </update>
+
+    <update id="putPurchasModify" >
+    	/* GoodsAllModifyMapper.putPurchasModify */
+		UPDATE
+			IL_GOODS
+		SET
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayWebPcYn)">
+				DISP_WEB_PC_YN = #{displayWebPcYn} ,
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayWebMobilePcYn)">
+				DISP_WEB_MOBILE_YN = #{displayWebMobilePcYn},
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayAppYn)">
+				DISP_APP_YN = #{displayAppYn},
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponUseYn)">
+				COUPON_USE_YN = #{couponUseYn},
+			</if>
+				MODIFY_ID = #{userVo.userId} ,
+				MODIFY_DT = NOW()
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+
+    </update>
+
+    <update id="putNoticeGoodsModify" >
+    	/* GoodsAllModifyMapper.putNoticeGoodsModify */
+		UPDATE
+			IL_GOODS
+		SET
+			NOTICE_BELOW_1_IMG_URL = #{noticeBelow1ImageUrl}
+			,	NOTICE_BELOW_1_START_DT = #{noticeBelow1StartDate}
+			,	NOTICE_BELOW_2_START_DT = #{noticeBelow2StartDate}
+			,	NOTICE_BELOW_2_IMG_URL = #{noticeBelow2ImageUrl}
+			,	NOTICE_BELOW_1_END_DT = DATE_FORMAT(CONCAT(#{noticeBelow1EndDate}, ':59'), '%Y-%m-%d %H:%i:%s')
+			,	NOTICE_BELOW_2_END_DT = DATE_FORMAT(CONCAT(#{noticeBelow2EndDate}, ':59'), '%Y-%m-%d %H:%i:%s')
+			,   MODIFY_ID = #{userVo.userId}
+			,	MODIFY_DT = NOW()
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+    </update>
+
+	<insert id="createGoodsAddModify">
+		/* GoodsAllModifyMapper.createGoodsAddModify */
+		INSERT INTO
+		      IL_GOODS_ADDITIONAL_GOODS_MAPPING (
+		      	IL_GOODS_ID
+				, TARGET_GOODS_ID
+				, SALE_PRICE
+				, CREATE_ID
+				, CREATE_DT
+		      )
+		   VALUES (
+		      #{ilGoodsId}
+		      , #{targetGoodsId}
+		      , #{salePrice}
+		      , #{userVo.userId}
+		      , NOW()
+		   )
+	</insert>
+
+	<update id="putGoodsAddModify" >
+    	/* GoodsAllModifyMapper.putGoodsAddModify */
+    	UPDATE
+		      IL_GOODS_ADDITIONAL_GOODS_MAPPING
+		SET
+			SALE_PRICE = #{salePrice}
+		      , MODIFY_ID = #{userVo.userId}
+		      , MODIFY_DT = NOW()
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+		AND TARGET_GOODS_ID = #{targetGoodsId}
+
+    </update>
+
+
+
+    <delete id="delGoodsAddModify">
+		/* GoodsAllModifyMapper.delGoodsAddModify */
+		DELETE FROM IL_GOODS_ADDITIONAL_GOODS_MAPPING WHERE IL_GOODS_ID = #{ilGoodsId} AND TARGET_GOODS_ID = #{targetGoodsId}
+    </delete>
+
+
+
+
+</mapper>

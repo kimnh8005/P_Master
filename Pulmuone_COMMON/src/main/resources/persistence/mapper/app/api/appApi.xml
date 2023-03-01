@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.app.api.AppApiMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 앱 푸시 - upsert, delete, 앱 설정 api 관련 Mapper
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.22		허성민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.app.api.dto.vo.PushDeviceVo" id="getAppApiResultMap">
+        <result column="OS_TP" property="osType"/>
+        <result column="PUSH_KEY" property="pushKey"/>
+        <result column="DEVICE_ID" property="deviceId"/>
+        <result column="UR_USER_ID" property="userCode"/>
+        <result column="PUSH_YN" property="pushAllowed"/>
+        <result column="NIGHT_YN" property="nightAllowed"/>
+        <result column="PUSH_AUTH_DT" property="allowDate"/>
+        <result column="UR_PCID_CD" property="urPcidCd"/>
+        <result column="CREATE_DT" property="createDate"/>
+        <result column="MODIFY_DT" property="modifyDate"/>
+    </resultMap>
+
+    <delete id="deletePushToken">
+        DELETE
+        FROM SN_DEVICE_INFO
+        WHERE DEVICE_ID = #{deviceId}
+    </delete>
+
+    <insert id="insertPushToken" parameterType="kr.co.pulmuone.v1.app.api.dto.vo.PushDeviceVo">
+        INSERT INTO SN_DEVICE_INFO(OS_TP, PUSH_KEY, DEVICE_ID, UR_USER_ID, PUSH_YN, PUSH_AUTH_DT, UR_PCID_CD, CREATE_DT, MODIFY_DT)
+        VALUES (#{osType},
+                #{pushKey},
+                #{deviceId},
+                #{userCode},
+                #{pushAllowed},
+                now(),
+                #{urPcidCd},
+                now(),
+                now()) ON DUPLICATE KEY
+        UPDATE PUSH_KEY = #{pushKey},
+            PUSH_YN = #{pushAllowed},
+            UR_USER_ID = #{userCode},
+            MODIFY_DT = now()
+    </insert>
+
+    <update id="updateOpenYn">
+        UPDATE SN_PUSH_SEND PS
+        INNER JOIN SN_DEVICE_INFO DI ON PS.SN_DEVICE_INFO_ID = DI.SN_DEVICE_INFO_ID
+        SET PS.OPEN_YN = 'Y'
+        WHERE DI.DEVICE_ID = #{deviceId}
+        AND PS.SN_MANUAL_PUSH_ID = #{pushId}
+    </update>
+
+    <select id="findBySettingInfo" resultMap="getAppApiResultMap">
+        SELECT PUSH_YN, NIGHT_YN
+        FROM SN_DEVICE_INFO
+        WHERE DEVICE_ID = #{deviceId}
+    </select>
+
+    <update id="updatePushAllowed">
+        UPDATE SN_DEVICE_INFO
+        SET PUSH_YN = #{pushAllowed}
+        WHERE DEVICE_ID = #{deviceId}
+    </update>
+
+    <update id="updateNightAllowed">
+        UPDATE SN_DEVICE_INFO
+        SET NIGHT_YN = #{nightAllowed}
+        WHERE DEVICE_ID = #{deviceId}
+    </update>
+
+</mapper>

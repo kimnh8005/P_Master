@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.claim.MallOrderClaimMapper">
+
+	<resultMap id="getOrderClaimResultMap" type="kr.co.pulmuone.v1.order.claim.dto.MallOrderClaimDto">
+		<result column="CREATE_DT"		property="createDt"/>
+		<result column="ODID"			property="odid"/>
+		<result column="RECV_NM"		property="recvNm"/>
+		<result column="RECV_ZIP_CD"	property="recvZipCd"/>
+		<result column="RECV_ADDR1"		property="recvAddr1"/>
+		<result column="RECV_ADDR2"		property="recvAddr2"/>
+		<result column="RECV_BLD_NO"	property="recvBldNo"/>
+		<result column="RECV_HP"		property="recvHp"/>
+		<result column="DOOR_MSG_CD"	property="doorMsgCd"/>
+		<result column="DOOR_MSG"		property="doorMsg"/>
+		<result column="DELIVERY_MSG"	property="deliveryMsg"/>
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문  정보
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.22 	김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaim" parameterType="kr.co.pulmuone.v1.order.claim.dto.MallOrderClaimRequestDto" resultMap="getOrderClaimResultMap">
+		/*	order.mall.mallOrderClaimList.getOrderClaim  */
+		SELECT DATE_FORMAT(OD.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		     , OD.ODID
+		     , FN_DECRYPT(OSZ.RECV_NM) AS RECV_NM
+		     , FN_DECRYPT(OSZ.RECV_ZIP_CD) AS RECV_ZIP_CD
+		     , FN_DECRYPT(OSZ.RECV_ADDR1) AS RECV_ADDR1
+		     , FN_DECRYPT(OSZ.RECV_ADDR2) AS RECV_ADDR2
+		     , OSZ.RECV_BLD_NO
+		     , FN_DECRYPT(OSZ.RECV_HP) AS RECV_HP
+		     , OSZ.DOOR_MSG_CD
+		     , FN_DECRYPT(OSZ.DOOR_MSG) AS DOOR_MSG
+		     , OSZ.DELIVERY_MSG
+		FROM   OD_ORDER OD
+		INNER  JOIN OD_SHIPPING_ZONE OSZ ON OD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		WHERE  1 = 1
+		AND    OD.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<resultMap id="getOrderDetlClaimResultMap" type="kr.co.pulmuone.v1.order.claim.dto.MallOrderDetlClaimDto">
+		<result column="UR_WAREHOUSE_ID"				property="urWarehouseId"/>
+		<result column="IL_GOODS_SHIPPING_TEMPLATE_ID"	property="ilGoodsShippingTemplateId"/>
+		<result column="NAME"							property="ilGoodsShippingTemplateNm"/>
+		<result column="OD_ORDER_DETL_ID"				property="odOrderDetlId"/>
+		<result column="SHIPPING_PRICE"					property="shippingPrice"/>
+		<result column="GOODS_TP"						property="goodsTp"/>
+		<result column="IL_GOODS_ID"					property="goodsId"/>
+		<result column="GOODS_PACKAGE_IMG_TP"			property="goodsPackageImgTp"/>
+		<result column="IL_ITEM_CD"						property="ilItemCd"/>
+		<result column="GOODS_NM"						property="goodsNm"/>
+		<result column="PAID_PRICE"						property="paidPrice"/>
+		<result column="ORDER_CNT"						property="orderCnt"/>
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문  취소 상품 정보
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.22 	김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDetlClaimList" parameterType="kr.co.pulmuone.v1.order.claim.dto.MallOrderClaimRequestDto" resultMap="getOrderDetlClaimResultMap">
+		/*	order.mall.mallOrderClaimList.getOrderDetlClaimList  */
+		SELECT OOD.UR_WAREHOUSE_ID					/* 출고처 PK */
+		     , OOD.IL_GOODS_SHIPPING_TEMPLATE_ID	/* 배송정책 PK */
+		     , ST.NAME								/* 배송정책명 */
+			 , OOD.OD_ORDER_DETL_ID					/* 주문상세 PK */
+			 , SP.SHIPPING_PRICE					/* 배송비 */
+			 , IG.GOODS_TP							/* 상품타입 */
+			 , IG.IL_GOODS_ID						/* 상품 PK */
+			 , IG.GOODS_PACKAGE_IMG_TP				/* 상품이미지형식 */
+			 , IG.IL_ITEM_CD						/* 아이템코드 */
+			 , OOD.GOODS_NM							/* 상품명 */
+			 , OOD.PAID_PRICE						/* 결제금액 */
+			 , (OOD.ORDER_CNT - OOD.CANCEL_CNT) AS ORDER_CNT	/* 주문수량 */
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD 				ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN OD_SHIPPING_PRICE SP 			ON OOD.OD_SHIPPING_PRICE_ID = SP.OD_SHIPPING_PRICE_ID
+		INNER JOIN IL_GOODS IG 						ON OOD.IL_GOODS_ID = IG.IL_GOODS_ID
+		INNER JOIN IL_GOODS_SHIPPING_TEMPLATE GST 	ON IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID
+		INNER JOIN IL_SHIPPING_TEMPLATE ST 			ON GST.IL_GOODS_SHIPPING_TEMPLATE_ID = ST.ORIG_IL_SHIPPING_TMPL_ID
+												   AND ST.DEL_YN = 'N'
+		WHERE 1 = 1
+		AND OD.OD_ORDER_ID = #{odOrderId}
+        <if test="odOrderDetlId != null and odOrderDetlId > 0">
+		AND OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+		</if>
+		AND OOD.GOODS_TP_CD != #{goodsTpCd}
+		ORDER BY OOD.UR_WAREHOUSE_ID, OOD.IL_GOODS_SHIPPING_TEMPLATE_ID
+	</select>
+
+	<resultMap id="getOrderDetlAddGoodsResultMap" type="kr.co.pulmuone.v1.order.claim.dto.MallOrderClaimAddGoodsListDto">
+		<result column="OD_ORDER_DETL_ID"	property="odOrderDetlId"/>
+		<result column="GOODS_NM"			property="goodsNm"/>
+		<result column="PAID_PRICE"			property="paidPrice"/>
+		<result column="ORDER_CNT"			property="orderCnt"/>
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문  추가 상품 정보
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.22 	김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDetlAddGoodsList" parameterType="kr.co.pulmuone.v1.order.claim.dto.MallOrderClaimRequestDto" resultMap="getOrderDetlAddGoodsResultMap">
+		/*	order.mall.mallOrderClaimList.getOrderDetlAddGoodsList  */
+		SELECT OOD.OD_ORDER_DETL_ID
+		     , OOD.GOODS_NM
+		     , OOD.PAID_PRICE
+		     , OOD.ORDER_CNT
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN IL_GOODS_ADDITIONAL_GOODS_MAPPING GAGM ON OOD.IL_GOODS_ID = GAGM.TARGET_GOODS_ID AND GAGM.IL_GOODS_ID = #{ilGoodsId}
+		WHERE 1 = 1
+		AND OD.OD_ORDER_ID = #{odOrderId}
+		AND OOD.GOODS_TP_CD = #{goodsTpCd}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상태 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22 	김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetailStatus" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlVo">
+		/*	order.status.putOrderDetailStatus  */
+		UPDATE OD_ORDER_DETL
+			SET
+				ORDER_STATUS_CD = #{orderStatusCd}
+				<if test="cancelCnt != null and cancelCnt > 0">, CANCEL_CNT = #{cancelCnt}</if>
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 상세 상태 변경 이력 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putClaimDetailStatusHist" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimDetlHistVo">
+		/*	order.status.putClaimDetailStatusHist  */
+		INSERT INTO OD_CLAIM_DETL_HIST (
+			  OD_ORDER_ID
+			, OD_ORDER_DETL_ID
+			, OD_ORDER_DETL_SEQ
+			, OD_CLAIM_ID
+			, OD_CLAIM_DETL_ID
+			, PREV_STATUS_CD
+			, STATUS_CD
+			, HIST_MSG
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT	OOD.OD_ORDER_ID
+			  , OOD.OD_ORDER_DETL_ID
+			  , OOD.OD_ORDER_DETL_SEQ
+			  , OCD.OD_CLAIM_ID
+			  , OCD.OD_CLAIM_DETL_ID
+			  , OCD.CLAIM_STATUS_CD
+			  , #{statusCd}
+			  , #{histMsg}
+			  , #{createId}
+			  , NOW()
+		FROM	OD_CLAIM_DETL OCD INNER JOIN OD_ORDER_DETL OOD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE	1 = 1
+		AND		OCD.OD_CLAIM_DETL_ID = #{odClaimDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상태 코드 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDetlStatusCd" resultType="String">
+		/*	order.status.getOrderDetlStatusCd  */
+		SELECT	ORDER_STATUS_CD
+		FROM	OD_ORDER_DETL
+		WHERE	1 = 1
+		AND		OD_ORDER_ID = #{odOrderId}
+		AND		OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 SEQ
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimIdSeq" resultType="long">
+		/*	order.status.getClaimIdSeq  */
+		SELECT FN_GET_SEQ('SP_CLAIM_SEQ') AS odClaimId
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 상세 SEQ
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimDetlIdSeq" resultType="long">
+		/*	order.status.getClaimDetlIdSeq  */
+		SELECT FN_GET_SEQ('SP_CLAIM_DETL_SEQ') AS odClaimDetlId
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 처리이력 SEQ
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.28		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOdClaimDetlHistId" resultType="long">
+		/*	order.claim.getOdClaimDetlId  */
+		SELECT FN_GET_SEQ('SP_CLAIM_DETL_HIST_SEQ') AS odClaimDetlHistId
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClaim" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimVo">
+		/*	order.status.addClaim  */
+		INSERT INTO OD_CLAIM (
+			OD_CLAIM_ID
+		  , OD_ORDER_ID
+		  , ORDER_STATUS_CD
+		  , CLAIM_STATUS_CD
+		  , REFUND_STATUS_CD
+		  , CLAIM_REASON_CD
+		  , CLAIM_REASON_MSG
+		  , REJECT_REASON_MSG
+		  , RETURNS_YN
+		  , REFUND_TYPE
+		  , GOODS_NM
+		  , GOODS_PRICE
+		  , GOODS_COUPON_PRICE
+		  , CART_COUPON_PRICE
+		  , SHIPPING_PRICE
+		  , REFUND_PRICE
+		  , REFUND_POINT_PRICE
+		  , CREATE_ID
+		  , CREATE_DT
+		  , MODIFY_ID
+		  , MODIFY_DT
+		)
+		VALUES (
+			#{odClaimId}
+		  , #{odOrderId}
+		  , (SELECT ORDER_STATUS_CD FROM OD_ORDER_DETL WHERE OD_ORDER_ID = #{odOrderId})
+		  , #{claimStatusCd}
+		  , #{refundStatusCd}
+		  , #{claimReasonCd}
+		  , #{claimReasonMsg}
+		  , #{rejectReasonMsg}
+		  , #{returnsYn}
+		  , #{refundType}
+		  , (SELECT GOODS_NM FROM OD_ORDER WHERE OD_ORDER_ID = #{odOrderId})
+		  , #{goodsPrice}
+		  , #{goodsCouponPrice}
+		  , #{cartCouponPrice}
+		  , #{shippingPrice}
+		  , #{refundPrice}
+		  , #{refundPointPrice}
+		  , #{createId}
+		  , NOW()
+		  , #{modifyId}
+		  , NOW()
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 상세 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClaimDetl" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimDetlVo">
+		/*	order.status.addClaimDetl  */
+		INSERT INTO OD_CLAIM_DETL (
+			OD_CLAIM_DETL_ID
+		  , OD_CLAIM_ID
+		  , OD_ORDER_DETL_ID
+		  , ORDER_STATUS_CD
+		  , CLAIM_STATUS_CD
+		  , REFUND_STATUS_CD
+		)
+		VALUES (
+			#{odClaimDetlId}
+		  , #{odClaimId}
+		  , #{odOrderDetlId}
+		  , (SELECT ORDER_STATUS_CD FROM OD_ORDER_DETL WHERE OD_ORDER_ID = #{odOrderDetlId})
+		  , #{claimStatusCd}
+		  , #{refundStatusCd}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 상세 일자 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClaimDetlDt" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimDetlDtVo">
+		/*	order.status.addClaimDetlDt  */
+		INSERT INTO OD_CLAIM_DETL_DT (
+			OD_CLAIM_ID
+		  , OD_CLAIM_DETL_ID
+		<choose>
+			<when test="caId != null and caId > 0">, CA_ID , CA_DT</when>
+			<when test="ccId != null and ccId > 0">, CC_ID , CC_DT</when>
+			<when test="raId != null and raId > 0">, RA_ID , RA_DT</when>
+			<when test="riId != null and riId > 0">, RI_ID , RI_DT</when>
+			<when test="rfId != null and rfId > 0">, RF_ID , RF_DT</when>
+			<when test="rcId != null and rcId > 0">, RC_ID , RC_DT</when>
+			<when test="ecId != null and ecId > 0">, EC_ID , EC_DT</when>
+			<when test="csId != null and csId > 0">, CS_ID , CS_DT</when>
+			<when test="faId != null and faId > 0">, FA_ID , FA_DT</when>
+			<when test="fcId != null and fcId > 0">, FC_ID , FC_DT</when>
+			<when test="crId != null and crId > 0">, CR_ID , CR_DT</when>
+			<when test="ceId != null and ceId > 0">, CE_ID , CE_DT</when>
+			<when test="orderIfId != null and orderIfId > 0">, ORDER_IF_ID , ORDER_IF_DT</when>
+			<when test="shippingId != null and shippingId > 0">, SHIPPING_ID , SHIPPING_DT</when>
+			<when test="deliveryId != null and deliveryId > 0">, DELIVERY_ID , DELIVERY_DT</when>
+		</choose>
+		)
+		VALUES (
+			#{odClaimId}
+		  , #{odClaimDetlId}
+		<choose>
+			<when test="caId != null and caId > 0">, #{caId} , NOW()</when>
+			<when test="ccId != null and ccId > 0">, #{ccId} , NOW()</when>
+			<when test="raId != null and raId > 0">, #{raId} , NOW()</when>
+			<when test="riId != null and riId > 0">, #{riId} , NOW()</when>
+			<when test="rfId != null and rfId > 0">, #{rfId} , NOW()</when>
+			<when test="rcId != null and rcId > 0">, #{rcId} , NOW()</when>
+			<when test="ecId != null and ecId > 0">, #{ecId} , NOW()</when>
+			<when test="csId != null and csId > 0">, #{csId} , NOW()</when>
+			<when test="faId != null and faId > 0">, #{faId} , NOW()</when>
+			<when test="fcId != null and fcId > 0">, #{fcId} , NOW()</when>
+			<when test="crId != null and crId > 0">, #{crId} , NOW()</when>
+			<when test="ceId != null and ceId > 0">, #{ceId} , NOW()</when>
+			<when test="orderIfId != null and orderIfId > 0">, #{orderIfId} , NOW()</when>
+			<when test="shippingId != null and shippingId > 0">, #{shippingId} , NOW()</when>
+			<when test="deliveryId != null and deliveryId > 0">, #{deliveryId} , NOW()</when>
+		</choose>
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 환불 계좌 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClaimAccount" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimAccountVo">
+		/*	order.status.addClaimAccount  */
+		INSERT INTO OD_CLAIM_ACCOUNT (
+			OD_CLAIM_ID
+		  , BANK_CD
+		  , ACCOUNT_HOLDER
+		  , ACCOUNT_NUMBER
+		)
+		VALUES (
+			#{odClaimId}
+		  , #{bankCd}
+		  , FN_ENCRYPT(#{accountHolder})
+		  , FN_ENCRYPT(#{accountNumber})
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 첨부파일 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClaimAttc" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimAttcVo">
+		/*	order.status.addClaimAttc  */
+		INSERT INTO OD_CLAIM_ATTC (
+			OD_CLAIM_ID
+		  , ORIGIN_NM
+		  , UPLOAD_NM
+		  , UPLOAD_PATH
+		)
+		VALUES (
+			#{odClaimId}
+		  , #{originNm}
+		  , #{uploadNm}
+		  , #{uploadPath}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 배송지 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClaimShippingZone" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimShippingZoneVo">
+		/*	order.status.addClaimShippingZone  */
+		INSERT INTO OD_CLAIM_SHIPPING_ZONE (
+			OD_CLAIM_ID
+		  , RECV_NM
+		  , RECV_HP
+		  , RECV_TEL
+		  , RECV_ZIP_CD
+		  , RECV_ADDR1
+		  , RECV_ADDR2
+		  , RECV_BLD_NO
+		  , DELIVERY_MSG
+		  , DOOR_MSG_CD
+		  , DOOR_MSG
+		)
+		VALUES (
+			#{odClaimId}
+		  , FN_ENCRYPT(#{recvNm})
+		  , FN_ENCRYPT(#{recvHp})
+		  , FN_ENCRYPT(#{recvTel})
+		  , FN_ENCRYPT(#{recvZipCd})
+		  , FN_ENCRYPT(#{recvAddr1})
+		  , FN_ENCRYPT(#{recvAddr2})
+		  , #{recvBldNo}
+		  , #{deliveryMsg}
+		  , #{doorMsgCd}
+		  , FN_ENCRYPT(#{doorMsg})
+		)
+	</insert>
+</mapper>

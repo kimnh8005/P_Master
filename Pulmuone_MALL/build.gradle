@@ -1,0 +1,298 @@
+apply plugin: 'org.springframework.boot'
+apply plugin: 'war'
+
+ext {
+
+    isLocal = (!project.hasProperty('profile') || !profile)
+
+    profile = isLocal ? "${DEFAULT_PROFILE}" : profile
+
+    println "[ INFO ]  Active profile : " + profile
+
+    DEV_MALL_MODULE_NAME = "MALL"
+    DEV_MALL_DOCKER_IMAGE_NAME = "pulmuone-mall"
+    DEV_MALL_DOCKER_IMAGE_TAG = "${BUILD_VERSION}"
+    DEV_MALL_DOCKER_IMAGE_EXPOSE_PORT = "8180"
+
+    QA_MALL_MODULE_NAME = "MALL"
+    QA_MALL_DOCKER_IMAGE_NAME = "pulmuone-mall"
+    QA_MALL_DOCKER_IMAGE_TAG = "${BUILD_VERSION}"
+    QA_MALL_DOCKER_IMAGE_EXPOSE_PORT = "8180"
+
+    VER_MALL_MODULE_NAME = "MALL"
+    VER_MALL_DOCKER_IMAGE_NAME = "pulmuone-mall"
+    VER_MALL_DOCKER_IMAGE_TAG = "${BUILD_VERSION}"
+    VER_MALL_DOCKER_IMAGE_EXPOSE_PORT = "8180"
+
+    PROD_MALL_MODULE_NAME = "MALL"
+    PROD_MALL_DOCKER_IMAGE_NAME = "pulmuone-mall"
+    PROD_MALL_DOCKER_IMAGE_TAG = "${BUILD_VERSION}"
+    PROD_MALL_DOCKER_IMAGE_EXPOSE_PORT = "8180"
+
+    // profile 별 넥서스 Snapshot Repository, 도커 레지스트리 계정 정보 지정
+    switch (profile) {
+
+        case "${DEFAULT_PROFILE}":
+
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            ext.MALL_DOCKER_REGISTRY_PROTOCOL = "${DEV_DOCKER_REGISTRY_PROTOCOL}"
+            ext.MALL_DOCKER_REGISTRY_URL = "${DEV_DOCKER_REGISTRY_URL}"
+            ext.MALL_DOCKER_REGISTRY_USERNAME = "${DEV_DOCKER_REGISTRY_USERNAME}"
+            ext.MALL_DOCKER_REGISTRY_PASSWORD = "${DEV_DOCKER_REGISTRY_PASSWORD}"
+
+            ext.MALL_MODULE_NAME = "${DEV_MALL_MODULE_NAME}"
+            ext.MALL_DOCKER_IMAGE_NAME = "${DEV_MALL_DOCKER_IMAGE_NAME}"
+            ext.MALL_DOCKER_IMAGE_TAG = "${DEV_MALL_DOCKER_IMAGE_TAG}"
+            ext.MALL_DOCKER_IMAGE_EXPOSE_PORT = "${DEV_MALL_DOCKER_IMAGE_EXPOSE_PORT}"
+
+            break;
+
+        case "${DEV_PROFILE}":
+
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            ext.MALL_DOCKER_REGISTRY_PROTOCOL = "${DEV_DOCKER_REGISTRY_PROTOCOL}"
+            ext.MALL_DOCKER_REGISTRY_URL = "${DEV_DOCKER_REGISTRY_URL}"
+            ext.MALL_DOCKER_REGISTRY_USERNAME = "${DEV_DOCKER_REGISTRY_USERNAME}"
+            ext.MALL_DOCKER_REGISTRY_PASSWORD = "${DEV_DOCKER_REGISTRY_PASSWORD}"
+
+            ext.MALL_MODULE_NAME = "${DEV_MALL_MODULE_NAME}"
+            ext.MALL_DOCKER_IMAGE_NAME = "${DEV_MALL_DOCKER_IMAGE_NAME}"
+            ext.MALL_DOCKER_IMAGE_TAG = "${DEV_MALL_DOCKER_IMAGE_TAG}"
+            ext.MALL_DOCKER_IMAGE_EXPOSE_PORT = "${DEV_MALL_DOCKER_IMAGE_EXPOSE_PORT}"
+
+            break;
+
+        case "${QA_PROFILE}":
+
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            ext.MALL_DOCKER_REGISTRY_PROTOCOL = "${QA_DOCKER_REGISTRY_PROTOCOL}"
+            ext.MALL_DOCKER_REGISTRY_URL = "${QA_DOCKER_REGISTRY_URL}"
+            ext.MALL_DOCKER_REGISTRY_USERNAME = "${QA_DOCKER_REGISTRY_USERNAME}"
+            ext.MALL_DOCKER_REGISTRY_PASSWORD = "${QA_DOCKER_REGISTRY_PASSWORD}"
+
+            ext.MALL_MODULE_NAME = "${QA_MALL_MODULE_NAME}"
+            ext.MALL_DOCKER_IMAGE_NAME = "${QA_MALL_DOCKER_IMAGE_NAME}"
+            ext.MALL_DOCKER_IMAGE_TAG = "${QA_MALL_DOCKER_IMAGE_TAG}"
+            ext.MALL_DOCKER_IMAGE_EXPOSE_PORT = "${QA_MALL_DOCKER_IMAGE_EXPOSE_PORT}"
+
+            break;
+
+        case "${VER_PROFILE}":
+
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            ext.MALL_DOCKER_REGISTRY_PROTOCOL = "${VER_DOCKER_REGISTRY_PROTOCOL}"
+            ext.MALL_DOCKER_REGISTRY_URL = "${VER_DOCKER_REGISTRY_URL}"
+            ext.MALL_DOCKER_REGISTRY_USERNAME = "${VER_DOCKER_REGISTRY_USERNAME}"
+            ext.MALL_DOCKER_REGISTRY_PASSWORD = "${VER_DOCKER_REGISTRY_PASSWORD}"
+
+            ext.MALL_MODULE_NAME = "${VER_MALL_MODULE_NAME}"
+            ext.MALL_DOCKER_IMAGE_NAME = "${VER_MALL_DOCKER_IMAGE_NAME}"
+            ext.MALL_DOCKER_IMAGE_TAG = "${VER_MALL_DOCKER_IMAGE_TAG}"
+            ext.MALL_DOCKER_IMAGE_EXPOSE_PORT = "${VER_MALL_DOCKER_IMAGE_EXPOSE_PORT}"
+
+            break;
+
+        case "${PROD_PROFILE}":
+
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.MALL_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            ext.MALL_DOCKER_REGISTRY_PROTOCOL = "${PROD_DOCKER_REGISTRY_PROTOCOL}"
+            ext.MALL_DOCKER_REGISTRY_URL = "${PROD_DOCKER_REGISTRY_URL}"
+            ext.MALL_DOCKER_REGISTRY_USERNAME = "${PROD_DOCKER_REGISTRY_USERNAME}"
+            ext.MALL_DOCKER_REGISTRY_PASSWORD = "${PROD_DOCKER_REGISTRY_PASSWORD}"
+
+            ext.MALL_MODULE_NAME = "${PROD_MALL_MODULE_NAME}"
+            ext.MALL_DOCKER_IMAGE_NAME = "${PROD_MALL_DOCKER_IMAGE_NAME}"
+            ext.MALL_DOCKER_IMAGE_TAG = "${PROD_MALL_DOCKER_IMAGE_TAG}"
+            ext.MALL_DOCKER_IMAGE_EXPOSE_PORT = "${PROD_MALL_DOCKER_IMAGE_EXPOSE_PORT}"
+
+            break;
+    }   // end of switch
+
+}
+
+group = 'kr.co.pulmuone.mall'
+version = "${BUILD_VERSION}" + "-${MALL_MODULE_NAME}-SNAPSHOT"
+
+bootWar {   // "${archiveBaseName}"-"${archiveVersion}".war 형식으로 Build
+    archiveBaseName = "pulmuone-${MALL_MODULE_NAME}-${profile}"
+    archiveVersion = version
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = group
+            artifactId = "${tasks.bootWar.getArchiveBaseName().get()}"
+            version = version
+            artifact("build/libs/${tasks.bootWar.outputs.files.singleFile.name}")
+                    { extension 'war' }
+        }
+    }
+
+    repositories {
+        maven {
+            name 'nexus-snapshot-repository'
+            url "${MALL_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}://${MALL_NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            credentials {
+                username "${MALL_NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+                password "${MALL_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+            }
+        }
+    }
+}
+
+dependencies {
+
+    if (isLocal) {   // local 전용 의존성 추가
+
+        // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-devtools
+        implementation group: 'org.springframework.boot', name: 'spring-boot-devtools'
+
+    }
+
+    implementation fileTree(dir: 'src/main/webapp/WEB-INF', include: ['**/*.jar'])
+
+    // https://mvnrepository.com/artifact/javax.servlet/jstl
+    implementation group: 'javax.servlet', name: 'jstl', version: '1.2'
+    implementation group: 'org.apache.tomcat', name: 'tomcat-jasper', version: '9.0.31'
+
+    // SNS간편로그인 연동 인증
+    implementation 'com.github.scribejava:scribejava-apis:4.0.0'
+    implementation 'com.github.scribejava:scribejava-core:4.0.0'
+
+}
+
+task buildDockerImage(type: Exec, group: 'dockerBuild') {
+
+    description = 'war 파일 빌드 후 MALL 도커 이미지 빌드'
+
+    def commandStr = getDockerImageBuildCommand(
+            "${MALL_MODULE_NAME}", "${MALL_DOCKER_REGISTRY_URL}",
+            "${MALL_DOCKER_IMAGE_NAME}", "${profile}",
+            "${tasks.bootWar.outputs.files.singleFile.name}", "${MALL_DOCKER_IMAGE_EXPOSE_PORT}"
+    )
+
+    commandLine commandStr
+
+}
+
+task tagDockerImage(type: Exec, group: 'dockerBuild') {
+
+    description = '빌드된 MALL 도커 이미지에 고유 태그값 추가 지정'
+
+    def commandStr = getDockerTagCommand(
+            "${MALL_DOCKER_REGISTRY_URL}", "${MALL_DOCKER_IMAGE_NAME}",
+            "${profile}", "${MALL_DOCKER_IMAGE_TAG}"
+    )
+
+    commandLine commandStr
+
+}
+
+task dockerContainerRegistryLogIn(type: Exec, group: 'dockerBuild') {
+
+    description = 'MALL 도커 레지스트리 로그인'
+
+    def commandStr = getDockerContainerRegistryLogInCommand(
+            "${MALL_DOCKER_REGISTRY_USERNAME}", "${MALL_DOCKER_REGISTRY_PASSWORD}",
+            "${MALL_DOCKER_REGISTRY_PROTOCOL}", "${MALL_DOCKER_REGISTRY_URL}"
+    )
+
+    commandLine commandStr
+
+}
+
+task pushDockerImage(type: Exec, group: 'dockerBuild') {
+
+    description = '빌드된 MALL 도커 이미지를 도커 레지스트리로 push'
+
+    def commandStr = getDockerPushCommand(
+            "${MALL_DOCKER_REGISTRY_URL}", "${MALL_DOCKER_IMAGE_NAME}", "${profile}", ""
+    )
+
+    commandLine commandStr
+
+}
+
+task pushDockerTagImage(type: Exec, group: 'dockerBuild') {
+
+    description = '빌드된 MALL 도커 태그 이미지를 도커 레지스트리로 push'
+
+    def commandStr = getDockerPushCommand(
+            "${MALL_DOCKER_REGISTRY_URL}", "${MALL_DOCKER_IMAGE_NAME}", "${profile}", "${MALL_DOCKER_IMAGE_TAG}"
+    )
+
+    commandLine commandStr
+
+}
+
+task dockerContainerRegistryLogOut(type: Exec, group: 'dockerBuild') {
+
+    description = 'MALL 도커 레지스트리 로그아웃'
+
+    def commandStr = getDockerContainerRegistryLogOutCommand(
+            "${MALL_DOCKER_REGISTRY_PROTOCOL}", "${MALL_DOCKER_REGISTRY_URL}"
+    )
+
+    commandLine commandStr
+
+}
+
+task deleteDockerImage(type: Exec, group: 'dockerBuild') {
+
+    description = 'MALL 도커 이미지 push 후 CI 서버에서 빌드된 이미지 삭제'
+
+    def commandStr = getDockerImageDeleteCommand(
+            "${MALL_DOCKER_REGISTRY_URL}", "${MALL_DOCKER_IMAGE_NAME}", "${profile}", "${MALL_DOCKER_IMAGE_TAG}"
+    )
+
+    commandLine commandStr
+
+}
+
+task dockerBuild(group: 'dockerBuild') {
+
+    description = 'MALL 도커 이미지 빌드 / 태그 지정 / 레지스트리 로그인 / 이미지 push / 빌드된 이미지 삭제 / 레지스트리 로그아웃'
+
+    doFirst {
+        println "[ INFO ]  ${MALL_MODULE_NAME} 모듈 도커 빌드 시작 => Active profile : " + profile
+    }
+
+    dependsOn 'copyWhatapAgent'
+    dependsOn 'buildDockerImage'
+    dependsOn 'tagDockerImage'
+    dependsOn 'dockerContainerRegistryLogIn'
+    dependsOn 'pushDockerTagImage'
+    dependsOn 'pushDockerImage'
+    dependsOn 'deleteDockerImage'
+    dependsOn 'dockerContainerRegistryLogOut'
+
+    tasks.findByName('buildDockerImage').mustRunAfter 'copyWhatapAgent'
+    tasks.findByName('tagDockerImage').mustRunAfter 'buildDockerImage'
+    tasks.findByName('dockerContainerRegistryLogIn').mustRunAfter 'tagDockerImage'
+    tasks.findByName('pushDockerTagImage').mustRunAfter 'dockerContainerRegistryLogIn'
+    tasks.findByName('pushDockerImage').mustRunAfter 'pushDockerTagImage'
+    tasks.findByName('deleteDockerImage').mustRunAfter 'pushDockerImage'
+    tasks.findByName('dockerContainerRegistryLogOut').mustRunAfter 'deleteDockerImage'
+
+}

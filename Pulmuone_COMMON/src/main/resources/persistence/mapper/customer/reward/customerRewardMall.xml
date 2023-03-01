@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.reward.CustomerRewardMallMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 화면정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardPageInfoVo" id="rewardPageInfoResultMap">
+        <result column="CS_REWARD_ID" property="csRewardId"/>
+        <result column="REWARD_NM" property="rewardName"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="REWARD_NOTICE" property="rewardNotice"/>
+        <result column="REWARD_APPLY_STANDARD" property="rewardApplyStandard"/>
+    </resultMap>
+
+    <select id="getRewardPageInfo" resultMap="rewardPageInfoResultMap">
+        /* customerRewardMall.getRewardPageInfo */
+        SELECT CS_REWARD_ID
+            , REWARD_NM
+            , DATE(START_DT) AS START_DT
+            , DATE(END_DT) AS END_DT
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceType)">
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                        , DETL_HTML_PC AS DETL_HTML
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                        , DETL_HTML_MOBILE AS DETL_HTML
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                        , DETL_HTML_MOBILE AS DETL_HTML
+                    </when>
+                </choose>
+            </if>
+            , REWARD_NOTICE
+            , REWARD_APPLY_STANDARD
+        FROM CS_REWARD
+        WHERE NOW() BETWEEN START_DT AND END_DT
+            AND USE_YN = 'Y'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardId)">
+                AND CS_REWARD_ID = #{csRewardId}
+            </if>
+        ORDER BY CS_REWARD_ID DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.18		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardVo" id="rewardResultMap">
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="REWARD_APPLY_STANDARD" property="rewardApplyStandard"/>
+        <result column="ORDER_APPR_PERIOD" property="orderApprPeriod"/>
+        <result column="REWARD_GOODS_TP" property="rewardGoodsType"/>
+    </resultMap>
+
+    <select id="getRewardInfo" resultMap="rewardResultMap">
+        /* customerRewardMall.getRewardInfo */
+        SELECT DATE(START_DT) AS START_DT
+            , DATE(END_DT) AS END_DT
+            , REWARD_APPLY_STANDARD
+            , ORDER_APPR_PERIOD
+            , REWARD_GOODS_TP
+        FROM CS_REWARD
+        WHERE CS_REWARD_ID = #{csRewardId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 대상 상품 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardTargetGoods" resultType="long">
+        /* customerRewardMall.getRewardTargetGoods */
+        SELECT IL_GOODS_ID
+        FROM CS_REWARD_TARGET_GOODS
+        WHERE CS_REWARD_ID = #{csRewardId}
+        ORDER BY GOODS_SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addRewardApply">
+        /* customerRewardMall.addRewardApply */
+        INSERT INTO CS_REWARD_APPLY (
+            CS_REWARD_ID, UR_USER_ID, REWARD_PAY_TP, IL_GOODS_ID, OD_ORDER_ID,
+            OD_ORDER_DETL_ID, DELIVERY_DT, GOODS_DELIVERY_TYPE, OD_SHIPPING_PRICE_ID, REWARD_APPLY_CONTENT,
+            REWARD_APPLY_STATUS, ANSWER_SMS_YN, ANSWER_MAIL_YN, LOGIN_ID, USER_NM,
+            MAIL, MOBILE, CREATE_ID)
+        SELECT #{csRewardId}, #{urUserId} , (SELECT REWARD_PAY_TP FROM CS_REWARD WHERE CS_REWARD_ID = #{csRewardId}), #{ilGoodsId}, #{odOrderId},
+            #{odOrderDetlId}, #{deliveryDate}, #{goodsDeliveryType}, #{odShippingPriceId}, #{rewardApplyContent},
+            #{rewardApplyStatus}, #{answerSmsYn}, #{answerMailYn}, UU.LOGIN_ID, UU.USER_NM,
+            UB.MAIL , UB.MOBILE, #{urUserId}
+        FROM UR_USER UU
+            INNER JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+        WHERE UU.UR_USER_ID = #{urUserId}
+
+        <selectKey resultType="long" keyProperty="csRewardApplyId" keyColumn="CS_REWARD_APPLY_ID" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addRewardApplyAttc">
+        /* customerRewardMall.addRewardApplyAttc */
+        INSERT INTO CS_REWARD_APPLY_ATTC (
+            CS_REWARD_APPLY_ID, IMG_ORIGIN_NM, IMG_NM, IMG_PATH, THUMBNAIL_ORIGIN_NM,
+            THUMBNAIL_NM, THUMBNAIL_PATH
+        ) VALUES
+        <foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+        (
+            #{csRewardApplyId}
+            ,#{insertData.imageOriginalName}
+            ,#{insertData.imageName}
+            ,#{insertData.imagePath}
+            ,#{insertData.thumbnailOriginalName}
+            ,#{insertData.thumbnailName}
+            ,#{insertData.thumbnailPath}
+        )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객 보상제 신청내역 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardApplyInfoVo" id="rewardApplyInfoVoResultMap">
+        <result column="TOTAL_CNT" property="totalCount"/>
+        <result column="ACCEPT_CNT" property="acceptCount"/>
+        <result column="CONFIRM_CNT" property="confirmCount"/>
+        <result column="COMPLETED_CNT" property="completeCount"/>
+    </resultMap>
+    <select id="getRewardApplyInfo" resultMap="rewardApplyInfoVoResultMap">
+        /* customerRewardMall.getRewardApplyInfo */
+        SELECT SUM(TOTAL_CNT) AS TOTAL_CNT, SUM(ACCEPT_CNT) AS ACCEPT_CNT, SUM(CONFIRM_CNT) AS CONFIRM_CNT, SUM(COMPLETED_CNT) AS COMPLETED_CNT
+        FROM (
+            SELECT 1 AS TOTAL_CNT,
+                (CASE WHEN REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.ACCEPT' THEN 1 ELSE 0 END) AS ACCEPT_CNT,
+                (CASE WHEN REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.CONFIRM' THEN 1 ELSE 0 END) AS CONFIRM_CNT,
+                (CASE WHEN REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.COMPLETE' THEN 1 ELSE 0 END) AS COMPLETED_CNT,
+                UR_USER_ID
+            FROM CS_REWARD_APPLY
+            WHERE UR_USER_ID = #{urUserId}
+                AND CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                AND DEL_YN = 'N'
+        ) G1
+        GROUP BY G1.UR_USER_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 - 신청내역 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardApplyListVo" id="rewardApplyListResultMap">
+        <result column="REQUEST_DT" property="requestDate"/>
+        <result column="CS_REWARD_APPLY_ID" property="csRewardApplyId"/>
+        <result column="REWARD_NM" property="rewardName"/>
+        <result column="REWARD_PAY_TP" property="rewardPayType"/>
+        <result column="REWARD_APPLY_STATUS" property="rewardApplyStatus"/>
+        <result column="REWARD_APPLY_STANDARD" property="rewardApplyStandard"/>
+        <result column="MODIFY_DT" property="modifyDate"/>
+        <result column="REWARD_APPLY_RESULT" property="rewardApplyResult"/>
+        <result column="REWARD_APPLY_CONTENT" property="rewardApplyContent"/>
+        <result column="USER_CHECK_YN" property="userCheckYn"/>
+        <result column="ANSWER" property="answer"/>
+        <result column="ADMIN_CMT" property="adminComment"/>
+        <result column="OD_ORDER_ID" property="odOrderId"/>
+        <result column="OD_ORDER_DETL_ID" property="odOrderDetlId"/>
+        <result column="DELIVERY_DATE" property="deliveryDate"/>
+        <result column="GOODS_DELIVERY_TYPE" property="goodsDeliveryType"/>
+        <result column="OD_SHIPPING_PRICE_ID" property="odShippingPriceId"/>
+        <result column="CS_REWARD_ID" property="csRewardId"/>
+        <result column="REWARD_GOODS_TP" property="rewardGoodsType"/>
+    </resultMap>
+    <select id="getRewardApplyList" resultMap="rewardApplyListResultMap">
+        /* customerRewardMall.getRewardApplyList */
+        SELECT CRA.CREATE_DT AS REQUEST_DT
+            , CRA.CS_REWARD_APPLY_ID
+            , CR.REWARD_NM
+            , CR.REWARD_PAY_TP
+            , CRA.REWARD_APPLY_STATUS
+            , DATE(CRA.MODIFY_DT) AS MODIFY_DT
+            , CRA.REWARD_APPLY_RESULT
+            , CR.REWARD_APPLY_STANDARD
+            , CRA.REWARD_APPLY_CONTENT
+            , CRA.CREATE_DT AS SORT_SEQ
+            , CRA.USER_CHECK_YN AS USER_CHECK_YN
+            , CRA.ANSWER
+            , CRA.ADMIN_CMT
+            , CRA.REWARD_PAY_DETL
+            , CRA.OD_ORDER_ID
+            , CRA.OD_ORDER_DETL_ID
+            , DATE(CRA.DELIVERY_DT) AS DELIVERY_DATE
+            , CRA.GOODS_DELIVERY_TYPE
+            , CRA.OD_SHIPPING_PRICE_ID
+            , CR.CS_REWARD_ID
+            , CR.REWARD_GOODS_TP
+        FROM CS_REWARD_APPLY CRA
+            INNER JOIN CS_REWARD CR ON CR.CS_REWARD_ID = CRA.CS_REWARD_ID
+        WHERE CRA.UR_USER_ID = #{urUserId}
+            AND CRA.CREATE_DT BETWEEN DATE_FORMAT(#{startDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDate}, '%Y-%m-%d 23:59:59')
+            AND CRA.DEL_YN = 'N'
+        ORDER BY CRA.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 - 첨부파일 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardAttcVo" id="rewardAttcResultMap">
+        <result column="THUMBNAIL_ORIGIN_NM" property="thumbnailOriginalName"/>
+        <result column="THUMBNAIL_NM" property="thumbnailName"/>
+        <result column="THUMBNAIL_PATH" property="thumbnailPath"/>
+        <result column="IMG_ORIGIN_NM" property="imageOriginalName"/>
+        <result column="IMG_NM" property="imageName"/>
+        <result column="IMG_PATH" property="imagePath"/>
+    </resultMap>
+    <select id="getRewardApplyAttc" resultMap="rewardAttcResultMap">
+        /* customerRewardMall.getRewardApplyAttc */
+        SELECT THUMBNAIL_ORIGIN_NM,
+            THUMBNAIL_NM,
+            THUMBNAIL_PATH,
+            IMG_ORIGIN_NM,
+            IMG_NM,
+            IMG_PATH
+        FROM CS_REWARD_APPLY_ATTC
+        WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+        ORDER BY CREATE_DT ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description 		: MALL - 고객보상제 - 신청내역 상세 조회
+    * @
+    * @ 수정일			수정자          수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.06.17		이원호          최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardApplyVo" id="rewardApplyVoResultMap">
+        <result column="CS_REWARD_ID" property="csRewardId"/>
+        <result column="REWARD_APPLY_STANDARD" property="rewardApplyStandard"/>
+        <result column="REWARD_NM" property="rewardName"/>
+        <result column="REWARD_NOTICE" property="rewardNotice"/>
+        <result column="OD_ORDER_ID" property="odOrderId"/>
+        <result column="OD_ORDER_DETL_ID" property="odOrderDetlId"/>
+        <result column="DELIVERY_DATE" property="deliveryDate"/>
+        <result column="ORDER_GOODS_COUNT" property="orderGoodsCount"/>
+        <result column="REWARD_APPLY_CONTENT" property="rewardApplyContent"/>
+        <result column="ANSWER_MAIL_YN" property="answerMailYn"/>
+        <result column="ANSWER_SMS_YN" property="answerSmsYn"/>
+        <result column="REWARD_APPLY_STATUS" property="rewardApplyStatus"/>
+        <result column="UR_USER_ID" property="urUserId"/>
+        <result column="GOODS_DELIVERY_TYPE" property="goodsDeliveryType"/>
+        <result column="OD_SHIPPING_PRICE_ID" property="odShippingPriceId"/>
+        <result column="REWARD_GOODS_TP" property="rewardGoodsType"/>
+    </resultMap>
+    <select id="getRewardApply" resultMap="rewardApplyVoResultMap">
+        /* customerRewardMall.getRewardApply */
+        SELECT CRA.CS_REWARD_ID
+            , CR.REWARD_APPLY_STANDARD
+            , CRA.OD_ORDER_ID
+            , CRA.OD_ORDER_DETL_ID
+            , CRA.REWARD_APPLY_CONTENT
+            , CRA.ANSWER_MAIL_YN
+            , CRA.ANSWER_SMS_YN
+            , CRA.REWARD_APPLY_STATUS
+            , CRA.UR_USER_ID
+            , CR.REWARD_NM
+            , CR.REWARD_NOTICE
+            , DATE(CRA.DELIVERY_DT) AS DELIVERY_DATE
+            , CRA.GOODS_DELIVERY_TYPE
+            , CRA.OD_SHIPPING_PRICE_ID
+            , CR.REWARD_GOODS_TP
+        FROM CS_REWARD_APPLY CRA
+            INNER JOIN CS_REWARD CR ON CRA.CS_REWARD_ID = CR.CS_REWARD_ID
+        WHERE CRA.CS_REWARD_APPLY_ID = #{csRewardApplyId}
+            AND CRA.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 - 첨부파일 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delRewardApplyAttc">
+        /* customerRewardMall.delRewardApplyAttc */
+        DELETE FROM CS_REWARD_APPLY_ATTC
+        WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 - 신청철회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.07		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delRewardApply">
+        /* customerRewardMall.delRewardApply */
+        DELETE FROM CS_REWARD_APPLY
+        WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 - 삭제처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.07		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putRewardApplyDelYn">
+        /* customerRewardMall.putRewardApplyDelYn */
+        UPDATE CS_REWARD_APPLY
+        SET DEL_YN = 'Y'
+        WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.18		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putRewardApply">
+        /* customerRewardMall.putRewardApply */
+        UPDATE CS_REWARD_APPLY
+        SET IL_GOODS_ID = #{ilGoodsId}
+            , OD_ORDER_ID = #{odOrderId}
+            , OD_ORDER_DETL_ID = #{odOrderDetlId}
+            , DELIVERY_DT = #{deliveryDate}
+            , GOODS_DELIVERY_TYPE = #{goodsDeliveryType}
+            , OD_SHIPPING_PRICE_ID = #{odShippingPriceId}
+            , REWARD_APPLY_CONTENT = #{rewardApplyContent}
+            , ANSWER_SMS_YN = #{answerSmsYn}
+            , ANSWER_MAIL_YN = #{answerMailYn}
+            , MODIFY_DT = NOW()
+            , MODIFY_ID = #{urUserId}
+        WHERE CS_REWARD_APPLY_ID=#{csRewardApplyId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description 		: MALL - 고객보상제 정보조회 - Validation
+    * @
+    * @ 수정일			수정자          수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.06.28		이원호          최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardValidation" resultType="integer">
+        /* customerRewardMall.getRewardValidation */
+        SELECT (CASE
+            WHEN REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_NUMBER'
+            THEN (SELECT COUNT(*) FROM CS_REWARD_APPLY CRA WHERE CRA.CS_REWARD_ID = CR.CS_REWARD_ID AND CRA.OD_ORDER_ID = #{odOrderId} AND CRA.UR_USER_ID = #{urUserId} AND DEL_YN = 'N')
+            WHEN REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.PACK_DELIVERY'
+            THEN (SELECT COUNT(*)
+                FROM CS_REWARD_APPLY CRA
+                WHERE CRA.CS_REWARD_ID = CR.CS_REWARD_ID
+                    AND CRA.OD_ORDER_ID = #{odOrderId}
+                    AND CRA.UR_USER_ID = #{urUserId}
+                    AND CRA.DELIVERY_DT = #{deliveryDate}
+                    AND CRA.GOODS_DELIVERY_TYPE = #{goodsDeliveryType}
+                    AND CRA.OD_SHIPPING_PRICE_ID = #{odShippingPriceId}
+                    AND DEL_YN = 'N')
+            WHEN REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_GOODS'
+            THEN (SELECT COUNT(*) FROM CS_REWARD_APPLY CRA WHERE CRA.CS_REWARD_ID = CR.CS_REWARD_ID AND CRA.OD_ORDER_ID = #{odOrderId} AND CRA.OD_ORDER_DETL_ID = #{odOrderDetlId} AND CRA.IL_GOODS_ID = #{ilGoodsId} AND CRA.UR_USER_ID = #{urUserId} AND DEL_YN = 'N')
+            ELSE 0 END ) AS APPLY_CNT
+        FROM CS_REWARD CR
+        WHERE CS_REWARD_ID = #{csRewardId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL - 고객보상제 - 답변 확인
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.06		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putRewardUserCheckYn">
+        /* customerQna.putRewardUserCheckYn */
+        UPDATE CS_REWARD_APPLY
+        SET USER_CHECK_YN = 'Y'
+        WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+    </update>
+
+</mapper>

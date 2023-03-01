@@ -1,0 +1,907 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.claim.PolicyClaimMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 카테고리 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPsClaimCtgryListResultMap" type="kr.co.pulmuone.v1.policy.claim.dto.vo.PolicyClaimCtgryVo" >
+		<result column="PS_CLAIM_CTGRY_ID"	property="psClaimCtgryId"  />
+		<result column="CATE_CD"    		property="categoryCode"  />
+		<result column="CLAIM_NM"        	property="claimName"  />
+		<result column="TARGET_TP_NM"       property="targetTypeName"  />
+		<result column="PS_CLAIM_BOS_ID"    property="psClaimBosId"  />
+		<result column="COMP_NM"			property="supplierName"  />
+		<result column="Y_SUPPLIER_CD"		property="ySupplierCode"  />
+		<result column="N_SUPPLIER_CD"		property="nSupplierCode"  />
+		<result column="Y_CLAIM_NAME"   	property="yClaimName"  />
+		<result column="Y_CLAIM_CODE"   	property="yClaimCode"  />
+		<result column="N_CLAIM_NAME"     	property="nClaimName"/>
+		<result column="N_CLAIM_CODE"     	property="nClaimCode"  />
+		<result column="PS_CLAIM_BOS_SUPPLY_ID" property="psClaimBosSupplyId"  />
+		<result column="OD_ORDER_DETL_ID"     	property="odOrderDetlId"  />
+	</resultMap>
+	<select id="getPsClaimCtgryList" resultMap="getPsClaimCtgryListResultMap">
+		/*	policyClaim.getPsClaimCtgryList	*/
+		SELECT
+			PS_CLAIM_CTGRY_ID
+			,CATE_CD
+			,CLAIM_NM
+			,CASE WHEN TARGET_TP = 'S' THEN '판매자 귀책'
+                  ELSE '구매자 귀책'
+                  END AS TARGET_TP_NM
+		FROM
+			PS_CLAIM_CTGRY
+		WHERE
+			CATE_CD = #{categoryCode}
+			AND DEL_YN = 'N'
+		ORDER BY PS_CLAIM_CTGRY_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 카테고리 중복 체크
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="checkClaimNameDuplicate" resultType="int">
+		/* policyClaim.checkClaimNameDuplicate */
+		SELECT
+			COUNT(*)
+		FROM PS_CLAIM_CTGRY
+		WHERE
+			CATE_CD = #{categoryCode}
+			AND DEL_YN = 'N'
+			AND CLAIM_NM IN
+			<foreach item="listData" index="index" collection="claimList" open="(" separator="," close=")">
+					#{listData.claimName}
+			</foreach>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClaimCtgryId)">
+			    AND PS_CLAIM_CTGRY_ID != #{psClaimCtgryId}
+			</if>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 카테고리 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<insert id="addPsClaimCtgry">
+		/*	policyClaim.addPsClaimCtgry	*/
+		INSERT INTO PS_CLAIM_CTGRY(
+			CATE_CD
+			,CLAIM_NM
+			,TARGET_TP
+			,DEL_YN
+			,CREATE_ID
+		)VALUES
+		<foreach item="insertData" index="index" collection="claimList" open="" separator="," close="">
+			(
+				#{categoryCode}
+				,#{insertData.claimName}
+				,#{insertData.targetTypeCode}
+				,'N'
+				,#{insertData.userVo.userId}
+			)
+		</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 카테고리 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<update id="putPsClaimCtgry">
+		/*	policyClaim.putPsClaimCtgry	*/
+		<foreach item="updateData" index="index" collection="claimList"  separator=";">
+		UPDATE PS_CLAIM_CTGRY
+		SET
+			CLAIM_NM = #{updateData.claimName}
+			,MODIFY_ID = #{updateData.userVo.userId}
+			,TARGET_TP = #{updateData.targetTypeCode}
+		WHERE PS_CLAIM_CTGRY_ID = #{updateData.psClaimCtgryId}
+		</foreach>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 카테고리 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<update id="delPsClaimCtgry">
+		/*	policyClaim.delPsClaimCtgry	*/
+		<foreach item="deleteData" index="index" collection="claimList"  separator=";">
+		UPDATE PS_CLAIM_CTGRY
+		SET
+			DEL_YN = 'Y'
+			,MODIFY_ID = #{deleteData.userVo.userId}
+		WHERE PS_CLAIM_CTGRY_ID = #{deleteData.psClaimCtgryId}
+		</foreach>
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 클레임 사유 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<insert id="addPsClaimMall">
+		/*	policyClaim.addPsClaimMall	*/
+		INSERT INTO PS_CLAIM_MALL(
+			REASON_MSG
+			,REASON_TP
+			,ATTC_REQUIRED_YN
+			,PS_CLAIM_BOS_ID
+			,DEL_YN
+			,USE_YN
+			,CREATE_ID
+		)VALUES(
+			#{reasonMessage}
+			,#{reasonType}
+			,#{attcRequiredYn}
+			,#{psClaimBosId}
+			,'N'
+			,#{useYn}
+			,#{userVo.userId}
+		)
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 클레임 사유 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<update id="putPsClaimMall">
+		/*	policyClaim.putPsClaimMall	*/
+		UPDATE PS_CLAIM_MALL
+		SET
+			REASON_MSG = #{reasonMessage}
+			,REASON_TP = #{reasonType}
+			,ATTC_REQUIRED_YN = #{attcRequiredYn}
+			,PS_CLAIM_BOS_ID = #{psClaimBosId}
+			,USE_YN = #{useYn}
+			,MODIFY_ID = #{userVo.userId}
+		WHERE
+			PS_CLAIM_MALL_ID = #{psClaimMallId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 클레임 사유 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPsClaimMallListResultMap" type="kr.co.pulmuone.v1.policy.claim.dto.vo.PolicyClaimMallVo" >
+		<result column="PS_CLAIM_MALL_ID"	property="psClaimMallId"  />
+		<result column="REASON_MSG"    		property="reasonMessage"  />
+		<result column="REASON_TP"        	property="reasonType"  />
+		<result column="ATTC_REQUIRED_YN"   property="attcRequiredYn"  />
+		<result column="PS_CLAIM_BOS_ID"    property="psClaimBosId"  />
+ 		<result column="L_CLAIM_CTGRY_ID"   property="lclaimCtgryId"  />
+		<result column="M_CLAIM_CTGRY_ID"   property="mclaimCtgryId"  />
+		<result column="S_CLAIM_CTGRY_ID"	property="sclaimCtgryId"  />
+		<result column="TARGET_TP"          property="targetType"  />
+		<result column="BOS_CLAIM_CTGRY"	property="bosClaimCtgry"  />
+		<result column="DEL_YN"        		property="delYn"  />
+		<result column="USE_YN"        		property="useYn"  />
+		<result column="CREATE_ID"          property="createId"/>
+        <result column="CREATE_DT"          property="createDate"/>
+        <result column="MODIFY_ID"          property="modifyId"/>
+        <result column="MODIFY_DT"          property="modifyDate"/>
+        <result column="CREATE_USER_NM"     property="createUserName"/>
+        <result column="MODIFY_USER_NM"     property="modifyUserName"/>
+	</resultMap>
+	<select id="getPsClaimMallList" resultMap="getPsClaimMallListResultMap">
+		/*	policyClaim.getPsClaimMallList	*/
+		SELECT
+			PCM.PS_CLAIM_MALL_ID
+			,PCM.REASON_MSG
+			,PCM.REASON_TP
+			,PCM.ATTC_REQUIRED_YN
+			,PCM.PS_CLAIM_BOS_ID
+			,PCC1.PS_CLAIM_CTGRY_ID AS L_CLAIM_CTGRY_ID
+			,PCC2.PS_CLAIM_CTGRY_ID AS M_CLAIM_CTGRY_ID
+			,PCC3.PS_CLAIM_CTGRY_ID AS S_CLAIM_CTGRY_ID
+			,PCM.DEL_YN
+			,PCM.USE_YN
+			,CONCAT(PCC1.CLAIM_NM,' > ',PCC2.CLAIM_NM,' > ',PCC3.CLAIM_NM) AS  BOS_CLAIM_CTGRY
+			,PCM.CREATE_ID
+            ,PCM.CREATE_DT
+            ,PCM.MODIFY_ID
+            ,PCM.MODIFY_DT
+            ,PCC3.TARGET_TP
+		FROM
+			PS_CLAIM_MALL PCM
+			JOIN PS_CLAIM_BOS PCB ON PCB.PS_CLAIM_BOS_ID = PCM.PS_CLAIM_BOS_ID
+            JOIN PS_CLAIM_CTGRY PCC1 ON PCB.L_CLAIM_CTGRY_ID = PCC1.PS_CLAIM_CTGRY_ID
+            JOIN PS_CLAIM_CTGRY PCC2 ON PCB.M_CLAIM_CTGRY_ID = PCC2.PS_CLAIM_CTGRY_ID
+            JOIN PS_CLAIM_CTGRY PCC3 ON PCB.S_CLAIM_CTGRY_ID = PCC3.PS_CLAIM_CTGRY_ID
+		WHERE
+			PCM.DEL_YN = 'N'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchResaonType)">
+			AND PCM.REASON_TP = #{searchResaonType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchLClaimCtgryId)">
+			AND PCB.L_CLAIM_CTGRY_ID = #{searchLClaimCtgryId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchMClaimCtgryId)">
+			AND PCB.M_CLAIM_CTGRY_ID = #{searchMClaimCtgryId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchSClaimCtgryId)">
+			AND PCB.S_CLAIM_CTGRY_ID = #{searchSClaimCtgryId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUseYn)">
+			AND PCM.USE_YN = #{searchUseYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchAttcRequiredYn)">
+               AND PCM.ATTC_REQUIRED_YN = #{searchAttcRequiredYn}
+           </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchKeyword)">
+               AND PCM.REASON_MSG LIKE CONCAT('%', #{searchKeyword}, '%')
+           </if>
+		ORDER BY PCM.CREATE_DT DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 클레임 사유 상세
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPolicyClaimMall" resultMap="getPsClaimMallListResultMap">
+		/*	policyClaim.getPolicyClaimMall	*/
+		SELECT
+			PCM.PS_CLAIM_MALL_ID
+			,PCM.REASON_MSG
+			,PCM.REASON_TP
+			,PCM.ATTC_REQUIRED_YN
+			,PCM.PS_CLAIM_BOS_ID
+			,PCC1.PS_CLAIM_CTGRY_ID AS L_CLAIM_CTGRY_ID
+			,PCC2.PS_CLAIM_CTGRY_ID AS M_CLAIM_CTGRY_ID
+			,PCC3.PS_CLAIM_CTGRY_ID AS S_CLAIM_CTGRY_ID
+			,PCC3.TARGET_TP
+			,PCM.DEL_YN
+			,PCM.USE_YN
+			,CONCAT(PCC1.CLAIM_NM,' > ',PCC2.CLAIM_NM,' > ',PCC3.CLAIM_NM) AS  BOS_CLAIM_CTGRY
+			,PCM.CREATE_ID
+            ,PCM.CREATE_DT
+            ,PCM.MODIFY_ID
+            ,PCM.MODIFY_DT
+            ,(SELECT FN_DECRYPT(UU.USER_NM) FROM UR_USER UU WHERE UU.UR_USER_ID  = PCM.CREATE_ID) AS CREATE_USER_NM
+            ,(SELECT FN_DECRYPT(UU.USER_NM) FROM UR_USER UU WHERE UU.UR_USER_ID  = PCM.MODIFY_ID) AS MODIFY_USER_NM
+		FROM
+			PS_CLAIM_MALL PCM
+			JOIN PS_CLAIM_BOS PCB ON PCB.PS_CLAIM_BOS_ID = PCM.PS_CLAIM_BOS_ID
+			JOIN PS_CLAIM_CTGRY PCC1 ON PCB.L_CLAIM_CTGRY_ID = PCC1.PS_CLAIM_CTGRY_ID
+			JOIN PS_CLAIM_CTGRY PCC2 ON PCB.M_CLAIM_CTGRY_ID = PCC2.PS_CLAIM_CTGRY_ID
+			JOIN PS_CLAIM_CTGRY PCC3 ON PCB.S_CLAIM_CTGRY_ID = PCC3.PS_CLAIM_CTGRY_ID
+		WHERE
+			PCM.PS_CLAIM_MALL_ID = #{psClaimMallId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: MALL 클레임 사유  중복 체크
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="checkPsClaimMallDuplicate" resultType="int">
+		/* policyClaim.checkPsClaimMallDuplicate */
+		SELECT
+			COUNT(*)
+		FROM PS_CLAIM_MALL
+		WHERE
+			DEL_YN = 'N'
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClaimCtgryId)">
+				AND PS_CLAIM_MALL_ID != #{psClaimCtgryId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchKeyword)">
+				AND REASON_MSG = #{searchKeyword}
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 공급업체별 사유 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPsClaimSupplyCtgryListResultMap" type="kr.co.pulmuone.v1.policy.claim.dto.vo.PolicyClaimSupplyCtgryVo" >
+		<result column="PS_CLAIM_SUPPLY_CTGRY_ID"	property="psClaimSupplyCtgryId"  />
+		<result column="SUPPLIER_CD"    			property="supplierCode"  />
+		<result column="CLAIM_CD"        			property="claimCode"  />
+		<result column="CLAIM_NM"					property="claimName"  />
+		<result column="DEL_YN"   					property="delYn"  />
+	</resultMap>
+	<select id="getPsClaimSupplyCtgryList" resultMap="getPsClaimSupplyCtgryListResultMap">
+		/*	policyClaim.getPsClaimSupplyCtgryList	*/
+		SELECT
+			PS_CLAIM_SUPPLY_CTGRY_ID
+			, SUPPLIER_CD
+			, CLAIM_CD
+			, CLAIM_NM
+			, DEL_YN
+		FROM
+			PS_CLAIM_SUPPLY_CTGRY
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCode)">
+				SUPPLIER_CD = #{supplierCode}
+			</if>
+		</where>
+		ORDER BY PS_CLAIM_SUPPLY_CTGRY_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<insert id="addPsClaimBos">
+		/*	policyClaim.addPsClaimBos	*/
+		INSERT INTO PS_CLAIM_BOS(
+			L_CLAIM_CTGRY_ID
+			, M_CLAIM_CTGRY_ID
+			, S_CLAIM_CTGRY_ID
+			, DEL_YN
+			, USE_YN
+			, CREATE_ID
+		)VALUES(
+			#{lClaimCtgryId}
+			,#{mClaimCtgryId}
+			,#{sClaimCtgryId}
+			,'N'
+			,#{useYn}
+			,#{userVo.userId}
+		)
+		<selectKey resultType="long" keyProperty="psClaimBosId" keyColumn="PS_CLAIM_BOS_ID" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유  중복 체크
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="checkPsClaimBosDuplicate" resultType="int">
+		/* policyClaim.checkPsClaimBosDuplicate */
+		SELECT
+			COUNT(*)
+		FROM PS_CLAIM_BOS
+		WHERE
+			DEL_YN = 'N'
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClaimBosId)">
+				AND PS_CLAIM_BOS_ID != #{psClaimBosId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchLClaimCtgryId)">
+				AND L_CLAIM_CTGRY_ID = #{searchLClaimCtgryId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchMClaimCtgryId)">
+				AND M_CLAIM_CTGRY_ID = #{searchMClaimCtgryId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchSClaimCtgryId)">
+				AND S_CLAIM_CTGRY_ID = #{searchSClaimCtgryId}
+			</if>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 공급업체 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<insert id="addPsClaimBosSupply">
+		/*	policyClaim.addPsClaimBosSupply	*/
+		INSERT INTO PS_CLAIM_BOS_SUPPLY(
+			PS_CLAIM_BOS_ID
+			,SUPPLIER_CD
+			,CLAIM_CD
+			,NON_SUPPLIER_CD
+			,NON_CLAIM_CD
+		)VALUES(
+			#{psClaimBosId}
+			,#{supplierCode}
+			,#{claimCode}
+			,#{nonSupplierCode}
+			,#{nonClaimCode}
+		)
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 공급업체 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<insert id="delPsClaimBosSupply">
+		/*	policyClaim.delPsClaimBosSupply	*/
+		DELETE FROM PS_CLAIM_BOS_SUPPLY
+		WHERE PS_CLAIM_BOS_ID = #{psClaimBosId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+ 	<update id="putPsClaimBos">
+		/*	policyClaim.putPsClaimBos	*/
+		UPDATE PS_CLAIM_BOS
+		SET
+			L_CLAIM_CTGRY_ID = #{lClaimCtgryId}
+			, M_CLAIM_CTGRY_ID = #{mClaimCtgryId}
+			, S_CLAIM_CTGRY_ID = #{sClaimCtgryId}
+			, USE_YN = #{useYn}
+			, MODIFY_ID = #{userVo.userId}
+		WHERE
+			PS_CLAIM_BOS_ID = #{psClaimBosId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPolicyClaimBosListResultMap" type="kr.co.pulmuone.v1.policy.claim.dto.vo.PolicyClaimBosVo" >
+		<result column="PS_CLAIM_BOS_ID"		property="psClaimBosId"  />
+		<result column="L_CLAIM_CTGRY_ID"   	property="lClaimCtgryId"  />
+		<result column="M_CLAIM_CTGRY_ID"       property="mClaimCtgryId"  />
+		<result column="S_CLAIM_CTGRY_ID"		property="sClaimCtgryId"  />
+		<result column="DEL_YN"    				property="delYn"  />
+		<result column="USE_YN"        			property="useYn"  />
+		<result column="CREATE_ID"				property="createId"  />
+		<result column="CREATE_DT"    			property="createDate"  />
+		<result column="CREATE_USER_NM"   		property="createUserName"  />
+		<result column="MODIFY_ID"      	  	property="modifyId"  />
+		<result column="MODIFY_DT"        		property="modifyDate"  />
+		<result column="MODIFY_USER_NM"    		property="modifyUserName"  />
+		<result column="L_CLAIM_NAME"     		property="lclaimCtgryName"  />
+		<result column="M_CLAIM_NAME"     		property="mclaimCtgryName"  />
+		<result column="S_CLAIM_NAME"     		property="sclaimCtgryName"  />
+		<result column="TARGET_TP"              property="targetType"  />
+	</resultMap>
+	<select id="getPolicyClaimBosList" resultMap="getPolicyClaimBosListResultMap">
+		/*	policyClaim.getPolicyClaimBosList	*/
+		SELECT
+			TBL.*
+		FROM(
+			SELECT
+				PCB.PS_CLAIM_BOS_ID
+				, PCB.L_CLAIM_CTGRY_ID
+				, PCB.M_CLAIM_CTGRY_ID
+				, PCB.S_CLAIM_CTGRY_ID
+				, PCB.DEL_YN
+				, PCB.USE_YN
+				, PCB.CREATE_ID
+				, PCB.CREATE_DT
+				, PCB.MODIFY_ID
+				, PCB.MODIFY_DT
+				, PCC1.CLAIM_NM AS L_CLAIM_NAME
+				, PCC2.CLAIM_NM AS M_CLAIM_NAME
+				, PCC3.CLAIM_NM AS S_CLAIM_NAME
+				, PCC3.TARGET_TP
+				, PCBS.SUPPLIER_CD
+				, PCBS.CLAIM_CD
+				, PCBS.NON_SUPPLIER_CD
+				, PCBS.NON_CLAIM_CD
+				, PCM.REASON_MSG AS MALL_CLAIM_REASON
+				, PCSC1.CLAIM_NM AS CLAIM_NAME
+				, PCSC2.CLAIM_NM AS NON_CLAIM_NAME
+			FROM
+				PS_CLAIM_BOS PCB
+				LEFT JOIN PS_CLAIM_CTGRY PCC1 ON PCB.L_CLAIM_CTGRY_ID = PCC1.PS_CLAIM_CTGRY_ID
+				LEFT JOIN PS_CLAIM_CTGRY PCC2 ON PCB.M_CLAIM_CTGRY_ID = PCC2.PS_CLAIM_CTGRY_ID
+				LEFT JOIN PS_CLAIM_CTGRY PCC3 ON PCB.S_CLAIM_CTGRY_ID = PCC3.PS_CLAIM_CTGRY_ID
+				LEFT JOIN PS_CLAIM_MALL PCM ON PCM.PS_CLAIM_BOS_ID = PCB.PS_CLAIM_BOS_ID
+				LEFT JOIN PS_CLAIM_BOS_SUPPLY PCBS ON PCBS.PS_CLAIM_BOS_ID = PCB.PS_CLAIM_BOS_ID
+				LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC1 ON PCSC1.SUPPLIER_CD = PCBS.SUPPLIER_CD AND PCSC1.CLAIM_CD = PCBS.CLAIM_CD
+				LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC2 ON PCSC2.SUPPLIER_CD = PCBS.NON_SUPPLIER_CD AND PCSC2.CLAIM_CD = PCBS.NON_CLAIM_CD
+			WHERE
+			    PCB.DEL_YN = 'N'
+			    AND PCB.USE_YN = 'Y'
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchLClaimCtgryId)">
+					AND PCB.L_CLAIM_CTGRY_ID = #{searchLClaimCtgryId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchMClaimCtgryId)">
+					AND PCB.M_CLAIM_CTGRY_ID = #{searchMClaimCtgryId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchSClaimCtgryId)">
+					AND PCB.S_CLAIM_CTGRY_ID = #{searchSClaimCtgryId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchTargetType)">
+					AND PCC3.TARGET_TP = #{searchTargetType}
+				</if>
+		)TBL
+			<where>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchKeyword)">
+	                <choose>
+	                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "CLAIM_CODE")'>
+	                        AND (TBL.CLAIM_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+	                        	OR TBL.NON_CLAIM_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+	                    </when>
+	                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "SUPPLIER_CODE")'>
+	                        AND (TBL.SUPPLIER_CD LIKE CONCAT('%', #{searchKeyword}, '%')
+	                        	OR TBL.NON_SUPPLIER_CD LIKE CONCAT('%', #{searchKeyword}, '%'))
+	                    </when>
+	                </choose>
+	            </if>
+            </where>
+		GROUP BY TBL.PS_CLAIM_BOS_ID
+		ORDER BY IFNULL(TBL.MODIFY_DT, TBL.CREATE_DT) DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 공급업체 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPolicyClaimSupplyListResultMap" type="kr.co.pulmuone.v1.policy.claim.dto.vo.PolicyClaimBosSupplyVo" >
+		<result column="COMP_NM"			property="supplierName"  />
+		<result column="SUPPLIER_CD"		property="supplierCode"  />
+		<result column="NON_SUPPLIER_CD"	property="nonSupplierCode"  />
+		<result column="CLAIM_NAME"   		property="claimName"  />
+		<result column="CLAIM_CODE"   		property="claimCode"  />
+		<result column="NON_CLAIM_NAME"     property="nonClaimName"  />
+		<result column="NON_CLAIM_CODE"     property="nonClaimCode"  />
+	</resultMap>
+	<select id="getPolicyClaimSupplyList" resultMap="getPolicyClaimSupplyListResultMap">
+		/*	policyClaim.getPolicyClaimSupplyList	*/
+		SELECT
+			US.COMP_NM
+			, US.SUPPLIER_CD AS SUPPLIER_CD
+			, US.SUPPLIER_CD AS NON_SUPPLIER_CD
+			, PCSC1.CLAIM_NM AS CLAIM_NAME
+			, PCSC1.CLAIM_CD AS CLAIM_CODE
+			, PCSC2.CLAIM_NM AS NON_CLAIM_NAME
+			, PCSC2.CLAIM_CD AS NON_CLAIM_CODE
+		FROM
+			PS_CLAIM_BOS_SUPPLY PCBS
+			JOIN (SELECT C.COMP_NM , S.SUPPLIER_CD
+				 FROM UR_SUPPLIER S
+				  JOIN UR_COMPANY C ON C.UR_COMPANY_ID = S.UR_COMPANY_ID AND C.USE_YN = 'Y' AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+				  ) US ON PCBS.SUPPLIER_CD = US.SUPPLIER_CD
+			LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC1 ON PCSC1.SUPPLIER_CD = PCBS.SUPPLIER_CD AND PCSC1.CLAIM_CD = PCBS.CLAIM_CD
+			LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC2 ON PCSC2.SUPPLIER_CD = PCBS.NON_SUPPLIER_CD AND PCSC2.CLAIM_CD = PCBS.NON_CLAIM_CD
+		WHERE
+			PCBS.PS_CLAIM_BOS_ID = #{psClaimBosId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 사유 상세
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPolicyClaimBos" resultMap="getPolicyClaimBosListResultMap">
+		/*	policyClaim.getPolicyClaimBos	*/
+		SELECT
+			PCB.PS_CLAIM_BOS_ID
+			, PCB.L_CLAIM_CTGRY_ID
+			, PCB.M_CLAIM_CTGRY_ID
+			, PCB.S_CLAIM_CTGRY_ID
+			, PCB.DEL_YN
+			, PCB.USE_YN
+			, PCB.CREATE_ID
+			, PCB.CREATE_DT
+			, PCB.MODIFY_ID
+			, PCB.MODIFY_DT
+			, PCC1.CLAIM_NM AS L_CLAIM_NAME
+			, PCC2.CLAIM_NM AS M_CLAIM_NAME
+			, PCC3.CLAIM_NM AS S_CLAIM_NAME
+			,(SELECT FN_DECRYPT(UU.USER_NM) FROM UR_USER UU WHERE UU.UR_USER_ID  = PCB.CREATE_ID) AS CREATE_USER_NM
+            ,(SELECT FN_DECRYPT(UU.USER_NM) FROM UR_USER UU WHERE UU.UR_USER_ID  = PCB.MODIFY_ID) AS MODIFY_USER_NM
+		FROM
+			PS_CLAIM_BOS PCB
+			LEFT JOIN PS_CLAIM_CTGRY PCC1 ON PCB.L_CLAIM_CTGRY_ID = PCC1.PS_CLAIM_CTGRY_ID
+			LEFT JOIN PS_CLAIM_CTGRY PCC2 ON PCB.M_CLAIM_CTGRY_ID = PCC2.PS_CLAIM_CTGRY_ID
+			LEFT JOIN PS_CLAIM_CTGRY PCC3 ON PCB.S_CLAIM_CTGRY_ID = PCC3.PS_CLAIM_CTGRY_ID
+		WHERE
+			PCB.PS_CLAIM_BOS_ID = #{psClaimBosId}
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS 클레임 사유  삭제
+     * @
+     * @ 수정일                  수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.08     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="delPolicyClaimBos">
+        /*  policyClaim.delPolicyClaimBos */
+        UPDATE PS_CLAIM_BOS
+        SET
+            DEL_YN = 'Y'
+            ,MODIFY_ID = #{userVo.userId}
+        WHERE PS_CLAIM_BOS_ID = #{psClaimBosId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS 클레임에 등록된 사유 목록(리스트박스 조회용)
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="searchPsClaimBosLCtgryList" resultMap="getPsClaimCtgryListResultMap">
+        /*  policyClaim.searchPsClaimBosLCtgryList */
+        SELECT
+		    PCB.PS_CLAIM_BOS_ID
+		    ,PCC.PS_CLAIM_CTGRY_ID
+		    ,PCC.CATE_CD
+		    ,PCC.CLAIM_NM
+		    ,CASE WHEN PCC.TARGET_TP = 'S' THEN '판매자 귀책'
+		          ELSE '구매자 귀책'
+		          END AS TARGET_TP_NM
+		FROM
+		    PS_CLAIM_BOS PCB
+		    JOIN PS_CLAIM_CTGRY PCC ON PCB.L_CLAIM_CTGRY_ID = PCC.PS_CLAIM_CTGRY_ID
+		WHERE
+		    PCB.USE_YN = 'Y'
+		    AND PCB.DEL_YN = 'N'
+		GROUP BY PCB.L_CLAIM_CTGRY_ID
+		ORDER BY PCB.PS_CLAIM_BOS_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS 클레임에 등록된 사유 목록(리스트박스 조회용)
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03     천혜현          최초생성
+     * @ 2021.03.12		최윤지			공급업체에 따른 사유 추가
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="searchPsClaimBosMCtgryList" resultMap="getPsClaimCtgryListResultMap">
+        /*  policyClaim.searchPsClaimBosMCtgryList */
+        SELECT
+            PCB.PS_CLAIM_BOS_ID
+            ,PCC.PS_CLAIM_CTGRY_ID
+            ,PCC.CATE_CD
+            ,PCC.CLAIM_NM
+            ,CASE WHEN PCC.TARGET_TP = 'S' THEN '판매자 귀책'
+                  ELSE '구매자 귀책'
+                  END AS TARGET_TP_NM
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+				,US.COMP_NM
+				,US.SUPPLIER_CD AS Y_SUPPLIER_CD
+				,US.SUPPLIER_CD AS N_SUPPLIER_CD
+				,PCSC1.CLAIM_NM AS Y_CLAIM_NAME
+				,PCSC1.CLAIM_CD AS Y_CLAIM_CODE
+				,PCSC2.CLAIM_NM AS N_CLAIM_NAME
+				,PCSC2.CLAIM_CD AS N_CLAIM_CODE
+				,PCBS.PS_CLAIM_BOS_SUPPLY_ID
+			    ,OOD.OD_ORDER_DETL_ID
+			</if>
+        FROM
+            PS_CLAIM_BOS PCB
+            JOIN PS_CLAIM_CTGRY PCC ON PCB.M_CLAIM_CTGRY_ID = PCC.PS_CLAIM_CTGRY_ID
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+				JOIN PS_CLAIM_BOS_SUPPLY PCBS ON PCB.PS_CLAIM_BOS_ID = PCBS.PS_CLAIM_BOS_ID
+				JOIN (SELECT C.COMP_NM , S.SUPPLIER_CD, S.UR_SUPPLIER_ID
+					 FROM UR_SUPPLIER S
+					  JOIN UR_COMPANY C ON C.UR_COMPANY_ID = S.UR_COMPANY_ID AND C.USE_YN = 'Y' AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+					  ) US ON PCBS.SUPPLIER_CD = US.SUPPLIER_CD
+				LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC1 ON PCSC1.SUPPLIER_CD = PCBS.SUPPLIER_CD AND PCSC1.CLAIM_CD = PCBS.CLAIM_CD
+				LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC2 ON PCSC2.SUPPLIER_CD = PCBS.NON_SUPPLIER_CD AND PCSC2.CLAIM_CD = PCBS.NON_CLAIM_CD
+				JOIN OD_ORDER_DETL OOD ON OOD.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+			</if>
+        WHERE
+            PCB.USE_YN = 'Y'
+            AND PCB.DEL_YN = 'N'
+            AND PCB.L_CLAIM_CTGRY_ID = #{searchLClaimCtgryId}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+				AND OOD.OD_ORDER_ID = #{odOrderId}
+				AND OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+			</if>
+        GROUP BY PCB.M_CLAIM_CTGRY_ID
+        ORDER BY PCB.PS_CLAIM_BOS_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS 클레임에 등록된 사유 목록(리스트박스 조회용)
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03     천혜현          최초생성
+     * @ 2021.03.12		최윤지			공급업체에 따른 사유 추가
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="searchPsClaimBosSCtgryList" resultMap="getPsClaimCtgryListResultMap">
+		/*  policyClaim.searchPsClaimBosSCtgryList */
+		SELECT
+			PCB.PS_CLAIM_BOS_ID
+			,PCC.PS_CLAIM_CTGRY_ID
+			,PCC.CATE_CD
+			,PCC.CLAIM_NM
+			,CASE WHEN PCC.TARGET_TP = 'S' THEN '판매자 귀책'
+				ELSE '구매자 귀책'
+				END
+				  AS TARGET_TP_NM,
+			IFNULL(TT.COMP_NM, '') AS COMP_NM,
+			IFNULL(TT.Y_SUPPLIER_CD, '') AS Y_SUPPLIER_CD,
+			IFNULL(TT.N_SUPPLIER_CD, '') AS N_SUPPLIER_CD,
+			IFNULL(TT.Y_CLAIM_NAME, '') AS Y_CLAIM_NAME,
+			IFNULL(TT.Y_CLAIM_CODE, '') AS Y_CLAIM_CODE,
+			IFNULL(TT.N_CLAIM_NAME, '') AS N_CLAIM_NAME,
+			IFNULL(TT.N_CLAIM_CODE, '') AS N_CLAIM_CODE,
+			IFNULL(TT.PS_CLAIM_BOS_SUPPLY_ID, '') AS PS_CLAIM_BOS_SUPPLY_ID,
+			IFNULL(TT.OD_ORDER_DETL_ID, 0) AS OD_ORDER_DETL_ID
+		FROM
+			PS_CLAIM_BOS PCB
+			JOIN PS_CLAIM_CTGRY PCC ON PCB.S_CLAIM_CTGRY_ID = PCC.PS_CLAIM_CTGRY_ID
+			LEFT OUTER JOIN OD_CLAIM T1 ON T1.OD_CLAIM_ID = #{odClaimId}
+			LEFT OUTER JOIN (
+				SELECT
+					 T1.COMP_NM
+					,T1.SUPPLIER_CD AS Y_SUPPLIER_CD
+					,T1.SUPPLIER_CD AS N_SUPPLIER_CD
+					,PCSC1.CLAIM_NM AS Y_CLAIM_NAME
+					,PCSC1.CLAIM_CD AS Y_CLAIM_CODE
+					,PCSC2.CLAIM_NM AS N_CLAIM_NAME
+					,PCSC2.CLAIM_CD AS N_CLAIM_CODE
+					,T2.PS_CLAIM_BOS_SUPPLY_ID
+					,OOD.OD_ORDER_DETL_ID
+					,T2.PS_CLAIM_BOS_ID
+				FROM
+				(
+					SELECT
+						C.COMP_NM , S.SUPPLIER_CD, S.UR_SUPPLIER_ID
+					FROM
+				  		UR_SUPPLIER S
+						JOIN UR_COMPANY C ON C.UR_COMPANY_ID = S.UR_COMPANY_ID AND C.USE_YN = 'Y' AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+				   	WHERE S.UR_SUPPLIER_ID = #{urSupplierId}
+				) T1
+				LEFT OUTER JOIN PS_CLAIM_BOS_SUPPLY T2 ON T1.SUPPLIER_CD = T2.SUPPLIER_CD <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClaimBosId)">AND T2.PS_CLAIM_BOS_ID = #{psClaimBosId}</if>
+				LEFT OUTER JOIN PS_CLAIM_SUPPLY_CTGRY PCSC1 ON PCSC1.SUPPLIER_CD = T1.SUPPLIER_CD AND PCSC1.CLAIM_CD = T2.CLAIM_CD
+				LEFT OUTER JOIN PS_CLAIM_SUPPLY_CTGRY PCSC2 ON PCSC2.SUPPLIER_CD = T2.NON_SUPPLIER_CD AND PCSC2.CLAIM_CD = T2.NON_CLAIM_CD
+				LEFT OUTER JOIN OD_ORDER_DETL OOD ON OOD.UR_SUPPLIER_ID = T1.UR_SUPPLIER_ID AND OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+			) TT ON 1=1 <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(psClaimBosId)">AND TT.PS_CLAIM_BOS_ID = PCB.PS_CLAIM_BOS_ID</if>
+		WHERE
+				PCB.USE_YN = 'Y'
+			AND PCB.DEL_YN = 'N'
+			AND PCB.L_CLAIM_CTGRY_ID = #{searchLClaimCtgryId}
+			AND PCB.M_CLAIM_CTGRY_ID = #{searchMClaimCtgryId}
+		ORDER BY PCB.PS_CLAIM_BOS_ID
+	</select>
+	<select id="searchPsClaimBosSCtgryList_bak" resultMap="getPsClaimCtgryListResultMap">
+		/*  policyClaim.searchPsClaimBosSCtgryList */
+		SELECT
+		PCB.PS_CLAIM_BOS_ID
+		,PCC.PS_CLAIM_CTGRY_ID
+		,PCC.CATE_CD
+		,PCC.CLAIM_NM
+		,CASE WHEN PCC.TARGET_TP = 'S' THEN '판매자 귀책'
+		ELSE '구매자 귀책'
+		END AS TARGET_TP_NM
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+			,US.COMP_NM
+			,US.SUPPLIER_CD AS Y_SUPPLIER_CD
+			,US.SUPPLIER_CD AS N_SUPPLIER_CD
+			,PCSC1.CLAIM_NM AS Y_CLAIM_NAME
+			,PCSC1.CLAIM_CD AS Y_CLAIM_CODE
+			,PCSC2.CLAIM_NM AS N_CLAIM_NAME
+			,PCSC2.CLAIM_CD AS N_CLAIM_CODE
+			,PCBS.PS_CLAIM_BOS_SUPPLY_ID
+			,OOD.OD_ORDER_DETL_ID
+		</if>
+		FROM
+		PS_CLAIM_BOS PCB
+		JOIN PS_CLAIM_CTGRY PCC ON PCB.S_CLAIM_CTGRY_ID = PCC.PS_CLAIM_CTGRY_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+			JOIN PS_CLAIM_BOS_SUPPLY PCBS ON PCB.PS_CLAIM_BOS_ID = PCBS.PS_CLAIM_BOS_ID
+			JOIN (SELECT C.COMP_NM , S.SUPPLIER_CD, S.UR_SUPPLIER_ID
+			FROM UR_SUPPLIER S
+			JOIN UR_COMPANY C ON C.UR_COMPANY_ID = S.UR_COMPANY_ID AND C.USE_YN = 'Y' AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+			) US ON PCBS.SUPPLIER_CD = US.SUPPLIER_CD
+			LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC1 ON PCSC1.SUPPLIER_CD = PCBS.SUPPLIER_CD AND PCSC1.CLAIM_CD = PCBS.CLAIM_CD
+			LEFT JOIN PS_CLAIM_SUPPLY_CTGRY PCSC2 ON PCSC2.SUPPLIER_CD = PCBS.NON_SUPPLIER_CD AND PCSC2.CLAIM_CD = PCBS.NON_CLAIM_CD
+			JOIN OD_ORDER_DETL OOD ON OOD.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		</if>
+		WHERE
+		PCB.USE_YN = 'Y'
+		AND PCB.DEL_YN = 'N'
+		AND PCB.L_CLAIM_CTGRY_ID = #{searchLClaimCtgryId}
+		AND PCB.M_CLAIM_CTGRY_ID = #{searchMClaimCtgryId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+			AND OOD.OD_ORDER_ID = #{odOrderId}
+			AND OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+		</if>
+		ORDER BY PCB.PS_CLAIM_BOS_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS 클레임 사유 카테고리 조회 (주문 > 미출 주문상세리스트 > 일괄 취소완료 팝업에서 사용)
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.14     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getPolicyClaimCtgryListForClaimPopup" resultType="kr.co.pulmuone.v1.policy.claim.dto.vo.PolicyClaimCtgryVo">
+        /*  policyClaim.getPolicyClaimCtgryListForClaimPopup */
+        SELECT
+		    TBL.*
+		FROM(
+		    SELECT
+		        T1.PS_CLAIM_CTGRY_ID
+		        ,T1.CATE_CD AS CATEGORY_CODE
+		        ,T1.CLAIM_CD AS CLAIM_CODE
+		        ,T1.CLAIM_NM AS CLAIM_NAME
+		        ,T1.TARGET_TP AS TARGET_TYPE
+		        ,(SELECT  GROUP_CONCAT(DISTINCT M_CLAIM_CTGRY_ID) FROM PS_CLAIM_BOS S1 WHERE S1.L_CLAIM_CTGRY_ID = T1.PS_CLAIM_CTGRY_ID) AS DEPTH_2
+		        ,(SELECT  GROUP_CONCAT(DISTINCT S_CLAIM_CTGRY_ID) FROM PS_CLAIM_BOS S1 WHERE S1.M_CLAIM_CTGRY_ID = T1.PS_CLAIM_CTGRY_ID) AS DEPTH_3
+		    FROM
+		        PS_CLAIM_CTGRY T1
+		    WHERE
+		        T1.DEL_YN = 'N'
+		)TBL
+		WHERE
+		    CATEGORY_CODE = 20
+		    OR
+		    CATEGORY_CODE = 30
+		    OR
+		    (CATEGORY_CODE = 10 AND TBL.DEPTH_2 IS NOT NULL)
+    </select>
+
+</mapper>

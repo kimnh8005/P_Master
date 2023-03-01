@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.item.BatchGoodsItem3PLMapper">
+	<resultMap type="kr.co.pulmuone.v1.batch.goods.item.vo.ErpBaekamGoodsItemResultVo" id="erpItemResult">
+		<result column="SRC_SVR" 			property="srcSvr" />
+		<result column="CRP_CD" 			property="crpCd" />
+		<result column="ITEM_NM" 			property="itmNam" />
+		<result column="IL_ITEM_CD" 		property="itmNo" />
+		<result column="ITEM_BARCODE" 		property="kanCd" />
+		<result column="ERP_ITEM_INFO" 		property="boxSiz" />
+		<result column="BOX_INFO" 			property="eaSiz" />
+		<result column="PCS_PER_BOX" 		property="boxEa" />
+		<result column="ERP_BOX_BARCODE" 	property="boxKanCd" />
+		<result column="STR_KEY" 			property="strKey" />
+		<result column="BOX_CRR" 			property="boxCrr" />
+		<result column="CREATE_DT" 			property="regDat" />
+		<result column="DUR_DAY" 			property="durDay" />
+		<result column="LIM_OUT" 			property="limOut" />
+		<result column="LIF_DAY" 			property="lifDay" />
+		<result column="TMP_VAL" 			property="tmpVal" />
+		<result column="UPD_FLG" 			property="updFlg" />
+		<result column="UPD_DAT" 			property="updDat" />
+		<result column="ITF_DAT" 			property="itfDat" />
+		<result column="ITF_FLG" 			property="itfFlg" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+       * description :
+       *
+       * @ 백암물류센터로 당일 일자로 등록된 품목 조회
+       * @ 수정일       수정자   수정내용
+       * @ ──────────────────────────────────────────────────────────────────────
+       * @ 2021.02.08 정형진
+       * @ 2021.06.17 남기승   온도값 전달시 실온, 기타의 경우 2로 치환하여 전달.
+       * @ 2021.11.08 남기승   기존 상품 수정만 조회하고 있는걸 품목 수정도 추가함.
+      ────────────────────────────────────────────────────────────────────────-->
+	<select id="getInsertTargetItemList" resultMap="erpItemResult">
+		/* goodsItem3PLBatch.getInsertTargetItemList */
+		SELECT 'ESHOP' AS SRC_SVR
+			 , 'CJWMS' AS CRP_CD
+			 , ITEM.ITEM_NM
+			 , ITEM.IL_ITEM_CD
+			 , ITEM.ITEM_BARCODE
+			 , CASE WHEN ITEM.ERP_ITEM_WIDTH IS NOT NULL
+						AND ITEM.ERP_ITEM_DEPTH IS NOT NULL
+							AND ITEM.ERP_ITEM_HEIGHT IS NOT NULL THEN CONCAT(ITEM.ERP_ITEM_WIDTH, '-', ITEM.ERP_ITEM_DEPTH, '-', ITEM.ERP_ITEM_HEIGHT)
+					ELSE '' END ERP_ITEM_INFO
+			 , CASE WHEN ITEM.BOX_WIDTH IS NOT NULL
+						AND ITEM.BOX_DEPTH IS NOT NULL
+						AND ITEM.BOX_HEIGHT IS NOT NULL THEN CONCAT(ITEM.BOX_WIDTH, '-', ITEM.BOX_DEPTH, '-', ITEM.BOX_HEIGHT)
+					ELSE '' END BOX_INFO
+			 , ITEM.PCS_PER_BOX
+			 , ITEM.ERP_BOX_BARCODE
+			 , '' AS STR_KEY
+			 , '' AS BOX_CRR
+			 , DATE_FORMAT(TARGET_ITEM.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+			 , (
+			SELECT ISD.IMMINENT
+			FROM IL_ITEM A
+					 INNER JOIN IL_ITEM_WAREHOUSE IIW
+								ON IIW.IL_ITEM_CD = A.IL_ITEM_CD
+					 INNER JOIN UR_SUPPLIER_WAREHOUSE B
+								ON B.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+					 INNER JOIN IL_STOCK_DEADLINE ISD
+								ON ISD.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+									AND ISD.UR_WAREHOUSE_ID IN (B.UR_WAREHOUSE_ID, 0)
+									AND ISD.BASIC_YN = 'Y'
+			WHERE A.IL_ITEM_CD = ITEM.IL_ITEM_CD
+			  AND B.UR_WAREHOUSE_ID = TARGET_ITEM.UR_WAREHOUSE_ID
+			  AND ISD.DISTRIBUTION_PERIOD <![CDATA[ <= ]]> ITEM.DISTRIBUTION_PERIOD
+			ORDER BY ISD.UR_WAREHOUSE_ID DESC, ISD.DISTRIBUTION_PERIOD DESC
+			LIMIT 1
+			) AS DUR_DAY
+             , (
+                SELECT ISD.DELIVERY
+                FROM IL_ITEM A
+                    INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = A.IL_ITEM_CD
+                    INNER JOIN UR_SUPPLIER_WAREHOUSE B ON B.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+			        INNER JOIN IL_STOCK_DEADLINE ISD ON ISD.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+				            AND ISD.UR_WAREHOUSE_ID IN (B.UR_WAREHOUSE_ID, 0)
+                            AND ISD.BASIC_YN = 'Y'
+                WHERE A.IL_ITEM_CD = ITEM.IL_ITEM_CD
+			    AND B.UR_WAREHOUSE_ID = TARGET_ITEM.UR_WAREHOUSE_ID
+			    AND ISD.DISTRIBUTION_PERIOD <![CDATA[ <= ]]> ITEM.DISTRIBUTION_PERIOD
+			    ORDER BY ISD.UR_WAREHOUSE_ID DESC, ISD.DISTRIBUTION_PERIOD DESC
+			    LIMIT 1
+		        ) AS LIM_OUT
+		     , ITEM.DISTRIBUTION_PERIOD AS LIF_DAY
+		     , CASE WHEN ITEM.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.FROZEN' THEN '1'
+		            WHEN ITEM.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.ORDINARY' THEN '2'
+			        WHEN ITEM.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.COOL' THEN '8'
+			        ELSE '2' END TMP_VAL        /* 실온, 기타 : 2 */
+             , 'Y' AS UPD_FLG
+             , DATE_FORMAT(TARGET_ITEM.MODIFY_DT, '%Y%m%d%H%i%s') AS UPD_DAT
+             , '' AS ITF_DAT
+             , '' AS ITF_FLG
+    	FROM IL_ITEM ITEM
+            INNER JOIN (
+                        SELECT ITEM.IL_ITEM_CD
+                             , GOODS.UR_WAREHOUSE_ID
+  							 , GOODS.CREATE_DT
+                             , GOODS.MODIFY_DT
+                        FROM IL_ITEM ITEM
+                            INNER JOIN IL_GOODS GOODS ON ITEM.IL_ITEM_CD = GOODS.IL_ITEM_CD
+                                    AND GOODS.UR_WAREHOUSE_ID = ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_BAEKAM_ID' )
+                        WHERE (
+								GOODS.CREATE_DT BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%Y%m%d183001') AND DATE_FORMAT(NOW(), '%Y%m%d183000')
+								OR ITEM.CREATE_DT BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%Y%m%d183001') AND DATE_FORMAT(NOW(), '%Y%m%d183000')
+								)
+                        GROUP BY ITEM.IL_ITEM_CD, GOODS.UR_WAREHOUSE_ID
+                        ) TARGET_ITEM
+	            ON ITEM.IL_ITEM_CD = TARGET_ITEM.IL_ITEM_CD
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+       * description :
+       *
+       * @ 백암물류센터로 당일 이전날짜로 등록되고 수정날짜가 당일인 품목데이터 조회
+       * @ 수정일       수정자   수정내용
+       * @ ──────────────────────────────────────────────────────────────────────
+       * @ 2021.02.08 정형진
+       * @ 2021.06.17 남기승   온도값 전달시 실온, 기타의 경우 2로 치환하여 전달.
+       * @ 2021.11.08 남기승   기존 상품 수정만 조회하고 있는걸 품목 수정도 추가함.
+      ────────────────────────────────────────────────────────────────────────-->
+	<select id="getUpdateTargetItemList" resultMap="erpItemResult">
+		/* goodsItem3PLBatch.getUpdateTargetItemList */
+		SELECT ITEM.ITEM_NM
+			 , ITEM.IL_ITEM_CD
+			 , ITEM.ITEM_BARCODE
+			 , CASE WHEN ITEM.ERP_ITEM_WIDTH IS NOT NULL AND ITEM.ERP_ITEM_DEPTH IS NOT NULL AND ITEM.ERP_ITEM_HEIGHT IS NOT NULL THEN CONCAT(ITEM.ERP_ITEM_WIDTH, '-', ITEM.ERP_ITEM_DEPTH, '-', ITEM.ERP_ITEM_HEIGHT)
+					ELSE '' END ERP_ITEM_INFO
+			 , CASE WHEN ITEM.BOX_WIDTH IS NOT NULL AND ITEM.BOX_DEPTH IS NOT NULL AND ITEM.BOX_HEIGHT IS NOT NULL THEN CONCAT(ITEM.BOX_WIDTH, '-', ITEM.BOX_DEPTH, '-', ITEM.BOX_HEIGHT)
+					ELSE '' END BOX_INFO
+			 , ITEM.PCS_PER_BOX
+			 , ITEM.ERP_BOX_BARCODE
+			 , '' AS STR_KEY
+			 , '' AS BOX_CRR
+			 , DATE_FORMAT(TARGET_ITEM.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+			 , (
+				SELECT ISD.IMMINENT
+				FROM IL_ITEM A
+					INNER JOIN IL_ITEM_WAREHOUSE IIW
+						ON IIW.IL_ITEM_CD = A.IL_ITEM_CD
+					INNER JOIN UR_SUPPLIER_WAREHOUSE B
+						ON B.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+					INNER JOIN IL_STOCK_DEADLINE ISD
+						ON ISD.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+							AND ISD.UR_WAREHOUSE_ID IN (B.UR_WAREHOUSE_ID, 0)
+							AND ISD.BASIC_YN = 'Y'
+				WHERE A.IL_ITEM_CD = ITEM.IL_ITEM_CD
+			  	AND B.UR_WAREHOUSE_ID = TARGET_ITEM.UR_WAREHOUSE_ID
+			  	AND ISD.DISTRIBUTION_PERIOD <![CDATA[ <= ]]> ITEM.DISTRIBUTION_PERIOD
+				ORDER BY ISD.UR_WAREHOUSE_ID DESC, ISD.DISTRIBUTION_PERIOD DESC
+				LIMIT 1
+				) AS DUR_DAY
+	         , (
+	            SELECT ISD.DELIVERY
+			    FROM IL_ITEM A
+			        INNER JOIN IL_ITEM_WAREHOUSE IIW
+			            ON IIW.IL_ITEM_CD = A.IL_ITEM_CD
+			        INNER JOIN UR_SUPPLIER_WAREHOUSE B
+			            ON B.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+			        INNER JOIN IL_STOCK_DEADLINE ISD
+			            ON ISD.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+				            AND ISD.UR_WAREHOUSE_ID IN (B.UR_WAREHOUSE_ID, 0)
+				            AND ISD.BASIC_YN = 'Y'
+			    WHERE A.IL_ITEM_CD = ITEM.IL_ITEM_CD
+			    AND B.UR_WAREHOUSE_ID = TARGET_ITEM.UR_WAREHOUSE_ID
+			    AND ISD.DISTRIBUTION_PERIOD <![CDATA[<=]]> ITEM.DISTRIBUTION_PERIOD
+			    ORDER BY ISD.UR_WAREHOUSE_ID DESC, ISD.DISTRIBUTION_PERIOD DESC
+			    LIMIT 1
+		        ) AS LIM_OUT
+		     , ITEM.DISTRIBUTION_PERIOD AS LIF_DAY
+		     , CASE WHEN ITEM.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.FROZEN' THEN '1'
+		            WHEN ITEM.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.ORDINARY' THEN '2'
+			        WHEN ITEM.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.COOL' THEN '8'
+			        ELSE '2' END TMP_VAL		/* 실온, 기타 */
+		     , 'Y' AS UPD_FLG
+             , DATE_FORMAT(TARGET_ITEM.MODIFY_DT, '%Y%m%d%H%i%s') AS UPD_DAT
+             , '' AS ITF_DAT
+             , 'N' AS ITF_FLG
+    	FROM IL_ITEM ITEM
+            INNER JOIN (
+                        SELECT ITEM.IL_ITEM_CD
+							 , GOODS.UR_WAREHOUSE_ID
+  							 , GOODS.CREATE_DT
+                             , GOODS.MODIFY_DT
+	                    FROM IL_ITEM ITEM
+	                        INNER JOIN IL_GOODS GOODS ON ITEM.IL_ITEM_CD = GOODS.IL_ITEM_CD
+	                                AND GOODS.UR_WAREHOUSE_ID = ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_BAEKAM_ID' )
+	                    WHERE (
+								GOODS.MODIFY_DT BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%Y%m%d183001') AND DATE_FORMAT(NOW(), '%Y%m%d183000')
+								OR ITEM.MODIFY_DT BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%Y%m%d183001') AND DATE_FORMAT(NOW(), '%Y%m%d183000')
+								)
+	                    GROUP BY ITEM.IL_ITEM_CD, GOODS.UR_WAREHOUSE_ID
+	                    ) TARGET_ITEM
+	            ON ITEM.IL_ITEM_CD = TARGET_ITEM.IL_ITEM_CD
+	</select>
+</mapper>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.dailygoods.PolicyDailyGoodsPickMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일일배송골라담기설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.14		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.dailygoods.dto.vo.PolicyDailyGoodsPickVo" id="getPolicyDailyGoodsPickMap">
+	    <result column="RNUM" 		property="rnum"/>
+		<result column="GOODS_ID"  property="goodsId"  />
+		<result column="ITEM_CODE"  property="itemCode" />
+		<result column="GOODS_NAME"  property="goodsName" />
+		<result column="GOODS_TP"  property="goodsTp" />
+		<result column="GOODS_TP_NAME"  property="goodsTpName" />
+		<result column="SUPPLIER_ID"  property="supplierId"  />
+		<result column="SUPPLIER_COMPANY_ID"  property="supplierCompanyId"  />
+		<result column="SUPPLIER_NAME"  property="supplierName" />
+		<result column="BRAND_ID"  property="brandId" />
+		<result column="BRAND_NAME"  property="brandName" />
+		<result column="PICKABLE_YN"  property="pickableYn" />
+		<result column="GREEN_JUICE_CLEANSE_OPT_YN"  property="greenJuiceCleanseOptYn" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+
+	<select id="getPolicyDailyGoodsPickList" resultMap="getPolicyDailyGoodsPickMap">
+		/*	PolicyDailyGoodsPick.getPolicyDailyGoodsPickList	*/
+		SELECT
+			G.IL_GOODS_ID AS GOODS_ID
+			, I.IL_ITEM_CD AS ITEM_CODE
+			, G.GOODS_NM AS GOODS_NAME
+			, G.GOODS_TP, FN_COMN_CODE_DIC(GOODS_TP) AS GOODS_TP_NAME
+			, I.UR_SUPPLIER_ID AS SUPPLIER_ID
+			, S.UR_COMPANY_ID AS SUPPLIER_COMPANY_ID
+			, C.COMP_NM AS SUPPLIER_NAME
+			, I.UR_BRAND_ID AS BRAND_ID
+			, B.BRAND_NM AS BRAND_NAME
+			, G.PICKABLE_YN
+			, G.GREEN_JUICE_CLEANSE_OPT_YN
+			, G.CREATE_ID, G.CREATE_DT, G.MODIFY_ID, G.MODIFY_DT
+		FROM IL_GOODS G
+		JOIN IL_ITEM I
+			ON G.IL_ITEM_CD = I.IL_ITEM_CD
+		JOIN UR_SUPPLIER S
+			ON S.UR_SUPPLIER_ID = I.UR_SUPPLIER_ID
+		JOIN UR_COMPANY C
+			ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+		JOIN UR_BRAND B
+			ON B.UR_BRAND_ID = I.UR_BRAND_ID
+		WHERE G.GOODS_TP = 'GOODS_TYPE.DAILY'
+			AND G.GOODS_DAILY_TP = 'GOODS_DAILY_TP.GREENJUICE'
+			AND I.UR_SUPPLIER_ID = #{supplierId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'goodsId')">
+			AND G.IL_GOODS_ID = #{conditionValue}
+			</when>
+		    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'goodsName')">
+			AND G.GOODS_NM like CONCAT(#{conditionValue},'%')
+			</when>
+		</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pickableYn)">
+		AND G.PICKABLE_YN = #{pickableYn}
+		</if>
+		ORDER BY G.IL_GOODS_ID DESC, G.CREATE_DT DESC
+	</select>
+
+	<update id="putPolicyDailyGoodsPick">
+		/*	PolicyDailyGoodsPick.putPolicyDailyGoodsPick	*/
+		UPDATE IL_GOODS
+		SET
+			PICKABLE_YN = #{pickableYn}
+		WHERE IL_GOODS_ID IN
+		<foreach collection="goodsIdList" item="goodsId" index="index" separator="," open="(" close=")">
+			#{goodsId}
+		</foreach>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pickableYn, 'Y')">
+			AND PICKABLE_YN = 'N'
+			</when>
+		    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pickableYn, 'N')">
+			AND PICKABLE_YN = 'Y'
+			</when>
+		</choose>
+			AND GREEN_JUICE_CLEANSE_OPT_YN = 'N'
+	</update>
+
+	<select id="getPolicyDailyGoodsPickListExportExcel" resultMap="getPolicyDailyGoodsPickMap">
+		/*	PolicyDailyGoodsPick.getPolicyDailyGoodsPickListExportExcel	 */
+		SELECT
+			FORMAT(	(ROW_NUMBER () OVER ()), 0) AS RNUM
+			, G.IL_GOODS_ID AS GOODS_ID
+			, I.IL_ITEM_CD AS ITEM_CODE
+			, G.GOODS_NM AS GOODS_NAME
+			, G.GOODS_TP, FN_COMN_CODE_DIC(GOODS_TP) AS GOODS_TP_NAME
+			, I.UR_SUPPLIER_ID AS SUPPLIER_ID
+			, S.UR_COMPANY_ID AS SUPPLIER_COMPANY_ID
+			, C.COMP_NM AS SUPPLIER_NAME
+			, I.UR_BRAND_ID AS BRAND_ID
+			, B.BRAND_NM AS BRAND_NAME
+			, G.PICKABLE_YN
+			, G.CREATE_ID, G.CREATE_DT, G.MODIFY_ID, G.MODIFY_DT
+		FROM IL_GOODS G
+		JOIN IL_ITEM I
+			ON G.IL_ITEM_CD = I.IL_ITEM_CD
+		JOIN UR_SUPPLIER S
+			ON S.UR_SUPPLIER_ID = I.UR_SUPPLIER_ID
+		JOIN UR_COMPANY C
+			ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+		JOIN UR_BRAND B
+			ON B.UR_BRAND_ID = I.UR_BRAND_ID
+		WHERE G.GOODS_TP = 'GOODS_TYPE.DAILY'
+			AND G.GOODS_DAILY_TP = 'GOODS_DAILY_TP.GREENJUICE'
+			AND I.UR_SUPPLIER_ID = #{supplierId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'goodsId')">
+			AND G.IL_GOODS_ID = #{conditionValue}
+			</when>
+		    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'goodsName')">
+			AND G.GOODS_NM like CONCAT(#{conditionValue},'%')
+			</when>
+		</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pickableYn)">
+		AND G.PICKABLE_YN = #{pickableYn}
+		</if>
+		ORDER BY G.IL_GOODS_ID DESC, G.CREATE_DT DESC
+	</select>
+
+
+</mapper>

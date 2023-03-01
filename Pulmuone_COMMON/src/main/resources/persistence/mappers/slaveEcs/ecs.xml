@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.slaveEcs.EcsMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: ECS 연동 문의 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.11		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addQnaToEcs">
+	    /*	ecs.addQnaToEcs	*/
+	    INSERT INTO TBITF_VOICE_IF(
+				RECEIPT_ROOT,
+				BOARD_DIV,
+				BOARD_SEQ,
+				CUSTOMER_NUM,
+				CUSTOMER_NAME,
+				CUSTOMER_PHONEAREA,
+				CUSTOMER_PHONEFIRST,
+				CUSTOMER_PHONESECOND,
+				CUSTOMER_EMAIL,
+				HD_BCODE,
+				HD_SCODE,
+				CLAIM_GUBUN,
+				COUNSEL_DESC,
+				RECEIPT_DATE,
+				PRCS_YN,
+				SEQ,
+				SEC_CODE
+			) VALUES (
+				#{receiptRoot},
+				#{boardDiv},
+				#{boardSeq},
+				#{customerNum},
+				#{customerName},
+				#{customerPhonearea},
+				#{customerPhonefirst},
+				#{customerPhonesecond},
+				#{customerEmail},
+				#{hdBcode},
+				#{hdScode},
+				#{claimGubun},
+				#{counselDesc},
+				TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS'),
+				'N',
+				ECS_NEW.SEQ_IFVOC.NEXTVAL,
+				#{secCode}
+			)
+    </insert>
+
+
+    <update id="putQnaToEcs">
+		/*	ecs.putQnaToEcs	*/
+		UPDATE TBITF_VOICE_IF SET
+			PRCS_YN = 'N'
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(counselDesc)">
+			,COUNSEL_DESC = #{counselDesc}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(hdBcode)">
+			,HD_BCODE = #{hdBcode}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(hdScode)">
+			,HD_SCODE = #{hdScode}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(claimGubun)">
+			,CLAIM_GUBUN = #{claimGubun}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reply)">
+			,REPLY = #{reply}
+			,MODIFY_DATE=TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(counseler)">
+			,COUNSELER = #{counseler}
+			</if>
+		WHERE
+			BOARD_SEQ = #{boardSeq}
+			AND RECEIPT_ROOT =#{receiptRoot}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: ECS 연동 문의-답변 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.13		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addQnaAnswerToEcs">
+	    /*	ecs.addQnaAnswerToEcs	*/
+	    INSERT INTO TBITF_VOICE_IF(
+				RECEIPT_ROOT,
+				BOARD_DIV,
+				BOARD_SEQ,
+				CUSTOMER_NUM,
+				CUSTOMER_NAME,
+				CUSTOMER_PHONEAREA,
+				CUSTOMER_PHONEFIRST,
+				CUSTOMER_PHONESECOND,
+				CUSTOMER_EMAIL,
+				HD_BCODE,
+				HD_SCODE,
+				CLAIM_GUBUN,
+				COUNSEL_DESC,
+	        	REPLY,
+	            COUNSELER,
+				RECEIPT_DATE,
+				PRCS_YN,
+				SEQ,
+				SEC_CODE
+			) VALUES (
+				#{receiptRoot},
+				#{boardDiv},
+				#{boardSeq},
+				#{customerNum},
+				#{customerName},
+				#{customerPhonearea},
+				#{customerPhonefirst},
+				#{customerPhonesecond},
+				#{customerEmail},
+				#{hdBcode},
+				#{hdScode},
+				#{claimGubun},
+				#{counselDesc},
+				#{reply},
+				#{counseler},
+				TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS'),
+				'N',
+				ECS_NEW.SEQ_IFVOC.NEXTVAL,
+				#{secCode}
+			)
+    </insert>
+
+</mapper>
+

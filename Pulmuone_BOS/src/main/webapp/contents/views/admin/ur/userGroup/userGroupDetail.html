@@ -1,0 +1,239 @@
+<div class="wrap-location">
+	 <h1 class="title"></h1>
+</div>
+
+<div class="fb__sect" >
+    <form id="topForm" name="topForm">
+		<input type="hidden" id="urGroupMasterId" name="urGroupMasterId" >
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width:12.5%">
+                <col style="width:12.5%">
+				<col style="width:12.5%">
+				<col style="width:12.5%">
+				<col style="width:12.5%">
+				<col style="width:12.5%">
+				<col style="width:12.5%">
+				<col style="width:12.5%">
+            </colgroup>
+            <tbody>
+            	<tr>
+                    <th scope="row" style="text-align: center;"><label>그룹명</label></th>
+                    <td style="text-align: center;">
+						<label id="groupMasterName"></label>
+                    </td>
+					<th scope="row" style="text-align: center;"><label for="calculatePeriod">등급 산정 기간</label></th>
+					<td style="text-align: center;">
+						<label id="calculatePeriod"></label>
+					</td>
+					<th scope="row" style="text-align: center;"><label for="startDate">적용 시작일</label></th>
+					<td style="text-align: center;">
+						<label id="startDate"></label>
+					</td>
+					<th scope="row" style="text-align: center;"><label for="endDate">적용 종료일</label></th>
+					<td style="text-align: center;">
+						<label id="endDate"></label>
+					</td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
+
+<br/>
+<!-- 그리드 영역  -->
+<div class="fb__sect grid-sect">
+
+    <div class="wrap-tit case3">
+        <div class="ea-title">
+            <h3>▶회원등급 설정</h3>
+        </div>
+
+        <div class="btn-area">
+             <button id="fnNew" class="btn-point btn-m" type="button" onclick="$scope.fnNew()">등급 추가</button>
+        </div>
+    </div>
+
+    <!-- 켄도그리드 -->
+    <div id="aGrid"></div>
+
+    <!-- 저장 & 뒤로가기 버튼 -->
+    <div class="btn-area">
+        <button id="fnBack" class="btn-white btn-l" onclick="$scope.fnBack()" style="width: 100px" >뒤로</button>
+    </div>
+</div>
+
+
+<div id="kendoPopup" style="display:none">
+	<div id="contents" class="pop-contents">
+		<form id="popInputForm" name="popInputForm" method="post" enctype="multipart/form-data" >
+			<table class="datatable v-type">
+			<colgroup>
+				<col style="width:15%;">
+				<col style="">
+				<col style="width:15%;">
+				<col style="">
+			</colgroup>
+			<tbody>
+ 				<tr>
+					<th scope="row"><label class="req-star-front" for="groupName">등급명</label></th>
+					<td>
+						<div class="complex-condition" style="width:100%">
+							<input id=groupName name="groupName" class="comm-input" type="text" maxlength="10" required>
+						</div>
+					</td>
+					<th scope="row">
+						<label class="req-star-front" for="groupLevelType">회원레벨</label>
+					</th>
+					<td>
+						<div class="complex-condition">
+							<input type="text" id="groupLevelType" name="groupLevelType" class="fb__custom__select left-input" style="width: 100%;">
+							<font style="color:blue">* 레벨의 숫자가 낮을 수록 높은 등급으로 분류(level 01~10)</font>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label class="req-star-front" for="topImageFile" >등급아이콘 (상단)</label></th>
+					<td>
+						<div class="complex-condition">
+							<input type="file" id="topImageFile" name="topImageFile" accept="image/jpg, image/jpeg, image/png">
+							<div class="topImageFile fileText" style="word-break:break-all;"></div>
+						</div>
+						<font style="color:blue">* png. Jpg, jpeg만 등록가능. 200kb 이하</font>
+						<!-- <div id="noticeBelow1ImageContainer" style="display: flex; flex-wrap: wrap; justify-content: left;" data-template="noticeBelow1Image-row-template" data-bind="source: noticeBelow1ImageList"></div> -->
+					</td>
+					<th scope="row"><label class="req-star-front" for="listImageFile" >등급아이콘(리스트)</label></th>
+					<td>
+						<div class="complex-condition">
+							<input type="file" id="listImageFile" name="listImageFile" accept="image/jpg, image/jpeg, image/png" >
+							<div class="listImageFile fileText" style="word-break:break-all;"></div>
+						</div>
+						<font style="color:blue">* png. Jpg, jpeg만 등록가능. 200kb 이하</font>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label class="req-star-front" for="purchaseAmountFrom" >매출액 조건</label></th>
+					<td>
+						<div class="complex-condition" style="width:100%">
+							<input type="text" id="purchaseAmountFrom" name="purchaseAmountFrom" style="width:130px" required>&nbsp;&nbsp;원 이상
+						</div>
+					</td>
+					<th scope="row"><label class="req-star-front" for="purchaseCountFrom" >구매건 수 조건</label></th>
+					<td>
+						<div class="complex-condition" style="width:100%">
+							<input type="text" id="purchaseCountFrom" name="purchaseCountFrom" style="width:130px" required>&nbsp;&nbsp;건 이상
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="itemCoupon" >등급쿠폰 지급설정<br/><font color="blue">(매월 1일 지급)</font></label></th>
+					<td colspan="3">
+						<div class="complex-condition" style="width:100%">
+							<input id="itemCoupon" class="comm-input pr--default" type="text" style="width: 50%" data-bind="value: selectedCouponId">
+							<button id="fnAddItemCoupon" type="button" class="btn-point btn-s" data-bind="click: fnAddItemCoupon">추가</button>
+						</div>
+						<br/>
+						<table class="datatable v-typea datatable-inner" >
+							<colgroup>
+								<col style="width:15%;">
+								<col style="">
+								<col style="width:20%;">
+								<col style="width:15%;">
+							</colgroup>
+							<tr>
+								<th>쿠폰코드</th>
+								<th>쿠폰명</th>
+								<th>사용기간</th>
+								<th>관리</th>
+							</tr>
+							<tbody data-template="itemCoupon-row-template" data-bind="source: itemCouponList">
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="itemPoint" >적립금 지급설정<br/></label></th>
+					<td colspan="3">
+						<div class="complex-condition" style="width:100%">
+							<input id="itemPoint" class="comm-input pr--default" type="text" style="width: 50%" data-bind="value: selectedPointId" >
+							<button id="fnAddItemPoint" type="button" class="btn-point btn-s" data-bind="click: fnAddItemPoint" >추가</button>
+						</div>
+						<br/>
+						<table class="datatable" >
+							<colgroup>
+								<col style="width:15%;">
+								<col style="">
+								<col style="width:20%;">
+								<col style="width:20%;">
+								<col style="width:15%;">
+							</colgroup>
+							<tr>
+								<th>적립금 설정</th>
+								<th>적립금 명</th>
+								<th>적립금액</th>
+								<th>사용기간</th>
+								<th>관리</th>
+							</tr>
+							<tbody data-template="itemPoint-row-template" data-bind="source: itemPointList" >
+						</table>
+					</td>
+				</tr>
+			</tbody>
+			</table>
+			<input type="hidden" id="urGroupId" name="urGroupId" >
+		</form>
+		<div class="btn-area">
+			<button id="fnConfirm" type="button" class="set-btn-type5" onclick="$scope.fnClose()">확인</button>
+			<button id="fnPopSave"	class="btn-point btn-l" type="button" onclick="$scope.fnPopSave()" >저장</button>
+			<button id="fnClose" type="button"	class="set-btn-type5" onclick="$scope.fnClose()">취소</button>
+		</div>
+	</div>
+</div>
+
+<!-- Kendo Template 사용시 CSS 관련 주의사항 --> <!-- (1) 인라인 style=(key):(value); ... 에서 : 뒤에 공백 없어야 함 --> <!-- (2) \#e5e5e5 와 같이 # 앞에 escep 처리해야 함 -->
+<!-- 쿠폰 상세 항목 template -->
+<script id="itemCoupon-row-template" type="text/x-kendo-template">
+ 	<tr>
+        <td style="text-align:center;width:15%;border-right: 1px solid \#e5e5e5;">
+            <span data-bind="text: pmCouponId"></span>  <!-- 쿠폰 코드 -->
+        </td>
+        <td style="text-align:center;;border-right: 1px solid \#e5e5e5;">
+            <span data-bind="text: couponName"></span>  <!-- 쿠폰 이름 -->
+        </td>
+        <td style="text-align:center;width:20%;;border-right: 1px solid \#e5e5e5;">
+            <span data-bind="text: validityDate"></span>  <!-사용기간 -->
+        </td>
+        <td style="text-align:center;width:15%;;border-right: 1px solid \#e5e5e5;">
+            <span style="float:center;">        <!-- 삭제 버튼 -->
+                <button id="btnRemoveItemCoupon" data-bind="click: fnRemoveItemCoupon" type="button" class="btn-red btn-s">삭제</button>
+            </span>
+        </td>
+		<td style="display:none;">
+            <span data-bind="text: userGroupBenefitId"></span>  <!-- 쿠폰 혜택 SEQ -->
+        </td>
+    </tr>
+</script>
+<!-- 적립금 상세 항목 template -->
+<script id="itemPoint-row-template" type="text/x-kendo-template" >
+ 	<tr>
+        <td style="text-align:center;width:15%;" hidden="hidden">
+            <span data-bind="text: pmPointId"></span>  <!-- 적립금 PK -->
+        </td>
+		<td style="text-align:center;width:15%;">
+			<span data-bind="text: pointDetailTypeName"></span>  <!-- 적립금설정 -->
+		</td>
+        <td style="text-align:center;">
+            <span data-bind="text: pointName"></span>  <!-- 적립금 이름 -->
+        </td>
+        <td style="text-align:center;width:20%;">
+            <span data-bind="text: issueValue"></span>  <!-적립금액 -->
+        </td>
+        <td style="text-align:center;width:20%;">
+            <span data-bind="text: validityDate"></span>  <!-사용기간 -->
+        </td>
+        <td style="text-align:center;width:15%;">
+            <span style="float:center;">        <!-- 삭제 버튼 -->
+                <button id="btnRemoveItemPoint" data-bind="click: fnRemoveItemPoint" type="button" class="btn-red btn-s">삭제</button>
+            </span>
+        </td>
+    </tr>
+</script>

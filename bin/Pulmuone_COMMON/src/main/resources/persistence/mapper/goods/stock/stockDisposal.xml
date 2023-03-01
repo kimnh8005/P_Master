@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.GoodsStockDisposalMapper">
+
+    <resultMap type="kr.co.pulmuone.v1.goods.stock.dto.vo.GoodsStockDisposalResultVo" id="goodsStockDisposalMap">
+        <result column="RANKING" property="ranking"/>
+        <result column="SUPPLIER_NM" property="supplierName"/>
+        <result column="IL_ITEM_CD" property="ilItemCd"/>
+        <result column="ITEM_BARCODE" property="itemBarcode"/>
+        <result column="GOODS_TP" property="goodsTp"/>
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="SALE_STATUS" property="saleStatus"/>
+        <result column="DISPOSAL_GOODS_ID" property="disposalGoodsId"/>
+        <result column="DISPOSAL_SALE_STATUS" property="disposalSaleStatus"/>
+        <result column="ITEM_NM" property="itemNm"/>
+        <result column="STOCK_TP" property="stockTp"/>
+        <result column="EXPIRATION_DT" property="expirationDt"/>
+        <result column="LEFT_DAYS" property="leftDays"/>
+        <result column="DISPOSAL_LEFT_DAYS" property="disposalLeftDays"/>
+        <result column="STOCK_QTY" property="stockQty"/>
+    </resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 유통기한별 재고 리스트 조회
+     * @
+     * @ 수정일       수정자   수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.24   최윤석   최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsStockDisposalList" resultMap="goodsStockDisposalMap">
+        /* stockDisposal.getGoodsStockDisposalList */
+        SELECT
+            DENSE_RANK() OVER(ORDER BY IL_ITEM_CD, ITEM_BARCODE DESC) AS RANKING
+            , UC.COMP_NM AS SUPPLIER_NM
+            , II.IL_ITEM_CD
+            , IFNULL(II.ITEM_BARCODE, '') AS ITEM_BARCODE
+            , IFNULL(IG.GOODS_TP, '') AS GOODS_TP
+            , IFNULL(IG.IL_GOODS_ID, '') AS IL_GOODS_ID
+            , IFNULL(IG.SALE_STATUS, '') AS SALE_STATUS
+            , IFNULL(DG.IL_GOODS_ID, '') AS DISPOSAL_GOODS_ID
+            , IFNULL(DG.SALE_STATUS, '') AS DISPOSAL_SALE_STATUS
+            , II.ITEM_NM
+            , IISE.STOCK_TP
+            , IISE.EXPIRATION_DT
+            , DATEDIFF(IISE.EXPIRATION_DT, CURDATE()) AS LEFT_DAYS
+            , IISE.DISPOSAL_LEFT_DAYS /* 폐기예정 전환잔여일 */
+            , SUM(IISE.STOCK_QTY) AS STOCK_QTY
+        FROM
+            IL_ITEM_STOCK_EXPR IISE
+        INNER JOIN IL_ITEM_WAREHOUSE IIW
+            ON IIW.IL_ITEM_WAREHOUSE_ID = IISE.IL_ITEM_WAREHOUSE_ID
+        INNER JOIN IL_ITEM II
+            ON II.IL_ITEM_CD = IIW.IL_ITEM_CD
+        INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+            ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+        INNER JOIN UR_SUPPLIER US
+            ON US.UR_SUPPLIER_ID = USW.UR_SUPPLIER_ID
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+                AND US.UR_SUPPLIER_ID = #{urSupplierId}
+            </if>
+        INNER JOIN UR_WAREHOUSE UW
+            ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+            AND UW.STOCK_ORDER_YN = 'Y'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+                AND UW.UR_WAREHOUSE_ID = #{urWarehouseId}
+            </if>
+        INNER JOIN UR_COMPANY UC
+            ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+        LEFT JOIN (
+            SELECT
+            I.*
+            FROM (
+                SELECT
+                    IL_GOODS_ID
+                    , UR_WAREHOUSE_ID
+                    , IL_ITEM_CD
+                    , SALE_STATUS
+                    , GOODS_TP
+                    , CASE
+                    WHEN GOODS_TP = 'GOODS_TYPE.NORMAL' THEN 1
+                    WHEN GOODS_TP = 'GOODS_TYPE.GIFT' THEN 2
+                    WHEN GOODS_TP = 'GOODS_TYPE.ADDITIONAL' THEN 3
+                    WHEN GOODS_TP = 'GOODS_TYPE.GIFT_FOOD_MARKETING' THEN 4
+                    ELSE 5
+                    END AS SORT
+                FROM
+                    IL_GOODS
+                WHERE
+                    GOODS_TP IN ('GOODS_TYPE.NORMAL','GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                ORDER BY
+                     SORT
+				LIMIT 999999999999999999
+            )I
+			GROUP BY I.IL_ITEM_CD, I.UR_WAREHOUSE_ID
+		) IG
+			ON IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+			AND IG.IL_ITEM_CD = II.IL_ITEM_CD
+        LEFT JOIN (
+            SELECT
+                IL_GOODS_ID
+                , UR_WAREHOUSE_ID
+                , IL_ITEM_CD
+                , SALE_STATUS
+                , GOODS_TP
+            FROM
+                IL_GOODS
+            WHERE
+                GOODS_TP = 'GOODS_TYPE.DISPOSAL'
+			GROUP BY IL_ITEM_CD, UR_WAREHOUSE_ID
+		) DG
+			ON DG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+			AND DG.IL_ITEM_CD = II.IL_ITEM_CD
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchBaseDt)">
+                AND IISE.BASE_DT = #{searchBaseDt}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stockExprTp)">
+                AND IISE.STOCK_TP IN
+                <foreach item="data" index="index" collection="stockExprTpList" open="(" separator="," close=")">
+                    #{data}
+                </foreach>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(stockExprTp)">
+                AND 1 = 2   -- 재고 파기 타입 없을경우 조회 되지 않도록 수정
+            </if>
+        </where>
+        GROUP BY
+        IIW.IL_ITEM_WAREHOUSE_ID, IISE.EXPIRATION_DT
+        ORDER BY
+        IIW.IL_ITEM_CD, IISE.EXPIRATION_DT
+    </select>
+
+</mapper>

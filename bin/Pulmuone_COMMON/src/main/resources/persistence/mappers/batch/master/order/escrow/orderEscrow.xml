@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.escrow.OrderEscrowBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 에스크로 배송등록 대상 조회
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.24     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.order.escrow.dto.EscrowRegistDeliveryDto" id="getTagetEscrowRegistDeliveryResultMap">
+        <result column="OD_PAYMENT_MASTER_ID"       property="odPaymentMasterId" />
+        <result column="PG_SERVICE"                 property="pgService" />
+        <result column="ODID"                       property="odid"  />
+        <result column="OD_ORDER_ID"                property="odOrderId" />
+        <result column="OD_ORDER_DETL_ID"           property="odOrderDetlId"  />
+        <result column="TID"                        property="tid" />
+        <result column="PAID_PRICE"                 property="paymentPrice"  />
+        <result column="TRACKING_NO"                property="trackingNo" />
+        <result column="REGIST_USER_NAME"           property="registTrakingNoUserName"  />
+        <result column="SHIPPING_COMP_NM"           property="shippingCompanyName"  />
+        <result column="INICIS_SHIPPING_COMP_CD"    property="inicisSshippingCompanyCode" />
+        <result column="CREATE_DT"                  property="registTrackingNoDate"  />
+        <result column="RECV_NM"                    property="receiverName" />
+        <result column="RECV_HP"                    property="receiverMobile"  />
+        <result column="RECV_ZIP_CD"                property="receiverZipCode" />
+        <result column="RECV_ADDR1"                 property="receiverAddress1"  />
+    </resultMap>
+    <select id="getTagetEscrowRegistDelivery" resultMap="getTagetEscrowRegistDeliveryResultMap">
+        /* orderEscrow.getTagetEscrowRegistDelivery */
+        SELECT
+		    OPM.OD_PAYMENT_MASTER_ID
+		    ,OPM.PG_SERVICE
+		    ,OO.ODID
+		    ,OO.OD_ORDER_ID
+		    ,OOD.OD_ORDER_DETL_ID
+		    ,OPM.TID
+		    ,OP.PAID_PRICE
+		    ,OTN.TRACKING_NO
+		    ,CASE WHEN UU.USER_NM IS NOT NULL THEN FN_DECRYPT(UU.USER_NM)
+		          ELSE '시스템'
+		          END AS REGIST_USER_NAME
+		    ,PSC.SHIPPING_COMP_NM
+		    ,PSC.INICIS_SHIPPING_COMP_CD
+		    ,OTN.CREATE_DT
+		    ,OSZ.RECV_NM
+		    ,OSZ.RECV_HP
+		    ,OSZ.RECV_ZIP_CD
+		    ,OSZ.RECV_ADDR1
+		FROM
+		    OD_PAYMENT OP
+		    JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID
+		    JOIN OD_ORDER OO ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+		    JOIN OD_ORDER_DETL OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+		    JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID
+		    JOIN OD_SHIPPING_ZONE OSZ ON OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+		    JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+		    LEFT JOIN UR_USER UU ON OTN.CREATE_ID = UU.UR_USER_ID
+		WHERE
+		    OPM.ESCROW_YN = 'Y'
+		    AND OPM.ESCROW_CONNECT_YN != 'Y'
+		GROUP BY OPM.OD_PAYMENT_MASTER_ID
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 에스크로 통신완료 상태값 업데이트
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.24     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putEscrowConnectSuccess" >
+        /* orderEscrow.putEscrowConnectSuccess */
+        UPDATE
+            OD_PAYMENT_MASTER
+        SET
+            ESCROW_CONNECT_YN = 'Y'
+        WHERE
+            OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+    </update>
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 사업자정보관리 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.13     손진구          최초생성
+     * @ 2020.10.26     손진구          NEW구조변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getBizInfoForOrderEscrowResultMap" type="kr.co.pulmuone.v1.user.company.dto.vo.BusinessInformationVo">
+        <result column="HEADQUARTERS_ID"  property="headquartersId"/>
+        <result column="COMPANY_ID"  property="companyId"/>
+        <result column="COMPANY_TYPE"  property="companyType"/>
+        <result column="BUSINESS_NAME"  property="businessName"/>
+        <result column="COMPANY_CEO_NAME"  property="companyCeoName"/>
+        <result column="BUSINESS_NUMBER"  property="businessNumber"/>
+        <result column="REPRESENTATIVE_EMAIL_INFORMATION"  property="representativeEmailInformation"/>
+        <result column="ZIP_CODE"  property="zipCode"/>
+        <result column="ADDRESS"  property="address"/>
+        <result column="DETAIL_ADDRESS"  property="detailAddress"/>
+        <result column="CORPORATION_NUMBER"  property="corporationNumber"/>
+        <result column="MAIL_ORDER_NUMBER"  property="mailOrderNumber"/>
+        <result column="HOSTING_PROVIDER"  property="hostingProvider"/>
+        <result column="HEALTH_FUNCT_FOOD_REPORT"  property="healthFunctFoodReport"/>
+        <result column="SERVICE_CENTER_PHONE_NUMBER"  property="serviceCenterPhoneNumber"/>
+        <result column="SERVICE_CENTER_OPERATOR_OPEN_TIME"  property="serviceCenterOperatorOpenTime"/>
+        <result column="SERVICE_CENTER_OPERATOR_CLOSE_TIME"  property="serviceCenterOperatorCloseTime"/>
+        <result column="SERVICE_CENTER_LUNCH_TIME_START"  property="serviceCenterLunchTimeStart"/>
+        <result column="SERVICE_CENTER_LUNCH_TIME_END"  property="serviceCenterLunchTimeEnd"/>
+        <result column="LUNCH_TIME_YN"  property="lunchTimeYn"/>
+        <result column="ESCROW_CERTIFICATION_INFORMATION"  property="escrowCertificationInformation"/>
+        <result column="ESCROW_DESCRIPTION"  property="escrowDescription"/>
+        <result column="ESCROW_SUBSCRIPTION_URL"  property="escrowSubscriptionUrl"/>
+    </resultMap>
+    <select id="getBizInfoForOrderEscrow" resultMap="getBizInfoForOrderEscrowResultMap">
+        /* orderEscrow.getBizInfoForOrderEscrow */
+        SELECT H.UR_HEADQUARTERS_ID AS HEADQUARTERS_ID /* 본사ID */
+             , H.UR_COMPANY_ID AS COMPANY_ID /* 회사ID */
+             , C.COMP_TP AS COMPANY_TYPE /* 회사구분 */
+             , C.COMP_NM AS BUSINESS_NAME /* 회사명 */
+             , C.COMP_CEO_NM AS COMPANY_CEO_NAME /* 대표자명 */
+             , C.BIZ_REG_NUM AS BUSINESS_NUMBER /* 사업자등록번호 */
+             , C.COMP_MAIL AS REPRESENTATIVE_EMAIL_INFORMATION /* 메일주소 */
+             , C.ZIP_CD AS ZIP_CODE /* 우편번호 */
+             , C.ADDRESS1 AS ADDRESS /* 주소 */
+             , C.ADDRESS2 AS DETAIL_ADDRESS /* 상세주소 */
+             , H.CORP_NUM AS CORPORATION_NUMBER /* 법인번호 */
+             , H.MAIL_ORDER_NUM AS MAIL_ORDER_NUMBER /* 통신판매업 번호 */
+             , H.HOSTING_COMPANY AS HOSTING_PROVIDER /* 호스팅 제공자 */
+             , H.HLTH_FNCTN_FOOD_NUM AS HEALTH_FUNCT_FOOD_REPORT /* 건강기능식품 신고 */
+             , H.CSTMR_SRVC_TEL AS SERVICE_CENTER_PHONE_NUMBER /* 고객센터 전화번호 */
+             , H.SECURITY_DIRECTOR /* 개인정보보호책임자 */
+             , DATE_FORMAT(H.CSTMR_SRVC_OPEN_TIME, '%H:%i') AS SERVICE_CENTER_OPERATOR_OPEN_TIME /* 고객센터 운영 시작시간 */
+             , DATE_FORMAT(H.CSTMR_SRVC_CLOSE_TIME, '%H:%i') AS SERVICE_CENTER_OPERATOR_CLOSE_TIME /* 고객센터 운영 종료시간 */
+             , DATE_FORMAT(H.CSTMR_SRVC_LUNCHTIME_START, '%H:%i') AS SERVICE_CENTER_LUNCH_TIME_START /* 고객센터 점심 시작시간 */
+             , DATE_FORMAT(H.CSTMR_SRVC_LUNCHTIME_END, '%H:%i') AS SERVICE_CENTER_LUNCH_TIME_END /* 고객센터 점심 종료시간 */
+             , H.CSTMR_SRVC_LUNCHTIME_YN AS LUNCH_TIME_YN /* 고객센터 점심시간 사용YN */
+             , H.ESCROW_ORIGIN_FILE_NM AS ESCROW_CERTIFICATION_INFORMATION /* 에스크로 인증정보 원본파일명 */
+             , H.ESCROW_EXPLN AS ESCROW_DESCRIPTION /* 에스크로 설명 */
+             , H.ESCROW_URL AS ESCROW_SUBSCRIPTION_URL /* 에스크로 가입 URL */
+          FROM UR_HEADQUARTERS H
+          JOIN UR_COMPANY C
+            ON C.UR_COMPANY_ID = H.UR_COMPANY_ID
+           AND C.USE_YN = 'Y'
+         LIMIT 1
+    </select>
+
+</mapper>

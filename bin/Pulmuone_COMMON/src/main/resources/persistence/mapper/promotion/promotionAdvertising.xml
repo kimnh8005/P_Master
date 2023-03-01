@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.advertising.PromotionAdvertisingMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부광고코드 목록조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.03      이원호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getAdvertisingExternalResultMap" type="kr.co.pulmuone.v1.promotion.advertising.dto.vo.AdvertisingExternalVo">
+		<result column="PM_AD_EXTERNAL_CD" property="pmAdExternalCd" />
+		<result column="AD_NM" property="advertisingName" />
+		<result column="SOURCE" property="source" />
+		<result column="MEDIUM" property="medium" />
+		<result column="CAMPAIGN" property="campaign" />
+		<result column="CONTENT" property="content" />
+		<result column="TERM" property="term" />
+		<result column="REDIRECT_URL" property="redirectUrl" />
+		<result column="USE_YN" property="useYn" />
+		<result column="CREATE_LOGIN_ID" property="createLoginId" />
+		<result column="CREATE_NM" property="createName" />
+		<result column="CREATE_DT" property="createDateTime" />
+		<result column="MODIFY_LOGIN_ID" property="modifyLoginId" />
+		<result column="MODIFY_NM" property="modifyName" />
+		<result column="MODIFY_DT" property="modifyDateTime" />
+	</resultMap>
+
+	<select id="getAdvertisingExternalList" resultMap="getAdvertisingExternalResultMap">
+		/*	promotionAdvertising.getAdvertisingExternalList	*/
+		SELECT PAE.PM_AD_EXTERNAL_CD,
+			PAE.AD_NM,
+			PAE.SOURCE,
+			PAE.MEDIUM,
+			PAE.CAMPAIGN,
+			PAE.CONTENT,
+			PAE.TERM,
+			PAE.REDIRECT_URL,
+			PAE.USE_YN,
+			PAE.CREATE_DT,
+			UUC.LOGIN_ID AS CREATE_LOGIN_ID,
+			FN_DECRYPT(UUC.USER_NM) AS CREATE_NM,
+			PAE.MODIFY_DT,
+			UUM.LOGIN_ID AS MODIFY_LOGIN_ID,
+			FN_DECRYPT(UUM.USER_NM) AS MODIFY_NM
+		FROM PM_AD_EXTERNAL PAE
+			LEFT OUTER JOIN UR_USER UUC ON PAE.CREATE_ID = UUC.UR_USER_ID
+			LEFT OUTER JOIN UR_USER UUM ON PAE.MODIFY_ID = UUM.UR_USER_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(advertisingName) ">
+			AND PAE.AD_NM = #{advertisingName}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmAdExternalCd) ">
+			AND PAE.PM_AD_EXTERNAL_CD = #{pmAdExternalCd}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(source) ">
+			AND PAE.SOURCE = #{source}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(medium) ">
+			AND PAE.MEDIUM = #{medium}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(campaign) ">
+			AND PAE.CAMPAIGN = #{campaign}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(content) ">
+			AND PAE.CONTENT = #{content}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(term) ">
+			AND PAE.TERM = #{term}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createStartDate) ">
+			AND PAE.CREATE_DT BETWEEN CONCAT(#{createStartDate}, ' 00:00:00')  AND CONCAT(#{createEndDate}, ' 23:59:59')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(modifyStartDate) ">
+			AND (PAE.MODIFY_DT IS NULL OR PAE.MODIFY_DT BETWEEN CONCAT(#{modifyStartDate}, ' 00:00:00')  AND CONCAT(#{modifyEndDate}, ' 23:59:59'))
+		</if>
+		<if test="useYnList !=null and useYnList.size != 0">
+			AND PAE.USE_YN IN
+			<foreach collection="useYnList" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchText) ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'USER_NAME') ">
+				AND (FN_DECRYPT(UUC.USER_NM) = #{searchText} OR FN_DECRYPT(UUM.USER_NM) = #{searchText})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'USER_ID') ">
+				AND (UUC.LOGIN_ID = #{searchText} OR UUM.LOGIN_ID = #{searchText})
+			</if>
+		</if>
+		ORDER BY PAE.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부광고코드 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.03      이원호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getAdvertisingExternal" resultMap="getAdvertisingExternalResultMap">
+		/*	promotionAdvertising.getAdvertisingExternal	*/
+		SELECT PAE.PM_AD_EXTERNAL_CD,
+			PAE.AD_NM,
+			PAE.SOURCE,
+			PAE.MEDIUM,
+			PAE.CAMPAIGN,
+			PAE.CONTENT,
+			PAE.TERM,
+			PAE.REDIRECT_URL,
+			PAE.USE_YN,
+			PAE.CREATE_DT,
+			PAE.CREATE_ID,
+			FN_DECRYPT(UUC.USER_NM) AS CREATE_NM,
+			PAE.MODIFY_DT,
+			PAE.MODIFY_ID,
+			FN_DECRYPT(UUM.USER_NM) AS MODIFY_NM
+		FROM PM_AD_EXTERNAL PAE
+			LEFT OUTER JOIN UR_USER UUC ON PAE.CREATE_ID = UUC.UR_USER_ID
+			LEFT OUTER JOIN UR_USER UUM ON PAE.MODIFY_ID = UUM.UR_USER_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmAdExternalCd) ">
+			AND PAE.PM_AD_EXTERNAL_CD = #{pmAdExternalCd}
+		</if>
+		<if test="pmAdExternalCdList !=null and pmAdExternalCdList.size != 0">
+			AND PAE.PM_AD_EXTERNAL_CD IN
+			<foreach collection="pmAdExternalCdList" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부광고코드 추가
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.04		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addAdvertisingExternal">
+		/* promotionAdvertising.addAdvertisingExternal */
+		INSERT INTO PM_AD_EXTERNAL(
+			PM_AD_EXTERNAL_CD,
+			AD_NM,
+			SOURCE,
+			MEDIUM,
+			CAMPAIGN,
+			CONTENT,
+			TERM,
+			REDIRECT_URL,
+			USE_YN,
+			CREATE_ID
+		) VALUES
+		<foreach collection="dtoList" item="item" index="index" open="" separator="," close="">
+			(
+			#{item.pmAdExternalCd}
+			, #{item.advertisingName}
+			, #{item.source}
+			, #{item.medium}
+			, #{item.campaign}
+			, #{item.content}
+			, #{item.term}
+			, #{item.redirectUrl}
+			, #{item.useYn}
+			, #{item.userId}
+			)
+		</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부광고코드 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.04		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putAdvertisingExternal">
+		/* promotionAdvertising.putAdvertisingExternal */
+		<foreach collection="dtoList" item="item" separator=";">
+			UPDATE PM_AD_EXTERNAL
+			SET REDIRECT_URL=#{item.redirectUrl}
+				, USE_YN=#{item.useYn}
+				, MODIFY_DT=NOW()
+				, MODIFY_ID=#{item.userId}
+			WHERE PM_AD_EXTERNAL_CD = #{item.pmAdExternalCd}
+		</foreach>
+		;
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부광고코드 유형 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.04      이원호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCommonCodeMap" type="kr.co.pulmuone.v1.base.dto.vo.GetCodeListResultVo">
+		<result column="CODE" property="code" />
+		<result column="NAME" property="name" />
+	</resultMap>
+	<select id="getAdvertisingType" resultMap="getCommonCodeMap">
+		/*	promotionAdvertising.getAdvertisingType	*/
+		SELECT
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'SOURCE') ">
+				SOURCE AS CODE, SOURCE AS NAME
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'MEDIUM') ">
+				CONCAT(SOURCE,"∀",MEDIUM) AS CODE, MEDIUM AS NAME
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CAMPAIGN') ">
+				CONCAT(SOURCE,"∀",MEDIUM,"∀",CAMPAIGN) AS CODE, CAMPAIGN AS NAME
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CONTENT') ">
+				CONCAT(SOURCE,"∀",MEDIUM,"∀",CAMPAIGN,"∀",CONTENT) AS CODE, CONTENT AS NAME
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'TERM') ">
+				CONCAT(SOURCE,"∀",MEDIUM,"∀",CAMPAIGN,"∀",TERM) AS CODE, TERM AS NAME
+			</if>
+		FROM PM_AD_EXTERNAL
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'SOURCE') ">
+			GROUP BY SOURCE
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'MEDIUM') ">
+			WHERE SOURCE = #{source}
+			GROUP BY MEDIUM
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CAMPAIGN') ">
+			WHERE SOURCE = #{source}
+				AND MEDIUM = #{medium}
+			GROUP BY CAMPAIGN
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CONTENT') ">
+			WHERE SOURCE = #{source}
+			AND MEDIUM = #{medium}
+			AND CAMPAIGN = #{campaign}
+			AND CONTENT IS NOT NULL
+			AND CONTENT <![CDATA[<>]]> ''
+			GROUP BY CONTENT
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'TERM') ">
+			WHERE SOURCE = #{source}
+				AND MEDIUM = #{medium}
+				AND CAMPAIGN = #{campaign}
+				AND TERM IS NOT NULL
+				AND TERM <![CDATA[<>]]> ''
+			GROUP BY TERM
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부광고코드 코드 갯수 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.04      이원호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getAdExternalCdCount" resultType="int">
+		/*	promotionAdvertising.getAdExternalCdCount	*/
+		SELECT COUNT(*) AS COUNT
+		FROM PM_AD_EXTERNAL
+		WHERE PM_AD_EXTERNAL_CD = #{pmAdExternalCd}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부광고코드 코드 분류값 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.10      이원호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getAdExternalTypeCount" resultType="int">
+		/*	promotionAdvertising.getAdExternalTypeCount	*/
+		SELECT COUNT(*) AS COUNT
+		FROM PM_AD_EXTERNAL
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'SOURCE') ">
+			WHERE SOURCE = #{source}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'MEDIUM') ">
+			WHERE SOURCE = #{source}
+				AND MEDIUM = #{medium}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CAMPAIGN') ">
+			WHERE SOURCE = #{source}
+				AND MEDIUM = #{medium}
+				AND CAMPAIGN = #{campaign}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CONTENT') ">
+			WHERE SOURCE = #{source}
+				AND MEDIUM = #{medium}
+				AND CAMPAIGN = #{campaign}
+				AND CONTENT = #{content}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'TERM') ">
+			WHERE SOURCE = #{source}
+			AND MEDIUM = #{medium}
+			AND CAMPAIGN = #{campaign}
+			AND TERM = #{term}
+		</if>
+	</select>
+
+</mapper>

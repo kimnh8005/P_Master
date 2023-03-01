@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.order.VirtualBankOrderCancelMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 입금기한 지난 가상계좌 주문건 조회
+     * @
+     * @ 수정일                수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.25     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getTargetVirtualBankOrderCancelResultMap" type="kr.co.pulmuone.v1.batch.order.order.dto.VirtualBankOrderCancelDto">
+        <result column="ODID"               property="odid" />
+        <result column="OD_ORDER_ID"        property="odOrderId" />
+        <result column="UR_USER_ID"         property="urUserId" />
+        <result column="GUEST_CI"           property="guestCi" />
+        <result column="LOGIN_ID"           property="loginId" />
+        <result column="PAYMENT_PRICE"      property="paymentPrice" />
+        <result column="POINT_PRICE"        property="pointPrice" />
+        <result column="GOODS_NM"           property="goodsName" />
+    </resultMap>
+    <select id="getTargetVirtualBankOrderCancel" resultMap="getTargetVirtualBankOrderCancelResultMap">
+        /*  virtualBankOrderCancel.getTargetVirtualBankOrderCancel  */
+        SELECT
+		    OO.ODID
+		    ,OO.OD_ORDER_ID
+		    ,OO.UR_USER_ID
+            ,OO.GUEST_CI
+            ,IFNULL(UU.LOGIN_ID,'') AS LOGIN_ID
+		    ,OPM.PAYMENT_PRICE
+		    ,OPM.POINT_PRICE
+		    ,OO.GOODS_NM
+		FROM
+		    OD_PAYMENT_MASTER OPM
+		    JOIN OD_PAYMENT OP ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+		    JOIN OD_ORDER OO ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+            LEFT JOIN UR_USER UU ON UU.UR_USER_ID = OO.UR_USER_ID
+		WHERE
+		    OPM.STATUS = 'IR'                     /* 결제상태 - 입금예정 */
+            AND TYPE = 'G' 						  /* 결제타입 - G:결제 */
+            AND OO.ORDER_YN = 'Y'
+            AND ((PAY_TP = 'PAY_TP.VIRTUAL_BANK'  AND OPM.PAID_DUE_DT <![CDATA[<=]]>  DATE_ADD(CURDATE() , INTERVAL - 1 SECOND))                    /* 결제방법 - 가상계좌 */
+                OR (IFNULL(PAY_TP,'PAY_TP.DIRECT') = 'PAY_TP.DIRECT' AND OPM.CREATE_DT <![CDATA[<=]]>  DATE_ADD(CURDATE() , INTERVAL - 1 SECOND)))  /* 결제방법 - 직접결제(주문생성,복사) */
+            AND NOT EXISTS (
+                SELECT	'X'
+                FROM	OD_ORDER_DETL OOD
+                WHERE	OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+                AND		GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.REGULAR'
+            )
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 입금기한 지난 추가배송비 가상계좌 / 직접 결제 대상 조회
+     * @
+     * @ 수정일                수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29     김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getTargetOrderClaimAddShippingPriceVirtualDirectPay" resultType="kr.co.pulmuone.v1.batch.order.order.dto.OrderClaimAddShippingPriceListDto">
+        /*  virtualBankOrderCancel.getTargetOrderClaimAddShippingPriceVirtualDirectPay  */
+        SELECT
+            T.*
+        FROM
+            (
+                SELECT
+                    OD.ODID,
+                    OC.OD_ORDER_ID,
+                    OC.OD_CLAIM_ID,
+                    OC.CLAIM_STATUS_TP,
+                    OC.DIRECT_PAYMENT_YN,
+                    OC.ADD_PAYMENT_TP,
+                    OC.TARGET_TP,
+                    OC.RETURNS_YN,
+                    IFNULL(FN_DECRYPT((
+                        SELECT
+                            RECV_ZIP_CD
+                        FROM
+                            OD_SHIPPING_ZONE
+                        WHERE
+                            OD_ORDER_ID = OD.OD_ORDER_ID
+                        ORDER BY OD_SHIPPING_ZONE_ID DESC
+                        LIMIT 1
+                               )), '') AS RECV_ZIP_CD
+                FROM
+                    OD_CLAIM OC
+                        INNER JOIN
+                    OD_ORDER OD ON OC.OD_ORDER_ID = OD.OD_ORDER_ID
+                        LEFT OUTER JOIN
+                    OD_PAYMENT OP ON OC.OD_ORDER_ID = OP.OD_ORDER_ID AND OC.OD_CLAIM_ID = OP.OD_CLAIM_ID
+                        LEFT OUTER JOIN
+                    OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+                WHERE
+                    OC.CLAIM_YN = 'Y'
+                  AND
+                    OC.ADD_PAYMENT_TP = 'ADD_PAYMENT_TP.DIRECT_PAY'
+                  AND
+                    OC.CREATE_DT <![CDATA[<=]]>  DATE_ADD(CURDATE() , INTERVAL - 1 SECOND)
+                  AND
+                    OP.OD_PAYMENT_MASTER_ID IS NULL
+                UNION ALL
+                SELECT
+                    OD.ODID,
+                    OC.OD_ORDER_ID,
+                    OC.OD_CLAIM_ID,
+                    OC.CLAIM_STATUS_TP,
+                    OC.DIRECT_PAYMENT_YN,
+                    OC.ADD_PAYMENT_TP,
+                    OC.TARGET_TP,
+                    OC.RETURNS_YN,
+                    IFNULL(FN_DECRYPT((
+                        SELECT
+                            RECV_ZIP_CD
+                        FROM
+                            OD_SHIPPING_ZONE
+                        WHERE
+                            OD_ORDER_ID = OD.OD_ORDER_ID
+                        ORDER BY OD_SHIPPING_ZONE_ID DESC
+                        LIMIT 1
+                               )), '') AS RECV_ZIP_CD
+                FROM
+                    OD_CLAIM OC
+                        INNER JOIN
+                    OD_ORDER OD ON OC.OD_ORDER_ID = OD.OD_ORDER_ID
+                        INNER JOIN
+                    OD_PAYMENT OP ON OC.OD_ORDER_ID = OP.OD_ORDER_ID AND OC.OD_CLAIM_ID = OP.OD_CLAIM_ID
+                        INNER JOIN
+                    OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+                WHERE
+                    OC.CLAIM_YN = 'Y'
+                  AND
+                    OPM.TYPE = 'A'
+                  AND
+                    OPM.PAY_TP = 'PAY_TP.VIRTUAL_BANK'
+                  AND
+                    OPM.STATUS = 'IR'
+                  AND
+                    OPM.PAID_DUE_DT <![CDATA[<=]]>  DATE_ADD(CURDATE() , INTERVAL - 1 SECOND)
+            ) T
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 입금기한 지난 추가배송비 가상계좌 / 직접 결제 대상 상세 조회
+     * @
+     * @ 수정일                수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29     김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getTargetOrderClaimAddShippingPriceVirtualDirectPayDetl" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+        /*  virtualBankOrderCancel.getTargetOrderClaimAddShippingPriceVirtualDirectPayDetl  */
+        SELECT
+            OOD.OD_ORDER_ID,
+            OCD.OD_CLAIM_ID,
+            OCD.OD_CLAIM_DETL_ID,
+            OCD.OD_ORDER_DETL_ID,
+            OCD.CLAIM_STATUS_CD,
+            OOD.ORDER_CNT,
+            OOD.CANCEL_CNT,
+            OCD.CLAIM_CNT,
+            OCD.TOT_SALE_PRICE,
+            OCD.PAID_PRICE,
+            OOD.UR_WAREHOUSE_ID
+        FROM
+            OD_CLAIM OC
+        INNER JOIN
+            OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+        INNER JOIN
+            OD_ORDER OD ON OC.OD_ORDER_ID = OD.OD_ORDER_ID
+        INNER JOIN
+            OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+        <where>
+            <if test="addShippingPriceTargetList != null and addShippingPriceTargetList.size() > 0">
+                OC.OD_CLAIM_ID IN
+                <foreach collection="addShippingPriceTargetList" item="addShippingPriceTarget" index="index" separator="," open="(" close=")">
+                    #{addShippingPriceTarget.odClaimId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문상세pk 조회
+     * @
+     * @ 수정일               수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.05        천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOdOrderDetlId" resultType="HashMap">
+        /*  virtualBankOrderCancel.getOdOrderDetlId  */
+        SELECT
+            OD_ORDER_DETL_ID AS OD_ORDER_DETL_ID
+            ,ORDER_CNT AS ORDER_CNT
+        FROM
+            OD_ORDER_DETL
+        WHERE
+            OD_ORDER_ID = #{odOrderId}
+    </select>
+</mapper>

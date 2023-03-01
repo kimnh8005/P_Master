@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.claim.ClaimInfoExcelUploadMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	  * description : 주문 정보 존재 카운트
+	  * @
+	  * @ 수정일                수정자   수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021. 04. 27   이명수   최초생성
+	  * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderDetlCount" resultType="int">
+        /* claimExcelUpload.getOrderDetlCount */
+        SELECT
+            COUNT(*) AS CNT
+        FROM
+            OD_ORDER_DETL
+        WHERE
+                ODID = #{odid}
+            AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────임────────────────
+	 * description 		: 클레임 엑셀업로드 - 현황
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.26		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addClaimExcelInfo">
+        /* claimExcelUpload.addClaimExcelInfo */
+        INSERT INTO IF_CLAIM_EXCEL_INFO (
+            TOTAL_CNT, UPDATE_CNT, UPLOAD_START_DT, UPLOAD_STATUS_CD, CREATE_ID, CREATE_DT, UPLOAD_JSON_DATA, FILE_NM
+        ) VALUES (
+            #{totalCount}, 0, #{uploadStartDateTime}, #{uploadStatusCode}, #{createId}, NOW(), #{uploadJsonData}, #{fileNm}
+        )
+        <selectKey resultType="Long" keyProperty="ifClaimExcelInfoId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 클레임 엑셀업로드 - 현황 - 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.26		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putClaimExcelInfo">
+        /* claimExcelUpload.putClaimExcelInfo */
+        UPDATE IF_CLAIM_EXCEL_INFO
+        SET SUCC_CNT = #{successCount},
+            FAIL_CNT = #{failCount},
+            UPLOAD_END_DT = #{uploadEndDateTime},
+            UPLOAD_EXEC_TIME = #{uploadExecutionTime},
+            UPLOAD_STATUS_CD = #{uploadStatusCode},
+            BATCH_STATUS_CD = #{batchStatusCode}
+        WHERE IF_CLAIM_EXCEL_INFO_ID = #{ifClaimExcelInfoId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 엑셀업로드 - 성공 건
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addClaimExcelSuccess">
+        /* claimExcelUpload.addClaimExcelSuccess */
+        INSERT INTO IF_CLAIM_EXCEL_SUCC
+            (IF_CLAIM_EXCEL_INFO_ID, ODID, OD_ORDER_DETL_SEQ, CLAIM_CNT, CLAIM_STATUS_TP, PS_CLAIM_BOS_ID, RETURNS_YN, CONSULT_MSG)
+         VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+            (
+              #{ifClaimExcelInfoId}, #{vo.odid}, #{vo.odOrderDetlSeq}, #{vo.claimCnt},
+              (SELECT CASE WHEN OOD.ORDER_STATUS_CD IN ('IR','IC','DR') THEN '취소'
+                           WHEN OOD.ORDER_STATUS_CD IN ('DI','DC','BF') THEN '반품'
+                           ELSE '' END
+                 FROM OD_ORDER_DETL OOD
+                WHERE OOD.ODID = #{vo.odid}
+                  AND OOD.OD_ORDER_DETL_SEQ = ${vo.odOrderDetlSeq}),
+              #{vo.psClaimBosId}, #{vo.returnsYn}, #{vo.consultMsg}
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 엑셀업로드 - 현황
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addClaimExcelFail">
+        /* claimExcelUpload.addClaimExcelFail */
+        INSERT INTO IF_CLAIM_EXCEL_FAIL
+            (IF_CLAIM_EXCEL_INFO_ID, ODID, OD_ORDER_DETL_SEQ, CLAIM_CNT, CLAIM_STATUS_TP, PS_CLAIM_BOS_ID, RETURNS_YN, CONSULT_MSG, FAIL_MSG)
+        VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+            (
+            #{ifClaimExcelInfoId}, #{vo.odid}, #{vo.odOrderDetlSeq}, #{vo.claimCnt}, #{vo.claimStatusTp}, #{vo.psClaimBosId}, #{vo.returnsYn}, #{vo.consultMsg}, #{vo.failMessage}
+            )
+        </foreach>
+    </insert>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 엑셀 업로드 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getClaimExcelInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimInfoExcelUploadInfoVo">
+        /* claimExcelUpload.getClaimExcelInfo */
+    	SELECT
+			IF_CLAIM_EXCEL_INFO_ID,
+			TOTAL_CNT,
+			SUCC_CNT,
+			FAIL_CNT,
+			UPLOAD_START_DT,
+			UPLOAD_END_DT,
+			UPLOAD_EXEC_TIME,
+			UPLOAD_STATUS_CD,
+			BATCH_START_DT,
+			BATCH_END_DT,
+			BATCH_EXEC_TIME,
+			BATCH_STATUS_CD,
+			CREATE_ID,
+			CREATE_DT,
+            UPLOAD_JSON_DATA
+            , IFNULL(FILE_NM, '') AS FILE_NM
+    	FROM
+    		IF_CLAIM_EXCEL_INFO
+    	WHERE
+    		IF_CLAIM_EXCEL_INFO_ID = #{ifClaimExcelInfoId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임  - 클레임 주문 엑셀업로드 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getClaimUploadExcelDownload" resultType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimInfoExcelUploadFailVo">
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임  - 클레임 주문 엑셀업로드 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getClaimExcelInfoListResultMap" type="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimInfoExcelUploadInfoVo">
+        <result column="IF_CLAIM_EXCEL_INFO_ID"     property="ifClaimExcelInfoId"/>
+        <result column="SUCC_CNT"                   property="successCount"/>
+        <result column="FAIL_CNT"                   property="failCount"/>
+        <result column="UPLOAD_STATUS_CD_NM"        property="uploadStatusCodeName"/>
+        <result column="BATCH_END_DT_NM"            property="batchEndDateTime"/>
+        <result column="BATCH_EXEC_TIME"            property="batchExecutionTime"/>
+        <result column="BATCH_STATUS_CD"            property="batchStatusCode"/>
+        <result column="CREATE_ID"                  property="createId"/>
+        <result column="CREATE_NM"                  property="createName"/>
+        <result column="CREATE_DT_NM"               property="createDateName"/>
+        <result column="LOGIN_ID"                   property="loginId"/>
+        <result column="UPLOAD_JSON_DATA"           property="uploadJsonData"/>
+        <result column="CLAIM_CREATE_CNT"           property="claimCreateCnt"/>
+        <result column="FILE_NM"                    property="fileNm"/>
+    </resultMap>
+    <select id="getClaimExcelInfoList" resultMap="getClaimExcelInfoListResultMap">
+        /* claimExcelUpload.getClaimExcelInfoList */
+        SELECT
+            T1.IF_CLAIM_EXCEL_INFO_ID,
+            T1.SUCC_CNT,
+            T1.FAIL_CNT,
+            (CASE WHEN T1.UPLOAD_STATUS_CD = '10' THEN '등록중'
+            WHEN T1.UPLOAD_STATUS_CD = '11' THEN '등록완료' END) AS UPLOAD_STATUS_CD_NM,
+            IFNULL((CASE WHEN T1.BATCH_END_DT IS NOT NULL THEN DATE_FORMAT(T1.BATCH_END_DT, '%Y-%m-%d %T') END), '') AS BATCH_END_DT_NM,
+            T1.BATCH_EXEC_TIME,
+            T1.BATCH_STATUS_CD,
+            T1.CREATE_ID,
+            UU.LOGIN_ID,
+            FN_DECRYPT(UU.USER_NM) AS CREATE_NM,
+            DATE_FORMAT(T1.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT_NM,
+            T1.UPLOAD_JSON_DATA,
+            (SELECT COUNT(*) FROM IF_CLAIM_EXCEL_SUCC WHERE IF_CLAIM_EXCEL_INFO_ID = T1.IF_CLAIM_EXCEL_INFO_ID AND CLAIM_CREATE_YN = 'Y') AS CLAIM_CREATE_CNT
+            , IFNULL(T1.FILE_NM, '') AS FILE_NM
+        FROM
+            IF_CLAIM_EXCEL_INFO T1
+            LEFT OUTER JOIN UR_USER UU ON T1.CREATE_ID = UU.UR_USER_ID
+        WHERE
+            T1.CREATE_DT BETWEEN #{createStartDate} AND (#{createEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            <if test="adminIdList!=null and adminIdList.size!=0">
+                AND T1.CREATE_ID IN
+                <foreach collection="adminIdList" item="adminId" index="index" separator="," open="(" close=")">
+                    #{adminId}
+                </foreach>
+            </if>
+        ORDER BY T1.CREATE_DT DESC
+    </select>
+
+
+    <select id="getClaimFailExcelDownload" resultType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimInfoExcelUploadFailVo">
+        /* claimExcelUpload.getClaimFailExcelDownload */
+        SELECT
+        	FAIL_MSG AS FAIL_MESSAGE,
+        	ODID,
+            OD_ORDER_DETL_SEQ,
+            CLAIM_CNT,
+            CLAIM_STATUS_TP,
+            PS_CLAIM_BOS_ID,
+            RETURNS_YN,
+            CONSULT_MSG
+        FROM
+            IF_CLAIM_EXCEL_FAIL
+        WHERE
+            IF_CLAIM_EXCEL_INFO_ID = #{ifClaimExcelInfoId}
+        ORDER BY
+            ODID ASC, OD_ORDER_DETL_SEQ ASC
+    </select>
+
+    <select id="getClaimUpdateFailExcelDownload" resultType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimInfoExcelUploadFailVo">
+        /* claimExcelUpload.getClaimUpdateFailExcelDownload */
+        SELECT
+            IFNULL(FAIL_MSG, '') AS FAIL_MESSAGE,
+            ODID,
+            OD_ORDER_DETL_SEQ,
+            CLAIM_CNT,
+            IFNULL(CLAIM_STATUS_TP, '') AS CLAIM_STATUS_TP,
+            PS_CLAIM_BOS_ID,
+            RETURNS_YN,
+            CONSULT_MSG
+        FROM
+            IF_CLAIM_EXCEL_SUCC
+        WHERE
+            IF_CLAIM_EXCEL_INFO_ID = #{ifClaimExcelInfoId}
+        AND
+            CLAIM_CREATE_YN = 'N'
+        ORDER BY
+            ODID ASC, OD_ORDER_DETL_SEQ ASC
+    </select>
+
+
+
+</mapper>

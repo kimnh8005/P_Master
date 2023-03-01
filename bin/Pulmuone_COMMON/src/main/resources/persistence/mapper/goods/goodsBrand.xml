@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.brand.GoodsBrandMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 표준 브랜드 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.brand.dto.vo.UrBrandListResultVo" id="urBrandListResultMap">
+		<result column="UR_BRAND_ID"  property="urBrandId"  />
+		<result column="BRAND_NM"  property="brandName" />
+	</resultMap>
+	<select id="getUrBrandList" resultMap="urBrandListResultMap">
+		/*	goodsBrand.getUrBrandList	*/
+		SELECT
+			 b.UR_BRAND_ID
+			 ,b.BRAND_NM
+			 ,CONCAT(mm.PATH, mm.NM) AS MOBILE_MAIN_IMG
+			 ,CONCAT(pm.PATH, pm.NM) AS PC_MAIN_IMG
+			 ,CONCAT(mmo.PATH, mmo.NM) AS MOBILE_MAIN_OVER_IMG
+			 ,CONCAT(pmo.PATH, pmo.NM) AS PC_MAIN_OVER_IMG
+			 ,CONCAT(mnc.PATH, mnc.NM) AS MOBILE_NO_COLOR_IMG
+			 ,CONCAT(pnc.PATH, pnc.NM) AS PC_NO_COLOR_IMG
+		FROM
+			UR_BRAND b
+			LEFT JOIN UR_BRAND_ATTC mm ON (b.UR_BRAND_ID = mm.UR_BRAND_ID ANd mm.IMG_TP = 'BRAND_LOGO_TYPE.MOBILE_MAIN')
+			LEFT JOIN UR_BRAND_ATTC pm ON (b.UR_BRAND_ID = pm.UR_BRAND_ID ANd pm.IMG_TP = 'BRAND_LOGO_TYPE.PC_MAIN')
+			LEFT JOIN UR_BRAND_ATTC mmo ON (b.UR_BRAND_ID = mmo.UR_BRAND_ID ANd mmo.IMG_TP = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER')
+			LEFT JOIN UR_BRAND_ATTC pmo ON (b.UR_BRAND_ID = pmo.UR_BRAND_ID ANd pmo.IMG_TP = 'BRAND_LOGO_TYPE.PC_MAIN_OVER')
+			LEFT JOIN UR_BRAND_ATTC mnc ON (b.UR_BRAND_ID = mnc.UR_BRAND_ID ANd mnc.IMG_TP = 'BRAND_LOGO_TYPE.MOBILE_NO_COLOR')
+			LEFT JOIN UR_BRAND_ATTC pnc ON (b.UR_BRAND_ID = pnc.UR_BRAND_ID ANd pnc.IMG_TP = 'BRAND_LOGO_TYPE.PC_NO_COLOR')
+		WHERE
+			b.USE_YN = 'Y'
+		ORDER BY b.BRAND_NM ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 전시 브랜드 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.17		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.brand.dto.vo.DpBrandListResultVo" id="dpBrandListResultMap">
+		<result column="DP_BRAND_ID"  property="dpBrandId"  />
+		<result column="DP_BRAND_NM"  property="brandName" />
+		<result column="MOBILE_MAIN_IMG"  property="mobileMainImage" />
+		<result column="PC_MAIN_IMG"  property="pcMainImage" />
+		<result column="MOBILE_MAIN_OVER_IMG"  property="mobileMainOverImage" />
+		<result column="PC_MAIN_OVER_IMG"  property="pcMainOverImage" />
+		<result column="MOBILE_TITLE_BANNER_IMG"  property="mobileTitleBannerImage" />
+		<result column="PC_TITLE_BANNER_IMG"  property="pcTitleBannerImage" />
+		<result column="EXIST_GOODS_YN"  property="existGoodsYn" />
+	</resultMap>
+	<select id="getDpBrandList" resultMap="dpBrandListResultMap">
+		/*	goodsBrand.getDpBrandList	*/
+		SELECT b.DP_BRAND_ID
+			,b.DP_BRAND_NM
+			,CONCAT(mm.PATH, mm.NM) AS MOBILE_MAIN_IMG
+			,CONCAT(pm.PATH, pm.NM) AS PC_MAIN_IMG
+			,CONCAT(mmo.PATH, mmo.NM) AS MOBILE_MAIN_OVER_IMG
+			,CONCAT(pmo.PATH, pmo.NM) AS PC_MAIN_OVER_IMG
+			,CONCAT(mnc.PATH, mnc.NM) AS MOBILE_TITLE_BANNER_IMG
+			,CONCAT(pnc.PATH, pnc.NM) AS PC_TITLE_BANNER_IMG
+			,(CASE WHEN
+				(
+				select COUNT(*)
+				from IL_GOODS IG
+				INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+				WHERE II.DP_BRAND_ID = b.DP_BRAND_ID
+				AND IG.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+				AND IG.DISP_YN = 'Y'
+				AND IG.DEL_YN = 'N'
+				AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+				AND IG.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.GIFT_FOOD_MARKETING')
+				LIMIT 1) > 0
+				THEN 'Y' ELSE 'N' END) AS EXIST_GOODS_YN
+		FROM DP_BRAND b
+			LEFT JOIN DP_BRAND_ATTC mm ON (b.DP_BRAND_ID = mm.DP_BRAND_ID ANd mm.BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN')
+			LEFT JOIN DP_BRAND_ATTC pm ON (b.DP_BRAND_ID = pm.DP_BRAND_ID ANd pm.BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN')
+			LEFT JOIN DP_BRAND_ATTC mmo ON (b.DP_BRAND_ID = mmo.DP_BRAND_ID ANd mmo.BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER')
+			LEFT JOIN DP_BRAND_ATTC pmo ON (b.DP_BRAND_ID = pmo.DP_BRAND_ID ANd pmo.BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN_OVER')
+			LEFT JOIN DP_BRAND_ATTC mnc ON (b.DP_BRAND_ID = mnc.DP_BRAND_ID ANd mnc.BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_MOBILE')
+			LEFT JOIN DP_BRAND_ATTC pnc ON (b.DP_BRAND_ID = pnc.DP_BRAND_ID ANd pnc.BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_PC')
+		WHERE b.USE_YN = 'Y'
+			AND b.BRAND_PAVILION_YN = 'Y'
+		ORDER BY b.DP_BRAND_NM ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 전시 브랜드 타이틀 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.10		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDpBrandTitleById" resultType="string">
+		/*	goodsBrand.getDpBrandTitleById	*/
+		SELECT DP_BRAND_NM
+		FROM DP_BRAND
+		WHERE DP_BRAND_ID = #{dpBrandId}
+	</select>
+
+</mapper>

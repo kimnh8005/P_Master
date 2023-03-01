@@ -1,0 +1,3428 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.coupon.PromotionCouponMapper">
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쿠폰 목록조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.28      안치열         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<resultMap id="getCpnMgmResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponListResultVo">
+		<result column="NO" property="no" />
+		<result column="COUPON_TP" property="couponType" />
+		<result column="COUPON_TYPE_NAME" property="couponTypeName" />
+		<result column="DISPLAY_COUPON_NM" property="displayCouponName" />
+		<result column="BOS_COUPON_NM" property="bosCouponName" />
+		<result column="ISSUE_DATE" property="issueDate" />
+		<result column="VALIDITY_DATE" property="validityDate" />
+		<result column="DISCOUNT_TP" property="discountType" />
+		<result column="DISCOUNT_TYPE_NAME" property="discountTypeName" />
+		<result column="DISCOUNT_VALUE" property="discountValue" />
+		<result column="ISSUE_COUNT" property="issueCount" />
+		<result column="USE_COUNT" property="useCount" />
+		<result column="USE_PERCENT" property="usePercent" />
+		<!-- <result column="STATUS" property="approvalStatus" /> -->
+		<result column="COUPON_MASTER_STAT" property="couponMasterStat" />
+		<result column="APPR_STAT" property="apprStat" />
+		<result column="APPROVAL_STATUS_NAME" property="approvalStatusName" />
+		<result column="PM_COUPON_ID" property="pmCouponId" />
+		<result column="BUTTON_STATUS" property="buttonStatus" />
+		<result column="ISSUE_TP" property="issueType" />
+		<result column="UR_ERP_ORGANIZATION_CD"  property="erpOrganizationCode" />
+		<result column="UR_ERP_ORGANIZATION_NM"  property="erpOrganizationName" />
+		<result column="TICKET_COLLECT_YN"  property="ticketCollectYn"/>
+		<result column="SERIAL_NUMBER_TP"  property="serialNumberTp"/>
+	</resultMap>
+	<resultMap id="getApprovalCouponListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponApprovalResultVo">
+		<result column="COUPON_TP" property="couponType" />
+		<result column="COUPON_TYPE_NAME" property="couponTypeName" />
+		<result column="DISPLAY_COUPON_NM" property="displayCouponName" />
+		<result column="BOS_COUPON_NM" property="bosCouponName" />
+		<result column="ISSUE_DATE" property="issueDate" />
+		<result column="VALIDITY_DATE" property="validityDate" />
+		<result column="DISCOUNT_TP" property="discountType" />
+		<result column="DISCOUNT_TYPE_NAME" property="discountTypeName" />
+		<result column="DISCOUNT_VALUE" property="discountValue" />
+		<result column="ISSUE_COUNT" property="issueCount" />
+		<result column="USE_COUNT" property="useCount" />
+		<result column="USE_PERCENT" property="usePercent" />
+		<result column="APPR_STAT" property="apprStat" />
+		<result column="APPR_STAT_NAME" property="apprStatName" />
+		<result column="COUPON_MASTER_STAT" property="couponMasterStat" />
+		<result column="COUPON_MASTER_STAT_NAME" property="couponMasterStatName" />
+		<result column="PM_COUPON_ID" property="pmCouponId" />
+		<result column="BUTTON_STATUS" property="buttonStatus" />
+		<result column="ISSUE_TP" property="issueType" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+		<result column="APPR_REQ_USER_NAME"  property="approvalRequestUserName" />
+		<result column="APPR_REQ_USER_ID"  property="approvalRequestUserId" />
+		<result column="APPR_REQ_DT"  property="approvalRequestDt" />
+		<result column="APPROVAL_SUB_USER_NAME"  property="approvalSubUserName" />
+		<result column="APPR_SUB_USER_ID"  property="approvalSubUserId" />
+		<result column="APPROVAL_SUB_CHANGE_USER_NAME"  property="approvalSubChangeUserName" />
+		<result column="APPR_SUB_CHG_USER_ID"  property="approvalSubChangeUserId" />
+		<result column="APPR_SUB_CHG_DT"  property="approvalSubChangeDt" />
+		<result column="APPROVAL_USER_NAME"  property="approvalUserName" />
+		<result column="APPR_USER_ID"  property="approvalUserId" />
+		<result column="APPROVAL_CHANGE_USER_NAME"  property="approvalChangeUserName" />
+		<result column="APPR_CHG_USER_ID"  property="approvalChangeUserId" />
+		<result column="APPR_CHG_DT"  property="approvalChangeDt" />
+		<result column="APPR_SUB_GRANT_USER_ID"  property="approvalSubGrantUserId" />
+		<result column="APPROVAL_SUB_GRANT_USER_NAME"  property="approvalSubGrantUserName" />
+		<result column="APPR_GRANT_USER_ID"  property="approvalGrantUserId" />
+		<result column="APPROVAL_GRANT_USER_NAME"  property="approvalGrantUserName" />
+		<result column="APPR_STAT_CMNT"  property="apprStatCmnt" />
+		<result column="VALIDITY_TP" property="validityTp" />
+
+	</resultMap>
+	<select id="getCpnMgm" resultMap="getCpnMgmResultMap">
+		/*	coupon.getCpnMgm	*/
+
+			SELECT  PC.COUPON_TP
+					, CONCAT(FN_COMN_CODE_DIC(PC.COUPON_TP ), '(',FN_COMN_CODE_DIC(PC.ISSUE_TP ),')') AS COUPON_TYPE_NAME
+					, PC.DISPLAY_COUPON_NM
+					, PC.BOS_COUPON_NM
+					, CONCAT(DATE_FORMAT(PC.ISSUE_START_DT,'%Y-%m-%d')  ,'~', DATE_FORMAT(PC.ISSUE_END_DT,'%Y-%m-%d') ) AS ISSUE_DATE
+					, CASE WHEN PC.VALIDITY_START_DT IS NULL AND PC.VALIDITY_DAY = 0 THEN '발급당일'
+						   WHEN PC.VALIDITY_START_DT IS NULL THEN CONCAT('발급 후 ',PC.VALIDITY_DAY,' 일 간')
+					       ELSE CONCAT(DATE_FORMAT(PC.VALIDITY_START_DT,'%Y-%m-%d') ,'~', DATE_FORMAT(PC.VALIDITY_END_DT,'%Y-%m-%d') )
+					  END AS VALIDITY_DATE
+			        , PC.DISCOUNT_TP
+					, FN_COMN_CODE_DIC(PC.DISCOUNT_TP ) AS DISCOUNT_TYPE_NAME
+					, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+									   WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT , 0),' 원')
+									   WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+									   	THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT , 0) ,'원')
+											      ELSE CONCAT(FORMAT(PC.DISCOUNT_VAL , 0),' 원')
+									   		  END
+									   END AS DISCOUNT_VALUE
+					, CASE WHEN PC.ISSUE_QTY = 0 THEN CONCAT(PCI.CNT , '건 / 무제한' )
+					  ELSE CONCAT(PCI.CNT , '건 / ',PC.ISSUE_QTY, '건' )
+					  END AS ISSUE_COUNT
+					, CONCAT(PCU.USE_CNT,'건') AS USE_COUNT
+					, CASE WHEN PCU.USE_CNT IS NOT NULL THEN CONCAT(TRUNCATE(PCU.USE_CNT/PCI.CNT*100,0),'%')
+					       ELSE ''
+					  END AS USE_PERCENT
+					, PC.COUPON_MASTER_STAT		/*쿠폰 마스터 상태 공통코드(COUPON_MASTER_STAT)*/
+					, PC.APPR_STAT		/*쿠폰 승인 상태 공통코드(APPR_STAT)*/
+					, PC.APPR_REQ_DT		 	/*승인요청일*/
+					, PC.APPR_CHG_DT		 	/*승인처리일*/
+					, PC.APPR_CHG_USER_ID       /*승인처리자*/
+					, CASE WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED' AND  PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_END_DT <![CDATA[<]]> DATE(NOW()) THEN '발급기간만료'
+						   WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_START_DT <![CDATA[>]]> NOW() THEN '발급기간대기'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.NONE' THEN '저장'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.REQUEST' THEN '승인요청'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.CANCEL' THEN '요청철회'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.DENIED' THEN '승인반려'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN '1차 승인완료'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED' AND PC.APPR_STAT = 'APPR_STAT.APPROVED' THEN '발급'
+						   ELSE FN_COMN_CODE_DIC(PC.COUPON_MASTER_STAT)
+					  END AS APPROVAL_STATUS_NAME
+					, PC.PM_COUPON_ID
+					, PC.CREATE_DT
+					, PC.ISSUE_TP
+					 , CASE WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_END_DT    <![CDATA[>]]>    NOW() THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.STOP' THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.APPR_STAT = 'APPR_STAT.REQUEST' THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.APPR_STAT = 'APPR_STAT.SUB_APPROVED' AND  PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE' THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE' OR PC.APPR_STAT = 'APPR_STAT.NONE'
+					            OR PC.APPR_STAT = 'APPR_STAT.DENIED' THEN 'ADMIN_BUTTON_N'
+					       WHEN PC.ISSUE_END_DT    <![CDATA[<]]>   NOW() THEN 'ADMIN_BUTTON_Y'
+					       ELSE ''
+					   END AS BUTTON_STATUS
+					 , PC.USE_YN
+					 , PO.UR_ERP_ORGANIZATION_CD
+					 , PO.UR_ERP_ORGANIZATION_NM
+					 , PC.TICKET_COLLECT_YN
+					 , PC.SERIAL_NUMBER_TP
+					 , PC.ISSUE_START_DT
+					 , PC.ISSUE_END_DT
+					 , PC.VALIDITY_TP
+			FROM PM_COUPON PC
+			LEFT OUTER JOIN (SELECT COUNT(*)AS CNT, PM_COUPON_ID FROM PM_COUPON_ISSUE
+							 WHERE STATUS IN ('COUPON_STATUS.USE', 'COUPON_STATUS.NOTUSE')
+							 GROUP BY PM_COUPON_ID )  PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID AND PC.APPR_STAT = 'APPR_STAT.APPROVED'
+			LEFT OUTER JOIN (SELECT COUNT(*)AS USE_CNT, PM_COUPON_ID FROM PM_COUPON_ISSUE
+							 WHERE STATUS IN ('COUPON_STATUS.USE')
+							 GROUP BY PM_COUPON_ID )  PCU ON PC.PM_COUPON_ID = PCU.PM_COUPON_ID AND PC.APPR_STAT = 'APPR_STAT.APPROVED'
+			INNER JOIN (SELECT MAX(CREATE_DT), PM_COUPON_ID FROM PM_COUPON_STATUS_HISTORY GROUP BY PM_COUPON_ID )  PCSH ON PC.PM_COUPON_ID  = PCSH.PM_COUPON_ID
+			INNER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PC.PM_COUPON_ID  = PO.PM_COUPON_ID
+
+		<where>
+			AND PC.USE_YN = 'Y'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+          <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.DISPLAY")'>
+              AND PC.DISPLAY_COUPON_NM LIKE CONCAT('%', #{findKeyword},'%')
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.BOS")'>
+              AND PC.BOS_COUPON_NM  LIKE CONCAT('%', #{findKeyword},'%')
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.COUPON_ID")'>
+              AND PC.PM_COUPON_ID = #{findKeyword}
+            </when>
+          </choose>
+        </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIssueType)">
+		    AND PC.ISSUE_TP  = #{searchIssueType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCouponType)">
+		    AND PC.COUPON_TP = #{searchCouponType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprovalStatus)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprovalStatus,'APPR_STAT.APPROVED')">
+					AND PC.APPR_STAT = #{searchApprovalStatus}
+   					<!--AND A.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED'
+					AND A.APPROVAL_STATUS_NAME <![CDATA[<>]]> '발급기간만료'
+					AND PC.APPR_STAT = 'APPR_STAT.APPROVED'-->
+					AND PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED'
+					AND PC.ISSUE_END_DT <![CDATA[>=]]>  DATE(NOW())
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprovalStatus,'APPR_STAT.STOP')">
+					AND PC.APPR_STAT = 'APPR_STAT.APPROVED'
+					AND PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.STOP'
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprovalStatus,'APPR_STAT.EXPIRED')">
+					<!--AND A.APPROVAL_STATUS_NAME = '발급기간만료'-->
+					AND PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED'
+					AND PC.APPR_STAT = 'APPR_STAT.APPROVED'
+					AND PC.ISSUE_END_DT <![CDATA[<]]> DATE(NOW())
+				</when>
+				<otherwise>
+					AND PC.APPR_STAT = #{searchApprovalStatus}
+ 					AND PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'
+				</otherwise>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIssueTicketType)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchIssueTicketType, 'TICKET_COLLECT_TYPE.TICKET_COLLECT_Y')">
+					AND PC.TICKET_COLLECT_YN = 'Y'
+				</when>
+				<otherwise>
+					AND PC.TICKET_COLLECT_YN = 'N'
+				</otherwise>
+			</choose>
+		</if>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateSelect,'CREATE_DATE')">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+						AND PC.CREATE_DT <![CDATA[>=]]> DATE_FORMAT(#{startCreateDate}, '%Y-%m-%d 00:00:00')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+						AND PC.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endCreateDate}, '%Y-%m-%d 23:59:59')
+				</if>
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateSelect,'APPROVED_DATE')">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+						AND   (
+                        (
+						PC.ISSUE_START_DT <![CDATA[>=]]> (CASE WHEN IFNULL(#{startCreateDate}, '') = '' THEN PC.ISSUE_START_DT ELSE STR_TO_DATE(#{startCreateDate}, '%Y%m%d%H%i%s') END)
+                        AND
+						PC.ISSUE_START_DT <![CDATA[<=]]> (CASE WHEN IFNULL(#{endCreateDate}  , '') = '' THEN PC.ISSUE_END_DT   ELSE STR_TO_DATE(#{endCreateDate}  , '%Y%m%d%H%i%s') END)
+                        )
+                        OR
+                        (
+						PC.ISSUE_END_DT   <![CDATA[>=]]> (CASE WHEN IFNULL(#{startCreateDate}, '') = '' THEN PC.ISSUE_START_DT ELSE STR_TO_DATE(#{startCreateDate}, '%Y%m%d%H%i%s') END)
+                        AND
+						PC.ISSUE_END_DT   <![CDATA[<=]]> (CASE WHEN IFNULL(#{endCreateDate}  , '') = '' THEN PC.ISSUE_END_DT   ELSE STR_TO_DATE(#{endCreateDate}  , '%Y%m%d%H%i%s') END)
+                        )
+                      )
+					</if>
+				</if>
+			</when>
+		</choose>
+
+		</where>
+		ORDER BY PC.CREATE_DT DESC
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰승인목록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.28		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalCouponList" resultMap="getApprovalCouponListResultMap">
+		/*	coupon.getApprovalCouponList	*/
+			SELECT  PC.COUPON_TP
+					, CONCAT(FN_COMN_CODE_DIC(PC.COUPON_TP ), '(',FN_COMN_CODE_DIC(PC.ISSUE_TP ),')') AS COUPON_TYPE_NAME
+					, PC.DISPLAY_COUPON_NM
+					, PC.BOS_COUPON_NM
+					, CONCAT(DATE_FORMAT(PC.ISSUE_START_DT,'%Y-%m-%d')  ,'~', DATE_FORMAT(PC.ISSUE_END_DT,'%Y-%m-%d') ) AS ISSUE_DATE
+					, CASE WHEN PC.VALIDITY_START_DT IS NULL THEN
+							CASE WHEN PC.VALIDITY_DAY = 0 THEN '발급 당일'
+							ELSE CONCAT('발급 후 ',PC.VALIDITY_DAY,' 일 간') END
+					  ELSE CONCAT(DATE_FORMAT(PC.VALIDITY_START_DT,'%Y-%m-%d') ,'~', DATE_FORMAT(PC.VALIDITY_END_DT,'%Y-%m-%d') )
+					  END AS VALIDITY_DATE
+			        , PC.DISCOUNT_TP
+					, FN_COMN_CODE_DIC(PC.DISCOUNT_TP ) AS DISCOUNT_TYPE_NAME
+					, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+									   WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT , 0),' 원')
+									   WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+									   	THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT , 0) ,'원')
+											      ELSE CONCAT(FORMAT(PC.DISCOUNT_VAL , 0),' 원')
+									   		  END
+									   END AS DISCOUNT_VALUE
+					, CASE WHEN PCU.USE_CNT IS NOT NULL THEN CONCAT(TRUNCATE(PCU.USE_CNT/PCI.CNT*100,0),'%')
+					       ELSE ''
+					  END AS USE_PERCENT
+					, PC.COUPON_MASTER_STAT
+					, FN_COMN_CODE_DIC(PC.COUPON_MASTER_STAT) AS COUPON_MASTER_STAT_NAME
+					, PC.APPR_STAT
+					, FN_COMN_CODE_DIC(PC.APPR_STAT) AS APPR_STAT_NAME
+					, PC.PM_COUPON_ID
+					, PC.CREATE_DT
+					, PC.ISSUE_TP
+					<!-- , CASE WHEN PC.STATUS = 'COUPON_APPROVAL_STATUS.ACCEPT_APPROVAL' AND  PC.ISSUE_END_DT  <![CDATA[>]]>  NOW() THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.STATUS = 'COUPON_APPROVAL_STATUS.ABORT' THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.STATUS = 'COUPON_APPROVAL_STATUS.SAVE' OR PC.STATUS  = 'COUPON_APPROVAL_STATUS.CANCEL_REQUEST'
+					            OR PC.STATUS = 'COUPON_APPROVAL_STATUS.REJECT_APPROVAL' THEN 'ADMIN_BUTTON_N'
+					       WHEN PC.ISSUE_END_DT  <![CDATA[<]]>  NOW() THEN 'ADMIN_BUTTON_Y'
+					       ELSE ''
+					   END AS BUTTON_STATUS -->
+					 , CASE WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_END_DT    <![CDATA[>]]>    NOW() THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.STOP' THEN 'ADMIN_BUTTON_Y'
+					       WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE' OR PC.APPR_STAT = 'APPR_STAT.NONE'
+					            OR PC.APPR_STAT = 'APPR_STAT.DENIED' THEN 'ADMIN_BUTTON_N'
+					       WHEN PC.ISSUE_END_DT    <![CDATA[<]]>   NOW() THEN 'ADMIN_BUTTON_Y'
+					       ELSE ''
+					   END AS BUTTON_STATUS
+					, PC.USE_YN
+					, PC.MODIFY_DT
+					, REQUU.LOGIN_ID AS APPR_REQ_USER_ID
+					, FN_DECRYPT(REQUU.USER_NM) AS APPR_REQ_USER_NAME
+					, PC.APPR_REQ_DT
+					, SUBUU.LOGIN_ID AS APPR_SUB_USER_ID
+					, FN_DECRYPT(SUBUU.USER_NM) AS APPROVAL_SUB_USER_NAME
+					, SUBGUU.LOGIN_ID AS APPR_SUB_GRANT_USER_ID
+					, FN_DECRYPT(SUBGUU.USER_NM) AS APPROVAL_SUB_GRANT_USER_NAME
+					, SUBCHG.LOGIN_ID AS APPR_SUB_CHG_USER_ID
+					, FN_DECRYPT(SUBCHG.USER_NM) AS APPROVAL_SUB_CHANGE_USER_NAME
+					, PC.APPR_SUB_CHG_DT
+					, APPRUU.LOGIN_ID AS APPR_USER_ID
+					, FN_DECRYPT(APPRUU.USER_NM) AS APPROVAL_USER_NAME
+					, APPRGUU.LOGIN_ID AS APPR_GRANT_USER_ID
+					, FN_DECRYPT(APPRGUU.USER_NM) AS APPROVAL_GRANT_USER_NAME
+					, CHGUU.LOGIN_ID AS APPR_CHG_USER_ID
+					, FN_DECRYPT(CHGUU.USER_NM) AS APPROVAL_CHANGE_USER_NAME
+					, PC.APPR_CHG_DT
+					, CASE
+						WHEN PC.APPR_STAT = 'APPR_STAT.DENIED' THEN IFNULL((
+							SELECT
+								STATUS_CMNT
+							FROM
+								PM_COUPON_STATUS_HISTORY PCSH
+							WHERE
+								PCSH.PM_COUPON_ID = PC.PM_COUPON_ID
+								AND PCSH.APPR_STAT = 'APPR_STAT.DENIED'
+							ORDER BY PCSH.PM_COUPON_STATUS_HISTORY_ID DESC
+							LIMIT 1
+						), '')
+						ELSE ''
+					END AS APPR_STAT_CMNT
+			FROM PM_COUPON PC
+			LEFT OUTER JOIN UR_USER SUBUU
+				ON PC.APPR_SUB_USER_ID = SUBUU.UR_USER_ID
+			LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+ 				ON PC.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+			LEFT JOIN UR_EMPLOYEE SUBGUE
+				ON SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+				AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+				AND SUBUE.GRANT_AUTH_USER_ID = SUBGUE.UR_USER_ID
+				AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+			LEFT JOIN UR_USER SUBGUU
+				ON SUBGUE.UR_USER_ID = SUBGUU.UR_USER_ID
+			LEFT OUTER JOIN UR_USER SUBCHG
+				ON PC.APPR_SUB_CHG_USER_ID = SUBCHG.UR_USER_ID
+			LEFT OUTER JOIN UR_USER APPRUU
+				ON PC.APPR_USER_ID = APPRUU.UR_USER_ID
+			LEFT OUTER JOIN UR_EMPLOYEE APPRUE
+ 				ON PC.APPR_USER_ID = APPRUE.UR_USER_ID
+			LEFT JOIN UR_EMPLOYEE APPRGUE
+				ON APPRUE.GRANT_AUTH_USER_ID IS NOT NULL
+				AND APPRUE.GRANT_AUTH_STOP_YN = 'N'
+				AND APPRUE.GRANT_AUTH_USER_ID = APPRGUE.UR_USER_ID
+				AND CURDATE() BETWEEN APPRUE.GRANT_AUTH_START_DT AND APPRUE.GRANT_AUTH_END_DT
+			LEFT JOIN UR_USER APPRGUU
+				ON APPRGUE.UR_USER_ID = APPRGUU.UR_USER_ID
+			LEFT OUTER JOIN UR_USER CHGUU
+				ON PC.APPR_CHG_USER_ID = CHGUU.UR_USER_ID
+			LEFT OUTER JOIN UR_USER REQUU
+				ON PC.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+			LEFT OUTER JOIN (SELECT COUNT(*)AS CNT, PM_COUPON_ID FROM PM_COUPON_ISSUE
+							 WHERE STATUS IN ('COUPON_STATUS.USE', 'COUPON_STATUS.NOTUSE')
+							 GROUP BY PM_COUPON_ID )  PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+			LEFT OUTER JOIN (SELECT COUNT(*)AS USE_CNT, PM_COUPON_ID FROM PM_COUPON_ISSUE
+							 WHERE STATUS IN ('COUPON_STATUS.USE')
+							 GROUP BY PM_COUPON_ID )  PCU ON PC.PM_COUPON_ID = PCU.PM_COUPON_ID
+			INNER JOIN (SELECT MAX(CREATE_DT), PM_COUPON_ID FROM PM_COUPON_STATUS_HISTORY GROUP BY PM_COUPON_ID ) PCSH ON PC.PM_COUPON_ID  = PCSH.PM_COUPON_ID
+		WHERE PC.USE_YN = 'Y'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDisplayCouponName)">
+		    AND PC.DISPLAY_COUPON_NM LIKE CONCAT(#{searchDisplayCouponName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchBosCouponName)">
+		    AND PC.BOS_COUPON_NM  LIKE CONCAT( #{searchBosCouponName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIssueType)">
+		    AND PC.ISSUE_TP  = #{searchIssueType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCouponType)">
+		    AND PC.COUPON_TP = #{searchCouponType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchApprovalStatus,'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprovalStatus)">
+			AND PC.APPR_STAT IN
+			<foreach item="data" index="index" collection="approvalStatusArray" open="(" separator="," close=")">
+				#{data}
+			</foreach>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUserType)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUser)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'ID')">
+					AND REQUU.LOGIN_ID = #{searchApprReqUser}
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'NAME')">
+					AND FN_DECRYPT(REQUU.USER_NM) = #{searchApprReqUser}
+				</when>
+			</choose>
+			</if>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUserType)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUser)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'ID')">
+					AND (
+						SUBUU.LOGIN_ID = #{searchApprChgUser}
+						OR
+						APPRUU.LOGIN_ID = #{searchApprChgUser}
+					    OR
+						SUBGUU.LOGIN_ID = #{searchApprChgUser}
+						OR
+						APPRGUU.LOGIN_ID = #{searchApprChgUser}
+						)
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'NAME')">
+					AND (
+						FN_DECRYPT(SUBUU.USER_NM) = #{searchApprChgUser}
+						OR
+						FN_DECRYPT(APPRUU.USER_NM) = #{searchApprChgUser}
+					    OR
+						FN_DECRYPT(SUBGUU.USER_NM) = #{searchApprChgUser}
+                        OR
+						FN_DECRYPT(APPRGUU.USER_NM) = #{searchApprChgUser}
+						)
+				</when>
+			</choose>
+			</if>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqStartDate)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqEndDate)">
+				AND PC.APPR_REQ_DT BETWEEN #{approvalReqStartDate} AND #{approvalReqEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			</if>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgStartDate)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgEndDate)">
+				AND (
+					PC.APPR_SUB_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+					OR
+					PC.APPR_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+					)
+			</if>
+		</if>
+		ORDER BY PC.CREATE_DT DESC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 상세조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCouponResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponDetailVo">
+		<result column="PM_COUPON_ID"  property="pmCouponId"/>
+		<result column="PM_COUPON_ID_ENCRYPT"  property="pmCouponIdEncrypt"/>
+		<result column="ISSUE_TP"  property="issueType"/>
+		<result column="DISPLAY_COUPON_NM"  property="displayCouponName"/>
+		<result column="BOS_COUPON_NM"  property="bosCouponName"/>
+		<result column="ISSUE_START_DT"  property="issueStartDate"/>
+		<result column="ISSUE_END_DT"  property="issueEndDate"/>
+		<result column="VALIDITY_TP"  property="validityType"/>
+		<result column="VALIDITY_DAY"  property="validityDay"/>
+		<result column="VALIDITY_START_DT"  property="validityStartDate"/>
+		<result column="VALIDITY_END_DT"  property="validityEndDate"/>
+		<result column="ISSUE_DETAIL_TP"  property="autoIssueType"/>
+		<result column="ISSUE_QTY_LIMIT"  property="issueQtyLimit"/>
+		<result column="ISSUE_BUDGET"  property="issueBudget"/>
+		<result column="ISSUE_QTY"  property="issueQty"/>
+		<result column="ISSUE_REASON"  property="issueReason"/>
+		<result column="USE_PC_YN"  property="usePcYn"/>
+		<result column="USE_MO_WEB_YN"  property="useMoWebYn"/>
+		<result column="USE_MO_APP_YN"  property="useMoAppYn"/>
+		<result column="COUPON_TP"  property="couponType"/>
+		<result column="DISCOUNT_TP"  property="discountType"/>
+		<result column="DISCOUNT_VAL"  property="discountValue"/>
+		<result column="PERCENTAGE_MAX_DISCOUNT_AMOUNT"  property="percentageMaxDiscountAmount"/>
+		<result column="MIN_PAYMENT_AMOUNT"  property="minPaymentAmount"/>
+		<result column="ISSUE_PURPOSE"  property="issuePurposeType"/>
+		<result column="SERIAL_NUMBER_TP"  property="ticketIssueType"/>
+		<result column="FIX_SERIAL_NUMBER"  property="serialNumber"/>
+		<result column="COUPON_MASTER_STAT"  property="couponMasterStat"/>
+		<result column="APPR_STAT"  property="apprStat"/>
+		<result column="STATUS_NAME"  property="statusName"/>
+		<result column="STATUS_CMNT"  property="statusCmnt"/>
+		<result column="MIN_PAYMENT_AMOUNT"  property="minPaymentAmount"/>
+		<result column="CREATE_INFO"  property="createInfo"/>
+		<result column="CREATE_NAME"  property="createName"/>
+		<result column="CREATE_DT"  property="createDate"/>
+		<result column="CREATE_LOGIN_ID"  property="createLoginId"/>
+		<result column="MODIFY_INFO"  property="modifyInfo"/>
+		<result column="MODIFY_NAME"  property="modifyName"/>
+		<result column="MODIFY_LOGIN_ID"  property="modifyLoginId"/>
+		<result column="MODIFY_DT"  property="modifyDate"/>
+		<result column="GOODS_COVERAGE_TYPE"  property="goodsCoverageType"/>
+		<result column="CART_COVERAGE_TYPE"  property="cartCoverageType"/>
+		<result column="SHIPPING_COVERAGE_TYPE"  property="shippingCoverageType"/>
+		<result column="ISSUE_INFO_USER"  property="issueInfoUser"/>
+		<result column="STOP_ISSUE_USER_INFO"  property="stopIssueUserInfo"/>
+		<result column="CART_COUPON_APPLY_YN"  property="cartCouponApplyYn"/>
+		<result column="PG_PROMOTION_YN"  property="pgPromotionYn"/>
+		<result column="PG_PROMOTION_PAY_CONFIG_ID"  property="pgPromotionPayConfigId"/>
+		<result column="PG_PROMOTION_PAY_GRP_ID"  property="pgPromotionPayGroupId"/>
+		<result column="PG_PROMOTION_PAY_ID"  property="pgPromotionPayId"/>
+		<result column="APPR_SUB_USER_ID"  property="apprSubUserId"/>
+		<result column="APPR_USER_ID"  property="apprUserId"/>
+		<result column="TICKET_COLLECT_YN"  property="ticketCollectYn"/>
+		<result column="APPR_REQ_USER_ID"  property="apprReqUserId"/>
+		<result column="TICKET_COLLECT_INFO"  property="ticketCollectInfo"/>
+	</resultMap>
+	<select id="getCoupon" resultMap="getCouponResultMap">
+			/* coupon.getCoupon */
+				SELECT PC.PM_COUPON_ID
+					 , FN_ENCRYPT(PC.PM_COUPON_ID) AS PM_COUPON_ID_ENCRYPT
+                     , PC.ISSUE_TP
+               		 , FN_COMN_CODE_DIC(PC.ISSUE_TP) AS ISSUE_TYPE_NAME
+               		 , PC.DISPLAY_COUPON_NM
+               		 , PC.BOS_COUPON_NM
+               		 , PC.ISSUE_START_DT
+               		 , PC.ISSUE_END_DT
+               		 , PC.VALIDITY_TP
+               		 , PC.VALIDITY_DAY
+               		 , PC.VALIDITY_START_DT
+               		 , PC.VALIDITY_END_DT
+               		 , PC.ISSUE_DETAIL_TP
+               		 , CASE WHEN PC.ISSUE_TP = 'PAYMENT_TYPE.AUTO_PAYMENT' THEN PC.ISSUE_QTY_LIMIT
+               		        ELSE CONCAT('COUPON_LIMIT.',PC.ISSUE_QTY_LIMIT)
+               		   END AS ISSUE_QTY_LIMIT
+               		 , PC.ISSUE_BUDGET
+               		 , PC.ISSUE_QTY
+               		 , PC.ISSUE_REASON
+               		 , PC.USE_PC_YN
+               		 , PC.USE_MO_WEB_YN
+               		 , PC.USE_MO_APP_YN
+               		 , PC.COUPON_TP
+               		 , PC.DISCOUNT_TP
+               		 , PC.DISCOUNT_VAL
+               		 , PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+               		 , PC.MIN_PAYMENT_AMOUNT
+               		 , PC.ISSUE_PURPOSE
+               		 , PC.SERIAL_NUMBER_TP
+               		 , PC.FIX_SERIAL_NUMBER
+               		 , PC.COVERAGE_TP AS GOODS_COVERAGE_TYPE
+               		 , PC.COVERAGE_TP AS CART_COVERAGE_TYPE
+               		 , PC.COVERAGE_TP AS SHIPPING_COVERAGE_TYPE
+               		 <!-- , PC.STATUS -->
+               		 , PC.COUPON_MASTER_STAT		/*쿠폰 마스터 상태 공통코드(COUPON_MASTER_STAT)*/
+					 , PC.APPR_STAT		/*쿠폰 승인 상태 공통코드(APPR_STAT)*/
+					 , PC.APPR_REQ_DT		 	/*승인요청일*/
+					 , PC.APPR_CHG_DT		 	/*승인처리일*/
+					 , PC.APPR_CHG_USER_ID       /*승인처리자*/
+               		 , PCI.STATUS_CMNT
+               		 , PC.CREATE_DT
+               		 , PC.MODIFY_DT
+               		 , PC.CREATE_ID
+               		 , FN_DECRYPT(UU.USER_NM ) AS CREATE_NAME
+               		 , UU.LOGIN_ID AS CREATE_LOGIN_ID
+               		 , FN_DECRYPT(UR.USER_NM ) AS MODIFY_NAME
+               		 , UR.LOGIN_ID AS MODIFY_LOGIN_ID
+					 <!-- , CASE WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_END_DT   <![CDATA[<]]>   NOW() THEN '발급기간만료'
+						   WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_START_DT   <![CDATA[>]]>   NOW() THEN '발급기간대기'
+						   WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' THEN '발급 중'
+						   ELSE FN_COMN_CODE_DIC(PC.APPR_STAT)
+					  END AS STATUS_NAME -->
+  					 , CASE WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED' AND  PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_END_DT <![CDATA[<]]> DATE(NOW()) THEN '발급기간만료'
+						   WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_START_DT <![CDATA[>]]> NOW() THEN '발급기간대기'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.NONE' THEN '저장'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.REQUEST' THEN '승인요청'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.CANCEL' THEN '요청철회'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.DENIED' THEN '승인반려'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN '1차 승인완료'
+						   WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED' AND PC.APPR_STAT = 'APPR_STAT.APPROVED' THEN '발급'
+						   ELSE FN_COMN_CODE_DIC(PC.COUPON_MASTER_STAT)
+					  END AS STATUS_NAME
+               		 , CONCAT(PC.CREATE_DT, ' ' , FN_DECRYPT(UU.USER_NM ),'(',UU.LOGIN_ID ,')') AS CREATE_INFO
+               		 , CONCAT(PC.MODIFY_DT, ' ' , FN_DECRYPT(UU.USER_NM ),'(',UR.LOGIN_ID ,')') AS MODIFY_INFO
+               		 , ( SELECT CONCAT(PC1.CREATE_DT, ' ' , FN_DECRYPT(U.USER_NM ),'(',PC1.CREATE_ID ,')')
+					   FROM PM_COUPON_STATUS_HISTORY PC1
+					   INNER JOIN UR_USER U ON PC1.CREATE_ID = U.UR_USER_ID
+					   WHERE PM_COUPON_ID = #{pmCouponId}
+					   AND PC1.CREATE_DT = (SELECT MAX( PCSH.CREATE_DT)  FROM PM_COUPON_STATUS_HISTORY PCSH WHERE PCSH.PM_COUPON_ID = #{pmCouponId} AND APPR_STAT = 'APPR_STAT.APPROVED')) AS ISSUE_INFO_USER
+				   	 , ( SELECT CONCAT(PC1.CREATE_DT, ' ' , FN_DECRYPT(U.USER_NM ),'(',PC1.CREATE_ID ,')')
+					   FROM PM_COUPON_STATUS_HISTORY PC1
+					   INNER JOIN UR_USER U ON PC1.CREATE_ID = U.UR_USER_ID
+					   WHERE PM_COUPON_ID = #{pmCouponId}
+					   AND PC1.CREATE_DT = (SELECT MAX( PCSH.CREATE_DT)  FROM PM_COUPON_STATUS_HISTORY PCSH WHERE PCSH.PM_COUPON_ID = #{pmCouponId} AND COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.STOP')) AS STOP_ISSUE_USER_INFO
+                     , PC.CART_COUPON_APPLY_YN
+                     , PC.PG_PROMOTION_YN
+                     , PC.PG_PROMOTION_PAY_CONFIG_ID
+                     , PC.PG_PROMOTION_PAY_GRP_ID
+                     , PC.PG_PROMOTION_PAY_ID
+                     , PC.APPR_SUB_USER_ID
+                     , PC.APPR_USER_ID
+                     , PC.TICKET_COLLECT_YN
+                     , CONCAT(PC.TICKET_COLLECT_DT, ' ' , FN_DECRYPT(UT.USER_NM ),'(',UT.LOGIN_ID ,')') AS TICKET_COLLECT_INFO
+                     , PC.APPR_REQ_USER_ID
+               FROM PM_COUPON PC
+               INNER JOIN (SELECT PCSH.PM_COUPON_STATUS_HISTORY_ID, PCSH.STATUS_CMNT, PCSH.PM_COUPON_ID , PCSH.APPR_STAT FROM PM_COUPON_STATUS_HISTORY PCSH
+							WHERE PCSH.PM_COUPON_STATUS_HISTORY_ID = (
+							SELECT MAX(PM_COUPON_STATUS_HISTORY_ID)FROM PM_COUPON_STATUS_HISTORY WHERE PM_COUPON_ID = #{pmCouponId})) PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID AND PC.APPR_STAT = PCI.APPR_STAT
+               INNER JOIN UR_USER UU ON PC.CREATE_ID = UU.UR_USER_ID
+               LEFT OUTER JOIN UR_USER UR ON PC.MODIFY_ID = UR.UR_USER_ID
+               LEFT OUTER JOIN UR_USER UT ON PC.TICKET_COLLECT_USER_ID = UT.UR_USER_ID
+               WHERE PC.PM_COUPON_ID = #{pmCouponId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 개별난수번호 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSerialNumberListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.AccountInfoVo">
+		<result column="NO"  property="no"/>
+		<result column="SERIAL_NUMBER"  property="serialNumber"/>
+	</resultMap>
+	<select id="getSerialNumberList" resultMap="getSerialNumberListResultMap">
+			/* coupon.getSerialNumberList */
+			SELECT  @rownum:=@rownum+1 AS NO, FN_DECRYPT(PSM.SERIAL_NUMBER) AS SERIAL_NUMBER
+			FROM (SELECT @rownum:=0) r, PM_COUPON PC
+			INNER JOIN PM_SERIAL_NUMBER PSM ON PC.PM_COUPON_ID = PSM.PM_COUPON_ID
+			WHERE PC.PM_COUPON_ID  = #{pmCouponId}
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 회원 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.AccountInfoVo">
+		<result column="NO"  property="no"/>
+		<result column="LOGIN_ID"  property="loginId"/>
+	</resultMap>
+	<select id="getUserList" resultMap="getUserListResultMap">
+			/* coupon.getUserList */
+			SELECT  DISTINCT (SELECT LOGIN_ID FROM UR_USER WHERE UR_USER_ID = PCI.UR_USER_ID) AS LOGIN_ID
+			FROM (SELECT @rownum:=0) r, PM_COUPON PC
+			INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+			WHERE PC.PM_COUPON_ID = #{pmCouponId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 조직정보 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrganizationListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.OrganizationListResultVo">
+		<result column="UR_ERP_ORGANIZATION_CD"  property="urErpOrganizationCode"/>
+		<result column="UR_ERP_ORGANIZATION_NM"  property="urErpOrganizationName"/>
+		<result column="PERCENTAGE"  property="percentage"/>
+	</resultMap>
+	<select id="getOrganizationList" resultMap="getOrganizationListResultMap">
+			/* coupon.getOrganizationList */
+			SELECT PO.UR_ERP_ORGANIZATION_CD
+					, PO.UR_ERP_ORGANIZATION_NM
+					, PO.PERCENTAGE
+			FROM PM_COUPON_POINT_SHARE_ORGANIZATION PO
+			<!-- INNER JOIN UR_ERP_ORGANIZATION UE ON PO.UR_ERP_ORGANIZATION_CD = UE.ERP_ORGANIZATION_CD -->
+            WHERE PO.PM_COUPON_ID = #{pmCouponId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 적용범위 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCoverageListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CoverageVo">
+		<result column="INCLUDE_YN"  property="includeYn"/>
+		<result column="COVERAGE_ID"  property="coverageId"/>
+		<result column="COVERAGE_TP"  property="coverageType"/>
+		<result column="COVERAGE_NAME"  property="coverageName"/>
+		<result column="APPR_STAT"  property="apprStat"/>
+		<result column="DISP_YN"  property="goodsDisplayYn"/>
+		<result column="SALE_STATUS_CODE_NAME"  property="saleStatusCodeName"/>
+		<result column="IL_CATEGORY_NAME"  property="ilCategoryName"/>
+	</resultMap>
+	<select id="getCoverageList" resultMap="getCoverageListResultMap">
+			/* coupon.getCoverageList */
+			SELECT PC.COVERAGE_TP
+				, PC.COVERAGE_ID
+				, PC.INCLUDE_YN
+				, CASE WHEN PC.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE' THEN (SELECT UW.WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE UW.UR_WAREHOUSE_ID = PC.COVERAGE_ID )
+				       WHEN PC.COVERAGE_TP = 'APPLYCOVERAGE.BRAND' THEN (SELECT DB.DP_BRAND_NM FROM DP_BRAND DB WHERE DB.DP_BRAND_ID = PC.COVERAGE_ID )
+	    			   WHEN PC.COVERAGE_TP = 'APPLYCOVERAGE.DISPLAY_CATEGORY' THEN (SELECT FN_CTGRY_FULL_NAME(PC.COVERAGE_ID)  FROM DUAL)
+				  ELSE  (SELECT GOODS_NM FROM IL_GOODS WHERE IL_GOODS_ID = PC.COVERAGE_ID )
+				  END
+				AS COVERAGE_NAME
+				, PM.APPR_STAT
+				, CASE WHEN IG.DISP_YN = 'Y' THEN '가능'
+				       ELSE '불가능'
+				  END AS DISP_YN
+				, FN_COMN_CODE_DIC(IG.SALE_STATUS) AS SALE_STATUS_CODE_NAME
+				<!-- , CASE WHEN CA.PRODUCT4_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5)
+					   WHEN CA.PRODUCT3_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5, ' / 중분류 : ', CA.CATEGORY4)
+					   WHEN CA.PRODUCT2_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5, ' / 중분류 : ', CA.CATEGORY4, ' / 소분류 : ', CA.CATEGORY3)
+					   WHEN CA.PRODUCT1_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5, ' / 중분류 : ', CA.CATEGORY4, ' / 소분류 : ', CA.CATEGORY3, ' / 세분류 :' , CA.CATEGORY2)
+					   ELSE ''
+				  END AS IL_CATEGORY_NAME -->
+				, CASE WHEN (LENGTH(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>',''))) = 0 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 1), '>', -1))
+					   WHEN (LENGTH(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>',''))) = 1 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 1), '>', -1), ' / 중분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 2), '>', -1))
+					   WHEN (LENGTH(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>',''))) = 2 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 1), '>', -1), ' / 중분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 2), '>', -1), ' / 소분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 3), '>', -1))
+					   WHEN (LENGTH(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>',''))) = 3 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 1), '>', -1), ' / 중분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 2), '>', -1), ' / 소분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 3), '>', -1), ' / 세분류 :' , SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(PC.COVERAGE_ID), '>', 4), '>', -1))
+					   ELSE ''
+				  END AS IL_CATEGORY_NAME
+			FROM PM_COUPON_COVERAGE PC
+			INNER JOIN PM_COUPON PM ON PM.PM_COUPON_ID  = PC.PM_COUPON_ID
+			LEFT JOIN IL_GOODS IG ON IG.IL_GOODS_ID = PC.COVERAGE_ID AND PC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS'
+<!-- 			LEFT JOIN (
+						SELECT
+									P5.PRNTS_CTGRY_ID AS PRODUCT1_ID,
+									P5.CTGRY_NM AS CATEGORY1,
+									P4.PRNTS_CTGRY_ID AS PRODUCT2_ID,
+									P4.CTGRY_NM AS CATEGORY2,
+						            P3.PRNTS_CTGRY_ID AS PRODUCT3_ID,
+						            P3.CTGRY_NM AS CATEGORY3,
+						            P2.PRNTS_CTGRY_ID AS PRODUCT4_ID,
+						            P2.CTGRY_NM  AS CATEGORY4,
+						            P1.PRNTS_CTGRY_ID AS PARENT_ID,
+						            P1.IL_CTGRY_ID AS PRODUCT5_ID,
+						            P1.CTGRY_NM AS CATEGORY5
+						FROM        IL_CTGRY P1
+						LEFT JOIN   IL_CTGRY P2 ON P2.IL_CTGRY_ID = P1.PRNTS_CTGRY_ID
+						LEFT JOIN   IL_CTGRY P3 ON P3.IL_CTGRY_ID = P2.PRNTS_CTGRY_ID
+						LEFT JOIN   IL_CTGRY P4 ON P4.IL_CTGRY_ID = P3.PRNTS_CTGRY_ID
+						LEFT JOIN   IL_CTGRY P5 ON P5.IL_CTGRY_ID = P4.PRNTS_CTGRY_ID
+			) AS CA ON CA.PRODUCT5_ID = PC.COVERAGE_ID -->
+            WHERE PC.PM_COUPON_ID = #{pmCouponId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:분담조직 정보 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrganizationPopupListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.OrganizationPopupListResultVo">
+		<result column="NO" property="no" />
+		<result column="ERP_REGAL_CD" property="erpRegalCode" />
+		<result column="ERP_REGAL_NM" property="erpRegalName" />
+		<result column="ERP_ORGANIZATION_CD" property="erpOrganizationCode" />
+		<result column="ERP_ORGANIZATION_NM" property="erpOrganizationName" />
+		<result column="ST_ROLE_TP_ID" property="stRoleTpId" />
+		<result column="AMOUNT" property="amount" />
+		<result column="VALIDITY_DAY" property="validityDay" />
+		<result column="FIN_ORGANIZATION_CD" property="finOrganizationCode" />
+	</resultMap>
+
+	<select id="getOrganizationPopupList" resultMap="getOrganizationPopupListResultMap">
+		/*	coupon.getOrganizationPopupList	*/
+
+		SELECT A.* FROM
+		(
+			SELECT @rownum:=@rownum+1 AS NO
+					, A.ERP_REGAL_CD
+					, A.ERP_REGAL_NM
+					, B.ERP_ORGANIZATION_CD
+					, B.ERP_ORGANIZATION_NM
+					, D.ST_ROLE_TP_ID
+					, CASE WHEN E.SETTING_TP = 'GROUP' THEN E.AMOUNT
+					       ELSE E.AMOUNT_INDIVIDUAL
+					  END AS AMOUNT
+					, E.VALIDITY_DAY
+					, (SELECT FIN_ORGANIZATION_CD FROM UR_ERP_EMPLOYEE UEE WHERE FIN_ORGANIZATION_CD IS NOT NULL AND UEE.ERP_ORGANIZATION_CD = B.ERP_ORGANIZATION_CD LIMIT 1) AS FIN_ORGANIZATION_CD
+			FROM UR_ERP_REGAL A, (SELECT @rownum:=0) r
+			INNER JOIN UR_ERP_ORGANIZATION B
+			LEFT JOIN ST_ROLE_TYPE C ON B.ERP_ORGANIZATION_CD = C.ERP_ORGANIZATION_CD
+			LEFT JOIN PM_POINT_ADMIN_SETTING_TARGET D ON D.ST_ROLE_TP_ID = C.ST_ROLE_TP_ID
+			LEFT JOIN PM_POINT_ADMIN_SETTING E ON E.PM_POINT_ADMIN_SETTING_ID = D.PM_POINT_ADMIN_SETTING_ID
+			WHERE A.ERP_REGAL_CD = B.ERP_REGAL_CD
+		) A
+		WHERE 1=1
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCodeValue)">
+		   <choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'CODE_TYPE.REGAL')">
+					AND A.ERP_REGAL_CD = #{searchCodeValue}
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'CODE_TYPE.ORGANIZATION')">
+					AND A.ERP_ORGANIZATION_CD = #{searchCodeValue}
+				</when>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchNameValue)">
+		   <choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(nameType,'NAME_TYPE.REGAL')">
+					AND A.ERP_REGAL_NM LIKE CONCAT('%', #{searchNameValue},'%')
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(nameType,'NAME_TYPE.ORGANIZATION')">
+					AND A.ERP_ORGANIZATION_NM LIKE CONCAT('%', #{searchNameValue},'%')
+				</when>
+			</choose>
+		</if>
+		ORDER BY A.NO DESC
+	</select>
+
+	<select id="getOrganizationPopupListCount" resultType="int">
+
+		/*	coupon.getOrganizationPopupListCount */
+
+		SELECT COUNT(*) FROM
+		(
+			SELECT @rownum:=@rownum+1 AS NO
+					, A.ERP_REGAL_CD
+					, A.ERP_REGAL_NM
+					, B.ERP_ORGANIZATION_CD
+					, B.ERP_ORGANIZATION_NM
+			FROM UR_ERP_REGAL A, (SELECT @rownum:=0) r
+			INNER JOIN UR_ERP_ORGANIZATION B
+			WHERE A.ERP_REGAL_CD = B.ERP_REGAL_CD
+		) A
+		WHERE 1=1
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCodeValue)">
+		   <choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'CODE_TYPE.REGAL')">
+					AND A.ERP_REGAL_CD = #{searchCodeValue}
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'CODE_TYPE.ORGANIZATION')">
+					AND A.ERP_ORGANIZATION_CD = #{searchCodeValue}
+				</when>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchNameValue)">
+		   <choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(nameType,'NAME_TYPE.REGAL')">
+					AND A.ERP_REGAL_NM LIKE CONCAT('%', #{searchNameValue},'%')
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(nameType,'NAME_TYPE.ORGANIZATION')">
+					AND A.ERP_ORGANIZATION_NM LIKE CONCAT('%', #{searchNameValue},'%')
+				</when>
+			</choose>
+		</if>
+
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:쿠폰지정 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCpnMgmIssueListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.BuyerInfoListResultVo">
+		<result column="NO" property="no" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="USER_NM" property="userName" />
+		<result column="MAIL" property="email" />
+		<result column="MOBILE" property="mobile" />
+		<result column="LAST_LOGIN_DT" property="lastLoginDate" />
+		<result column="USER_CREATE_DATE" property="userCreateDate" />
+		<result column="ORDER_DATE" property="lastOrderDate" />
+		<result column="ORG_LOGIN_ID" property="orgLoginId" />
+		<result column="ORG_USER_NM" property="orgUserName" />
+		<result column="ORG_MAIL" property="orgEmail" />
+		<result column="ORG_MOBILE" property="orgMobile" />
+	</resultMap>
+
+	<select id="getCpnMgmIssueList" resultMap="getCpnMgmIssueListResultMap">
+		/*	coupon.getCpnMgmIssueList	*/
+		SELECT * FROM
+		(
+			SELECT
+				UB.UR_USER_ID
+				,FN_DECRYPT(UU.USER_NM ) AS USER_NM
+				,UU.LOGIN_ID
+			 	,FN_DECRYPT(UB.MOBILE) AS MOBILE
+ 			 	,FN_DECRYPT(UB.MAIL) AS MAIL
+ 				,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+ 				,UG.GROUP_NM
+ 				,UG.UR_GROUP_ID
+ 				,UU.CREATE_DT AS USER_CREATE_DATE
+ 				,DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+ 				,UA.LAST_LOGIN_DT AS LAST_LOGIN_DATE
+				,FN_DECRYPT(UU.USER_NM ) AS ORG_USER_NM
+				,UU.LOGIN_ID AS ORG_LOGIN_ID
+				,FN_DECRYPT(UB.MOBILE) AS ORG_MOBILE
+				,FN_DECRYPT(UB.MAIL) AS ORG_MAIL
+			FROM
+				UR_BUYER UB
+				INNER JOIN UR_USER UU   ON UB.UR_USER_ID    = UU.UR_USER_ID
+				LEFT JOIN UR_GROUP UG   ON UB.UR_GROUP_ID 	= UG.UR_GROUP_ID
+				LEFT JOIN UR_ACCOUNT UA ON UB.UR_USER_ID    = UA.UR_USER_ID
+				ORDER BY UU.CREATE_DT DESC
+		) A
+		WHERE 1=1
+		<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+						AND A.USER_NM IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+						AND A.LOGIN_ID IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+				</when>
+				<otherwise>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+					   <choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'MOBILE')">
+								AND A.MOBILE LIKE CONCAT('%',#{searchValue},'%')
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'EMAIL')">
+								AND A.MAIL LIKE CONCAT('%',#{searchValue},'%')
+							</when>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserGroup)">
+					    AND A.UR_GROUP_ID = #{searchUserGroup}
+					</if>
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'CREATE_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.USER_CREATE_DATE BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'LAST_LOGIN_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.LAST_LOGIN_DATE BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+					</choose>
+				</otherwise>
+			</choose>
+	</select>
+
+	<select id="getCpnMgmIssueListCount" resultType="int">
+
+		/*	coupon.getCpnMgmIssueListCount */
+
+		SELECT COUNT(*) FROM
+		(
+			SELECT
+				UB.UR_USER_ID
+				,FN_DECRYPT(UU.USER_NM)  AS USER_NM
+				,UU.LOGIN_ID
+			 	,FN_DECRYPT(UB.MOBILE) AS MOBILE
+ 			 	,FN_DECRYPT(UB.MAIL) AS MAIL
+ 				,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+ 				,UG.GROUP_NM
+ 				,UG.UR_GROUP_ID
+ 				,UU.CREATE_DT AS USER_CREATE_DATE
+			FROM
+				UR_BUYER UB
+				INNER JOIN UR_USER UU   ON UB.UR_USER_ID    = UU.UR_USER_ID
+				LEFT JOIN UR_GROUP UG   ON UB.UR_GROUP_ID 	= UG.UR_GROUP_ID
+		) A
+		WHERE 1=1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND A.USER_NM IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND A.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+				   <choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'MOBILE')">
+							AND A.MOBILE LIKE CONCAT('%',#{searchValue},'%')
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'EMAIL')">
+							AND A.MAIL LIKE CONCAT('%',#{searchValue},'%')
+						</when>
+					</choose>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserGroup)">
+				    AND A.ID = #{searchUserGroup}
+				</if>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'CREATE_DATE')">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+								AND A.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							</if>
+						</if>
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'LAST_LOGIN_DATE')">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+								AND A.LAST_LOGIN_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							</if>
+						</if>
+					</when>
+				</choose>
+			</otherwise>
+		</choose>
+
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:쿠폰지급  (검색회원)
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCpnMgmIssueDuplicateParamListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.BuyerInfoListResultVo">
+		<result column="LOGIN_ID" property="loginId" />
+	</resultMap>
+
+	<select id="getCpnMgmIssueDuplicateParamList" resultMap="getCpnMgmIssueDuplicateParamListResultMap">
+		/*	coupon.getCpnMgmIssueDuplicateParamList	*/
+		SELECT LOGIN_ID FROM
+		(
+			SELECT
+				UB.UR_USER_ID
+				,FN_DECRYPT(UU.USER_NM)  AS USER_NM
+				,UU.LOGIN_ID
+			 	,FN_DECRYPT(UB.MOBILE) AS MOBILE
+ 			 	,FN_DECRYPT(UB.MAIL)  AS MAIL
+ 				,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+ 				,UG.GROUP_NM
+ 				,UG.UR_GROUP_ID
+ 				,UU.CREATE_DT AS USER_CREATE_DATE
+			FROM
+				UR_BUYER UB
+				INNER JOIN UR_USER UU   ON UB.UR_USER_ID    = UU.UR_USER_ID
+				LEFT JOIN UR_GROUP UG   ON UB.UR_GROUP_ID 	= UG.UR_GROUP_ID
+		) A
+		WHERE 1=1
+		<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+						AND A.USER_NM IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+						AND A.LOGIN_ID IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+				</when>
+				<otherwise>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+					   <choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'MOBILE')">
+								AND A.MOBILE LIKE CONCAT('%',#{searchValue},'%')
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'EMAIL')">
+								AND A.MAIL LIKE CONCAT('%',#{searchValue},'%')
+							</when>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserGroup)">
+					    AND A.UR_GROUP_ID = #{searchUserGroup}
+					</if>
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'CREATE_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.USER_CREATE_DATE BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'LAST_LOGIN_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.LAST_LOGIN_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+					</choose>
+				</otherwise>
+			</choose>
+			ORDER BY A.CREATE_DT ASC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰지급 내역 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCpnMgmListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.IssueListResultVo">
+		<result column="NO" property="no" />
+		<result column="BOS_COUPON_NM" property="bosCouponName" />
+		<result column="PM_COUPON_ISSUE_ID" property="pmCouponIssueId" />
+		<result column="DISCOUNT_VALUE" property="discountValue" />
+		<result column="VALIDITY_PEROID" property="validityPeroid" />
+		<result column="ISSUE_DATE" property="issueDate" />
+		<result column="REMAINING_PERIOD" property="remainingPeriod" />
+		<result column="COUPON_USE_DATE" property="couponUseDate" />
+		<result column="COUPON_USE_TIME" property="couponUseTime" />
+		<result column="USER_INFO" property="userInfo" />
+		<result column="USER_NM" property="userNm" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="ISSUE_REASON" property="statusComment" />
+		<result column="USER_STATUS" property="userStatus" />
+		<result column="STATUS" property="status" />
+		<result column="GOODS_NM" property="goodsNm" />
+	</resultMap>
+
+	<select id="getCpnMgmList" resultMap="getCpnMgmListResultMap">
+		/*	coupon.getCpnMgmList	*/
+		WITH ODIF AS(
+				SELECT OOD.IL_GOODS_ID, OO.ODID,D.PM_COUPON_ID, OO.UR_USER_ID,D.PM_COUPON_ISSUE_ID,OOD.GOODS_NM  FROM OD_ORDER_DETL_DISCOUNT D
+				INNER JOIN (SELECT * FROM OD_ORDER O
+				WHERE ORDER_YN = 'Y') OO ON OO.OD_ORDER_ID = D.OD_ORDER_ID
+				INNER JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID
+				WHERE D.PM_COUPON_ID = #{pmCouponId}
+				GROUP BY OO.ODID,OO.UR_USER_ID, D.PM_COUPON_ISSUE_ID
+		)
+		SELECT *
+		FROM
+		(
+			SELECT  PC.BOS_COUPON_NM
+					, PCI.PM_COUPON_ISSUE_ID
+					, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+						   WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,0), ' 원')
+						   WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+						   	THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대 할인금액 ',FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,0) ,' 원')
+								      ELSE CONCAT(FORMAT(PC.DISCOUNT_VAL,0), ' 원')
+						   		  END
+						   END AS DISCOUNT_VALUE
+					,PC.DISCOUNT_VAL
+					, CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' AND PC.APPR_CHG_DT <![CDATA[<]]> PC.ISSUE_START_DT THEN CONCAT(DATE_FORMAT(PC.VALIDITY_START_DT ,'%Y-%m-%d'),'~' ,DATE_FORMAT(PC.VALIDITY_END_DT ,'%Y-%m-%d') ,'(',PC.VALIDITY_DAY ,'일)')
+						   WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' AND PC.APPR_CHG_DT <![CDATA[>=]]> PC.ISSUE_START_DT THEN CONCAT(DATE_FORMAT(PC.APPR_CHG_DT ,'%Y-%m-%d'),'~' ,DATE_FORMAT(PC.VALIDITY_END_DT ,'%Y-%m-%d') ,'(',DATEDIFF(PC.VALIDITY_END_DT, PC.CREATE_DT ),'일)')
+						   WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.VALIDITY' AND PC.APPR_CHG_DT <![CDATA[<]]> PC.ISSUE_START_DT THEN  CONCAT('~', DATE_FORMAT(PC.ISSUE_START_DT,'%Y-%m-%d') ,'(',PC.VALIDITY_DAY ,'일)')
+						   WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.VALIDITY' AND PC.APPR_CHG_DT <![CDATA[>=]]> PC.ISSUE_START_DT THEN  CONCAT('~', DATE_FORMAT(PCI.VALIDITY_START_DT,'%Y-%m-%d') ,'(',PC.VALIDITY_DAY ,'일)')
+						   ELSE CONCAT('~', DATE_FORMAT(PCI.CREATE_DT,'%Y-%m-%d') ,'(',PC.VALIDITY_DAY ,'일)')
+						   END AS VALIDITY_PEROID
+					, CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN DATE_FORMAT(PC.VALIDITY_END_DT ,'%Y-%m-%d')
+					  ELSE DATE_FORMAT(DATE_ADD(PC.APPR_CHG_DT, INTERVAL PC.VALIDITY_DAY DAY),'%Y-%m-%d')
+					  END AS SEARCH_VALIDITY_PEROID
+					, CASE WHEN PC.APPR_CHG_DT <![CDATA[<]]> PC.ISSUE_START_DT THEN DATE_FORMAT(PC.ISSUE_START_DT ,'%Y-%m-%d')
+					       WHEN PC.APPR_CHG_DT <![CDATA[>=]]> PC.ISSUE_START_DT THEN DATE_FORMAT(PCI.VALIDITY_START_DT,'%Y-%m-%d')
+					       END AS ISSUE_DATE
+					, CASE WHEN PCI.USE_DT IS NOT NULL AND PCI.STATUS = 'COUPON_STATUS.USE' THEN '사용완료'
+					 	   WHEN PCI.STATUS = 'COUPON_STATUS.CANCEL' THEN '회수'
+						   WHEN PC.VALIDITY_DAY IS NOT NULL AND PC.APPR_CHG_DT <![CDATA[<]]> PC.ISSUE_START_DT THEN
+																				  CASE WHEN DATEDIFF(	DATE_ADD(PC.ISSUE_START_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() ) = 0 THEN '당일'
+																					   WHEN DATEDIFF(	DATE_ADD(PC.ISSUE_START_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() )  <![CDATA[<]]>  0 THEN '기간만료'
+																					   ELSE CONCAT( DATEDIFF(	DATE_ADD(PC.ISSUE_START_DT, INTERVAL PC.VALIDITY_DAY DAY)  , PC.ISSUE_START_DT ) , '일')
+																					   END
+					       WHEN PC.VALIDITY_DAY IS NOT NULL AND PC.APPR_CHG_DT <![CDATA[>=]]> PC.ISSUE_START_DT THEN
+					       										CASE WHEN DATEDIFF(	DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() ) = 0 THEN '당일'
+													                 WHEN DATEDIFF(	DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() ) <![CDATA[<]]> 0 THEN '기간만료'
+													            ELSE CONCAT( DATEDIFF(	DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() ) , '일')
+													            END
+					       WHEN PC.VALIDITY_DAY IS NULL THEN
+					       									CASE WHEN DATEDIFF(	PC.VALIDITY_END_DT  , NOW() ) = 0 THEN '당일'
+ 					       										 WHEN DATEDIFF(	PC.VALIDITY_END_DT  , NOW() ) <![CDATA[<]]> 0 THEN '기간만료'
+ 					       										 ELSE  CONCAT(DATEDIFF(	PC.VALIDITY_END_DT  , NOW() ), '일')
+ 					       									END
+					  END  AS REMAINING_PERIOD
+					,DATE_FORMAT(PCI.USE_DT ,'%Y-%m-%d') AS COUPON_USE_DATE
+			        ,DATE_FORMAT(PCI.USE_DT ,'%H:%i:%s') AS COUPON_USE_TIME
+					<!-- , CONCAT(FN_DECRYPT(U.USER_NM ),'(',U.LOGIN_ID ,')')  AS USER_INFO -->
+					, U.LOGIN_ID
+					, FN_DECRYPT(U.USER_NM ) AS USER_NM
+					, U.USER_STATUS
+					, CASE WHEN PC.ISSUE_REASON IS NULL THEN CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' AND OI.ODID IS NOT NULL THEN CONCAT('주문번호:',OI.ODID, ' / 적용상품코드:', OI.IL_GOODS_ID)
+																  WHEN PC.COUPON_TP <![CDATA[<>]]> 'COUPON_TYPE.SALEPRICE_APPPOINT' AND OI.ODID IS NOT NULL THEN CONCAT('주문번호:',OI.ODID)
+																  ELSE ''
+															 END
+						   WHEN PC.ISSUE_REASON IS NOT NULL THEN CASE WHEN OI.ODID IS NOT NULL THEN CONCAT(PC.ISSUE_REASON,' / 주문번호:',OI.ODID)
+						   											  ELSE PC.ISSUE_REASON
+																  END
+					  ELSE ''
+					  END AS ISSUE_REASON
+					, PC.PM_COUPON_ID
+					, PCI.STATUS
+					, OI.GOODS_NM AS GOODS_NM
+			FROM PM_COUPON PC
+			INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID  = PCI.PM_COUPON_ID
+			INNER JOIN UR_USER U ON PCI.UR_USER_ID  = U.UR_USER_ID
+			LEFT JOIN ODIF OI ON OI.PM_COUPON_ID = PC.PM_COUPON_ID AND OI.UR_USER_ID = PCI.UR_USER_ID AND OI.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+		) A
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmCouponId)">
+			AND A.PM_COUPON_ID = #{pmCouponId}
+			<!-- AND A.STATUS NOT IN ('COUPON_STATUS.CANCEL') -->
+		</if>
+		<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+						AND A.USER_NM IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+						AND A.LOGIN_ID IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+				</when>
+				<otherwise>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponUseYn)">
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponUseYn,'COUPON_STATUS.EXPIRATION')">
+								AND A.REMAINING_PERIOD = '기간만료'
+							</when>
+							<otherwise>
+							    AND A.STATUS = #{couponUseYn}
+							</otherwise>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStatusComment)">
+					    AND A.ISSUE_REASON LIKE CONCAT('%', #{searchStatusComment}, '%')
+					</if>
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'ISSUE_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.ISSUE_DATE BETWEEN DATE_FORMAT(#{startCreateDate},'%Y-%m-%d') AND DATE_FORMAT(#{endCreateDate},'%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'VALIDITY_PERIOD')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.SEARCH_VALIDITY_PEROID BETWEEN DATE_FORMAT(#{startCreateDate},'%Y-%m-%d') AND DATE_FORMAT(#{endCreateDate},'%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'USE_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.COUPON_USE_DATE BETWEEN DATE_FORMAT(#{startCreateDate},'%Y-%m-%d') AND DATE_FORMAT(#{endCreateDate},'%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+					</choose>
+				</otherwise>
+			</choose>
+			ORDER BY ISSUE_DATE DESC
+	</select>
+
+	<select id="getCpnMgmListCount" resultType="int">
+
+		/*	coupon.getCpnMgmListCount */
+
+		SELECT COUNT(*)
+		FROM
+		(
+			SELECT PC.BOS_COUPON_NM
+					, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+						   WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+						   WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+						   	THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT('{',PC.DISCOUNT_VAL,'}%/ 최대{',PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT ,'} 원')
+								      ELSE PC.DISCOUNT_VAL
+						   		  END
+						   END AS DISCOUNT_VALUE
+					,PC.DISCOUNT_VAL
+					, CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN DATE_FORMAT(PC.VALIDITY_END_DT ,'%Y-%m-%d')
+					  ELSE CONCAT('~', DATE_FORMAT(PCI.CREATE_DT,'%Y-%m-%d') ,'(',PC.VALIDITY_DAY ,'일)')
+					  END AS VALIDITY_PEROID
+					,DATE_FORMAT(PCI.CREATE_DT,'%Y-%m-%d')    AS ISSUE_DATE
+					, CASE WHEN PCI.USE_DT IS NOT NULL THEN '-'
+					       ELSE DATEDIFF(	DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY + 1 DAY)  , NOW() )
+					  END  AS REMAINING_PERIOD
+					,DATE_FORMAT(PCI.USE_DT ,'%Y-%m-%d') AS COUPON_USE_DATE
+					, CASE WHEN PCI.USE_DT IS NOT NULL THEN CONCAT(FN_DECRYPT(U.USER_NM ),'(',U.LOGIN_ID ,')')
+					  ELSE ''
+					  END AS USER_INFO
+					, PC.ISSUE_PURPOSE
+					, PC.PM_COUPON_ID
+					, PCI.STATUS
+					, FN_DECRYPT(U.USER_NM ) AS USER_NM
+			FROM PM_COUPON PC
+			INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID  = PCI.PM_COUPON_ID
+			INNER JOIN UR_USER U ON PCI.UR_USER_ID  = U.UR_USER_ID
+		) A
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmCouponId)">
+			AND A.PM_COUPON_ID = #{pmCouponId}
+			AND A.STATUS NOT IN ('COUPON_STATUS.CANCEL')
+		</if>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND A.USER_NM IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND A.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponUseYn)">
+				    AND A.STATUS = #{couponUseYn}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStatusComment)">
+				    AND A.STATUS_CMNT LIKE CONCAT('%', #{searchStatusComment}, '%')
+				</if>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'ISSUE_DATE')">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+								AND A.ISSUE_DATE BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							</if>
+						</if>
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'VALIDITY_PERIOD')">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+								AND A.SEARCH_VALIDITY_PEROID BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							</if>
+						</if>
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'USE_DATE')">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+								AND A.COUPON_USE_DATE BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							</if>
+						</if>
+					</when>
+				</choose>
+			</otherwise>
+		</choose>
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 상태이력 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.01.04      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCouponStatusHistoryMap" type="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		<result column="COUPON_MASTER_STAT"  property="masterStat"/>
+		<result column="APPR_STAT"  property="apprStat"/>
+		<result column="PM_COUPON_ID"  property="taskPk"/>
+		<result column="APPR_REQ_USER_ID"  property="approvalRequestUserId"/>
+		<result column="APPR_SUB_USER_ID"  property="apprSubUserId"/>
+		<result column="APPR_USER_ID"  property="apprUserId"/>
+	</resultMap>
+
+	<select id="getCouponStatusHistory" resultMap="getCouponStatusHistoryMap">
+			/* coupon.getCouponStatusHistory */
+				SELECT PC.COUPON_MASTER_STAT AS COUPON_MASTER_STAT
+					 , PC.APPR_STAT AS APPR_STAT
+					 , PC.PM_COUPON_ID AS PM_COUPON_ID
+					 , PC.APPR_REQ_USER_ID AS APPR_REQ_USER_ID
+					 , PC.APPR_SUB_USER_ID AS APPR_SUB_USER_ID
+					 , PC.APPR_USER_ID AS APPR_USER_ID
+				FROM PM_COUPON_STATUS_HISTORY PC
+				WHERE PC.PM_COUPON_ID = #{pmCouponId}
+				AND PC.CREATE_DT  = (SELECT MAX(CREATE_DT)
+									 FROM PM_COUPON_STATUS_HISTORY
+									 WHERE PM_COUPON_ID = #{pmCouponId})
+	</select>
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 발급/사용 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="putCouponIssueList">
+		/*	coupon.putCouponIssueList */
+
+		INSERT INTO PM_COUPON_ISSUE
+		(
+			PM_COUPON_ID
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmSerialNumberId)">
+		  	,PM_SERIAL_NUMBER_ID
+		  	</if>
+		  	,UR_USER_ID
+		  	,COUPON_ISSUE_TP
+		  	,STATUS
+		  	,VALIDITY_START_DT
+			,EXPIRATION_DT
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDate)">
+		  	,CREATE_DT
+		  	</if>
+		  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useDate)">
+		  	,USE_DT
+		  	</if>
+		  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(cancelDate)">
+		  	,CANCEL_DT
+		  	</if>
+		)
+		VALUES
+		(
+			#{pmCouponId}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmSerialNumberId)">
+			,#{pmSerialNumberId}
+			</if>
+            <choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+					, #{urUserId}
+				</when>
+				<otherwise>
+					, (SELECT UR_USER_ID FROM UR_USER WHERE LOGIN_ID = #{loginId})
+				</otherwise>
+			</choose>
+		  	,#{couponIssueType}
+		  	,#{couponStatus}
+		  	,DATE_FORMAT(#{validityStartDate},'%Y-%m-%d 00:00:00')
+		  	,DATE_FORMAT(#{expirationDate},'%Y-%m-%d 23:59:59')
+		  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDate)">
+		  	,#{createDate}
+		  	</if>
+		  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useDate)">
+		  	,#{useDate}
+		  	</if>
+		  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(cancelDate)">
+		  	,#{cancelDate}
+		  	</if>
+		)
+
+		<selectKey resultType="String" keyProperty="pmCouponIssueId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 발급/사용 상태이력 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="putCouponIssueHistoryList">
+		/*	coupon.putCouponIssueHistoryList */
+
+		INSERT INTO PM_COUPON_ISSUE_STATUS_HISTORY
+		(
+			PM_COUPON_ISSUE_ID
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponStatus)">
+		  	,STATUS
+		  	</if>
+		  	,CREATE_ID
+		  	,CREATE_DT
+		)
+		VALUES
+		(
+			#{pmCouponIssueId}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponStatus)">
+		  	,#{couponStatus}
+		  	</if>
+		  	,#{createId}
+		  	,NOW()
+		)
+	</insert>
+
+	<!-- 배송비 쿠폰 재발급 여부 업데이트 -->
+	<update id="putShippingFeeCouponReIssueYn">
+		/*	coupon.putShippingFeeCouponReIssueYn */
+		UPDATE OD_SHIPPING_PRICE
+		SET REISSUE_YN = 'Y'
+		WHERE PM_COUPON_ISSUE_ID = #{pmCouponIssueId}
+	</update>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 발급/사용 상태이력 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCouponIssueUserListResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.CouponIssueParamDto">
+		<result column="UR_USER_ID" property="urUserId" />
+	</resultMap>
+
+	<select id="getCouponIssueUserList" resultMap="getCouponIssueUserListResultMap">
+		/*	coupon.getCouponIssueUserList	*/
+
+		SELECT DISTINCT UR_USER_ID
+		FROM PM_COUPON_ISSUE
+		WHERE PM_COUPON_ID = #{pmCouponId}
+
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  쿠폰_발급/사용 정보 수정(미사용->발급취소)
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putCancelDepositList">
+	/* coupon.putCancelDepositList */
+		UPDATE 	PM_COUPON_ISSUE
+		SET 	STATUS    = #{couponStatus}
+		WHERE  	PM_COUPON_ISSUE_ID  = #{pmCouponIssueId}
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  쿠폰 지급내역 엑셀 선택 다운로드
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCouponIssueListExcelResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.IssueListResultVo">
+		<result column="BOS_COUPON_NM" property="bosCouponName" />
+		<result column="PM_COUPON_ISSUE_ID" property="pmCouponIssueId" />
+		<result column="DISCOUNT_VALUE" property="discountValue" />
+		<result column="VALIDITY_PEROID" property="validityPeroid" />
+		<result column="ISSUE_DATE" property="issueDate" />
+		<result column="REMAINING_PERIOD" property="remainingPeriod" />
+		<result column="COUPON_USE_DATE" property="couponUseDate" />
+		<result column="COUPON_USE_TIME" property="couponUseTime" />
+		<result column="USER_INFO" property="userInfo" />
+		<result column="STATUS_CMNT" property="statusComment" />
+		<result column="IL_GOODS_ID" property="ilGoodsId" />
+		<result column="ODID" property="odid" />
+		<result column="USER_STATUS" property="userStatus" />
+		<result column="STATUS" property="status" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="USER_NM" property="userNm" />
+		<result column="GOODS_NM" property="goodsNm" />
+	</resultMap>
+
+	<select id="getCouponIssueListExcel" resultMap="getCouponIssueListExcelResultMap">
+		/*	coupon.getCouponIssueListExcel	*/
+		WITH ODIF AS(
+					SELECT OOD.IL_GOODS_ID, OO.ODID,D.PM_COUPON_ID, OO.UR_USER_ID,D.PM_COUPON_ISSUE_ID,OOD.GOODS_NM  FROM OD_ORDER_DETL_DISCOUNT D
+					INNER JOIN (SELECT * FROM OD_ORDER O
+					WHERE ORDER_YN = 'Y') OO ON OO.OD_ORDER_ID = D.OD_ORDER_ID
+					INNER JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID
+					WHERE D.PM_COUPON_ID = #{pmCouponId}
+					GROUP BY OO.ODID,OO.UR_USER_ID, D.PM_COUPON_ISSUE_ID
+		)
+		SELECT *
+		FROM
+		(
+			SELECT PC.BOS_COUPON_NM
+					, PCI.PM_COUPON_ISSUE_ID
+					, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+						   WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+						   WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+						   	THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT('{',PC.DISCOUNT_VAL,'}%/ 최대{',PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT ,'} 원')
+								      ELSE PC.DISCOUNT_VAL
+						   		  END
+						   END AS DISCOUNT_VALUE
+					, PC.DISCOUNT_VAL
+					, CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN CONCAT(DATE_FORMAT(PCI.CREATE_DT ,'%Y-%m-%d'),'~' ,DATE_FORMAT(PC.VALIDITY_END_DT ,'%Y-%m-%d') ,'(',DATEDIFF(PC.VALIDITY_END_DT, PC.CREATE_DT ),'일)')
+					  ELSE CONCAT('~', DATE_FORMAT(PCI.CREATE_DT,'%Y-%m-%d') ,'(',PC.VALIDITY_DAY ,'일)')
+					  END AS VALIDITY_PEROID
+					, CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN DATE_FORMAT(PC.VALIDITY_END_DT ,'%Y-%m-%d')
+					  ELSE DATE_FORMAT(DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY DAY),'%Y-%m-%d')
+					  END AS SEARCH_VALIDITY_PEROID
+					, DATE_FORMAT(PC.APPR_CHG_DT,'%Y-%m-%d')    AS ISSUE_DATE
+					, CASE WHEN PCI.USE_DT IS NOT NULL AND PCI.STATUS = 'COUPON_STATUS.USE' THEN '사용완료'
+					 	   WHEN PCI.STATUS = 'COUPON_STATUS.CANCEL' THEN '회수'
+					       WHEN PC.VALIDITY_DAY IS NOT NULL THEN
+					       										CASE WHEN DATEDIFF(	DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() ) = 0 THEN '당일'
+													                 WHEN DATEDIFF(	DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() ) <![CDATA[<]]> 0 THEN '기간만료'
+													            ELSE CONCAT( DATEDIFF(	DATE_ADD(PCI.CREATE_DT, INTERVAL PC.VALIDITY_DAY DAY)  , NOW() ) , '일')
+													            END
+					       WHEN PC.VALIDITY_DAY IS NULL THEN
+					       									CASE WHEN DATEDIFF(	PC.VALIDITY_END_DT  , NOW() ) = 0 THEN '당일'
+ 					       										 WHEN DATEDIFF(	PC.VALIDITY_END_DT  , NOW() ) <![CDATA[<]]> 0 THEN '기간만료'
+ 					       										 ELSE  CONCAT(DATEDIFF(	PC.VALIDITY_END_DT  , NOW() ), '일')
+ 					       									END
+					  END  AS REMAINING_PERIOD
+					, CASE WHEN PCI.USE_DT IS NULL THEN ''
+					       ELSE DATE_FORMAT(PCI.USE_DT ,'%Y-%m-%d')
+					  END AS COUPON_USE_DATE
+			     	, CASE WHEN PCI.USE_DT IS NULL THEN ''
+			     	  	   ELSE DATE_FORMAT(PCI.USE_DT , '%H:%i:%s')
+			     	  END AS COUPON_USE_TIME
+					, CASE WHEN U.USER_STATUS = 0 THEN CONCAT('탈퇴회원','(',U.LOGIN_ID ,')')
+						  ELSE CONCAT(FN_DECRYPT(U.USER_NM ),'(',U.LOGIN_ID ,')')
+						  END AS USER_INFO
+					, U.USER_STATUS
+					, CASE WHEN PC.ISSUE_REASON IS NULL THEN CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' AND OI.ODID IS NOT NULL THEN CONCAT('주문번호:',OI.ODID, ' / 적용상품코드:', OI.IL_GOODS_ID)
+																  WHEN PC.COUPON_TP <![CDATA[<>]]> 'COUPON_TYPE.SALEPRICE_APPPOINT' AND OI.ODID IS NOT NULL THEN CONCAT('주문번호:',OI.ODID)
+																  ELSE ''
+															 END
+						WHEN PC.ISSUE_REASON IS NOT NULL THEN CASE WHEN OI.ODID IS NOT NULL THEN CONCAT(PC.ISSUE_REASON,' / 주문번호:',OI.ODID)
+																   ELSE PC.ISSUE_REASON
+															  END
+						ELSE ''
+						END AS STATUS_CMNT
+					, CASE WHEN PC.ISSUE_REASON IS NULL THEN CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' AND OI.ODID IS NOT NULL THEN OI.IL_GOODS_ID
+																  ELSE ''
+															 END
+						   ELSE ''
+						   END AS IL_GOODS_ID
+					, CASE WHEN PC.ISSUE_REASON IS NULL THEN CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' AND OI.ODID IS NOT NULL THEN OI.ODID
+																  WHEN PC.COUPON_TP  <![CDATA[<>]]> 'COUPON_TYPE.SALEPRICE_APPPOINT' AND OI.ODID IS NOT NULL THEN OI.ODID
+																  ELSE ''
+															 END
+						   WHEN PC.ISSUE_REASON IS NOT NULL THEN CASE WHEN OI.ODID IS NOT NULL THEN OI.ODID
+																  	  ELSE ''
+																 END
+						   ELSE ''
+						   END AS ODID
+					, PC.PM_COUPON_ID
+					, PCI.STATUS
+					, U.LOGIN_ID
+					, (CASE WHEN U.USER_STATUS = 0 THEN '탈퇴회원' ELSE FN_DECRYPT(U.USER_NM ) END) AS USER_NM
+					, IFNULL(OI.GOODS_NM,'')AS GOODS_NM
+			FROM PM_COUPON PC
+			INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID  = PCI.PM_COUPON_ID
+			INNER JOIN UR_USER U ON PCI.UR_USER_ID  = U.UR_USER_ID
+			LEFT JOIN ODIF OI ON OI.PM_COUPON_ID = PC.PM_COUPON_ID AND OI.UR_USER_ID = PCI.UR_USER_ID AND OI.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+		) A
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmCouponId)">
+			AND A.PM_COUPON_ID = #{pmCouponId}
+			<!-- AND A.STATUS NOT IN ('COUPON_STATUS.CANCEL') -->
+		</if>
+		<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+						AND A.USER_NM  IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+						AND A.LOGIN_ID IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+				</when>
+				<otherwise>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponUseYn)">
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponUseYn,'COUPON_STATUS.EXPIRATION')">
+								AND A.REMAINING_PERIOD = '기간만료'
+							</when>
+							<otherwise>
+								AND A.STATUS = #{couponUseYn}
+							</otherwise>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStatusComment)">
+					    AND A.STATUS_CMNT LIKE CONCAT('%', #{searchStatusComment}, '%')
+					</if>
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'ISSUE_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.ISSUE_DATE BETWEEN DATE_FORMAT(#{startCreateDate},'%Y-%m-%d') AND DATE_FORMAT(#{endCreateDate},'%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'VALIDITY_PERIOD')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.SEARCH_VALIDITY_PEROID BETWEEN DATE_FORMAT(#{startCreateDate},'%Y-%m-%d') AND DATE_FORMAT(#{endCreateDate},'%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'USE_DATE')">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND A.COUPON_USE_DATE BETWEEN DATE_FORMAT(#{startCreateDate},'%Y-%m-%d') AND DATE_FORMAT(#{endCreateDate},'%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</when>
+					</choose>
+				</otherwise>
+			</choose>
+			ORDER BY ISSUE_DATE DESC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  쿠폰 정보 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCoupon">
+		/*	coupon.addCoupon */
+
+			INSERT INTO PM_COUPON
+			(
+				 COUPON_TP
+				, ISSUE_TP
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(autoIssueType)">
+				, ISSUE_DETAIL_TP
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+				, SERIAL_NUMBER_TP
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumber)">
+				, FIX_SERIAL_NUMBER
+				</if>
+				, BOS_COUPON_NM
+				, DISPLAY_COUPON_NM
+				, ISSUE_START_DT
+				, ISSUE_END_DT
+				, VALIDITY_TP
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityStartDate)">
+				, VALIDITY_START_DT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityEndDate)">
+				, VALIDITY_END_DT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDay)">
+				, VALIDITY_DAY
+				</if>
+				, ISSUE_QTY_LIMIT
+				, ISSUE_BUDGET
+				, ISSUE_QTY
+				, ISSUE_PURPOSE
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+				, ISSUE_REASON
+				</if>
+				, COVERAGE_TP
+				, USE_PC_YN
+				, USE_MO_WEB_YN
+				, USE_MO_APP_YN
+				, DISCOUNT_TP
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(discountVal)">
+				, DISCOUNT_VAL
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(percentageMaxDiscountAmount)">
+				, PERCENTAGE_MAX_DISCOUNT_AMOUNT
+				</if>
+				, MIN_PAYMENT_AMOUNT
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionYn)">
+				, PG_PROMOTION_YN
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionPayConfigId)">
+				, PG_PROMOTION_PAY_CONFIG_ID
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionPayGroupId)">
+				, PG_PROMOTION_PAY_GRP_ID
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionPayId)">
+				, PG_PROMOTION_PAY_ID
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponType,'COUPON_TYPE.SALEPRICE_APPPOINT')">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(cartCouponApplyYn)">
+					, CART_COUPON_APPLY_YN
+					</if>
+				</if>
+				<!-- , STATUS -->
+				, COUPON_MASTER_STAT
+				, APPR_STAT
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				, APPR_SUB_USER_ID
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				, APPR_REQ_USER_ID
+				, APPR_USER_ID
+				, APPR_REQ_DT
+				</if>
+				, CREATE_DT
+				, CREATE_ID
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				, USE_YN
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(originPmCouponId)">
+				, ORIGIN_PM_COUPON_ID
+				</if>
+			)
+			VALUES
+			(
+				#{couponType}
+			  	,#{paymentType}
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(autoIssueType)">
+			  	,#{autoIssueType}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+			  	,#{serialNumberType}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumber)">
+			  	,trim(#{serialNumber})
+			  	</if>
+			  	,#{bosCouponName}
+			  	,#{displayCouponName}
+			  	,#{issueStartDate}
+			  	,#{issueEndDate}
+			  	,#{validityType}
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityStartDate)">
+			  	,#{validityStartDate}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityEndDate)">
+			  	,#{validityEndDate}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDay)">
+			  	,#{validityDay}
+			  	</if>
+			  	<choose>
+				  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(paymentType,'PAYMENT_TYPE.AUTO_PAYMENT')">
+				  		,#{issueQtyLimit}
+				  	</when>
+				  	<otherwise>
+			  			,(SELECT FN_COMN_CODE_DIC(#{issueQtyLimit}) FROM DUAL)
+				  	</otherwise>
+			  	</choose>
+			  	,#{issueBudget}
+			  	,#{issueQty}
+			  	,#{issuePurposeType}
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+				,#{issueReason}
+				</if>
+			  	,#{coverageType}
+			  	,#{usePcYn}
+			  	,#{useMobileWebYn}
+			  	,#{useMobileAppYn}
+			  	,#{discountType}
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(discountVal)">
+			  	,#{discountVal}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(percentageMaxDiscountAmount)">
+			  	,#{percentageMaxDiscountAmount}
+			  	</if>
+			  	,#{minPaymentAmount}
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionYn)">
+			  	,#{pgPromotionYn}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionPayConfigId)">
+			  	,#{pgPromotionPayConfigId}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionPayGroupId)">
+			  	,#{pgPromotionPayGroupId}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionPayId)">
+			  	,#{pgPromotionPayId}
+			  	</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponType,'COUPON_TYPE.SALEPRICE_APPPOINT')">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(cartCouponApplyYn)">
+					,#{cartCouponApplyYn}
+					</if>
+				</if>
+			  	<!-- ,#{status} -->
+			  	,#{couponMasterStat}
+			  	,#{apprStat}
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			  	,#{apprSubUserId}
+			  	</if>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			  	,#{createId}
+			  	,#{apprUserId}
+				,NOW()
+			  	</if>
+			  	,NOW()
+			  	,#{createId}
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+                ,#{useYn}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(originPmCouponId)">
+                , #{originPmCouponId}
+                </if>
+			)
+
+		<selectKey resultType="String" keyProperty="pmCouponId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  적용범위 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCouponCoverage">
+		/*	coupon.addCouponCoverage */
+
+			INSERT INTO PM_COUPON_COVERAGE
+			(
+				PM_COUPON_ID
+				, COVERAGE_TP
+				, COVERAGE_ID
+				, INCLUDE_YN
+				, CREATE_DT
+				, CREATE_ID
+			)
+			VALUES
+			<foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+			(
+				#{insertData.pmCouponId}
+				,#{insertData.coverageType}
+				,#{insertData.coverageId}
+				,#{insertData.includeYn}
+				,NOW()
+				,#{insertData.userId}
+			)
+			</foreach>
+
+	</insert>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  분담조직정보 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrganization">
+		/*	coupon.addOrganization */
+
+			INSERT INTO PM_COUPON_POINT_SHARE_ORGANIZATION
+			(
+				PM_COUPON_ID
+				, UR_ERP_ORGANIZATION_CD
+				, UR_ERP_ORGANIZATION_NM
+				, ERP_REGAL_CD
+				, ERP_REGAL_NM
+				, PERCENTAGE
+				, CREATE_DT
+				, CREATE_ID
+			)
+			VALUES
+			(
+				#{pmCouponId}
+				,#{erpOrganizationCode}
+				,#{erpOrganizationName}
+				,#{erpRegalCode}
+				,#{erpRegalName}
+				,#{percentageFirst}
+				,NOW()
+				,#{userVo.userId}
+			)
+
+	</insert>
+
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  쿠폰 상태이력 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCouponStatusHistory">
+		/*	coupon.addCouponStatusHistory */
+			INSERT INTO PM_COUPON_STATUS_HISTORY
+			(
+				PM_COUPON_ID
+				<!-- , STATUS -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+				, STATUS_CMNT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+				, PREV_COUPON_MASTER_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+				, PREV_APPR_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+				, COUPON_MASTER_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+				, APPR_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				, APPR_SUB_USER_ID
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				, APPR_USER_ID
+				</if>
+				, APPR_REQ_USER_ID
+				, CREATE_DT
+				, CREATE_ID
+			)
+			VALUES
+			(
+				#{taskPk}
+				<!-- ,#{status} -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+				,#{statusComment}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+				,#{prevMasterStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+				,#{prevApprStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+				,#{masterStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+				,#{apprStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				,#{apprSubUserId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				,#{apprUserId}
+				</if>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED_BY_SYSTEM')">
+						,0
+					</when>
+					<otherwise>
+						,#{approvalRequestUserId}
+					</otherwise>
+				</choose>
+				,NOW()
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED_BY_SYSTEM')">
+						,0
+					</when>
+					<otherwise>
+						,#{userVo.userId}
+					</otherwise>
+				</choose>
+			)
+	</insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  난수번호 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSerialNumberResultMap" type="kr.co.pulmuone.v1.promotion.point.dto.vo.UploadInfoVo">
+		<result column="SERIAL_NUMBER" property="serialNumber" />
+	</resultMap>
+
+	<select id="getSerialNumber" resultMap="getSerialNumberResultMap">
+		/*	coupon.getSerialNumber	*/
+
+		SELECT FN_RANDOM_STR(12) AS SERIAL_NUMBER FROM DUAL
+
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  개별 난수번호 등록
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addSerialNumber">
+		/*	coupon.addSerialNumber */
+
+			INSERT INTO PM_SERIAL_NUMBER
+			(
+				PM_COUPON_ID
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmPointId)">
+				, PM_POINT_ID
+				</if>
+				, ISSUER_TP
+				, STATUS
+				, SERIAL_NUMBER
+				, USE_TP
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDate)">
+				, CREATE_DT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useDate)">
+				, USE_DT
+				</if>
+			)
+			VALUES
+			(
+				#{pmCouponId}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmPointId)">
+				,#{pmPointId}
+				</if>
+				,'풀무원'
+				,#{serialNumberStatus}
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberType,'SERIAL_NUMBER_TYPE.AUTO_CREATE')">
+						,FN_ENCRYPT(FN_RANDOM_CHK_STR())
+					</when>
+					<otherwise>
+						,FN_ENCRYPT(trim(#{serialNumber}))
+					</otherwise>
+				</choose>
+				,#{serialNumberUseType}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDate)">
+				,#{createDate}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useDate)">
+				,#{useDate}
+				</if>
+			)
+
+	</insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  쿠폰정보 수정
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putCoupon">
+		/* coupon.putCoupon */
+		UPDATE 	PM_COUPON
+		SET 	COUPON_TP = #{couponType}
+				, ISSUE_TP = #{paymentType}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(autoIssueType)">
+				, ISSUE_DETAIL_TP = #{autoIssueType}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+				, SERIAL_NUMBER_TP = #{serialNumberType}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumber)">
+				, FIX_SERIAL_NUMBER = trim(#{serialNumber})
+				</if>
+				, BOS_COUPON_NM = #{bosCouponName}
+				, DISPLAY_COUPON_NM = #{displayCouponName}
+				, ISSUE_START_DT = #{issueStartDate}
+				, ISSUE_END_DT = #{issueEndDate}
+				, VALIDITY_TP = #{validityType}
+				, VALIDITY_START_DT = #{validityStartDate}
+				, VALIDITY_END_DT = #{validityEndDate}
+				, VALIDITY_DAY = #{validityDay}
+				<choose>
+				  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(paymentType,'PAYMENT_TYPE.AUTO_PAYMENT')">
+				  		, ISSUE_QTY_LIMIT = #{issueQtyLimit}
+				  	</when>
+				  	<otherwise>
+			  			, ISSUE_QTY_LIMIT = (SELECT FN_COMN_CODE_DIC(#{issueQtyLimit}) FROM DUAL)
+				  	</otherwise>
+			  	</choose>
+				, ISSUE_BUDGET = #{issueBudget}
+				, ISSUE_QTY = #{issueQty}
+				, ISSUE_PURPOSE = #{issuePurposeType}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+				, ISSUE_REASON = #{issueReason}
+				</if>
+				, COVERAGE_TP = #{coverageType}
+				, USE_PC_YN = #{usePcYn}
+				, USE_MO_WEB_YN = #{useMobileWebYn}
+				, USE_MO_APP_YN = #{useMobileAppYn}
+				, DISCOUNT_TP = #{discountType}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(discountVal)">
+				, DISCOUNT_VAL = #{discountVal}
+				</if>
+				, PERCENTAGE_MAX_DISCOUNT_AMOUNT = #{percentageMaxDiscountAmount}
+				, MIN_PAYMENT_AMOUNT = #{minPaymentAmount}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionYn)">
+				, PG_PROMOTION_YN = #{pgPromotionYn}
+				</if>
+				, PG_PROMOTION_PAY_CONFIG_ID = #{pgPromotionPayConfigId}
+				, PG_PROMOTION_PAY_GRP_ID = #{pgPromotionPayGroupId}
+				, PG_PROMOTION_PAY_ID = #{pgPromotionPayId}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponType,'COUPON_TYPE.SALEPRICE_APPPOINT')">
+				, CART_COUPON_APPLY_YN = #{cartCouponApplyYn}
+				</if>
+				<!-- , STATUS = #{status} -->
+				, COUPON_MASTER_STAT  = #{couponMasterStat}
+				, APPR_STAT  = #{apprStat}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				, APPR_SUB_USER_ID = #{apprSubUserId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				, APPR_REQ_USER_ID = #{userVo.userId}
+				, APPR_USER_ID   = #{apprUserId}
+				</if>
+				, MODIFY_ID		 = #{userVo.userId}
+				, MODIFY_DT		 = NOW()
+		WHERE  	PM_COUPON_ID  = #{pmCouponId}
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  적용범위 정보 삭제
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<delete id="removeCouponCoverage">
+	/* coupon.removeCouponCoverage */
+		DELETE
+		FROM 	PM_COUPON_COVERAGE
+		WHERE  	PM_COUPON_ID = #{pmCouponId}
+	</delete>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  분담조직 정보 삭제
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<delete id="removeOrganization">
+	/* coupon.removeOrganization */
+		DELETE
+		FROM 	PM_COUPON_POINT_SHARE_ORGANIZATION
+		WHERE  	PM_COUPON_ID = #{pmCouponId}
+	</delete>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  쿠폰 발급/사용 정보 삭제
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<delete id="removeCouponIssue">
+	/* coupon.removeCouponIssue */
+		DELETE
+		FROM 	PM_COUPON_ISSUE
+		WHERE  	PM_COUPON_ID = #{pmCouponId}
+	</delete>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  개별난수번호 정보 삭제
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<delete id="removeSerialNumber">
+	/* coupon.removeSerialNumber */
+		DELETE
+		FROM 	PM_SERIAL_NUMBER
+		WHERE  	PM_COUPON_ID = #{pmCouponId}
+	</delete>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  쿠폰정보 조회 (미사용)
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCouponIssueInfoResultMap" type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.IssueListResultVo">
+		<result column="PM_COUPON_ISSUE_ID" property="pmCouponIssueId" />
+	</resultMap>
+
+	<select id="getCouponIssueInfo" resultMap="getCouponIssueInfoResultMap">
+		/*	coupon.getCouponIssueInfo	*/
+
+		SELECT PM_COUPON_ISSUE_ID
+		FROM PM_COUPON_ISSUE
+		WHERE PM_COUPON_ID = #{pmCouponId}
+		AND   STATUS = 'COUPON_STATUS.NOTUSE'
+
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  이용권 단일코드 중복 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.01.19      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateFixedNumber" resultType="int">
+
+		/*	coupon.getDuplicateFixedNumber */
+
+		SELECT COUNT(*)
+		FROM (
+			SELECT FIX_SERIAL_NUMBER, PM_COUPON_ID AS PARENT_ID
+			FROM PM_COUPON
+		    WHERE FIX_SERIAL_NUMBER  IS NOT NULL
+		    AND USE_YN = 'Y'
+			AND APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.REQUEST')
+			AND ISSUE_END_DT <![CDATA[>]]> NOW()
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmCouponId)">
+			AND PM_COUPON_ID <![CDATA[<>]]> #{pmCouponId}
+		</if>
+			UNION ALL
+			SELECT FIX_SERIAL_NUMBER, PM_POINT_ID AS PARENT_ID
+			FROM PM_POINT
+			WHERE FIX_SERIAL_NUMBER  IS NOT NULL
+			AND USE_YN = 'Y'
+			AND APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.REQUEST')
+			AND ISSUE_END_DT <![CDATA[>]]> NOW()
+		) AS A
+		WHERE FIX_SERIAL_NUMBER = trim(#{serialNumber})
+
+
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  이용권 중복 SerialNumber 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateSerialNumber" resultType="int">
+
+		/*	coupon.getDuplicateSerialNumber */
+
+		SELECT COUNT(*)
+		FROM PM_SERIAL_NUMBER PSN
+		LEFT JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PSN.PM_COUPON_ID AND PC.APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.REQUEST')
+		AND PC.ISSUE_END_DT <![CDATA[>]]>  NOW()
+		WHERE PSN.SERIAL_NUMBER = FN_ENCRYPT(trim(#{serialNumber}))
+
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 상태변경  (쿠폰중지)
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putPmCouponStatus">
+
+		/* coupon.putPmCouponStatus */
+		UPDATE 	PM_COUPON
+		SET 	 COUPON_MASTER_STAT = #{couponMasterStat}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+				,APPR_STAT = #{apprStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.REQUEST')">
+				,APPR_REQ_USER_ID = NOW()
+				,APPR_REQ_DT = NOW()
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED')">
+				,APPR_CHG_DT = NOW()
+				,APPR_CHG_USER_ID = #{userVo.userId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				, APPR_SUB_USER_ID = #{apprSubUserId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				, APPR_REQ_USER_ID = #{userVo.userId}
+				, APPR_USER_ID   = #{apprUserId}
+				</if>
+				,MODIFY_ID		 = #{userVo.userId}
+				,MODIFY_DT		 = NOW()
+		WHERE  	PM_COUPON_ID  = #{pmCouponId}
+
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 발급/사용 상태변경
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putPmCouponIssueStatus">
+	/* coupon.putPmCouponIssueStatus */
+		UPDATE 	PM_COUPON_ISSUE
+		SET 	STATUS    = #{couponStatus}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgPromotionYn)">
+				, STATUS_CMNT = #{statusComment}
+				</if>
+		WHERE  	PM_COUPON_ID  = #{pmCouponId}
+		AND     STATUS = 'COUPON_STATUS.NOTUSE'
+
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰 삭제
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="removeCoupon">
+	/* coupon.removeCoupon */
+		UPDATE 	PM_COUPON
+		SET 	USE_YN = 'N'
+				,MODIFY_ID		 = #{userVo.userId}
+				,MODIFY_DT		 = NOW()
+		WHERE  	PM_COUPON_ID  = #{pmCouponId}
+
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 쿠폰명 수정
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.07.28      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="updateCouponName">
+	/* coupon.updateCouponName */
+		UPDATE 	PM_COUPON
+		SET 	BOS_COUPON_NM = #{bosCouponName}
+				,DISPLAY_COUPON_NM = #{displayCouponName}
+				,MODIFY_ID		 = #{userVo.userId}
+				,MODIFY_DT		 = NOW()
+		WHERE  	PM_COUPON_ID  = #{pmCouponId}
+
+	</update>
+
+
+
+
+
+
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponListByUserVo" id="getCouponListByUserResultMap">
+        <result column="PM_COUPON_ID" property="pmCouponId"/>
+        <result column="COUPON_TP" property="couponType"/>
+        <result column="DISPLAY_COUPON_NM" property="displayCouponName"/>
+        <result column="DISCOUNT_TP" property="discountType"/>
+        <result column="DISCOUNT_VAL" property="discountValue"/>
+        <result column="PERCENTAGE_MAX_DISCOUNT_AMOUNT" property="percentageMaxDiscountAmount"/>
+        <result column="MIN_PAYMENT_AMOUNT" property="minPaymentAmount"/>
+        <result column="VALIDITY_START_DT" property="validityStartDate"/>
+        <result column="VALIDITY_END_DT" property="validityEndDate"/>
+        <result column="VALIDITY_DAY" property="validityDay"/>
+        <result column="USE_PC_YN" property="usePcYn"/>
+        <result column="USE_MO_WEB_YN" property="useMobileWebYn"/>
+        <result column="USE_MO_APP_YN" property="useMobileAppYn"/>
+        <result column="COUPON_CNT" property="couponCount"/>
+        <result column="STATUS_NM" property="statusName"/>
+        <result column="ISSUE_TP" property="issueType"/>
+        <result column="ISSUE_DETAIL_TP" property="issueDetailType"/>
+    </resultMap>
+    <select id="getCouponListByUser" resultMap="getCouponListByUserResultMap">
+        /* coupon.getCouponListByUser */
+        SELECT PC.PM_COUPON_ID
+            , PC.COUPON_TP
+            , PC.DISPLAY_COUPON_NM
+            , PC.DISCOUNT_TP
+            , PC.DISCOUNT_VAL
+            , PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+            , PC.MIN_PAYMENT_AMOUNT
+            ,CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN DATE(PC.VALIDITY_START_DT)
+		                ELSE DATE(G1.VALIDITY_START_DT)
+		                END                                                             AS VALIDITY_START_DT
+            ,CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN DATE(PC.VALIDITY_END_DT)
+                		ELSE DATE(G1.EXPIRATION_DT)
+						END 															AS VALIDITY_END_DT
+            , PC.VALIDITY_DAY
+            , PC.USE_PC_YN
+            , PC.USE_MO_WEB_YN
+            , PC.USE_MO_APP_YN
+            , G1.COUPON_CNT
+			, (CASE WHEN G1.STATUS = 'COUPON_STATUS.NOTUSE' AND G1.EXPIRATION_DT <![CDATA[<]]> NOW() THEN '기간만료' ELSE FN_COMN_CODE_DIC(G1.STATUS) END) AS STATUS_NM
+            , PC.ISSUE_TP
+            , PC.ISSUE_DETAIL_TP
+        FROM PM_COUPON PC
+            INNER JOIN (
+                SELECT PM_COUPON_ID, STATUS, COUNT(*) AS COUPON_CNT, DATE(VALIDITY_START_DT) AS VALIDITY_START_DT, DATE(EXPIRATION_DT) AS EXPIRATION_DT, EXPIRATION_DT AS EXPIRATION_DATETIME
+                FROM PM_COUPON_ISSUE
+                WHERE UR_USER_ID = #{urUserId}
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(status, 'COUPON_STATUS.NOTUSE')">
+						AND STATUS = 'COUPON_STATUS.NOTUSE'
+						AND EXPIRATION_DT <![CDATA[>]]> NOW()
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(status, 'COUPON_STATUS.USE')">
+						AND STATUS IN ('COUPON_STATUS.USE', 'COUPON_STATUS.NOTUSE')
+						AND EXPIRATION_DT <![CDATA[>]]> DATE_SUB(NOW(), INTERVAL 6 MONTH)
+					</when>
+				</choose>
+                GROUP BY PM_COUPON_ID, STATUS, DATE(VALIDITY_START_DT), DATE(EXPIRATION_DT), EXPIRATION_DATETIME
+            ) G1 ON G1.PM_COUPON_ID = PC.PM_COUPON_ID
+        WHERE PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED', 'COUPON_MASTER_STAT.STOP')
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponType)">
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponType, 'COUPON_TYPE.GOODS')">
+                    AND PC.COUPON_TP IN ('COUPON_TYPE.GOODS', 'COUPON_TYPE.SALEPRICE_APPPOINT')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(couponType, 'COUPON_TYPE.GOODS')">
+                    AND PC.COUPON_TP = #{couponType}
+                </when>
+            </choose>
+        </if>
+		ORDER BY G1.EXPIRATION_DATETIME ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 적용대상 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.07		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponCoverageVo" id="getCouponCoverageResultMap">
+		<result column="COVERAGE_TP" property="coverageType"/>
+        <result column="COVERAGE_NM" property="coverageName"/>
+		<result column="COVERAGE_ID" property="coverageId"/>
+    </resultMap>
+    <select id="getCouponCoverage" resultMap="getCouponCoverageResultMap">
+        /* coupon.getCouponCoverage */
+        SELECT PCC.COVERAGE_TP
+            , (CASE
+				WHEN PCC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS' THEN (
+					SELECT IFNULL(CONCAT(A.GOODS_NM, ' ',
+							IF(A.PACKAGE_UNIT_DISP_YN = 'Y', IF(A.GOODS_TP = 'GOODS_TYPE.PACKAGE', CONCAT('(',A.PACKAGE_UNIT_DESC,')'), CONCAT('(', CAST(B.SIZE_PER_PACKAGE AS float),
+							CASE
+							WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+							ELSE FN_COMN_CODE_DIC(B.SIZE_UNIT)
+							END
+							, IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+							CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+							ELSE FN_COMN_CODE_DIC(B.PACKAGE_UNIT)
+							END
+							), ''), ')'
+							)), '')
+						), A.GOODS_NM) AS GOODS_NM
+					FROM IL_GOODS A
+						INNER JOIN IL_ITEM B ON A.IL_ITEM_CD = B.IL_ITEM_CD
+					WHERE A.IL_GOODS_ID = PCC.COVERAGE_ID
+					)
+                WHEN PCC.COVERAGE_TP = 'APPLYCOVERAGE.BRAND' THEN (SELECT T.DP_BRAND_NM FROM DP_BRAND T WHERE T.DP_BRAND_ID = PCC.COVERAGE_ID )
+                WHEN PCC.COVERAGE_TP = 'APPLYCOVERAGE.DISPLAY_CATEGORY' THEN (SELECT T.CTGRY_NM FROM IL_CTGRY T WHERE T.IL_CTGRY_ID = PCC.COVERAGE_ID)
+            END) AS COVERAGE_NM
+			, PCC.COVERAGE_ID
+        FROM PM_COUPON_COVERAGE PCC
+        WHERE PM_COUPON_ID = #{pmCouponId}
+            AND INCLUDE_YN = #{includeYn}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 등록 검증 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.10		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponValidationInfoVo" id="getAddCouponValidationInfoResultMap">
+        <result column="ISSUE_QTY" property="issueQty"/>
+        <result column="ISSUE_QTY_LIMIT" property="issueQtyLimit"/>
+        <result column="ISSUE_START_DT" property="issueStartDate"/>
+        <result column="ISSUE_END_DT" property="issueEndDate"/>
+        <result column="ISSUE_CNT" property="issueCnt"/>
+        <result column="USER_ISSUE_CNT" property="userIssueCnt"/>
+        <result column="PM_COUPON_ID" property="pmCouponId"/>
+        <result column="VALIDITY_TP" property="validityType"/>
+		<result column="VALIDITY_START_DT" property="validityStartDate"/>
+        <result column="VALIDITY_END_DT" property="validityEndDate"/>
+        <result column="VALIDITY_DAY" property="validityDay"/>
+        <result column="COUPON_MASTER_STAT" property="couponMasterStat"/>
+		<result column="ISSUE_TP" property="issueType"/>
+		<result column="ISSUE_DETAIL_TP" property="issueDetailType"/>
+    </resultMap>
+    <select id="getAddCouponValidationInfo" resultMap="getAddCouponValidationInfoResultMap">
+        /* coupon.getAddCouponValidationInfo */
+        SELECT ifnull(PC.ISSUE_QTY, 0) AS ISSUE_QTY,
+            ifnull(PC.ISSUE_QTY_LIMIT, 0) AS ISSUE_QTY_LIMIT,
+            DATE(PC.ISSUE_START_DT) AS ISSUE_START_DT,
+            DATE(PC.ISSUE_END_DT) AS ISSUE_END_DT,
+            (
+                SELECT COUNT(*)
+                FROM PM_COUPON_ISSUE PCI
+                WHERE PCI.PM_COUPON_ID = PC.PM_COUPON_ID
+                AND PCI.COUPON_ISSUE_TP = 'COUPON_ISSUE_TYPE.NORMAL') AS ISSUE_CNT,
+            (
+                SELECT COUNT(*)
+                FROM PM_COUPON_ISSUE PCI
+                WHERE PCI.PM_COUPON_ID = PC.PM_COUPON_ID
+                AND PCI.COUPON_ISSUE_TP = 'COUPON_ISSUE_TYPE.NORMAL'
+                AND PCI.UR_USER_ID = #{urUserId}) AS USER_ISSUE_CNT,
+            PM_COUPON_ID,
+            VALIDITY_TP,
+			VALIDITY_START_DT,
+            VALIDITY_END_DT,
+            VALIDITY_DAY,
+            PC.COUPON_MASTER_STAT,
+			PC.ISSUE_TP,
+			PC.ISSUE_DETAIL_TP
+        FROM PM_COUPON PC
+        WHERE PM_COUPON_ID = #{pmCouponId}
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 발급 - 동시성 처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.25		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putCouponIssue">
+		/* coupon.putCouponIssue */
+		UPDATE PM_COUPON
+		SET ISSUE_QTY_JOIN_CNT = ISSUE_QTY_JOIN_CNT + 1
+		WHERE PM_COUPON_ID = #{pmCouponId}
+			AND ISSUE_QTY <![CDATA[>]]> ISSUE_QTY_JOIN_CNT
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 발급 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.10		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addCouponIssue" useGeneratedKeys="true" keyProperty="pmCouponIssueId">
+        /* coupon.addCouponIssue */
+        INSERT INTO PM_COUPON_ISSUE (
+            PM_COUPON_ID, PM_SERIAL_NUMBER_ID, UR_USER_ID, COUPON_ISSUE_TP, `STATUS`,
+			VALIDITY_START_DT, EXPIRATION_DT, CREATE_DT
+        ) VALUES (
+            #{pmCouponId}, #{pmSerialNumberId}, #{urUserId}, #{couponIssueType}, #{status},
+			DATE_FORMAT(#{validityStartDate},'%Y-%m-%d 00:00:00'), DATE_FORMAT(#{expirationDate},'%Y-%m-%d 23:59:59'), NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 발급/사용 상태 이력 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.10		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addCouponIssueStatusHistory">
+        /* coupon.addCouponIssueStatusHistory */
+        INSERT INTO PM_COUPON_ISSUE_STATUS_HISTORY (
+            PM_COUPON_ISSUE_ID, `STATUS`, CREATE_DT, CREATE_ID
+        ) VALUES (
+            #{pmCouponIssueId}, #{status}, NOW(), #{urUserId}
+        )
+    </insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 사용 검증 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.02		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.UseCouponValidationInfoVo" id="useCouponValidationInfoResultMap">
+		<result column="COUPON_STATUS" property="couponStatus"/>
+		<result column="USE_PC_YN" property="usePcYn"/>
+		<result column="USE_MO_WEB_YN" property="useMobileWebYn"/>
+		<result column="USE_MO_APP_YN" property="useMobileAppYn"/>
+		<result column="ISSUE_STATUS" property="issueStatus"/>
+		<result column="EXPIRATION_DT" property="expirationDate"/>
+	</resultMap>
+	<select id="getUseCouponValidationInfo" resultMap="useCouponValidationInfoResultMap">
+		/* coupon.getUseCouponValidationInfo */
+		SELECT <!-- PC.STATUS AS COUPON_STATUS -->
+			PC.COUPON_MASTER_STAT AS COUPON_STATUS
+			, PC.USE_PC_YN
+			, PC.USE_MO_WEB_YN
+			, PC.USE_MO_APP_YN
+			, PCI.STATUS AS ISSUE_STATUS
+			, DATE(PCI.EXPIRATION_DT) AS EXPIRATION_DT
+		FROM PM_COUPON PC
+			INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+		WHERE PCI.PM_COUPON_ISSUE_ID = #{pmCouponIssueId}
+			AND PCI.UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 사용
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.02		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putCouponIssueUse">
+		/* coupon.putCouponIssueUse */
+		UPDATE PM_COUPON_ISSUE
+		SET STATUS = 'COUPON_STATUS.USE'
+			, USE_DT = NOW()
+		WHERE PM_COUPON_ISSUE_ID = #{pmCouponIssueId}
+		AND STATUS = 'COUPON_STATUS.NOTUSE'
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 수량 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponCountByUserVo" id="getCouponCountByUserResultMap">
+        <result column="GOODS_CNT" property="goodsCount"/>
+        <result column="CART_CNT" property="cartCount"/>
+        <result column="SHIPPING_PRICE_CNT" property="shippingPriceCount"/>
+		<result column="COUPON_TOTAL_CNT" property="couponTotalCount"/>
+    </resultMap>
+    <select id="getCouponCountByUser" resultMap="getCouponCountByUserResultMap">
+        /* coupon.getCouponCountByUser */
+        SELECT SUM(GOODS_CNT) AS GOODS_CNT, SUM(CART_CNT) AS CART_CNT, SUM(SHIPPING_PRICE_CNT) AS SHIPPING_PRICE_CNT
+			, (SELECT COUNT(*) AS COUPON_TOTAL_CNT
+				FROM PM_COUPON PC
+					INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+				WHERE PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED', 'COUPON_MASTER_STAT.STOP')
+					AND PCI.UR_USER_ID = #{urUserId}
+					AND PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+					AND PCI.EXPIRATION_DT <![CDATA[>]]> NOW()
+				GROUP BY PCI.UR_USER_ID) AS COUPON_TOTAL_CNT
+        FROM (
+			SELECT (CASE WHEN GC.COUPON_TP = 'COUPON_TYPE.GOODS' THEN 1
+					WHEN GC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN 1
+					ELSE 0 END) AS GOODS_CNT,
+				(CASE WHEN GC.COUPON_TP = 'COUPON_TYPE.CART' THEN 1 ELSE 0 END) AS CART_CNT,
+				(CASE WHEN GC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN 1 ELSE 0 END) AS SHIPPING_PRICE_CNT, GC.UR_USER_ID
+			FROM (
+				SELECT PC.COUPON_TP, PCI.UR_USER_ID, COUNT(*) AS COUPON_TOTAL_CNT, PCI.EXPIRATION_DT
+				FROM PM_COUPON PC
+					INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+				WHERE PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED', 'COUPON_MASTER_STAT.STOP')
+					AND PCI.UR_USER_ID = #{urUserId}
+					AND PCI.EXPIRATION_DT <![CDATA[>]]> NOW()
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(status)">
+						AND PCI.STATUS = #{status}
+					</if>
+				GROUP BY PC.PM_COUPON_ID, PCI.UR_USER_ID, PCI.EXPIRATION_DT, DATE(PCI.VALIDITY_START_DT)
+			) GC
+        ) G1
+        GROUP BY G1.UR_USER_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 회원가입 대상 쿠폰 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponInfoByUserJoinVo" id="couponInfoByUserJoinResultMap">
+        <result column="PM_COUPON_ID" property="pmCouponId"/>
+        <result column="COUPON_TP" property="couponType"/>
+        <result column="ISSUE_TP" property="issueType"/>
+        <result column="ISSUE_DETAIL_TP" property="issueDetailType"/>
+        <result column="DISPLAY_COUPON_NM" property="displayCouponName"/>
+        <result column="USE_PC_YN" property="usePcYn"/>
+        <result column="USE_MO_WEB_YN" property="useMobileWebYn"/>
+        <result column="USE_MO_APP_YN" property="useMobileAppYn"/>
+        <result column="DISCOUNT_TP" property="discountType"/>
+        <result column="DISCOUNT_VAL" property="discountValue"/>
+        <result column="PERCENTAGE_MAX_DISCOUNT_AMOUNT" property="percentageMaxDiscountAmount"/>
+        <result column="MIN_PAYMENT_AMOUNT" property="minPaymentAmount"/>
+		<result column="ISSUE_START_DT" property="issueStartDate"/>
+		<result column="ISSUE_END_DT" property="issueEndDate"/>
+		<result column="VALIDITY_TP" property="validityType"/>
+		<result column="VALIDITY_START_DT" property="validityStartDate"/>
+		<result column="VALIDITY_END_DT" property="validityEndDate"/>
+		<result column="VALIDITY_DAY" property="validityDay"/>
+		<result column="ISSUE_QTY_LIMIT" property="issueQtyLimit"/>
+		<result column="DISCOUNT_VAL_NAME" property="discountValueName"/>
+    </resultMap>
+    <select id="getCouponInfoByUserJoin" resultMap="couponInfoByUserJoinResultMap">
+        /* coupon.getCouponInfoByUserJoin */
+		SELECT
+			PM_COUPON_ID ,
+			COUPON_TP ,
+			ISSUE_TP ,
+			ISSUE_DETAIL_TP ,
+			DISPLAY_COUPON_NM ,
+			USE_PC_YN ,
+			USE_MO_WEB_YN ,
+			USE_MO_APP_YN ,
+			DISCOUNT_TP ,
+			DISCOUNT_VAL ,
+			PERCENTAGE_MAX_DISCOUNT_AMOUNT ,
+			MIN_PAYMENT_AMOUNT,
+			DATE(ISSUE_START_DT) AS ISSUE_START_DT ,
+			DATE(ISSUE_END_DT) AS ISSUE_END_DT ,
+			VALIDITY_TP,
+			DATE(VALIDITY_START_DT) AS VALIDITY_START_DT,
+			DATE(VALIDITY_END_DT) AS VALIDITY_END_DT,
+			VALIDITY_DAY ,
+			ISSUE_QTY_LIMIT,
+			(CASE WHEN DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.FIXED_DISCOUNT' THEN CONCAT( DISCOUNT_VAL , '원') ELSE CONCAT (DISCOUNT_VAL , '%') END) AS DISCOUNT_VAL_NAME
+		FROM PM_COUPON
+		WHERE ISSUE_TP = 'PAYMENT_TYPE.AUTO_PAYMENT'
+			AND ISSUE_DETAIL_TP IN ('AUTO_ISSUE_TYPE.USER_JOIN', 'AUTO_ISSUE_TYPE.RECOMMENDER')
+			AND COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED')
+			AND DATE(NOW()) BETWEEN ISSUE_START_DT AND ISSUE_END_DT
+			AND USE_YN = 'Y'
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시 노출 쿠폰 상품 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.24		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponGoodsByUserJoinVo" id="couponGoodsByUserJoinResultMap">
+		<result column="DISCOUNT_VAL" property="discountValue"/>
+		<result column="COVERAGE_ID" property="coverageId"/>
+	</resultMap>
+	<select id="getUserJoinGoods" resultMap="couponGoodsByUserJoinResultMap">
+		/* coupon.getUserJoinGoods */
+		SELECT
+			PC.DISCOUNT_VAL,
+			PCC.COVERAGE_ID
+		FROM PM_COUPON PC
+			INNER JOIN PM_COUPON_COVERAGE PCC ON PC.PM_COUPON_ID = PCC.PM_COUPON_ID
+		WHERE PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT'
+			AND PC.ISSUE_TP = 'PAYMENT_TYPE.AUTO_PAYMENT'
+			AND PC.ISSUE_DETAIL_TP = 'AUTO_ISSUE_TYPE.USER_JOIN'
+			<!-- AND PC.STATUS IN ('COUPON_APPROVAL_STATUS.ACCEPT_APPROVAL') -->
+			AND PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED')
+			AND DATE(NOW()) BETWEEN PC.ISSUE_START_DT AND PC.ISSUE_END_DT
+			AND PC.USE_YN = 'Y'
+			AND PCC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS'
+			AND PCC.INCLUDE_YN ='Y'
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 사용 가능 상품,장바구니 쿠폰 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.15		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponApplicationListByUserVo" id="couponApplicationListByUserResultMap">
+		<result column="PM_COUPON_ISSUE_ID" property="pmCouponIssueId"/>
+		<result column="DISPLAY_COUPON_NM" property="displayCouponName"/>
+		<result column="DISCOUNT_TP" property="discountType"/>
+		<result column="DISCOUNT_VAL" property="discountValue"/>
+		<result column="PERCENTAGE_MAX_DISCOUNT_AMOUNT" property="percentageMaxDiscountAmount"/>
+		<result column="USE_PC_YN" property="usePcYn"/>
+		<result column="USE_MO_WEB_YN" property="useMobileWebYn"/>
+		<result column="USE_MO_APP_YN" property="useMobileAppYn"/>
+		<result column="CART_COUPON_APPLY_YN" property="cartCouponApplyYn"/>
+		<result column="MIN_PAYMENT_AMOUNT" property="minPaymentAmount"/>
+		<result column="COUPON_TP" property="couponType"/>
+		<result column="PG_PROMOTION_YN" property="pgPromotionYn"/>
+		<result column="PG_PROMOTION_PAY_CONFIG_ID" property="pgPromotionPayConfigId"/>
+		<result column="PG_PROMOTION_PAY_GRP_ID" property="pgPromotionPayGrpId"/>
+		<result column="PG_PROMOTION_PAY_ID" property="pgPromotionPayId"/>
+		<result column="UR_ERP_ORGANIZATION_CD" property="urErpOrganizationCd"/>
+		<result column="PERCENTAGE" property="percentage"/>
+	</resultMap>
+	<select id="getCouponApplicationListByUser" resultMap="couponApplicationListByUserResultMap">
+		/* coupon.getCouponApplicationListByUser */
+		SELECT
+			G1.PM_COUPON_ISSUE_ID
+			,PC.DISPLAY_COUPON_NM
+			,PC.DISCOUNT_TP
+			,PC.DISCOUNT_VAL
+			,PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+			,PC.USE_PC_YN
+			,PC.USE_MO_WEB_YN
+			,PC.USE_MO_APP_YN
+			,PC.CART_COUPON_APPLY_YN
+			,PC.MIN_PAYMENT_AMOUNT
+			,PC.COUPON_TP
+		FROM (
+			SELECT PCI.PM_COUPON_ISSUE_ID, PCI.PM_COUPON_ID
+				, (CASE WHEN PCCY1.INCLUDE_YN IS NULL THEN 'NOT' WHEN PCCY1.COVERAGE_ID = #{ilGoodsId} THEN 'Y' END) AS INCLUDE_Y_1
+				, (CASE WHEN PCCY2.INCLUDE_YN IS NULL THEN 'Y' WHEN PCCY2.COVERAGE_ID = #{dpBrandId} THEN 'Y' END) AS INCLUDE_Y_2
+				, (CASE WHEN PCCY3.INCLUDE_YN IS NULL THEN 'Y'
+						WHEN 0 <![CDATA[<]]> (SELECT COUNT(1) CNT
+							FROM IL_GOODS_CTGRY IGC
+                            	INNER JOIN IL_CTGRY_PRNTS_INFO ICPI ON IGC.IL_CTGRY_ID = ICPI.IL_CTGRY_ID
+                        	WHERE IGC.IL_GOODS_ID = #{ilGoodsId}
+								AND (
+									ICPI.CTGRY_ID_DEPTH0 = PCCY3.COVERAGE_ID OR
+									ICPI.CTGRY_ID_DEPTH1 = PCCY3.COVERAGE_ID OR
+									ICPI.CTGRY_ID_DEPTH2 = PCCY3.COVERAGE_ID OR
+									ICPI.CTGRY_ID_DEPTH3 = PCCY3.COVERAGE_ID OR
+									ICPI.CTGRY_ID_DEPTH4 = PCCY3.COVERAGE_ID OR
+									ICPI.CTGRY_ID_DEPTH5 = PCCY3.COVERAGE_ID
+									)
+				        ) THEN 'Y' END) AS INCLUDE_Y_3
+				, (CASE WHEN PCCY4.INCLUDE_YN IS NULL THEN 'Y' WHEN PCCY4.COVERAGE_ID = #{urWareHouseId} THEN 'Y' END) AS INCLUDE_Y_4
+			FROM PM_COUPON_ISSUE PCI
+				JOIN PM_COUPON PC ON PCI.PM_COUPON_ID = PC.PM_COUPON_ID
+				LEFT JOIN PM_COUPON_COVERAGE PCCY1 ON PC.PM_COUPON_ID = PCCY1.PM_COUPON_ID AND PCCY1.INCLUDE_YN ='Y' AND PCCY1.COVERAGE_TP = 'APPLYCOVERAGE.GOODS'
+				LEFT JOIN PM_COUPON_COVERAGE PCCY2 ON PC.PM_COUPON_ID = PCCY2.PM_COUPON_ID AND PCCY2.INCLUDE_YN ='Y' AND PCCY2.COVERAGE_TP = 'APPLYCOVERAGE.BRAND'
+				LEFT JOIN PM_COUPON_COVERAGE PCCY3 ON PC.PM_COUPON_ID = PCCY3.PM_COUPON_ID AND PCCY3.INCLUDE_YN ='Y' AND PCCY3.COVERAGE_TP = 'APPLYCOVERAGE.DISPLAY_CATEGORY'
+				LEFT JOIN PM_COUPON_COVERAGE PCCY4 ON PC.PM_COUPON_ID = PCCY4.PM_COUPON_ID AND PCCY4.INCLUDE_YN ='Y' AND PCCY4.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE'
+			WHERE
+				PCI.UR_USER_ID = #{urUserId}
+				AND PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+				AND PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED', 'COUPON_MASTER_STAT.STOP')
+				AND NOW() BETWEEN PCI.VALIDITY_START_DT AND PCI.EXPIRATION_DT
+				AND PC.COUPON_TP IN
+				<foreach collection="couponType" item="couponType" separator="," open="(" close=")">
+					#{couponType}
+				</foreach>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmCouponIssueId)">
+					AND PCI.PM_COUPON_ISSUE_ID = #{pmCouponIssueId}
+				</if>
+			GROUP BY PCI.PM_COUPON_ISSUE_ID, PCI.PM_COUPON_ID, INCLUDE_Y_1, INCLUDE_Y_2, INCLUDE_Y_3, INCLUDE_Y_4
+			) G1
+			INNER JOIN PM_COUPON PC ON G1.PM_COUPON_ID = PC.PM_COUPON_ID
+		WHERE ( G1.INCLUDE_Y_1 = 'NOT'
+			AND G1.INCLUDE_Y_2 = 'Y'	 /* 브랜드 포함 */
+			AND G1.INCLUDE_Y_3 = 'Y'	 /* 전시카테고리 포함 */
+			AND G1.INCLUDE_Y_4 = 'Y'	 /* 출고처 포함 */
+			AND NOT EXISTS (
+				SELECT *
+				FROM PM_COUPON_COVERAGE PCCN
+				WHERE G1.PM_COUPON_ID = PCCN.PM_COUPON_ID AND PCCN.INCLUDE_YN ='N' AND PCCN.COVERAGE_TP = 'APPLYCOVERAGE.GOODS'
+					AND #{ilGoodsId} = PCCN.COVERAGE_ID
+			)	/* 상품 제외 */
+			AND NOT EXISTS (
+				SELECT *
+				FROM PM_COUPON_COVERAGE PCCN
+				WHERE G1.PM_COUPON_ID = PCCN.PM_COUPON_ID AND PCCN.INCLUDE_YN ='N' AND PCCN.COVERAGE_TP = 'APPLYCOVERAGE.BRAND'
+					AND #{dpBrandId} = PCCN.COVERAGE_ID
+			)	/* 브랜드 제외 */
+			AND NOT EXISTS(
+				SELECT 1
+				FROM IL_GOODS_CTGRY IGC
+					INNER JOIN IL_CTGRY_PRNTS_INFO ICPI ON IGC.IL_CTGRY_ID = ICPI.IL_CTGRY_ID
+				WHERE IGC.IL_GOODS_ID = #{ilGoodsId}
+					AND EXISTS(
+						SELECT PCCN.COVERAGE_ID
+						FROM PM_COUPON_COVERAGE PCCN
+							INNER JOIN IL_CTGRY IC ON PCCN.COVERAGE_ID = IC.IL_CTGRY_ID
+						WHERE G1.PM_COUPON_ID = PCCN.PM_COUPON_ID
+							AND PCCN.INCLUDE_YN = 'N'
+							AND PCCN.COVERAGE_TP = 'APPLYCOVERAGE.DISPLAY_CATEGORY'
+							AND PCCN.COVERAGE_ID IN (ICPI.CTGRY_ID_DEPTH0, ICPI.CTGRY_ID_DEPTH1, ICPI.CTGRY_ID_DEPTH2, ICPI.CTGRY_ID_DEPTH3, ICPI.CTGRY_ID_DEPTH4, ICPI.CTGRY_ID_DEPTH5)
+					)
+			) /* 전시 카테고리 제외 */
+			AND NOT EXISTS (
+				SELECT *
+				FROM PM_COUPON_COVERAGE PCCN
+				WHERE G1.PM_COUPON_ID = PCCN.PM_COUPON_ID AND PCCN.INCLUDE_YN ='N' AND PCCN.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE'
+					AND #{urWareHouseId} = PCCN.COVERAGE_ID
+			)	/* 출고처 제외 */
+		) OR G1.INCLUDE_Y_1 = 'Y'	 /* 상품 포함 */
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 사용 가능 배송비 쿠폰 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.15		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getShippingCouponApplicationListByUser" resultMap="couponApplicationListByUserResultMap">
+       /* coupon.getShippingCouponApplicationListByUser */
+		SELECT
+			G1.PM_COUPON_ISSUE_ID
+			,PC.DISPLAY_COUPON_NM
+			,PC.DISCOUNT_TP
+			,PC.DISCOUNT_VAL
+			,PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+			,PC.USE_PC_YN
+			,PC.USE_MO_WEB_YN
+			,PC.USE_MO_APP_YN
+			,PC.MIN_PAYMENT_AMOUNT
+		FROM
+			(
+				SELECT PCI.PM_COUPON_ISSUE_ID, PCI.PM_COUPON_ID
+				FROM PM_COUPON_ISSUE PCI
+					JOIN PM_COUPON PC ON PCI.PM_COUPON_ID = PC.PM_COUPON_ID
+					LEFT JOIN PM_COUPON_COVERAGE PCCY ON PC.PM_COUPON_ID = PCCY.PM_COUPON_ID AND PCCY.INCLUDE_YN = 'Y' AND PCCY.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE'
+					LEFT JOIN PM_COUPON_COVERAGE PCCN ON PC.PM_COUPON_ID = PCCN.PM_COUPON_ID AND PCCN.INCLUDE_YN = 'N' AND PCCN.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE'
+				WHERE
+					PCI.UR_USER_ID = #{urUserId}
+					AND PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+					AND PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED', 'COUPON_MASTER_STAT.STOP')
+					AND NOW() BETWEEN PCI.VALIDITY_START_DT AND PCI.EXPIRATION_DT
+					AND PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE'
+					/*적용 범위 - 출고처*/
+					AND (IF(PCCY.COVERAGE_TP IS NULL,TRUE,PCCY.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE' AND PCCY.COVERAGE_ID = #{urWarehouseId})
+					AND IF(PCCN.COVERAGE_TP IS NULL,TRUE,PCCN.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE' AND PCCN.COVERAGE_ID <![CDATA[<>]]> #{urWarehouseId}))
+				GROUP BY PCI.PM_COUPON_ISSUE_ID, PCI.PM_COUPON_ID
+			)G1
+			INNER JOIN PM_COUPON PC ON G1.PM_COUPON_ID = PC.PM_COUPON_ID
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 사용 가능 장바구니 쿠폰 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.19		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getCartCouponApplicationListByUser" resultMap="couponApplicationListByUserResultMap">
+       /* coupon.getCartCouponApplicationListByUser */
+       SELECT
+			PCI.PM_COUPON_ISSUE_ID
+			,PC.DISPLAY_COUPON_NM
+			,PC.DISCOUNT_TP
+			,PC.DISCOUNT_VAL
+			,PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+			,PC.USE_PC_YN
+			,PC.USE_MO_WEB_YN
+			,PC.USE_MO_APP_YN
+			,PC.MIN_PAYMENT_AMOUNT
+			,IFNULL(PC.PG_PROMOTION_YN,'') AS PG_PROMOTION_YN
+			,IFNULL(PC.PG_PROMOTION_PAY_CONFIG_ID,'') AS PG_PROMOTION_PAY_CONFIG_ID
+			,IFNULL(PC.PG_PROMOTION_PAY_GRP_ID,'') AS PG_PROMOTION_PAY_GRP_ID
+			,IFNULL(PC.PG_PROMOTION_PAY_ID,'') AS PG_PROMOTION_PAY_ID
+		FROM
+			PM_COUPON_ISSUE PCI
+			JOIN PM_COUPON PC ON PCI.PM_COUPON_ID = PC.PM_COUPON_ID
+		WHERE
+			PCI.UR_USER_ID = #{urUserId}
+			AND PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+			AND PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED', 'COUPON_MASTER_STAT.STOP')
+			AND NOW() BETWEEN PCI.VALIDITY_START_DT AND PCI.EXPIRATION_DT
+			AND PC.COUPON_TP = 'COUPON_TYPE.CART'
+    </select>
+
+       <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰발행 PK로 주문 사용 가능 쿠폰 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.15		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getCouponApplicationListByPmCouponIssueId" resultMap="couponApplicationListByUserResultMap">
+       	/* coupon.getCouponApplicationListByPmCouponIssueId */
+		SELECT
+			PCI.PM_COUPON_ISSUE_ID
+		    ,PC.DISPLAY_COUPON_NM
+		    ,PC.DISCOUNT_TP
+		    ,PC.DISCOUNT_VAL
+		    ,PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+		    ,PC.USE_PC_YN
+		    ,PC.USE_MO_WEB_YN
+		    ,PC.USE_MO_APP_YN
+		    ,PC.CART_COUPON_APPLY_YN
+		    ,PC.MIN_PAYMENT_AMOUNT
+		    ,IFNULL(PC.PG_PROMOTION_YN,'') AS PG_PROMOTION_YN
+		    ,IFNULL(PC.PG_PROMOTION_PAY_CONFIG_ID,'') AS PG_PROMOTION_PAY_CONFIG_ID
+		    ,IFNULL(PC.PG_PROMOTION_PAY_GRP_ID,'') AS PG_PROMOTION_PAY_GRP_ID
+		    ,IFNULL(PC.PG_PROMOTION_PAY_ID,'') AS PG_PROMOTION_PAY_ID
+		    ,PCMSO.UR_ERP_ORGANIZATION_CD
+		    ,PCMSO.PERCENTAGE
+		    ,PC.COUPON_TP
+		FROM
+			PM_COUPON_ISSUE PCI
+			JOIN PM_COUPON PC ON PCI.PM_COUPON_ID = PC.PM_COUPON_ID
+			LEFT JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PCMSO ON PCMSO.PM_COUPON_ID = PC.PM_COUPON_ID
+		WHERE
+			PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+			AND PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED', 'COUPON_MASTER_STAT.STOP')
+			AND NOW() BETWEEN PCI.VALIDITY_START_DT AND PCI.EXPIRATION_DT
+			AND PCI.PM_COUPON_ISSUE_ID = #{pmCouponIssueId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰승인 요청철회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.30		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putCancelRequestApprovalCoupon">
+		/*	coupon.putCancelRequestApprovalCoupon	*/
+		UPDATE PM_COUPON
+		SET
+			APPR_STAT = #{apprStat}
+			, APPR_SUB_USER_ID = null
+			, APPR_SUB_CHG_USER_ID = null
+			, APPR_SUB_CHG_DT = null
+			, APPR_USER_ID = null
+			, APPR_CHG_USER_ID = null
+			, APPR_CHG_DT = null
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+		WHERE PM_COUPON_ID = #{taskPk}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 쿠폰 승인 폐기
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.06 	원종한	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putDisposalApprovalCoupon">
+		/* coupon.putDisposalApprovalCoupon */
+		UPDATE PM_COUPON
+		SET
+			APPR_STAT = #{apprStat}
+			, USE_YN = 'N'
+			, MODIFY_DT = NOW()
+			, MODIFY_ID = #{userVo.userId}
+		WHERE PM_COUPON_ID = #{taskPk}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰승인처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.06		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putApprovalProcessCoupon">
+		/*	coupon.putApprovalProcessCoupon	*/
+		UPDATE PM_COUPON
+		SET
+			APPR_STAT = #{apprStat}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.SUB_APPROVED')">
+			, APPR_SUB_CHG_DT = NOW()
+			, APPR_SUB_CHG_USER_ID = #{userVo.userId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.APPROVED')">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+				, COUPON_MASTER_STAT  = #{masterStat}
+				</if>
+			, APPR_CHG_DT = NOW()
+			, APPR_CHG_USER_ID = #{userVo.userId}
+			</if>
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+		WHERE PM_COUPON_ID = #{taskPk}
+	</update>
+	<update id="putWithdrawalMemberCoupon">
+		UPDATE PM_COUPON_ISSUE
+		SET STATUS = 'COUPON_STATUS.CANCEL'
+		WHERE UR_USER_ID = #{urUserId}
+			AND STATUS = 'COUPON_STATUS.NOTUSE'
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 쿠폰조회 처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.05		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+   	<resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponListResultVo" id="getEventCallCouponInfoResultMap">
+		<result column="PM_COUPON_ISSUE_ID" property="pmCouponIssueId"/>
+		<result column="DISPLAY_COUPON_NM" property="displayCouponName"/>
+	</resultMap>
+    <select id="getEventCallCouponInfo" resultMap="getEventCallCouponInfoResultMap">
+       	/* coupon.getEventCallCouponInfo */
+		SELECT
+			  PM_COUPON_ID AS CODE
+			, CONCAT(BOS_COUPON_NM, '(',DISPLAY_COUPON_NM,')') AS NAME
+		FROM
+			PM_COUPON
+		WHERE ISSUE_TP = #{issueType}
+		AND ISSUE_DETAIL_TP = #{issueDetailType}
+		AND COUPON_TP = #{couponType}
+		AND USE_YN = #{useYn}
+		AND APPR_STAT = 'APPR_STAT.APPROVED'
+		AND DATE(NOW()) BETWEEN ISSUE_START_DT AND  ISSUE_END_DT + INTERVAL 1 DAY - INTERVAL 1 SECOND
+		ORDER BY CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰설정 상태
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.08		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponListResultVo" id="getCouponSearchStatusMap">
+		<result column="CODE" property="code"/>
+		<result column="NAME" property="name"/>
+	</resultMap>
+    <select id="getCouponSearchStatus" resultMap="getCouponSearchStatusMap">
+       	/* coupon.getCouponSearchStatus */
+		SELECT
+     		CASE WHEN A.ST_COMN_CODE_ID ='APPR_STAT.APPROVED' THEN 'APPR_STAT.EXPIRED'
+	      		 WHEN A.ST_COMN_CODE_ID ='COUPON_MASTER_STAT.APPROVED' THEN 'APPR_STAT.APPROVED'
+	      		 WHEN A.ST_COMN_CODE_ID ='COUPON_MASTER_STAT.STOP' THEN 'APPR_STAT.STOP'
+     			 ELSE A.ST_COMN_CODE_ID
+     		END AS CODE
+     		, CASE WHEN A.ST_COMN_CODE_ID ='APPR_STAT.NONE' THEN '저장'
+     			   WHEN A.ST_COMN_CODE_ID ='APPR_STAT.SUB_APPROVED' THEN '1차 승인완료'
+     			   WHEN A.ST_COMN_CODE_ID ='APPR_STAT.APPROVED' THEN '발급기간 만료'
+     		       ELSE A.COMMENT
+     		  END AS NAME
+     		, CASE WHEN A.ST_COMN_CODE_ID ='APPR_STAT.NONE' THEN 1
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.REQUEST' THEN 2
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.CANCEL' THEN 3
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.DENIED' THEN 4
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.SUB_APPROVED' THEN 5
+     			 WHEN A.ST_COMN_CODE_ID = 'COUPON_MASTER_STAT.APPROVED' THEN 6
+     			 WHEN A.ST_COMN_CODE_ID ='COUPON_MASTER_STAT.STOP' THEN 7
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.APPROVED' THEN 8
+     			 ELSE 0
+     	    END SORT
+     	FROM (
+     	SELECT * FROM ST_COMN_CODE
+     	WHERE ST_COMN_CODE_ID LIKE 'COUPON_MASTER_STAT%'
+     	AND ST_COMN_CODE_ID <![CDATA[<>]]> 'COUPON_MASTER_STAT.SAVE'
+     	UNION ALL
+     	SELECT * FROM ST_COMN_CODE
+     	WHERE ST_COMN_CODE_ID LIKE 'APPR_STAT%'
+     	AND ST_COMN_CODE_CD NOT IN ('DISPOSAL', 'APPROVED_BY_SYSTEM')
+     	) AS A
+     	WHERE SORT > 0
+     	ORDER BY SORT
+    </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 승인관리자 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.15		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprUserList" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthManagerVo">
+		/*	coupon.getApprUserList	*/
+		SELECT
+			UAA.UR_APPR_AUTH_ID, UAA.APPR_KIND_TP AS apprKindType, UAA.APPR_MANAGER_TP AS apprManagerType
+			, UAA.APPR_USER_ID, UAA.SORT, UAA.MEMO, UAA.CREATE_DT
+			, UU.LOGIN_ID AS APPR_LOGIN_ID, FN_DECRYPT(UU.USER_NM) AS APPR_USER_NAME
+			, UC.COMP_TP AS ADMIN_TYPE, FN_COMN_CODE_DIC(UC.COMP_TP) AS ADMIN_TYPE_NAME
+			, UE.STATUS_TP AS USER_STATUS, FN_COMN_CODE_DIC(UE.STATUS_TP) AS USER_STATUS_NAME
+			, CASE
+				WHEN UC.COMP_TP = 'COMPANY_TYPE.CLIENT'
+					THEN UC.COMP_NM
+				ELSE UE.ORGANIZATION_NM
+			 END AS ORGANIZATION_NAME
+			, UE.TEAM_LEADER_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, UE.GRANT_AUTH_STOP_YN
+			, GUU.LOGIN_ID AS GRANT_LOGIN_ID, FN_DECRYPT(GUU.USER_NM) AS GRANT_USER_NAME
+			, GUE.STATUS_TP AS GRANT_USER_STATUS, FN_COMN_CODE_DIC(GUE.STATUS_TP) AS GRANT_USER_STATUS_NAME
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND NOW() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN 'Y'
+				ELSE 'N'
+			 END AS grantAuthYn
+		FROM UR_APPR_AUTH UAA
+		LEFT OUTER JOIN UR_USER UU
+			ON UAA.APPR_USER_ID = UU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+		 	ON UAA.APPR_USER_ID = UE.UR_USER_ID
+		LEFT OUTER JOIN UR_COMPANY UC
+			ON UC.UR_COMPANY_ID = UE.UR_COMPANY_ID
+		LEFT OUTER JOIN UR_USER GUU
+			ON UE.GRANT_AUTH_USER_ID = GUU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE GUE
+			ON UE.GRANT_AUTH_USER_ID = GUE.UR_USER_ID
+		WHERE UAA.APPR_KIND_TP = #{apprKindType}
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				AND UAA.APPR_USER_ID IN (#{apprSubUserId}, #{apprUserId})
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(apprSubUserId)">
+				AND UAA.APPR_USER_ID IN ( #{apprUserId})
+			</when>
+		</choose>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이용권 수금 상태 변경
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.15		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putTicketCollectStatus">
+		/*coupon.putTicketCollectStatus*/
+
+		UPDATE PM_COUPON
+		SET TICKET_COLLECT_YN = #{ticketCollectYn},
+			TICKET_COLLECT_USER_ID = #{userVo.userId},
+			TICKET_COLLECT_DT = NOW()
+		WHERE PM_COUPON_ID = #{pmCouponId}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 분담조직 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.24		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.coupon.dto.vo.CouponListResultVo" id="getOrgInfoResultMap">
+		<result column="CODE" property="code"/>
+		<result column="NAME" property="name"/>
+	</resultMap>
+    <select id="getOrgInfo" resultMap="getOrgInfoResultMap">
+       	/* coupon.getOrgInfo */
+		SELECT	COMNCODE.ST_COMN_CODE_ID AS CODE
+				,FN_DIC(COMNCODE.GB_DIC_MST_ID, NULL) AS NAME
+		FROM 	ST_COMN_CODE COMNCODE
+		WHERE 	1 = 1
+				AND ST_COMN_CODE_MST_CD = #{stCommonCodeMasterCode}
+		    	AND USE_YN = #{useYn}
+		ORDER BY SORT
+    </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 이용권 승인 상태 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putSerialNumberStatus">
+
+		/* coupon.putSerialNumberStatus */
+		UPDATE 	PM_SERIAL_NUMBER
+		SET 	APPROVAL_YN  = 'Y'
+		WHERE  	PM_COUPON_ID  = #{pmCouponId}
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 이름 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.13		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getCouponNameById" resultType="string">
+		/* coupon.getCouponNameById */
+		SELECT DISPLAY_COUPON_NM
+		FROM PM_COUPON
+		WHERE PM_COUPON_ID = #{pmCouponId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 발급 유효성 체크
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.26		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getIssueCouponChk" resultType="int">
+		/* coupon.getIssueCouponChk */
+		SELECT
+				CASE WHEN DATE_FORMAT(ISSUE_END_DT, '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW(), '%Y-%m-%d') THEN '0'
+										     ELSE '1'
+				END AS ISSUE_CHK
+		 FROM PM_COUPON
+		WHERE PM_COUPON_ID =  #{pmCouponId}
+	</select>
+
+
+	<update id="putPmCouponIssueCancel">
+	/* coupon.putPmCouponIssueCancel */
+		UPDATE 	PM_COUPON_ISSUE
+		SET 	STATUS    = 'COUPON_STATUS.CANCEL'
+		WHERE  	PM_COUPON_ID  = #{pmCouponId}
+
+	</update>
+
+	<select id="getUserIdCnt" resultType="int">
+
+		/*	coupon.getUserIdCnt */
+
+		SELECT COUNT(*)
+		FROM UR_USER
+		WHERE LOGIN_ID = #{loginId}
+
+	</select>
+
+</mapper>

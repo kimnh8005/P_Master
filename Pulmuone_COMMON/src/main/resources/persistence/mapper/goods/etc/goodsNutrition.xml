@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.etc.GoodsNutritionMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.16		박영후          최초생성
+	 * @ 2020.10.26		이성준          리팩토링
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="goodsNutritionMap" type="kr.co.pulmuone.v1.goods.etc.dto.vo.GoodsNutritionVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="IL_NUTRITION_CODE" property="ilNutritionCode" />
+		<result column="NUTRITION_NAME" property="nutritionName" />
+		<result column="NUTRITION_UNIT" property="nutritionUnit" />
+		<result column="NUTRITION_PERCENT_YN" property="nutritionPercentYn" />
+		<result column="SORT" property="sort" />
+	</resultMap>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 관리 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.16		박영후          최초생성
+	 * @ 2020.10.26		이성준          리팩토링
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsNutritionList" resultMap="goodsNutritionMap">
+		/*	goodsNutrition.getGoodsNutritionList  */
+			SELECT
+				  IL_NUTRITION_CD AS IL_NUTRITION_CODE
+				, IFNULL (NUTRITION_NM, '') AS NUTRITION_NAME
+				, IFNULL (NUTRITION_UNIT, '') AS NUTRITION_UNIT
+				, SORT
+			FROM
+				IL_NUTRITION
+			WHERE
+				DEL_YN = 'N'
+			ORDER BY SORT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 관리 목록 조회(엑셀다운로드)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.16		박영후          최초생성
+	 * @ 2020.10.29		이성준          추가
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsNutritionExcelList" resultMap="goodsNutritionMap">
+		/*	goodsNutrition.getGoodsNutritionExcelList  */
+		SELECT
+			@ROWNUM := @ROWNUM +1 AS RNUM
+			,TBL.*
+		from
+		(
+			SELECT
+				  IL_NUTRITION_CD AS IL_NUTRITION_CODE
+				, IFNULL (NUTRITION_NM, '') AS NUTRITION_NAME
+				, IFNULL (NUTRITION_UNIT, '') AS NUTRITION_UNIT
+				, SORT
+			FROM
+				IL_NUTRITION
+				JOIN (SELECT @ROWNUM := 0) R
+			WHERE
+				DEL_YN = 'N'
+			ORDER BY SORT DESC
+		) TBL
+		ORDER BY RNUM DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		박영후          최초생성
+	 * @ 2020.10.26		이성준          리팩토링
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsNutrition" resultMap="goodsNutritionMap">
+		/*	goodsNutrition.getGoodsNutrition  */
+		SELECT
+			  IL_NUTRITION_CD AS IL_NUTRITION_CODE
+			, NUTRITION_NM AS NUTRITION_NAME
+			, NUTRITION_UNIT
+			, NUTRITION_PERCENT_YN
+			, SORT
+		FROM
+			IL_NUTRITION
+		WHERE
+			IL_NUTRITION_CD = #{ilNutritionCode}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 분류명으로 존재하는 리스트카운트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		박영후          최초생성
+	 * @ 2020.10.26		이성준          리팩토링
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="duplicateGoodsNutritionByNameCount" resultType="int" >
+		/*	goodsNutrition.duplicateGoodsNutritionByNameCount	*/
+		SELECT
+			COUNT(*)
+		FROM
+			IL_NUTRITION
+		WHERE
+			NUTRITION_NM = TRIM(#{nutritionName})
+		AND IL_NUTRITION_CD != #{ilNutritionCode}
+		AND DEL_YN = 'N'
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.22		박영후          최초생성
+	 * @ 2020.10.26		이성준          리팩토링
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addGoodsNutrition">
+		/* goodsNutrition.addGoodsNutrition  */
+		INSERT INTO
+			IL_NUTRITION
+		(
+			IL_NUTRITION_CD
+			, NUTRITION_NM
+			, NUTRITION_UNIT
+			, NUTRITION_PERCENT_YN
+			, SORT
+			, DEL_YN
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			 (SELECT CONCAT( 'NU-', LPAD(SUBSTRING( IFNULL(MAX(IL_NUTRITION_CD), 0), -4 ) + 1, 4, 0) )
+				FROM IL_NUTRITION
+				WHERE IL_NUTRITION_CD LIKE '%-%')
+			, TRIM(#{nutritionName})
+			, #{nutritionUnit}
+			, #{nutritionPercentYn}
+			, #{sort}
+			, 'N'
+			, #{userVo.userId}
+			, CURRENT_TIMESTAMP
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.17		박영후          최초생성
+	 * @ 2020.10.26		이성준          리팩토링
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putGoodsNutrition">
+		/*	goodsNutrition.putGoodsNutrition  */
+		UPDATE IL_NUTRITION
+		SET
+			  NUTRITION_NM = #{nutritionName}
+			, NUTRITION_UNIT = #{nutritionUnit}
+			, NUTRITION_PERCENT_YN = #{nutritionPercentYn}
+			, SORT = #{sort}
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE
+			IL_NUTRITION_CD = #{ilNutritionCode}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품영양정보 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.17		박영후          최초생성
+	 * @ 2020.10.26		이성준          리팩토링
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="delGoodsNutrition">
+		/* goodsNutrition.delGoodsNutrition  */
+		UPDATE IL_NUTRITION
+		SET
+			  DEL_YN = 'Y'
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE
+			IL_NUTRITION_CD = #{ilNutritionCode}
+	</update>
+
+</mapper>
+

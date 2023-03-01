@@ -1,0 +1,109 @@
+import  groovy.json.*
+
+// ---------- pipeline Start ----------
+
+def pipeline(profile) {
+
+    // ---------- pipeline 내 전역 변수 선언 Start ----------
+    def ACTIVE_PROFILE = profile
+    def GRADLE_EXECUTE_COMMAND_ON_UNIX = "./Pulmuone_Master/gradlew --settings-file ./Pulmuone_Master/settings.gradle "
+
+     /*
+     * COMMON TestCase Gradle Task
+     */
+     def TEST_MODULE_BUILD_TASK = \
+                   ":Pulmuone_COMMON:clean" + \
+                   " :Pulmuone_COMMON:test -Pprofile=${ACTIVE_PROFILE} -Pjacocorun=N --tests 'kr.co.pulmuone.v1.scenario.*'" + \
+                   ""
+
+    // ---------- pipeline 내 전역 변수 선언 End ----------
+
+    /*
+    properties([
+      parameters([
+         string(name: 'Greeting', defaultValue: 'Hello Hello', description : '테스트')
+      ])
+    ])
+    */
+
+    /*
+     * Pre-Build Stage : 빌드 실행 전처리
+     *
+     */
+    stage('Pre-Build') {
+
+        checkout scm                                // Bitbucket 소스 Checkout
+
+        sh "chmod +x ./Pulmuone_Master/gradlew"     // Gradle Wrapper 실행 가능 권한 추가
+
+    }   // end of stage('Pre-Build')
+
+    /*
+     * Test Stage : Test 실행
+     *
+     */
+    stage('Test') {
+
+        println "----------------------------------------"
+        println "[ INFO ]  Common TestCase Start"
+        println "----------------------------------------"
+
+        sh GRADLE_EXECUTE_COMMAND_ON_UNIX + TEST_MODULE_BUILD_TASK
+
+        println "----------------------------------------"
+        println "[ INFO ] Common TestCase Completed"
+        println "----------------------------------------"
+
+    } // end of stage('Test')
+
+}
+
+// ---------- pipeline End ----------
+
+// ---------- pipeline(), postFailure(e), postAlways() 선언 Start ----------
+
+def postFailure(e) {
+
+    println "----------------------------------------"
+    println "[ ERROR ]  에러 발생 : \n${e}"
+    println "----------------------------------------"
+
+    slackSend (color: '#FF0000', message: "TEST FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+
+}   // end of postFailure
+
+def postAlways() {
+
+    /*
+     * postAlways() : pipeline 실행 성공 / 실패와 관계없이 마지막에 항상 실행
+     */
+
+    def postAlwaysDescription = \
+        "    (1) 현재 로직 없음 \n" + \
+        ""
+
+    println "----------------------------------------"
+    println "[ INFO ]  postAlways 실행 \n" + postAlwaysDescription
+    println "----------------------------------------"
+
+}   // end of postAlways
+
+// ---------- pipeline(), postFailure(e), postAlways() 선언 End ----------
+
+/*
+ * 젠킨스 Scripted Pipeline 구성
+ */
+node {
+    try {
+        slackSend (color: '#0000FF', message: "TEST START: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'")
+        println "pipeline profile ${PROFILE}"
+        pipeline("${PROFILE}")
+
+        slackSend (color: '#00FF00', message: "TEST SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'")
+    } catch (e) {
+        postFailure(e)
+        throw e
+    } finally {
+        postAlways()
+    }
+}

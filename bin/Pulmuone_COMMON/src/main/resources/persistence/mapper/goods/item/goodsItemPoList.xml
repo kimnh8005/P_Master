@@ -1,0 +1,1429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemPoListMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주용 기본 데이터 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.24		원종한
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemPoBasicData">
+	/* goodsItemPoList.addItemPoBasicData */
+		INSERT INTO IL_PO
+		(
+			IL_ITEM_WAREHOUSE_ID
+			, BASE_DT
+			, TARGET_STOCK
+			, OUTBOUND_1WEEK_TOTAL
+			, OUTBOUND_2WEEK_TOTAL
+			, OUTBOUND_3WEEK_TOTAL
+			, OUTBOUND_60DAYS_TOTAL
+			, OUTBOUND_1WEEK_AVG
+			, OUTBOUND_2WEEK_AVG
+			, OUTBOUND_3WEEK_AVG
+			, OUTBOUND_DAY_AVG
+			, NON_ERP_EVENT_ORDER_AVG
+			, ERP_EVENT_ORDER_AVG
+			, EVENT_YN
+			, IL_ITEM_CD
+			, UR_SUPPLIER_WAREHOUSE_ID
+			, UR_WAREHOUSE_ID
+			, UR_SUPPLIER_ID
+			, IL_PO_TP_ID
+			, IL_CTGRY_STD_PRNTS_INFO_ID
+			, IL_GOODS_ID
+			, MEMO
+		)
+		SELECT
+			*
+		FROM
+		(
+			SELECT
+				T.IL_ITEM_WAREHOUSE_ID AS IL_ITEM_WAREHOUSE_ID
+				, T.BASE_DATE AS BASE_DT
+				, CEIL((T.TARGET_STOCK_RATIO/100) * (T.OUTBOUND_60DAYS_TOTAL/60)) AS TARGET_STOCK
+				, T.OUTBOUND_1WEEK_TOTAL AS OUTBOUND_1WEEK_TOTAL
+				, T.OUTBOUND_2WEEK_TOTAL AS OUTBOUND_2WEEK_TOTAL
+				, T.OUTBOUND_3WEEK_TOTAL AS OUTBOUND_3WEEK_TOTAL
+				, T.OUTBOUND_60DAYS_TOTAL AS OUTBOUND_60DAYS_TOTAL
+				, ROUND(T.OUTBOUND_1WEEK_TOTAL/7, 1) AS OUTBOUND_1WEEK_AVG
+				, ROUND(T.OUTBOUND_2WEEK_TOTAL/7, 1) AS OUTBOUND_2WEEK_AVG
+				, ROUND(T.OUTBOUND_3WEEK_TOTAL/7, 1) AS OUTBOUND_3WEEK_AVG
+				, ROUND(T.OUTBOUND_60DAYS_TOTAL/60, 1) AS OUTBOUND_DAY_AVG
+				, T.NON_ERP_EVENT_ORDER_AVG + T.AVG_NORMAL_PRODUCT_ORDER_CNT AS NON_ERP_EVENT_ORDER_AVG
+				, T.ERP_EVENT_ORDER_AVG + T.AVG_DISCOUNT_PRODUCT_ORDER_CNT AS ERP_EVENT_ORDER_AVG
+				, T.EVENT_YN
+				, T.IL_ITEM_CD
+				, T.UR_SUPPLIER_WAREHOUSE_ID
+				, T.UR_WAREHOUSE_ID
+				, T.UR_SUPPLIER_ID
+				, T.IL_PO_TP_ID
+				, T.IL_CTGRY_STD_PRNTS_INFO_ID
+				, T.IL_GOODS_ID
+				, (
+						SELECT
+							MEMO
+						FROM
+							IL_PO
+						WHERE
+							IL_PO_ID = (
+								SELECT
+									MAX(IL_PO_ID)
+								FROM
+									IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = T.IL_ITEM_WAREHOUSE_ID
+							)
+				) AS MEMO
+			FROM (
+				SELECT
+					A.IL_ITEM_CD
+					, B.IL_GOODS_ID
+					, C.IL_ITEM_WAREHOUSE_ID
+					, D.UR_SUPPLIER_WAREHOUSE_ID
+					, E.UR_WAREHOUSE_ID
+					, F.UR_SUPPLIER_ID
+					, G.IL_PO_TP_ID
+					, J.IL_CTGRY_STD_PRNTS_INFO_ID
+					, INPUT_DATE.CUR_DATE
+					, INPUT_DATE.BASE_DATE
+					, INPUT_DATE.DATE_DIFF
+					, IFNULL((
+						CASE
+							WHEN C.IL_STOCK_DEADLINE_ID IS NOT NULL AND C.IL_STOCK_DEADLINE_ID != '' AND C.IL_STOCK_DEADLINE_ID != 0
+								THEN (
+									SELECT
+										ISD.TARGET_STOCK_RATIO
+									FROM
+										IL_STOCK_DEADLINE ISD
+									WHERE
+										ISD.IL_STOCK_DEADLINE_ID = C.IL_STOCK_DEADLINE_ID
+								)
+							ELSE (
+								SELECT
+									ISD.TARGET_STOCK_RATIO
+								FROM
+									IL_STOCK_DEADLINE ISD
+								WHERE
+									ISD.BASIC_YN = 'Y'
+									AND ISD.UR_SUPPLIER_ID = F.UR_SUPPLIER_ID
+									AND ISD.UR_WAREHOUSE_ID IN (E.UR_WAREHOUSE_ID, 0)
+									AND ISD.DISTRIBUTION_PERIOD <![CDATA[ <= ]]> A.DISTRIBUTION_PERIOD
+								ORDER BY ISD.UR_WAREHOUSE_ID DESC, ISD.DISTRIBUTION_PERIOD DESC
+								LIMIT 1
+							)
+						END
+					), 0) AS TARGET_STOCK_RATIO /* 목표재고율 */
+					, IFNULL(IPOC.OUTBOUND_1WEEK_TOTAL, 0) AS OUTBOUND_1WEEK_TOTAL
+					, IFNULL(IPOC.OUTBOUND_2WEEK_TOTAL, 0) AS OUTBOUND_2WEEK_TOTAL
+					, IFNULL(IPOC.OUTBOUND_3WEEK_TOTAL, 0) AS OUTBOUND_3WEEK_TOTAL
+					, IFNULL(IPOC.OUTBOUND_60DAYS_TOTAL + (IFNULL(LDACI.AVG_DELIVERY_CNT, 0)*60), 0) AS OUTBOUND_60DAYS_TOTAL
+					, CASE
+						WHEN IFNULL(IPOC.NOT_EVT_ORDER_CNT, 0) = 0 THEN 0
+						ELSE ROUND(IFNULL(IPOC.NOT_EVT_ORDER_CNT, 0) / IFNULL(IPOC.NOT_EVT_DT_CNT, 1), 1)
+					END AS NON_ERP_EVENT_ORDER_AVG
+					, CASE
+						WHEN IFNULL(IPOC.EVT_ORDER_CNT, 0) = 0 THEN 0
+						ELSE ROUND(IFNULL(IPOC.EVT_ORDER_CNT, 0) / IFNULL(IPOC.EVT_DT_CNT, 1))
+					END AS ERP_EVENT_ORDER_AVG
+					, IFNULL(IPOC.EVENT_YN, 'N') AS EVENT_YN
+					, IFNULL(LDACI.AVG_NORMAL_PRODUCT_ORDER_CNT, 0) AS AVG_NORMAL_PRODUCT_ORDER_CNT
+					, IFNULL(LDACI.AVG_DISCOUNT_PRODUCT_ORDER_CNT, 0) AS AVG_DISCOUNT_PRODUCT_ORDER_CNT
+				FROM
+					IL_ITEM A
+					INNER JOIN IL_GOODS B
+						ON B.IL_ITEM_CD = A.IL_ITEM_CD
+						AND B.SALE_STATUS IN ('SALE_STATUS.WAIT', 'SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER')
+						AND B.GOODS_TP IN ('GOODS_TYPE.NORMAL', 'GOODS_TYPE.GIFT', 'GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+					INNER JOIN IL_ITEM_WAREHOUSE C
+						ON C.IL_ITEM_CD = A.IL_ITEM_CD
+					INNER JOIN UR_SUPPLIER_WAREHOUSE D
+						ON D.UR_SUPPLIER_WAREHOUSE_ID = C.UR_SUPPLIER_WAREHOUSE_ID
+						AND D.UR_SUPPLIER_ID = A.UR_SUPPLIER_ID
+						AND D.UR_WAREHOUSE_ID = B.UR_WAREHOUSE_ID
+					INNER JOIN UR_WAREHOUSE E
+						ON E.UR_WAREHOUSE_ID = D.UR_WAREHOUSE_ID
+						AND E.STOCK_ORDER_YN = 'Y'
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+						    AND E.UR_WAREHOUSE_ID = #{searchUrWarehouseId}
+						</if>
+					INNER JOIN UR_SUPPLIER F
+						ON F.UR_SUPPLIER_ID = D.UR_SUPPLIER_ID
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+						    AND F.UR_SUPPLIER_ID = #{searchUrSupplierId}
+						</if>
+					INNER JOIN IL_PO_TP G
+						ON G.IL_PO_TP_ID = C.IL_PO_TP_ID
+					INNER JOIN IL_CTGRY_STD_PRNTS_INFO J
+						ON J.IL_CTGRY_STD_ID = A.IL_CTGRY_STD_ID
+					JOIN (
+						SELECT
+							CURDATE() AS CUR_DATE
+							, #{searchBaseDt} AS BASE_DATE
+							, DATEDIFF(#{searchBaseDt}, CURDATE()) AS DATE_DIFF
+						FROM DUAL
+					) AS INPUT_DATE
+					LEFT JOIN IL_PO IP
+						ON IP.IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+						AND IP.BASE_DT = INPUT_DATE.BASE_DATE
+					LEFT JOIN IL_PO_ORDER_CAL IPOC
+						ON IPOC.IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+						AND IPOC.BASE_DT = INPUT_DATE.CUR_DATE
+					LEFT JOIN (
+						SELECT
+							LDACI.BASE_DT
+							, (
+								SELECT
+									IIW.IL_ITEM_WAREHOUSE_ID
+								FROM IL_ITEM_WAREHOUSE IIW
+									INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+										ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+									INNER JOIN UR_SUPPLIER US
+										ON US.UR_SUPPLIER_ID = USW.UR_SUPPLIER_ID
+									INNER JOIN UR_WAREHOUSE UW
+										ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+								WHERE
+									IIW.IL_ITEM_CD = LDACI.ITEM_CD
+									AND USW.UR_SUPPLIER_ID = (
+										CASE
+											WHEN LDACI.SHOP_CD = 'PULSHOP' THEN PF_ID.UR_SUPPLIER_ID
+											WHEN LDACI.SHOP_CD = 'ORGASHOP' THEN OG_ID.UR_SUPPLIER_ID
+											ELSE 0
+										END
+									)
+									AND USW.UR_WAREHOUSE_ID = (
+										CASE
+											WHEN LDACI.UR_WAREHOUSE_ID = 'WAREHOUSE_YONGIN_ID' THEN YONGIN_ID.PS_VAL
+											WHEN LDACI.UR_WAREHOUSE_ID = 'WAREHOUSE_BAEKAM_ID' THEN BAEKAM_ID.PS_VAL
+											ELSE 0
+										END
+									)
+								LIMIT 1
+							) AS IL_ITEM_WAREHOUSE_ID
+							, LDACI.ITEM_CD AS IL_ITEM_CD
+							, LDACI.AVG_DELIVERY_CNT
+							, LDACI.AVG_NORMAL_PRODUCT_ORDER_CNT
+							, LDACI.AVG_DISCOUNT_PRODUCT_ORDER_CNT
+						FROM
+							LEGACY_DAILY_AVG_CNT_IF LDACI
+							JOIN (
+								SELECT
+									UR_SUPPLIER_ID
+								FROM
+									UR_SUPPLIER
+								WHERE
+									SUPPLIER_CD = 'PF'
+							) PF_ID
+							JOIN (
+								SELECT
+									UR_SUPPLIER_ID
+								FROM
+									UR_SUPPLIER
+								WHERE
+									SUPPLIER_CD = 'OG'
+							) OG_ID
+							JOIN (
+								SELECT
+									PS_VAL
+								FROM
+									PS_CONFIG
+								WHERE
+									PS_KEY = 'WAREHOUSE_BAEKAM_ID'
+							) BAEKAM_ID
+							JOIN (
+								SELECT
+									PS_VAL
+								FROM
+									PS_CONFIG
+								WHERE
+									PS_KEY = 'WAREHOUSE_YONGIN_ID'
+							) YONGIN_ID
+						WHERE
+							BASE_DT = CURDATE()
+					) LDACI
+						ON LDACI.IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+				WHERE
+					A.EXTINCTION_YN = 'N'
+					AND (
+						IP.IL_PO_ID IS NULL
+						OR (
+							(IP.BASE_DT = INPUT_DATE.BASE_DATE)
+							AND DATE_FORMAT(IP.SNAPSHOT_DT, '%Y%m%d') <![CDATA[ < ]]> INPUT_DATE.CUR_DATE
+						)
+					)
+				GROUP BY C.IL_ITEM_WAREHOUSE_ID
+			) T
+		)TT
+		ON DUPLICATE KEY UPDATE
+			IL_ITEM_WAREHOUSE_ID = TT.IL_ITEM_WAREHOUSE_ID
+			, BASE_DT = TT.BASE_DT
+			, TARGET_STOCK = TT.TARGET_STOCK
+			, OUTBOUND_1WEEK_TOTAL = TT.OUTBOUND_1WEEK_TOTAL
+			, OUTBOUND_2WEEK_TOTAL = TT.OUTBOUND_2WEEK_TOTAL
+			, OUTBOUND_3WEEK_TOTAL = TT.OUTBOUND_3WEEK_TOTAL
+			, OUTBOUND_60DAYS_TOTAL = TT.OUTBOUND_60DAYS_TOTAL
+			, OUTBOUND_1WEEK_AVG = TT.OUTBOUND_1WEEK_AVG
+			, OUTBOUND_2WEEK_AVG = TT.OUTBOUND_2WEEK_AVG
+			, OUTBOUND_3WEEK_AVG = TT.OUTBOUND_3WEEK_AVG
+			, OUTBOUND_DAY_AVG = TT.OUTBOUND_DAY_AVG
+			, NON_ERP_EVENT_ORDER_AVG = TT.NON_ERP_EVENT_ORDER_AVG
+			, ERP_EVENT_ORDER_AVG = TT.ERP_EVENT_ORDER_AVG
+			, EVENT_YN = TT.EVENT_YN
+			, IL_ITEM_CD = TT.IL_ITEM_CD
+			, UR_SUPPLIER_WAREHOUSE_ID = TT.UR_SUPPLIER_WAREHOUSE_ID
+			, UR_WAREHOUSE_ID = TT.UR_WAREHOUSE_ID
+			, UR_SUPPLIER_ID = TT.UR_SUPPLIER_ID
+			, IL_PO_TP_ID = TT.IL_PO_TP_ID
+			, IL_CTGRY_STD_PRNTS_INFO_ID = TT.IL_CTGRY_STD_PRNTS_INFO_ID
+			, IL_GOODS_ID = TT.IL_GOODS_ID
+	</insert>
+
+    <update id="putItemPoBasicData">
+	/* goodsItemPoList.putItemPoBasicData */
+		UPDATE IL_PO AS IP
+			, (
+				SELECT
+					T2.*
+					, CASE
+							WHEN T2.USER_SAVED_DT IS NOT NULL THEN IFNULL(T2.PO_USER_QTY, 0)
+							WHEN T2.RECOMMEND_PO_QTY <![CDATA[ < ]]> 0 THEN 0
+							WHEN T2.SUPPLIER_CD = 'OG' THEN T2.RECOMMEND_PO_QTY
+							WHEN T2.DISTRIBUTION_PERIOD <![CDATA[ <= ]]> 30 THEN T2.RECOMMEND_PO_QTY
+							ELSE CEIL(T2.RECOMMEND_PO_QTY/T2.PCS_PER_BOX)*T2.PCS_PER_BOX
+						END AS PIECE_PO_QTY /* 낱개발주수량 */
+					, CASE
+							WHEN T2.USER_SAVED_DT IS NOT NULL THEN ROUND(T2.PO_USER_QTY/T2.PCS_PER_BOX, 1)
+							WHEN T2.RECOMMEND_PO_QTY <![CDATA[ <= ]]> 0 THEN 0
+							ELSE ROUND(T2.RECOMMEND_PO_QTY/T2.PCS_PER_BOX, 1)
+						END AS BOX_PO_QTY /* BOX발주수량 */
+				FROM (
+					SELECT
+						T.*
+						, SUM(IFNULL(IPE.PO_EVENT_QTY, 0)) AS EVENT_PO_QTY /* 행사발주수량 */
+						, CASE
+							WHEN T.SUPPLIER_CD = 'OG' AND T.EVENT_YN = 'Y' THEN
+		    					T.ERP_EVENT_ORDER_AVG*2
+		    						- (
+		    							(T.STOCK_CLOSED + T.STOCK_SCHEDULED_D0 + T.STOCK_SCHEDULED_D1_MORE)
+		    							- (T.OUTBOUND_0 + T.OUTBOUND_1 + T.OUTBOUND_2 + T.OUTBOUND_3_MORE)
+										- GREATEST(((T.STOCK_DISCARD_D0 - T.OUTBOUND_0) + GREATEST((T.STOCK_DISCARD_D1 - T.OUTBOUND_1), 0)), 0)
+		    						) + SUM(IFNULL(IPE.PO_EVENT_QTY, 0))
+							WHEN T.SUPPLIER_CD = 'OG' AND T.EVENT_YN = 'N' THEN
+		    					T.NON_ERP_EVENT_ORDER_AVG*2
+		    					- (
+	    							(T.STOCK_CLOSED + T.STOCK_SCHEDULED_D0 + T.STOCK_SCHEDULED_D1_MORE)
+		    						- (T.OUTBOUND_0 + T.OUTBOUND_1 + T.OUTBOUND_2 + T.OUTBOUND_3_MORE)
+		    						- GREATEST(((T.STOCK_DISCARD_D0 - T.OUTBOUND_0) + GREATEST((T.STOCK_DISCARD_D1 - T.OUTBOUND_1), 0)), 0)
+		    					) + SUM(IFNULL(IPE.PO_EVENT_QTY, 0))
+							ELSE T.TARGET_STOCK
+									- (
+										(T.STOCK_CLOSED + T.STOCK_SCHEDULED_D0)
+										- (T.OUTBOUND_0 + T.OUTBOUND_1 + T.OUTBOUND_2)
+										- IF(
+											(T.STOCK_DISCARD_D0 - T.OUTBOUND_0) + IF(T.STOCK_DISCARD_D1 <![CDATA[ > ]]> T.OUTBOUND_1, T.STOCK_DISCARD_D1 - T.OUTBOUND_1, 0) <![CDATA[ > ]]> 0
+											, (T.STOCK_DISCARD_D0 - T.OUTBOUND_0) + IF(T.STOCK_DISCARD_D1 <![CDATA[ > ]]> T.OUTBOUND_1, T.STOCK_DISCARD_D1 - T.OUTBOUND_1, 0)
+											, 0
+										)
+									)
+									+ SUM(IFNULL(IPE.PO_EVENT_QTY, 0))
+						END AS RECOMMEND_PO_QTY /* 권고수량 */
+						, T.STOCK_CLOSED + T.STOCK_CONFIRMED - T.OUTBOUND_0_15 - (T.STOCK_DISCARD_D0 + T.STOCK_DISCARD_D1) AS EXPECTED_RESIDUAL_QTY /* 예상잔여수량 */
+						, CASE
+								WHEN T.OUTBOUND_60DAYS_TOTAL = 0 THEN 0
+								ELSE (
+									ROUND((T.STOCK_CLOSED - (T.STOCK_DISCARD_D0 + T.STOCK_DISCARD_D1))/(T.OUTBOUND_60DAYS_TOTAL/60), 1)
+								)
+							END AS MISSED_OUTBOUND /* 결품 예상일 */
+					FROM (
+						SELECT
+							A.IL_ITEM_CD
+							, C.IL_PO_TP_ID
+							, B.IL_GOODS_ID   /* 상품코드 */
+							, IP.IL_PO_ID
+							, C.IL_ITEM_WAREHOUSE_ID
+							, F.SUPPLIER_CD
+							, INPUT_DATE.BASE_DATE
+							, INPUT_DATE.CUR_DATE
+							, INPUT_DATE.DATE_DIFF
+							, A.ITEM_BARCODE /* 품목바코드 */
+							, A.ITEM_NM /* 품목명 */
+							, A.STORAGE_METHOD_TP /* 보관방법 */
+							, A.DISTRIBUTION_PERIOD /* 유통기간 */
+							, IFNULL(A.PCS_PER_BOX, 1) AS PCS_PER_BOX /* 박스 입수량 */
+							, B.SALE_STATUS /* 상품판매상태 */
+							, B.DISP_YN /* 상품전시여부 */
+							, G.PO_TP /* 발주유형 */
+							, IFNULL((
+								SELECT
+									CONCAT(DATE_FORMAT(IGP.PRICE_START_DT, '%Y-%m-%d')
+		    								, ' ~ '
+		    								, DATE_FORMAT(IGP.PRICE_END_DT, '%Y-%m-%d')
+		    								, CASE WHEN IGP.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.PRIORITY' THEN ' (우선할인)'
+												   WHEN IGP.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.ERP_EVENT' THEN ' (ERP행사)'
+												   WHEN IGP.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.IMMEDIATE' THEN ' (즉시할인)'
+		    									   END
+		    						)
+								FROM
+									IL_GOODS_PRICE IGP
+								WHERE
+									IGP.IL_GOODS_ID = B.IL_GOODS_ID
+									AND IGP.USE_YN = 'Y'
+									AND IGP.DISCOUNT_TP IN ('GOODS_DISCOUNT_TP.PRIORITY', 'GOODS_DISCOUNT_TP.ERP_EVENT', 'GOODS_DISCOUNT_TP.IMMEDIATE')
+									AND IGP.PRICE_END_DT <![CDATA[ >= ]]> INPUT_DATE.BASE_DATE
+								ORDER BY IGP.PRICE_END_DT
+								LIMIT 1
+							), '') AS ERP_EVENT /* 행사정보 */
+							, IP.TARGET_STOCK /* 안전재고(목표재고) */
+							, CASE
+									WHEN DAYOFWEEK(INPUT_DATE.BASE_DATE) = 1 THEN DATE_FORMAT(DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL + COALESCE(G.SCHEDULED_SUN,G.SCHEDULED_MON,G.SCHEDULED_TUE,G.SCHEDULED_WED,G.SCHEDULED_THU,G.SCHEDULED_FRI,G.SCHEDULED_SAT) DAY), '%Y-%m-%d')/* 일요일 */
+									WHEN DAYOFWEEK(INPUT_DATE.BASE_DATE) = 2 THEN DATE_FORMAT(DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL + COALESCE(G.SCHEDULED_MON,G.SCHEDULED_TUE,G.SCHEDULED_WED,G.SCHEDULED_THU,G.SCHEDULED_FRI,G.SCHEDULED_SAT,G.SCHEDULED_SUN) DAY), '%Y-%m-%d')/* 월요일 */
+									WHEN DAYOFWEEK(INPUT_DATE.BASE_DATE) = 3 THEN DATE_FORMAT(DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL + COALESCE(G.SCHEDULED_TUE,G.SCHEDULED_WED,G.SCHEDULED_THU,G.SCHEDULED_FRI,G.SCHEDULED_SAT,G.SCHEDULED_SUN,G.SCHEDULED_MON) DAY), '%Y-%m-%d')/* 화요일 */
+									WHEN DAYOFWEEK(INPUT_DATE.BASE_DATE) = 4 THEN DATE_FORMAT(DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL + COALESCE(G.SCHEDULED_WED,G.SCHEDULED_THU,G.SCHEDULED_FRI,G.SCHEDULED_SAT,G.SCHEDULED_SUN,G.SCHEDULED_MON,G.SCHEDULED_TUE) DAY), '%Y-%m-%d')/* 수요일 */
+									WHEN DAYOFWEEK(INPUT_DATE.BASE_DATE) = 5 THEN DATE_FORMAT(DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL + COALESCE(G.SCHEDULED_THU,G.SCHEDULED_FRI,G.SCHEDULED_SAT,G.SCHEDULED_SUN,G.SCHEDULED_MON,G.SCHEDULED_TUE,G.SCHEDULED_WED) DAY), '%Y-%m-%d')/* 목요일 */
+									WHEN DAYOFWEEK(INPUT_DATE.BASE_DATE) = 6 THEN DATE_FORMAT(DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL + COALESCE(G.SCHEDULED_FRI,G.SCHEDULED_SAT,G.SCHEDULED_SUN,G.SCHEDULED_MON,G.SCHEDULED_TUE,G.SCHEDULED_WED,G.SCHEDULED_THU) DAY), '%Y-%m-%d')/* 금요일 */
+									WHEN DAYOFWEEK(INPUT_DATE.BASE_DATE) = 7 THEN DATE_FORMAT(DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL + COALESCE(G.SCHEDULED_SAT,G.SCHEDULED_SUN,G.SCHEDULED_MON,G.SCHEDULED_TUE,G.SCHEDULED_WED,G.SCHEDULED_THU,G.SCHEDULED_FRI) DAY), '%Y-%m-%d')/* 토요일 */
+									ELSE ''
+								END AS STOCK_SCHEDULED_DT /* 입고예정일자 */
+							, IFNULL(A.PO_PRO_REA,'') AS PO_PRO_REA
+							, IFNULL(IP.PO_USER_QTY, 0) AS PO_USER_QTY
+							, IP.USER_SAVED_DT
+							, IFNULL((
+								SELECT IFNULL(MAX(IF(STOCK_TP = 'ERP_STOCK_TP.CLOSED', STOCK_QTY, 0)), 0)
+		                               + IFNULL(MAX(IF(STOCK_TP = 'ERP_STOCK_TP.CLOSED_ADJ', STOCK_QTY, 0)), 0)
+		                               AS STOCK_CLOSED
+								FROM
+									IL_ITEM_ERP_STOCK
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND STOCK_TP IN ('ERP_STOCK_TP.CLOSED', 'ERP_STOCK_TP.CLOSED_ADJ')
+									AND BASE_DT = INPUT_DATE.CUR_DATE
+								 GROUP BY IL_ITEM_WAREHOUSE_ID
+							), 0) AS STOCK_CLOSED /* 전일마감재고 */
+							, IFNULL((
+								SELECT
+									SUM(STOCK_QTY)
+								FROM IL_ITEM_ERP_STOCK
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND STOCK_TP = 'ERP_STOCK_TP.DISCARD'
+									AND BASE_DT = INPUT_DATE.CUR_DATE
+									AND SCHEDULE_DT <![CDATA[ <= ]]> INPUT_DATE.BASE_DATE
+							), 0) AS STOCK_DISCARD_D0 /* D0 폐기예정수량 */
+							, IFNULL((
+								SELECT
+									SUM(STOCK_QTY)
+								FROM IL_ITEM_ERP_STOCK
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND STOCK_TP = 'ERP_STOCK_TP.DISCARD'
+									AND BASE_DT = INPUT_DATE.CUR_DATE
+									AND SCHEDULE_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 1 DAY)
+							), 0) AS STOCK_DISCARD_D1 /* D1 폐기예정수량 */
+							, IFNULL((
+						              SELECT SUM(PO_IF_QTY)
+						                FROM IL_PO
+						               WHERE IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+							             AND PO_IF_YN = 'Y'
+							             AND STOCK_SCHEDULED_DT = INPUT_DATE.BASE_DATE
+					          ), 0) +
+							  IFNULL((
+                                      SELECT STOCK_QTY
+                                        FROM IL_ITEM_ERP_STOCK
+                                       WHERE IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+                                         AND STOCK_TP = 'ERP_STOCK_TP.SCHEDULED_ADJ'
+                                         AND BASE_DT = INPUT_DATE.BASE_DATE
+                                       ORDER BY CREATE_DT DESC
+                                       LIMIT 1
+                              ), 0) STOCK_SCHEDULED_D0 /* 당일입고예정수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 1 DAY)
+							), 0) AS STOCK_SCHEDULED_D1 /* D+1 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 2 DAY)
+							), 0) AS STOCK_SCHEDULED_D2 /* D+2 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 3 DAY)
+							), 0) AS STOCK_SCHEDULED_D3 /* D+3 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 4 DAY)
+							), 0) AS STOCK_SCHEDULED_D4 /* D+4 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 5 DAY)
+							), 0) AS STOCK_SCHEDULED_D5 /* D+5 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 6 DAY)
+							), 0) AS STOCK_SCHEDULED_D6 /* D+6 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 7 DAY)
+							), 0) AS STOCK_SCHEDULED_D7 /* D+7 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT <![CDATA[ >= ]]> DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 8 DAY)
+							), 0) AS STOCK_SCHEDULED_D8_MORE /* D+8 이후 입고대기수량 */
+							, IFNULL((
+								SELECT
+									SUM(PO_IF_QTY)
+								FROM IL_PO
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND PO_IF_YN = 'Y'
+									AND STOCK_SCHEDULED_DT <![CDATA[ > ]]> INPUT_DATE.BASE_DATE
+							), 0) AS STOCK_SCHEDULED_D1_MORE /* 입고대기수량 */
+							, IFNULL((
+								SELECT IFNULL(MAX(IF(STOCK_TP = 'ERP_STOCK_TP.CONFIRMED', STOCK_QTY, 0)), 0)
+		                               + IFNULL(MAX(IF(STOCK_TP = 'ERP_STOCK_TP.CONFIRMED_ADJ', STOCK_QTY, 0)), 0)
+		                               AS STOCK_QTY
+								FROM IL_ITEM_ERP_STOCK
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND STOCK_TP IN ('ERP_STOCK_TP.CONFIRMED', 'ERP_STOCK_TP.CONFIRMED_ADJ')
+									AND BASE_DT = INPUT_DATE.BASE_DATE
+								GROUP BY IL_ITEM_WAREHOUSE_ID
+							), 0) AS STOCK_CONFIRMED /* 입고확정수량 */
+							, IFNULL((
+								SELECT
+									STOCK_QTY
+								FROM IL_ITEM_ERP_STOCK
+								WHERE
+									IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+									AND STOCK_TP = 'ERP_STOCK_TP.OFFLINE'
+									AND BASE_DT = INPUT_DATE.CUR_DATE
+								ORDER BY CREATE_DT DESC
+								LIMIT 1
+							), 0) AS OFF_STOCK /* OFF재고 */
+							, IFNULL((
+								SELECT
+									IF(ST.SUM_STOCK_QTY <![CDATA[ > ]]> 0, ST.SUM_STOCK_QTY, 0)
+								FROM (
+									SELECT
+										SUM(STOCK_QTY) AS SUM_STOCK_QTY
+									FROM IL_ITEM_ERP_STOCK
+									WHERE
+										IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+										AND STOCK_TP = 'ERP_STOCK_TP.ORDER'
+										AND BASE_DT = INPUT_DATE.BASE_DATE
+								) ST
+							), 0) AS OUTBOUND_0 /* D0 출고예정수량 */
+							, IFNULL((
+								SELECT
+									IF(ST.SUM_STOCK_QTY <![CDATA[ > ]]> 0, ST.SUM_STOCK_QTY, 0)
+								FROM (
+									SELECT
+										SUM(STOCK_QTY) AS SUM_STOCK_QTY
+									FROM IL_ITEM_ERP_STOCK
+									WHERE
+										IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+										AND STOCK_TP = 'ERP_STOCK_TP.ORDER'
+										AND BASE_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 1 DAY)
+								) ST
+							), 0) AS OUTBOUND_1 /* D1 출고예정수량 */
+							, IFNULL((
+								SELECT
+									IF(ST.SUM_STOCK_QTY <![CDATA[ > ]]> 0, ST.SUM_STOCK_QTY, 0)
+								FROM (
+									SELECT
+										SUM(STOCK_QTY) AS SUM_STOCK_QTY
+									FROM IL_ITEM_ERP_STOCK
+									WHERE
+										IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+										AND STOCK_TP = 'ERP_STOCK_TP.ORDER'
+										AND BASE_DT = DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 2 DAY)
+								) ST
+							), 0) AS OUTBOUND_2 /* D2 출고예정수량 */
+							, IFNULL((
+								SELECT
+									IF(ST.SUM_STOCK_QTY <![CDATA[ > ]]> 0, ST.SUM_STOCK_QTY, 0)
+								FROM (
+									SELECT
+										SUM(STOCK_QTY) AS SUM_STOCK_QTY
+									FROM IL_ITEM_ERP_STOCK
+									WHERE
+										IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+										AND STOCK_TP = 'ERP_STOCK_TP.ORDER'
+										AND BASE_DT <![CDATA[ >= ]]> DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 3 DAY)
+								) ST
+							), 0) AS OUTBOUND_3_MORE /* D3이상 출고예정수량 */
+							, IFNULL((
+								SELECT
+									IF(ST.SUM_STOCK_QTY <![CDATA[ > ]]> 0, ST.SUM_STOCK_QTY, 0)
+								FROM (
+									SELECT
+										SUM(STOCK_QTY) AS SUM_STOCK_QTY
+									FROM IL_ITEM_ERP_STOCK
+									WHERE
+										IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+										AND STOCK_TP = 'ERP_STOCK_TP.ORDER'
+										AND BASE_DT BETWEEN INPUT_DATE.BASE_DATE AND DATE_ADD(INPUT_DATE.BASE_DATE, INTERVAL 15 DAY)
+								) ST
+							), 0) AS OUTBOUND_0_15 /* D0 ~ D15 출고예정수량 */
+							, IP.OUTBOUND_3WEEK_TOTAL /* 직전 3주 출고수량 */
+							, IP.OUTBOUND_2WEEK_TOTAL /* 직전 2주 출고수량 */
+							, IP.OUTBOUND_1WEEK_TOTAL /* 직전 1주 출고수량 */
+							, IP.OUTBOUND_3WEEK_AVG /* 직전 3주 출고수량 평균 */
+							, IP.OUTBOUND_2WEEK_AVG /* 직전 2주 출고수량 평균 */
+							, IP.OUTBOUND_1WEEK_AVG /* 직전 1주 출고수량 평균 */
+							, IP.OUTBOUND_DAY_AVG /* 일평균 출고량 */
+							, IP.OUTBOUND_60DAYS_TOTAL
+							, IP.ERP_EVENT_ORDER_AVG
+							, IP.NON_ERP_EVENT_ORDER_AVG
+							, IP.EVENT_YN
+							, CASE
+									WHEN DAYOFWEEK(BASE_DATE) = 1 THEN G.PO_SUN_YN
+									WHEN DAYOFWEEK(BASE_DATE) = 2 THEN G.PO_MON_YN
+									WHEN DAYOFWEEK(BASE_DATE) = 3 THEN G.PO_TUE_YN
+									WHEN DAYOFWEEK(BASE_DATE) = 4 THEN G.PO_WED_YN
+									WHEN DAYOFWEEK(BASE_DATE) = 5 THEN G.PO_THU_YN
+									WHEN DAYOFWEEK(BASE_DATE) = 6 THEN G.PO_FRI_YN
+									WHEN DAYOFWEEK(BASE_DATE) = 7 THEN G.PO_SAT_YN
+									ELSE 'N'
+								END AS IS_PO_POSSIBLE /* 발주가능여부 */
+						FROM
+							IL_ITEM A
+							INNER JOIN IL_GOODS B
+								ON B.IL_ITEM_CD = A.IL_ITEM_CD
+								AND B.SALE_STATUS IN ('SALE_STATUS.WAIT', 'SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER')
+								AND B.GOODS_TP IN ('GOODS_TYPE.NORMAL', 'GOODS_TYPE.GIFT', 'GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+							INNER JOIN IL_ITEM_WAREHOUSE C
+								ON C.IL_ITEM_CD = A.IL_ITEM_CD
+							INNER JOIN UR_SUPPLIER_WAREHOUSE D
+								ON D.UR_SUPPLIER_WAREHOUSE_ID = C.UR_SUPPLIER_WAREHOUSE_ID
+								AND D.UR_SUPPLIER_ID = A.UR_SUPPLIER_ID
+								AND D.UR_WAREHOUSE_ID = B.UR_WAREHOUSE_ID
+							INNER JOIN UR_WAREHOUSE E
+								ON E.UR_WAREHOUSE_ID = D.UR_WAREHOUSE_ID
+								AND E.STOCK_ORDER_YN = 'Y'
+							INNER JOIN UR_SUPPLIER F
+								ON F.UR_SUPPLIER_ID = D.UR_SUPPLIER_ID
+							INNER JOIN IL_PO_TP G
+								ON G.IL_PO_TP_ID = C.IL_PO_TP_ID
+							INNER JOIN IL_CTGRY_STD_PRNTS_INFO J
+								ON J.IL_CTGRY_STD_ID = A.IL_CTGRY_STD_ID
+							JOIN (
+								SELECT
+									CURDATE() AS CUR_DATE
+									, #{searchBaseDt} AS BASE_DATE
+									, DATEDIFF(#{searchBaseDt}, CURDATE()) AS DATE_DIFF
+								FROM DUAL
+							) AS INPUT_DATE
+							INNER JOIN IL_PO IP
+								ON IP.IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+								AND IP.BASE_DT = INPUT_DATE.BASE_DATE
+						WHERE
+							A.EXTINCTION_YN = 'N'
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchItemCd)"> <!-- 복수검색 -->
+								AND (
+									A.IL_ITEM_CD IN
+									<foreach item="data" index="index" collection="searchItemCdArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+									OR
+									A.ITEM_BARCODE IN
+									<foreach item="data" index="index" collection="searchItemCdArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								)
+							</if>
+                            <if test="searchErpCtgryList != null and searchErpCtgryList.size() > 0"><!-- ERP 카테고리 (대분류) -->
+                                AND
+                                <foreach item="data" index="index" collection="searchErpCtgryList" open="(" separator="OR" close=")">
+                                    <choose>
+                                        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(data) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(data, '(없음)')">
+                                            (A.ERP_CTGRY_LV1_ID IS NULL OR A.ERP_CTGRY_LV1_ID = '')
+                                        </when>
+                                        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(data) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(data, '(없음)')">
+                                            A.ERP_CTGRY_LV1_ID = #{data}
+                                        </when>
+                                    </choose>
+                                </foreach>
+                            </if>
+							<!--<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchErpCtgry) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchErpCtgry, '(없음)')">-->
+								<!--AND (A.ERP_CTGRY_LV1_ID IS NULL OR A.ERP_CTGRY_LV1_ID = '')-->
+							<!--</if>-->
+							<!--<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchErpCtgry) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchErpCtgry, '(없음)')">-->
+								<!--AND A.ERP_CTGRY_LV1_ID = #{searchErpCtgry}-->
+							<!--</if>-->
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+							    AND E.UR_WAREHOUSE_ID = #{searchUrWarehouseId}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+							    AND F.UR_SUPPLIER_ID = #{searchUrSupplierId}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoType)"><!-- 발주유형 -->
+								AND IP.IL_PO_TP_ID IN (
+									SELECT
+										IL_PO_TP_ID
+									FROM
+										IL_PO_TP
+									<where>
+										<if test="searchPoTypeList != null and searchPoTypeList.size() > 0">
+											IL_PO_TP_ID IN
+												<foreach item="data" index="index" collection="searchPoTypeList" open="(" separator="," close=")">
+													#{data}
+												</foreach>
+										</if>
+										<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(poPerItemYn, 'Y')"><!-- 품목별 상이 -->
+											OR PO_PER_ITEM_YN = 'Y'
+										</if>
+									</where>
+								)
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchErpPoTp)">
+							    AND G.ERP_PO_TP = #{searchErpPoTp}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchBigCategory)">
+							    AND J.CTGRY_STD_ID_DEPTH1 = #{searchBigCategory}
+							</if>
+							<if test="searchStorageMethodList != null &amp;&amp; searchStorageMethodList.size() > 0"><!-- 보관방법 -->
+							    AND A.STORAGE_METHOD_TP IN
+							        <foreach item="data" index="index" collection="searchStorageMethodList" open="(" separator="," close=")">
+									   #{data}
+									</foreach>
+							</if>
+						ORDER BY
+							C.IL_ITEM_WAREHOUSE_ID
+							, A.IL_ITEM_CD
+							, (
+								CASE
+									WHEN B.GOODS_TP = 'GOODS_TYPE.NORMAL' THEN 1
+									WHEN B.GOODS_TP = 'GOODS_TYPE.GIFT' THEN 2
+									WHEN B.GOODS_TP = 'GOODS_TYPE.ADDITIONAL' THEN 3
+									WHEN B.GOODS_TP = 'GOODS_TYPE.GIFT_FOOD_MARKETING' THEN 4
+									ELSE 5
+								END
+							)
+						LIMIT 999999999999999999
+					) T
+					LEFT JOIN IL_PO_EVENT IPE
+						ON IPE.IL_GOODS_ID = T.IL_GOODS_ID
+						AND IPE.RECEVING_REQ_DT = T.STOCK_SCHEDULED_DT
+					GROUP BY T.IL_ITEM_WAREHOUSE_ID
+				)T2
+				<where>
+					<if test="searchSaleStatusList != null &amp;&amp; searchSaleStatusList.size() > 0"><!-- 상품 판매상태-->
+					    AND T2.SALE_STATUS IN
+					        <foreach item="data" index="index" collection="searchSaleStatusList" open="(" separator="," close=")">
+							   #{data}
+							</foreach>
+					</if>
+					<if test="searchGoodsDisplayStatusList != null &amp;&amp; searchGoodsDisplayStatusList.size() > 0"><!-- 상품 전시상태-->
+					    AND T2.DISP_YN IN
+					        <foreach item="data" index="index" collection="searchGoodsDisplayStatusList" open="(" separator="," close=")">
+							   #{data}
+							</foreach>
+					</if>
+				</where>
+			) T3
+		SET
+			IP.SNAPSHOT_DT = NOW()
+			, IP.PO_TP = T3.PO_TP
+			, IP.ITEM_BARCODE = T3.ITEM_BARCODE
+			, IP.ITEM_NM = T3.ITEM_NM
+			, IP.STORAGE_METHOD_TP = T3.STORAGE_METHOD_TP
+			, IP.DISTRIBUTION_PERIOD = T3.DISTRIBUTION_PERIOD
+			, IP.PCS_PER_BOX = T3.PCS_PER_BOX
+			, IP.SALE_STATUS = T3.SALE_STATUS
+			, IP.DISP_YN = T3.DISP_YN
+			, IP.RECOMMEND_PO_QTY = T3.RECOMMEND_PO_QTY
+			, IP.PIECE_PO_QTY = T3.PIECE_PO_QTY
+			, IP.BOX_PO_QTY = T3.BOX_PO_QTY
+			, IP.STOCK_SCHEDULED_DT = T3.STOCK_SCHEDULED_DT
+			, IP.EVENT_PO_QTY = T3.EVENT_PO_QTY
+			, IP.ERP_EVENT = T3.ERP_EVENT
+			, IP.PO_PRO_REA = T3.PO_PRO_REA
+			, IP.OFF_STOCK = T3.OFF_STOCK
+			, IP.EXPECTED_RESIDUAL_QTY = T3.EXPECTED_RESIDUAL_QTY
+			, IP.STOCK_CLOSED = T3.STOCK_CLOSED
+			, IP.STOCK_CONFIRMED = T3.STOCK_CONFIRMED
+			, IP.STOCK_SCHEDULED_D0 = T3.STOCK_SCHEDULED_D0
+			, IP.STOCK_SCHEDULED_D1 = T3.STOCK_SCHEDULED_D1
+			, IP.STOCK_SCHEDULED_D2 = T3.STOCK_SCHEDULED_D2
+			, IP.STOCK_SCHEDULED_D3 = T3.STOCK_SCHEDULED_D3
+			, IP.STOCK_SCHEDULED_D4 = T3.STOCK_SCHEDULED_D4
+			, IP.STOCK_SCHEDULED_D5 = T3.STOCK_SCHEDULED_D5
+			, IP.STOCK_SCHEDULED_D6 = T3.STOCK_SCHEDULED_D6
+			, IP.STOCK_SCHEDULED_D7 = T3.STOCK_SCHEDULED_D7
+			, IP.STOCK_SCHEDULED_D8_MORE = T3.STOCK_SCHEDULED_D8_MORE
+			, IP.STOCK_SCHEDULED_D1_MORE = T3.STOCK_SCHEDULED_D1_MORE
+			, IP.STOCK_DISCARD_D0 = T3.STOCK_DISCARD_D0
+			, IP.STOCK_DISCARD_D1 = T3.STOCK_DISCARD_D1
+			, IP.MISSED_OUTBOUND = T3.MISSED_OUTBOUND
+			, IP.OUTBOUND_0 = T3.OUTBOUND_0
+			, IP.OUTBOUND_1 = T3.OUTBOUND_1
+			, IP.OUTBOUND_2 = T3.OUTBOUND_2
+			, IP.OUTBOUND_3_MORE = T3.OUTBOUND_3_MORE
+			, IP.IS_PO_POSSIBLE = T3.IS_PO_POSSIBLE
+		WHERE
+			IP.IL_PO_ID = T3.IL_PO_ID
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 수량 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03		이성준
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putItemPo">
+	/* goodsItemPoList.putItemPo */
+		UPDATE
+			IL_PO IP
+			INNER JOIN IL_PO_TP IPT
+				ON IPT.IL_PO_TP_ID = IP.IL_PO_TP_ID
+		SET
+			IP.PO_USER_QTY = #{piecePoQty} /* 사용자입력발주수량 */
+			, IP.MEMO = #{memo}
+			, IP.USER_SAVED_DT = NOW()
+			, IP.USER_SAVED_ID = #{createId}
+		WHERE
+		 	IP.IL_PO_ID = #{ilPoId}
+		 	AND IP.IS_PO_POSSIBLE = 'Y'
+		 	AND (
+				IP.BASE_DT <![CDATA[ > ]]> CURRENT_DATE()
+			 	OR (
+			 		IP.BASE_DT = CURRENT_DATE()
+			 		AND CURRENT_TIME() <![CDATA[ < ]]> CONCAT(IPT.PO_DEADLINE_HOUR, ':', IPT.PO_DEADLINE_MIN, ':00')
+			 	)
+		 	)
+    </update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.05		이성준
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPoList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoListResultVo">
+	/* goodsItemPoList.getPoList */
+		SELECT
+			  IP.IL_PO_ID
+			, CASE
+					WHEN IP.USER_SAVED_DT IS NOT NULL THEN IFNULL(IP.PO_USER_QTY, 0)
+					ELSE IFNULL(IP.PIECE_PO_QTY, 0)
+				END AS PIECE_PO_QTY /* 낱개발주수량 */
+			, IP.PO_SYSTEM_QTY
+			, IP.BOX_PO_QTY
+			, IP.EVENT_PO_QTY
+			, IP.RECOMMEND_PO_QTY
+			, IP.EXPECTED_RESIDUAL_QTY
+			, IP.IL_ITEM_CD
+			, II.ERP_CTGRY_LV1_ID
+			, IP.IL_PO_TP_ID /* 발주유형 SEQ */
+			, IP.IL_GOODS_ID  /* 상품코드 */
+			, IP.IL_ITEM_WAREHOUSE_ID
+			, US.SUPPLIER_CD
+			, (SELECT COMP_NM FROM UR_COMPANY WHERE UR_COMPANY_ID = US.UR_COMPANY_ID) AS SUPPLIER_NAME
+			, IFNULL(IP.ITEM_BARCODE,'') AS BARCODE
+			, IFNULL(IP.ITEM_NM,'') AS ITEM_NM      /* 품목명 */
+			, IFNULL(CONCAT(IP.IL_ITEM_CD, '/', IP.ITEM_BARCODE),'') AS EXCEL_IL_ITEM_CD
+			, IFNULL(FN_COMN_CODE_DIC(IP.STORAGE_METHOD_TP), '') AS STORAGE_METHOD_NM /* 보관방법 */
+			, IP.DISTRIBUTION_PERIOD                                      /* 유통기간 */
+			, IP.PCS_PER_BOX                                            /* 박스 입수량 */
+			, IP.SALE_STATUS
+			, IFNULL(FN_COMN_CODE_DIC(IP.SALE_STATUS), '') AS SALE_STATUS_NM  /* 판매상태 */
+			, IFNULL(FN_COMN_CODE_DIC(
+						CASE WHEN FIND_IN_SET('GOODS_OUTMALL_SALE_STAT.ON_SALE',GROUP_CONCAT(IG.GOODS_OUTMALL_SALE_STAT)) > 0
+						    		THEN 'GOODS_OUTMALL_SALE_STAT.ON_SALE'
+						     ELSE
+									CASE WHEN FIND_IN_SET('GOODS_OUTMALL_SALE_STAT.STOP_SALE',GROUP_CONCAT(IG.GOODS_OUTMALL_SALE_STAT)) > 0
+									    		THEN 'GOODS_OUTMALL_SALE_STAT.STOP_SALE'       -- 판매중지, 해당없음 있으면 판매중지
+										 ELSE 'GOODS_OUTMALL_SALE_STAT.NONE'
+									     END
+							 END
+			    ), '') AS GOODS_OUTMALL_SALE_STAT_NM  /* 상품 외부몰 판매 상태 */
+			, IPT.PO_TP_NM AS PO_TP_TEMPLATE_NM /* 발주유형 템플릿명 */
+			, IFNULL(FN_COMN_CODE_DIC(IP.PO_TP),'') AS PO_TP_NM /* 발주유형명 */
+			, CONCAT(IPT.PO_DEADLINE_HOUR, ':', IPT.PO_DEADLINE_MIN) AS PO_TP_DEADLINE /* 발주유형 마감시간 */
+			, (SELECT CTGRY_STD_NM FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = ICSPI.CTGRY_STD_ID_DEPTH1) AS CTGRY_STD_NM /* 표준카테고리(대) */
+			, IFNULL(IP.DISP_YN,'') AS DISP_YN /* 전시유무 */
+			, CASE
+				WHEN IP.DISP_YN = 'Y' THEN '전시'
+				ELSE '미전시'
+				END AS DISP_STR /* 전시유무 STR */
+			, IP.ERP_EVENT /* ERP 행사정보 */
+			, IP.TARGET_STOCK /* 안전재고(목표재고) */
+			, IP.STOCK_SCHEDULED_DT /* 입고예정일자 */
+			, IFNULL(IP.PO_PRO_REA,'') AS PO_PRO_REA
+			, IP.PO_USER_QTY
+			, IP.USER_SAVED_DT
+			, IP.STOCK_CLOSED
+			, IP.STOCK_CONFIRMED
+			, IP.STOCK_DISCARD_D0
+			, IP.STOCK_DISCARD_D1
+			, IP.STOCK_SCHEDULED_D0 /* 당일입고예정수량 */
+			, IP.STOCK_SCHEDULED_D1
+			, IP.STOCK_SCHEDULED_D2
+			, IP.STOCK_SCHEDULED_D3
+			, IP.STOCK_SCHEDULED_D4
+			, IP.STOCK_SCHEDULED_D5
+			, IP.STOCK_SCHEDULED_D6
+			, IP.STOCK_SCHEDULED_D7
+			, IP.STOCK_SCHEDULED_D8_MORE
+			, IP.STOCK_SCHEDULED_D1_MORE
+			, IP.OFF_STOCK /* OFF재고 */
+			, IP.OUTBOUND_0 /* D0 출고예정수량 */
+			, IP.OUTBOUND_1 /* D1 출고예정수량 */
+			, IP.OUTBOUND_2 /* D2 출고예정수량 */
+			, IP.OUTBOUND_3_MORE /* D3이상 출고예정수량 */
+			, IP.OUTBOUND_3WEEK_TOTAL /* 직전 3주 출고수량 */
+			, IP.OUTBOUND_2WEEK_TOTAL /* 직전 2주 출고수량 */
+			, IP.OUTBOUND_1WEEK_TOTAL /* 직전 1주 출고수량 */
+			, IP.OUTBOUND_3WEEK_AVG /* 직전 3주 출고수량 평균 */
+			, IP.OUTBOUND_2WEEK_AVG /* 직전 2주 출고수량 평균 */
+			, IP.OUTBOUND_1WEEK_AVG /* 직전 1주 출고수량 평균 */
+			, IP.OUTBOUND_DAY_AVG /* 일평균 출고량 */
+			, IP.MISSED_OUTBOUND /* 결품 예상일 */
+			, IP.ERP_EVENT_ORDER_AVG /* 직전 행사기간 일평균(올가) */
+			, IP.NON_ERP_EVENT_ORDER_AVG /* 직전 비행사기간 일평균(올가) */
+			, IP.IS_PO_POSSIBLE /* 발주가능여부 */
+			, IFNULL(IP.MEMO, '') AS MEMO /* 발주메모 */
+			, FN_DECRYPT(UU.USER_NM) AS USER_NM /* 관리자명 */
+			, UU.LOGIN_ID /* 관리자 ID */
+			, CASE
+				WHEN IP.USER_SAVED_DT IS NOT NULL THEN CONCAT(FN_DECRYPT(UU.USER_NM), ' / ', UU.LOGIN_ID, ' / ', IP.USER_SAVED_DT)
+				ELSE ''
+				END AS EXCEL_MANAGER
+			, CASE
+				WHEN IP.BASE_DT <![CDATA[ > ]]> CURRENT_DATE() THEN 'N'
+				WHEN IP.BASE_DT <![CDATA[ < ]]> CURRENT_DATE() THEN 'Y'
+				WHEN CURRENT_TIME() <![CDATA[ >= ]]> CONCAT(IPT.PO_DEADLINE_HOUR, ':', IPT.PO_DEADLINE_MIN, ':00') THEN 'Y'
+				ELSE 'N'
+				END AS IS_PO_EXPIRED
+			, IFNULL((
+				SELECT
+					ATTR3
+				FROM ST_COMN_CODE
+				WHERE
+					ST_COMN_CODE_MST_CD = 'ERP_STORAGE_TYPE'
+					AND ST_COMN_CODE_ID = IP.STORAGE_METHOD_TP
+			), 999) AS SORT_STORAGE
+			, IP.BASE_DT
+			, IP.PO_IF_YN
+		FROM
+			IL_PO IP
+			INNER JOIN IL_ITEM II
+				ON II.IL_ITEM_CD = IP.IL_ITEM_CD
+				AND II.EXTINCTION_YN = 'N'
+			INNER JOIN IL_GOODS IG
+		        ON IG.IL_ITEM_CD = IP.IL_ITEM_CD
+				AND IG.SALE_STATUS IN ('SALE_STATUS.WAIT', 'SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER')
+				AND IG.GOODS_TP IN ('GOODS_TYPE.NORMAL', 'GOODS_TYPE.GIFT', 'GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+			INNER JOIN UR_WAREHOUSE UW
+				ON UW.UR_WAREHOUSE_ID = IP.UR_WAREHOUSE_ID
+				AND UW.STOCK_ORDER_YN = 'Y'
+			INNER JOIN UR_SUPPLIER US
+				ON US.UR_SUPPLIER_ID = IP.UR_SUPPLIER_ID
+			INNER JOIN IL_PO_TP IPT
+				ON IPT.IL_PO_TP_ID = IP.IL_PO_TP_ID
+			INNER JOIN IL_CTGRY_STD_PRNTS_INFO ICSPI
+				ON ICSPI.IL_CTGRY_STD_PRNTS_INFO_ID = IP.IL_CTGRY_STD_PRNTS_INFO_ID
+			LEFT JOIN UR_USER UU
+				ON UU.UR_USER_ID = IP.USER_SAVED_ID
+		WHERE
+			IP.BASE_DT = #{searchBaseDt}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchPoIfYn, 'ALL')"><!-- 발주여부 전체일경우 발주여부 상관없이 전체 노출 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoIfYn)"> <!-- 발주여부 -->
+					AND IP.PO_IF_YN = #{searchPoIfYn}
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchItemCd)"> <!-- 복수검색 -->
+				AND (
+					IP.IL_ITEM_CD IN
+					<foreach item="data" index="index" collection="searchItemCdArray" open="(" separator="," close=")">
+						#{data}
+					</foreach>
+					OR
+					IP.ITEM_BARCODE IN
+					<foreach item="data" index="index" collection="searchItemCdArray" open="(" separator="," close=")">
+						#{data}
+					</foreach>
+				)
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+			    AND IP.UR_WAREHOUSE_ID = #{searchUrWarehouseId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+			    AND IP.UR_SUPPLIER_ID = #{searchUrSupplierId}
+			</if>
+			<if test="searchPoTypeGubunList != null and searchPoTypeGubunList.size() > 0"><!-- 발주유형 구분 -->
+			    AND IP.PO_TP IN
+			        <foreach item="data" index="index" collection="searchPoTypeGubunList" open="(" separator="," close=")">
+					   #{data}
+					</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoType)"><!-- 발주유형 -->
+				AND IP.IL_PO_TP_ID IN (
+					SELECT
+						IL_PO_TP_ID
+					FROM
+						IL_PO_TP
+					<where>
+						<if test="searchPoTypeList != null and searchPoTypeList.size() > 0">
+							IL_PO_TP_ID IN
+								<foreach item="data" index="index" collection="searchPoTypeList" open="(" separator="," close=")">
+									#{data}
+								</foreach>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(poPerItemYn, 'Y')"><!-- 품목별 상이 -->
+							OR PO_PER_ITEM_YN = 'Y'
+						</if>
+					</where>
+				)
+			</if>
+		  	<if test="searchErpCtgryList != null and searchErpCtgryList.size() > 0"><!-- ERP 카테고리 (대분류) -->
+		  		AND
+				<foreach item="data" index="index" collection="searchErpCtgryList" open="(" separator="OR" close=")">
+				  <choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(data) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(data, '(없음)')">
+							(II.ERP_CTGRY_LV1_ID IS NULL OR II.ERP_CTGRY_LV1_ID = '')
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(data) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(data, '(없음)')">
+							II.ERP_CTGRY_LV1_ID = #{data}
+						</when>
+				  </choose>
+				</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchBigCategory)">
+			    AND ICSPI.CTGRY_STD_ID_DEPTH1 = #{searchBigCategory}
+			</if>
+			<if test="searchStorageMethodList != null &amp;&amp; searchStorageMethodList.size() > 0"><!-- 보관방법 -->
+			    AND IP.STORAGE_METHOD_TP IN
+			        <foreach item="data" index="index" collection="searchStorageMethodList" open="(" separator="," close=")">
+					   #{data}
+					</foreach>
+			</if>
+			<if test="searchSaleStatusList != null &amp;&amp; searchSaleStatusList.size() > 0"><!-- 상품 판매상태-->
+			    AND IP.SALE_STATUS IN
+			        <foreach item="data" index="index" collection="searchSaleStatusList" open="(" separator="," close=")">
+					   #{data}
+					</foreach>
+			</if>
+			<if test="goodsOutMallSaleStatusList != null &amp;&amp; goodsOutMallSaleStatusList.size() > 0"><!-- 외부몰 상품 판매상태-->
+				AND IG.GOODS_OUTMALL_SALE_STAT IN
+					<foreach item="data" index="index" collection="goodsOutMallSaleStatusList" open="(" separator="," close=")">
+						#{data}
+					</foreach>
+			</if>
+			<if test="searchGoodsDisplayStatusList != null &amp;&amp; searchGoodsDisplayStatusList.size() > 0"><!-- 상품 전시상태-->
+			    AND IP.DISP_YN IN
+			        <foreach item="data" index="index" collection="searchGoodsDisplayStatusList" open="(" separator="," close=")">
+					   #{data}
+					</foreach>
+			</if>
+			GROUP BY IP.IL_ITEM_WAREHOUSE_ID
+		ORDER BY
+			IPT.SORT, SORT_STORAGE, IP.DISTRIBUTION_PERIOD, IP.IL_ITEM_CD
+	</select>
+
+	<select id="getPoTypeInfoList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoListResultVo">
+	/* goodsItemPoList.getPoTypeInfoList */
+		SELECT
+			CONCAT(T.PO_TP_TEMPLATE_NM, ' / ', '발주 마감시간 : ', T.PO_TP_DEADLINE, ' (발주마감 : ', T.IS_PO_EXPIRED, ')') AS STR_PO_INFO
+		FROM (
+			SELECT
+				IPT.PO_TP_NM AS PO_TP_TEMPLATE_NM /* 발주유형 템플릿명 */
+				, CONCAT(IPT.PO_DEADLINE_HOUR, ':', IPT.PO_DEADLINE_MIN) AS PO_TP_DEADLINE /* 발주유형 마감시간 */
+				, CASE
+					WHEN CURRENT_TIME() <![CDATA[ >= ]]> CONCAT(IPT.PO_DEADLINE_HOUR, ':', IPT.PO_DEADLINE_MIN, ':00') THEN 'Y'
+					ELSE 'N'
+					END AS IS_PO_EXPIRED
+			FROM
+				IL_PO IP
+				INNER JOIN UR_SUPPLIER US
+					ON US.UR_SUPPLIER_ID = IP.UR_SUPPLIER_ID
+				INNER JOIN IL_PO_TP IPT
+					ON IPT.IL_PO_TP_ID = IP.IL_PO_TP_ID
+			WHERE
+				IP.BASE_DT = #{searchBaseDt}
+				AND IPT.PO_PER_ITEM_YN = 'N'
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchPoIfYn, 'ALL')"><!-- 발주여부 전체일경우 발주여부 상관없이 전체 노출 -->
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoIfYn)"> <!-- 발주여부 -->
+						AND IP.PO_IF_YN = #{searchPoIfYn}
+					</if>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+				    AND IP.UR_WAREHOUSE_ID = #{searchUrWarehouseId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+				    AND IP.UR_SUPPLIER_ID = #{searchUrSupplierId}
+				</if>
+			GROUP BY
+				IPT.IL_PO_TP_ID
+			UNION ALL
+			SELECT
+				*
+			FROM (
+				SELECT
+					IPT.PO_TP_NM AS PO_TP_TEMPLATE_NM /* 발주유형 템플릿명 */
+					, CONCAT(IPT.PO_DEADLINE_HOUR, ':', IPT.PO_DEADLINE_MIN) AS PO_TP_DEADLINE /* 발주유형 마감시간 */
+					, CASE
+						WHEN CURRENT_TIME() >= CONCAT(IPT.PO_DEADLINE_HOUR, ':', IPT.PO_DEADLINE_MIN, ':00') THEN 'Y'
+						ELSE 'N'
+						END AS IS_PO_EXPIRED
+				FROM
+					IL_PO_TP IPT
+					INNER JOIN UR_SUPPLIER US
+						ON US.UR_SUPPLIER_ID = IPT.UR_SUPPLIER_ID
+				WHERE
+					IPT.TEMPLATE_YN = 'Y'
+					AND IPT.PO_PER_ITEM_YN = 'Y'
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+					    AND IPT.UR_SUPPLIER_ID = #{searchUrSupplierId}
+					</if>
+					AND (
+						SELECT
+							COUNT(IP.IL_PO_ID) AS PO_PER_ITEM_CNT
+						FROM
+							IL_PO IP
+							INNER JOIN UR_SUPPLIER US
+								ON US.UR_SUPPLIER_ID = IP.UR_SUPPLIER_ID
+							INNER JOIN IL_PO_TP IPT
+								ON IPT.IL_PO_TP_ID = IP.IL_PO_TP_ID
+						WHERE
+							IP.BASE_DT = #{searchBaseDt}
+							AND IPT.PO_PER_ITEM_YN = 'Y'
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchPoIfYn, 'ALL')"><!-- 발주여부 전체일경우 발주여부 상관없이 전체 노출 -->
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoIfYn)"> <!-- 발주연동여부 -->
+									AND IP.PO_IF_YN = #{searchPoIfYn}
+								</if>
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+							    AND IP.UR_WAREHOUSE_ID = #{searchUrWarehouseId}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+							    AND IP.UR_SUPPLIER_ID = #{searchUrSupplierId}
+							</if>
+					) > 0
+				LIMIT 1
+			) T1
+		) T
+	</select>
+
+	<select id="getSavedPoInfo" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoListResultVo">
+	/* goodsItemPoList.getSavedPoInfo */
+		WITH IL_PO_TEMP AS (
+			SELECT
+				IL_PO_ID
+				, USER_SAVED_ID
+				, PO_USER_QTY
+				, BOX_PO_QTY
+				, USER_SAVED_DT
+			FROM
+				IL_PO
+			WHERE
+				USER_SAVED_DT IS NOT NULL
+				AND BASE_DT = #{searchBaseDt}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchPoIfYn, 'ALL')"><!-- 발주여부 전체일경우 발주여부 상관없이 전체 노출 -->
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoIfYn)"> <!-- 발주연동여부 -->
+						AND PO_IF_YN = #{searchPoIfYn}
+					</if>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+				    AND UR_WAREHOUSE_ID = #{searchUrWarehouseId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+				    AND UR_SUPPLIER_ID = #{searchUrSupplierId}
+				</if>
+		)
+		SELECT
+			T.SUM_PO_USER_QTY
+			, T.SUM_BOX_PO_QTY
+			, CONCAT(IP2.USER_SAVED_DT, ' / ', FN_DECRYPT(UU.USER_NM), ' / ', UU.LOGIN_ID) AS STR_MANAGER
+
+		FROM
+			IL_PO_TEMP IP2
+			INNER JOIN (
+				SELECT
+					SUM(IFNULL(IP.PO_USER_QTY, 0)) AS SUM_PO_USER_QTY
+					, SUM(IFNULL(IP.BOX_PO_QTY, 0)) AS SUM_BOX_PO_QTY
+					, MAX(IP.USER_SAVED_DT) AS MAX_USER_SAVED_DT
+				FROM
+					IL_PO_TEMP IP
+			) T
+				ON T.MAX_USER_SAVED_DT = IP2.USER_SAVED_DT
+			INNER JOIN UR_USER UU
+				ON UU.UR_USER_ID = IP2.USER_SAVED_ID
+		LIMIT 1
+	</select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 저장 로그 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		원종한
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemPoSavedLog">
+	/* goodsItemPoList.addItemPoSavedLog */
+		INSERT INTO IL_PO_SAVED_LOG (
+			IL_PO_ID
+			, IL_ITEM_WAREHOUSE_ID
+			, BASE_DT
+			, PO_USER_QTY
+			, MEMO
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			IL_PO_ID
+			, IL_ITEM_WAREHOUSE_ID
+			, BASE_DT
+			, PO_USER_QTY
+			, MEMO
+			, #{createId} AS CREATE_ID
+			, NOW() AS CREATE_DT
+		FROM
+			IL_PO
+		WHERE
+			IL_PO_ID = #{ilPoId}
+    </insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주유형 목록조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.25		이성준
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPoTpList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoListResultVo">
+	/* goodsItemPoList.getPoTpList */
+		SELECT
+			*
+		FROM (
+			SELECT
+				IL_PO_TP_ID AS CODE
+				, PO_TP_NM AS NAME
+				, SORT
+			FROM
+				IL_PO_TP
+			WHERE
+				TEMPLATE_YN = 'Y'
+				AND PO_PER_ITEM_YN = 'N'
+			UNION ALL
+			SELECT
+				*
+			FROM (
+				SELECT
+					'N' AS CODE
+					, PO_TP_NM AS NAME
+					, SORT
+				FROM
+					IL_PO_TP
+				WHERE
+					TEMPLATE_YN = 'Y'
+					AND PO_PER_ITEM_YN = 'Y'
+				LIMIT 1
+			) T
+		) T
+		ORDER BY SORT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주유형 목록조회(onChange)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.25		이성준
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOnChangePoTpList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoListResultVo">
+	/* goodsItemPoList.getOnChangePoTpList */
+		SELECT
+			*
+		FROM (
+			SELECT
+				IL_PO_TP_ID AS CODE
+				, PO_TP_NM AS NAME
+				, SORT
+			FROM
+				IL_PO_TP
+			WHERE
+				TEMPLATE_YN = 'Y'
+				AND PO_PER_ITEM_YN = 'N'
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+					AND UR_SUPPLIER_ID = #{searchUrSupplierId}
+				</if>
+		    <if test="searchUrSupplierId == 2">
+				UNION ALL
+				SELECT
+					*
+				FROM (
+					SELECT
+						'N' AS CODE
+						, PO_TP_NM AS NAME
+						, SORT
+					FROM
+						IL_PO_TP
+					WHERE
+						TEMPLATE_YN = 'Y'
+						AND PO_PER_ITEM_YN = 'Y'
+					LIMIT 1
+				) T
+			</if>
+		) T
+		ORDER BY SORT
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: ERP 카테고리 (대분류) 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		이성준
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getErpCtgryList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoListResultVo">
+	/* goodsItemPoList.getErpCtgryList */
+	SELECT
+		  IF(T.ERP_CTGRY_LV1_ID != '', T.ERP_CTGRY_LV1_ID, '(없음)') AS NAME
+		 ,IF(T.ERP_CTGRY_LV1_ID != '', T.ERP_CTGRY_LV1_ID, '(없음)') AS CODE
+		 ,CASE
+			WHEN T.ERP_CTGRY_LV1_ID = '' THEN 1
+			ELSE 0
+		  END AS SORT
+	FROM (
+		SELECT
+			  IFNULL(II.ERP_CTGRY_LV1_ID, '') AS ERP_CTGRY_LV1_ID
+		FROM
+			IL_ITEM II
+			INNER JOIN IL_ITEM_WAREHOUSE IIW
+				ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+			INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+				ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+				AND USW.UR_SUPPLIER_ID  = #{searchUrSupplierId}  /* 공급처 */
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+				AND USW.UR_WAREHOUSE_ID = #{searchUrWarehouseId} /* 출고처 */
+				</if>
+		) T
+		GROUP BY T.ERP_CTGRY_LV1_ID
+		ORDER BY SORT, T.ERP_CTGRY_LV1_ID
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 행사발주관리 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		정형진
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemPoRequest">
+		/*	goodsItemPoRequest.addItemPoRequest  */
+		INSERT INTO
+			IL_PO_EVENT
+		(
+		    IL_GOODS_ID
+			, OM_SELLERS_ID
+			, PO_EVENT_QTY
+			, RECEVING_REQ_DT
+			, PO_SCHEDULE_DT
+			, EVENT_END_DT
+			, MEMO
+			, CREATE_ID
+			, CREATE_DT
+			, MODIFY_ID
+			, MODIFY_DT
+		)
+		VALUES
+		(
+			#{ilGoodsId}
+			, #{inputSellersDetail}
+			, #{poEventQty}
+			, #{recevingReqDt}
+			, #{poScheduleDt}
+			, #{eventEndDt}
+			, #{memo}
+			, #{userVo.userId}
+			, CURRENT_TIMESTAMP
+			, #{userVo.userId}
+			, CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 행사발주관리 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		정형진
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPoRequest">
+		/*	goodsItemPoRequest.putPoRequest  */
+		UPDATE
+			IL_PO_EVENT
+		SET
+			IL_GOODS_ID = #{ilGoodsId} ,
+			OM_SELLERS_ID = #{inputSellersDetail} ,
+			PO_EVENT_QTY = #{poEventQty} ,
+			RECEVING_REQ_DT = #{recevingReqDt} ,
+			PO_SCHEDULE_DT = #{poScheduleDt} ,
+			EVENT_END_DT = #{eventEndDt} ,
+			MEMO = #{memo} ,
+			MODIFY_ID = #{userVo.userId} ,
+			MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE IL_PO_EVENT_ID = #{ilPoEventId}
+	</update>
+
+</mapper>
+

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.batch.erp.infra.mapper.user.slaveErp.ErpEmployeeBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 임직원 연동 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <!-- ERP 임직원 연동 조회 -->
+    <select id="getErpEmployeeList" resultType="ErpEmployeeBatchVo">
+        /* erpEmployeeBatch.getErpEmployeeList */
+        SELECT EMPLOYEE_NUMBER AS ERP_EMPLOYEE_NUMBER /* 사번 */
+             , KR_NAME AS ERP_EMPLOYEE_NAME /* 직원명 */
+             , PHONE_NUMBER AS ERP_CELL_PHONE /* 휴대폰 */
+             , EMAIL_ADDRESS AS ERP_EMAIL /* 이메일 */
+             , REGAL_ID AS ERP_REGAL_CODE /* 법인코드 */
+             , REGAL_NAME AS ERP_REGAL_NAME /* 법인명 */
+             , ORGANIZATGION_ID AS ERP_ORGANIZATION_CODE /* 조직코드 */
+             , ORGANIZAGTION_NAME AS ERP_ORGANIZATION_NAME /* 조직명 */
+             , GRADE_ID AS ERP_GRADE_CODE /* 직급코드 */
+             , GRADE_NAME AS ERP_GRADE_NAME /* 직급명 */
+             , POSITION_NAME AS ERP_POSITION_NAME /* 직책명 */
+             , USER_STATUS AS ERP_STATUS_NAME /* ERP 상태명 */
+             , CORP_CODE AS FIN_REGAL_CD /* 회계 법인코 */
+             , DEPT_CODE AS FIN_ORGANIZATION_CD /* 회계 부서코드 */
+             , ACCOUNT_CODE AS FIN_ACCOUNT_CD /* 계정과목코드 */
+             , SOB AS SOB /* ERP 장부 ID */
+             , OU_ID AS OU_ID /* OU ID */
+             , OU_NAME AS OU_NAME /* OU 명 */
+          FROM APPS.XHR_ONLINE_EMP_V
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 조직정보 연동 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <!-- ERP 조직정보 연동 조회 -->
+    <select id="getErpOrganizationList" resultType="ErpOrganizationBatchVo">
+        /* erpEmployeeBatch.getErpOrganizationList */
+        SELECT ORGANIZATGION_ID AS ERP_ORGANIZATION_CODE /* 조직코드 */
+             , ORGANIZAGTION_NAME AS ERP_ORGANIZATION_NAME /* 조직명 */
+             , REGAL_ID AS ERP_REGAL_CODE /* 법인코드 */
+             , REGAL_NAME AS ERP_REGAL_NAME /* 법인명 */
+          FROM APPS.XHR_ONLINE_EMP_V
+      GROUP BY ORGANIZATGION_ID, ORGANIZAGTION_NAME, REGAL_ID, REGAL_NAME
+        HAVING ORGANIZATGION_ID IS NOT NULL
+           AND ORGANIZAGTION_NAME IS NOT NULL
+           AND REGAL_ID IS NOT NULL
+           AND REGAL_NAME IS NOT NULL
+      ORDER BY ORGANIZATGION_ID, REGAL_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 법인정보 연동 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <!-- ERP 법인정보 연동 조회 -->
+    <select id="getErpRegalList" resultType="ErpRegalBatchVo">
+        /* erpEmployeeBatch.getErpRegalList */
+        SELECT REGAL_ID AS ERP_REGAL_CODE /* 법인코드 */
+             , REGAL_NAME AS ERP_REGAL_NAME /* 법인명 */
+          FROM APPS.XHR_ONLINE_EMP_V
+      GROUP BY REGAL_ID, REGAL_NAME
+        HAVING REGAL_ID IS NOT NULL
+           AND REGAL_NAME IS NOT NULL
+      ORDER BY REGAL_ID
+    </select>
+
+</mapper>
+

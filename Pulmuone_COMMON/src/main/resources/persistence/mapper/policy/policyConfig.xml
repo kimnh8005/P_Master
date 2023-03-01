@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.config.PolicyConfigMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.26		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.goods.dto.RegularShippingConfigDto" id="getRegularShippingConfigResultMap">
+		<result column="REGULAR_SHIPPING_BASIC_DISCOUNT_RATE"  			property="regularShippingBasicDiscountRate" />
+		<result column="REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_APPLICATION_TIMES"  property="regularShippingAdditionalDiscountApplicationTimes" />
+		<result column="REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_RATE"  property="regularShippingAdditionalDiscountRate" />
+	</resultMap>
+	<select id="getRegularShippingConfig" resultMap="getRegularShippingConfigResultMap">
+		/*	policyConfig.getRegularShippingConfig	*/
+		SELECT
+		 	GROUP_CONCAT(if(PS_KEY = 'REGULAR_SHIPPING_BASIC_DISCOUNT_RATE', PS_VAL, NULL)) AS 'REGULAR_SHIPPING_BASIC_DISCOUNT_RATE'
+		 	,GROUP_CONCAT(if(PS_KEY = 'REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_APPLICATION_TIMES', PS_VAL, NULL)) AS 'REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_APPLICATION_TIMES'
+		 	,GROUP_CONCAT(if(PS_KEY = 'REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_RATE', PS_VAL, NULL)) AS 'REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_RATE'
+		FROM
+			PS_CONFIG
+		WHERE
+			PS_KEY IN
+			('REGULAR_SHIPPING_BASIC_DISCOUNT_RATE'
+			,'REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_APPLICATION_TIMES'
+			,'REGULAR_SHIPPING_ADDITIONAL_DISCOUNT_RATE'
+			)
+			AND USE_YN = 'Y'
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 설정 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getConfigValue" resultType="java.lang.String">
+		/*	policyConfig.getConfigValue	*/
+		SELECT PS_VAL
+		FROM PS_CONFIG
+		WHERE PS_KEY = #{psKey}
+			AND USE_YN = 'Y'
+			AND ST_SHOP_ID = 1
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 메타 설정 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.config.dto.vo.MetaConfigVo" id="metaConfigResultMap">
+		<result column="PS_KEY" property="policyKey" />
+		<result column="PS_NM"  property="policyName" />
+		<result column="PS_VAL" property="policyValue" />
+	</resultMap>
+	<select id="getMetaConfig" resultMap="metaConfigResultMap">
+		/*	policyConfig.getMetaConfig	*/
+		SELECT PS_KEY
+			,PS_NM
+			,PS_VAL
+		FROM PS_CONFIG
+		WHERE PS_KEY IN ('ST_F_TITLE', 'ST_SCH_EG_KEYWORD', 'ST_DESCRIPTION', 'FAVICON_IMAGE_FILE_PATH', 'FAVICON_IMAGE_FILE_NAME')
+			AND ST_SHOP_ID = 1
+			AND USE_YN = 'Y'
+	</select>
+
+</mapper>
+
+

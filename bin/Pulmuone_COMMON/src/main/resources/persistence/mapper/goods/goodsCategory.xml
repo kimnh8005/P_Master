@@ -1,0 +1,480 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.category.GoodsCategoryMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 카테고리 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.04		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.category.dto.GetCategoryResultDto" id="getCategoryResultMap">
+		<result column="IL_CTGRY_ID"  property="ilCategoryId" />
+		<result column="CTGRY_NM"  property="categoryName" />
+		<result column="MALL_DIV"  property="mallId"  />
+		<result column="CTGRY_ID_DEPTH1"  property="lev1CategoryId"  />
+		<result column="CTGRY_ID_DEPTH2"  property="lev2CategoryId"  />
+		<result column="CTGRY_ID_DEPTH3"  property="lev3CategoryId"  />
+		<result column="CTGRY_ID_DEPTH4"  property="lev4CategoryId"  />
+	</resultMap>
+	<select id="getCategory" resultMap="getCategoryResultMap">
+		/*	goodsCategory.getCategory	*/
+		SELECT
+			IC.IL_CTGRY_ID
+			,IC.CTGRY_NM
+			,IC.MALL_DIV
+			,IF(ICPI.CTGRY_ID_DEPTH1 > 0, ICPI.CTGRY_ID_DEPTH1 , NULL) AS CTGRY_ID_DEPTH1
+			,IF(ICPI.CTGRY_ID_DEPTH2 > 0, ICPI.CTGRY_ID_DEPTH2 , NULL) AS CTGRY_ID_DEPTH2
+			,IF(ICPI.CTGRY_ID_DEPTH3 > 0, ICPI.CTGRY_ID_DEPTH3 , NULL) AS CTGRY_ID_DEPTH3
+			,IF(ICPI.CTGRY_ID_DEPTH4 > 0, ICPI.CTGRY_ID_DEPTH4 , NULL) AS CTGRY_ID_DEPTH4
+		FROM
+			IL_CTGRY IC
+			JOIN IL_CTGRY_PRNTS_INFO ICPI ON IC.IL_CTGRY_ID = ICPI.IL_CTGRY_ID
+		WHERE
+			IC.DEL_YN = 'N'
+			AND IC.USE_YN = 'Y'
+			<!--  AND IC.DISP_GOODS_CNT <![CDATA[ > ]]> 0  -->
+			AND IC.IL_CTGRY_ID = #{ilCategoryId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 카테고리 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.category.dto.vo.GetCategoryListResultVo" id="getCategoryListResultMap">
+		<result column="IL_CTGRY_ID"  property="ilCategoryId"  />
+		<result column="CTGRY_NM"  property="categoryName" />
+		<result column="PC_IMAGE"  property="pcImage" />
+		<result column="MOBILE_IMAGE"  property="mobileImage" />
+		<collection column="IL_CTGRY_ID"  property="subCategoryList" javaType="java.util.ArrayList"
+													ofType="kr.co.pulmuone.v1.goods.category.dto.vo.GetSubCategoryListResultVo" select="getSubCategoryList"/>
+	</resultMap>
+	<select id="getCategoryList" resultMap="getCategoryListResultMap">
+		/*	goodsCategory.getCategoryList	*/
+		SELECT
+			IL_CTGRY_ID
+			,CTGRY_NM
+			,'PC_IMAGE' AS PC_IMAGE
+			,'MOBILE_IMAGE' AS MOBILE_IMAGE
+		FROM
+			IL_CTGRY
+		WHERE
+			DEL_YN = 'N'
+			AND USE_YN = 'Y'
+			AND DISP_YN = 'Y'
+			AND MALL_DIV = #{mallDiv}
+			AND PRNTS_CTGRY_ID = (
+				SELECT
+					IL_CTGRY_ID
+				FROM
+					IL_CTGRY
+				WHERE
+					DEL_YN = 'N'
+					AND USE_YN = 'Y'
+					AND DISP_YN = 'Y'
+					AND MALL_DIV = #{mallDiv}
+					AND DEPTH = 0
+				ORDER BY IL_CTGRY_ID
+				LIMIT 1
+			)
+		ORDER BY DEPTH ASC, SORT ASC, IL_CTGRY_ID ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 하위 카테고리 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.category.dto.vo.GetSubCategoryListResultVo" id="getSubCategoryListResultMap">
+		<result column="IL_CTGRY_ID"  property="ilCategoryId"  />
+		<result column="CTGRY_NM"  property="categoryName" />
+		<result column="PC_IMAGE"  property="pcImage" />
+		<result column="MOBILE_IMAGE"  property="mobileImage" />
+		<collection column="IL_CTGRY_ID"  property="subCategoryList" javaType="java.util.ArrayList"
+                                                ofType="kr.co.pulmuone.v1.goods.category.dto.vo.GetSubCategoryListResultVo" select="getSubCategoryList"/>
+	</resultMap>
+	<select id="getSubCategoryList" resultMap="getSubCategoryListResultMap">
+		/*	goodsCategory.getSubCategoryList	*/
+		SELECT
+			IL_CTGRY_ID
+			,CTGRY_NM
+			,'PC_IMAGE' AS PC_IMAGE
+			,'MOBILE_IMAGE' AS MOBILE_IMAGE
+		FROM
+			IL_CTGRY
+		WHERE
+			DEL_YN = 'N'
+			AND USE_YN = 'Y'
+			AND DISP_YN = 'Y'
+			<!-- AND DISP_GOODS_CNT <![CDATA[ > ]]> 0 -->
+			AND PRNTS_CTGRY_ID = #{IL_CTGRY_ID}
+		ORDER BY SORT ASC, IL_CTGRY_ID ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배치 - 카테고리 전시 상품수 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<update id="putCategoryDispGoodsCnt" >
+		/*	goodsCategory.putCategoryDispGoodsCnt	*/
+		UPDATE IL_CTGRY
+		SET  DISP_GOODS_CNT=
+		(
+		SELECT IFNULL(	DISP_GOODS_CNT1, 0)
+		      + IFNULL( DISP_GOODS_CNT2, 0)
+		      + IFNULL(	DISP_GOODS_CNT3, 0)
+		      + IFNULL(	DISP_GOODS_CNT4, 0)
+		      + IFNULL(	DISP_GOODS_CNT5, 0) AS DISP_GOODS_CNT
+		FROM
+		(
+			SELECT
+				ICPI.CTGRY_ID_DEPTH1,
+				CASE
+					WHEN IGC.IL_CTGRY_ID = ICPI.CTGRY_ID_DEPTH1 THEN COUNT(IGC.IL_GOODS_ID)
+					ELSE 0
+				END AS DISP_GOODS_CNT1 , ICPI.CTGRY_ID_DEPTH2,
+				CASE
+					WHEN IGC.IL_CTGRY_ID = ICPI.CTGRY_ID_DEPTH2 THEN COUNT(IGC.IL_GOODS_ID)
+					ELSE 0
+				END DISP_GOODS_CNT2 , ICPI.CTGRY_ID_DEPTH3,
+				CASE
+					WHEN IGC.IL_CTGRY_ID = ICPI.CTGRY_ID_DEPTH3 THEN COUNT(IGC.IL_GOODS_ID)
+					ELSE 0
+				END DISP_GOODS_CNT3 , ICPI.CTGRY_ID_DEPTH4,
+				CASE
+					WHEN IGC.IL_CTGRY_ID = ICPI.CTGRY_ID_DEPTH4 THEN COUNT(IGC.IL_GOODS_ID)
+					ELSE 0
+				END DISP_GOODS_CNT4 , ICPI.CTGRY_ID_DEPTH5,
+				CASE
+					WHEN IGC.IL_CTGRY_ID = ICPI.CTGRY_ID_DEPTH5 THEN COUNT(IGC.IL_GOODS_ID)
+					ELSE 0
+				END DISP_GOODS_CNT5
+			FROM
+				IL_CTGRY_PRNTS_INFO ICPI /* 카테고리뎁스  */
+			LEFT JOIN IL_GOODS_CTGRY IGC ON
+				IGC.IL_CTGRY_ID = ICPI.IL_CTGRY_ID
+			WHERE
+				ICPI.IL_CTGRY_ID = #{ilCategoryId}
+		)T
+		)
+		WHERE IL_CTGRY_ID=#{ilCategoryId}
+	</update>
+
+
+	<update id="putCategoryDispGoodsCnt1" >
+		/*	goodsCategory.putCategoryDispGoodsCnt1 최상위 */
+		UPDATE IL_CTGRY AS TAGET
+		,
+		(
+				SELECT  IL_CTGRY_ID
+				      , PRNTS_CTGRY_ID
+				       , CNT
+				FROM
+				(
+						SELECT  COALESCE (IL_CTGRY_ID, "EACH_SUM") AS IL_CTGRY_ID
+						      , COALESCE (PRNTS_CTGRY_ID, "ALL_SUM") AS PRNTS_CTGRY_ID
+						      , SUM(CNT) CNT
+						FROM
+						(
+								SELECT  T.NM
+								       , T.IL_CTGRY_ID
+								       , T.PRNTS_CTGRY_ID
+								       , lv
+								       , ROWNUM
+								       , FN_CTGRY_COUNT(IL_CTGRY_ID) AS CNT
+								FROM
+								(
+										SELECT 	CASE	WHEN LV-1 > 0 then CONCAT(CONCAT(REPEAT('    ', LV - 1), '┗ '), M.IL_CTGRY_ID)		ELSE M.IL_CTGRY_ID	END AS NM
+										         , M.IL_CTGRY_ID
+										         , M.PRNTS_CTGRY_ID
+										         , LV AS LV
+										         , ROW_NUMBER () OVER () AS ROWNUM
+										FROM
+										(
+												SELECT   FN_CTGR_CONNECT_BY() AS IL_CTGRY_ID
+												       , @level AS LV
+												FROM
+												(
+														SELECT  @start_with := (SELECT CTGRY_ID_DEPTH0   FROM		IL_CTGRY_PRNTS_INFO ICPI 	WHERE IL_CTGRY_ID= #{ilCategoryId}) /*0 번째 뎁스 */
+															     , @id := @start_with , @level := 0
+												) VARS
+												       , IL_CTGRY
+												WHERE @id IS NOT NULL
+										) INNER_T
+										           JOIN IL_CTGRY M ON
+											         M.IL_CTGRY_ID = INNER_T.IL_CTGRY_ID
+									) T
+							   	ORDER BY ROWNUM
+							)T2
+						  GROUP BY T2.PRNTS_CTGRY_ID , T2.IL_CTGRY_ID WITH ROLLUP
+					)T3
+					WHERE IL_CTGRY_ID = 'EACH_SUM'
+					AND PRNTS_CTGRY_ID = 'ALL_SUM'
+		)AS SOURCE
+		SET   TAGET.DISP_GOODS_CNT = SOURCE.CNT
+	  WHERE TAGET.IL_CTGRY_ID =  #{ilCategoryId})
+	</update>
+
+<update id="putCategoryDispGoodsCnt2" >
+		/*	goodsCategory.putCategoryDispGoodsCnt2 뎁스 하위 2번째 단계 */
+		UPDATE IL_CTGRY AS TAGET
+		,
+		(
+				SELECT  IL_CTGRY_ID
+				      , PRNTS_CTGRY_ID
+				       , CNT
+				FROM
+				(
+						SELECT  COALESCE (IL_CTGRY_ID, "EACH_SUM") AS IL_CTGRY_ID
+						      , COALESCE (PRNTS_CTGRY_ID, "ALL_SUM") AS PRNTS_CTGRY_ID
+						      , SUM(CNT) CNT
+						FROM
+						(
+								SELECT  T.NM
+								       , T.IL_CTGRY_ID
+								       , T.PRNTS_CTGRY_ID
+								       , lv
+								       , ROWNUM
+								       , FN_CTGRY_COUNT(IL_CTGRY_ID) AS CNT
+								FROM
+								(
+										SELECT 	CASE	WHEN LV-1 > 0 then CONCAT(CONCAT(REPEAT('    ', LV - 1), '┗ '), M.IL_CTGRY_ID)		ELSE M.IL_CTGRY_ID	END AS NM
+										         , M.IL_CTGRY_ID
+										         , M.PRNTS_CTGRY_ID
+										         , LV AS LV
+										         , ROW_NUMBER () OVER () AS ROWNUM
+										FROM
+										(
+												SELECT   FN_CTGR_CONNECT_BY() AS IL_CTGRY_ID
+												       , @level AS LV
+												FROM
+												(
+														SELECT  @start_with := (SELECT CTGRY_ID_DEPTH0   FROM		IL_CTGRY_PRNTS_INFO ICPI 	WHERE IL_CTGRY_ID = #{ilCategoryId}) /*0 번째 뎁스 */
+															     , @id := @start_with , @level := 0
+												) VARS
+												       , IL_CTGRY
+												WHERE @id IS NOT NULL
+										) INNER_T
+										           JOIN IL_CTGRY M ON
+											         M.IL_CTGRY_ID = INNER_T.IL_CTGRY_ID
+									) T
+							   	ORDER BY ROWNUM
+							)T2
+						  GROUP BY T2.PRNTS_CTGRY_ID , T2.IL_CTGRY_ID WITH ROLLUP
+					)T3
+					WHERE IL_CTGRY_ID = 'EACH_SUM'
+					AND PRNTS_CTGRY_ID  <![CDATA[ <> ]]>   'ALL_SUM'
+		)AS SOURCE
+		SET   TAGET.DISP_GOODS_CNT = SOURCE.CNT
+	  WHERE TAGET.IL_CTGRY_ID = SOURCE.PRNTS_CTGRY_ID
+	</update>
+
+	<update id="putCategoryDispGoodsCnt3" >
+		/*	goodsCategory.putCategoryDispGoodsCnt3 하위단 업데이트 */
+		UPDATE IL_CTGRY AS TAGET
+		,
+		(
+				SELECT  IL_CTGRY_ID
+				      , PRNTS_CTGRY_ID
+				       , CNT
+				FROM
+				(
+						SELECT  COALESCE (IL_CTGRY_ID, "EACH_SUM") AS IL_CTGRY_ID
+						      , COALESCE (PRNTS_CTGRY_ID, "ALL_SUM") AS PRNTS_CTGRY_ID
+						      , SUM(CNT) CNT
+						FROM
+						(
+								SELECT  T.NM
+								       , T.IL_CTGRY_ID
+								       , T.PRNTS_CTGRY_ID
+								       , lv
+								       , ROWNUM
+								       , FN_CTGRY_COUNT(IL_CTGRY_ID) AS CNT
+								FROM
+								(
+										SELECT 	CASE	WHEN LV-1 > 0 then CONCAT(CONCAT(REPEAT('    ', LV - 1), '┗ '), M.IL_CTGRY_ID)		ELSE M.IL_CTGRY_ID	END AS NM
+										         , M.IL_CTGRY_ID
+										         , M.PRNTS_CTGRY_ID
+										         , LV AS LV
+										         , ROW_NUMBER () OVER () AS ROWNUM
+										FROM
+										(
+												SELECT   FN_CTGR_CONNECT_BY() AS IL_CTGRY_ID
+												       , @level AS LV
+												FROM
+												(
+														SELECT  @start_with := (SELECT CTGRY_ID_DEPTH0   FROM		IL_CTGRY_PRNTS_INFO ICPI 				WHERE IL_CTGRY_ID= #{ilCategoryId}) /*0 번째 뎁스 */
+															     , @id := @start_with , @level := 0
+												) VARS
+												       , IL_CTGRY
+												WHERE @id IS NOT NULL
+										) INNER_T
+										           JOIN IL_CTGRY M ON
+											         M.IL_CTGRY_ID = INNER_T.IL_CTGRY_ID
+									) T
+							   	ORDER BY ROWNUM
+							)T2
+						  GROUP BY T2.PRNTS_CTGRY_ID , T2.IL_CTGRY_ID WITH ROLLUP
+					)T3
+					WHERE IL_CTGRY_ID  <![CDATA[ <> ]]> 'EACH_SUM'
+					AND PRNTS_CTGRY_ID <![CDATA[ <> ]]> 'ALL_SUM'
+		)AS SOURCE
+		SET   TAGET.DISP_GOODS_CNT = SOURCE.CNT
+	  WHERE TAGET.IL_CTGRY_ID = SOURCE.IL_CTGRY_ID
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 대카테고리 조회 - 올가매장전용
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.21		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.category.dto.vo.CategoryDepth1Vo" id="getCategoryDepth1ResultMap">
+		<result column="IL_CTGRY_ID"  property="ilCtgryId"  />
+		<result column="CTGRY_NM"  property="categoryName" />
+		<result column="EXIST_GOODS_YN"  property="existGoodsYn" />
+	</resultMap>
+	<select id="getOrgaStoreCategoryDepth1" resultMap="getCategoryDepth1ResultMap">
+		/*	goodsCategory.getCategoryDepth1	*/
+		SELECT IL_CTGRY_ID
+			, CTGRY_NM
+			,(CASE WHEN
+				(
+				SELECT COUNT(*)
+				FROM IL_CTGRY_PRNTS_INFO T1
+					INNER JOIN IL_GOODS_CTGRY T2 ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+					INNER JOIN IL_CTGRY T3 ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+					INNER JOIN IL_GOODS IG ON T2.IL_GOODS_ID = IG.IL_GOODS_ID
+					INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+						INNER JOIN IL_ITEM_STORE_INFO IIS ON II.IL_ITEM_CD = IIS.IL_ITEM_CD
+					</if>
+					JOIN (
+						SELECT DISTINCT(IL_ITEM_CD) AS IL_ITEM_CD
+						FROM IL_ITEM_WAREHOUSE IIW
+							JOIN UR_SUPPLIER_WAREHOUSE USW ON IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+						WHERE USW.UR_WAREHOUSE_ID = (SELECT PS_VAL FROM PS_CONFIG WHERE ST_SHOP_ID = 1 AND USE_YN = 'Y' AND PS_KEY = 'WAREHOUSE_STORE_ID')
+					) IIW ON IG.IL_ITEM_CD = IIW.IL_ITEM_CD
+				WHERE T2.BASIC_YN = 'Y'
+					AND T1.CTGRY_ID_DEPTH1 = IC.IL_CTGRY_ID
+					AND IG.SALE_STATUS IN ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+					AND IG.DISP_YN = 'Y'
+					AND IG.DEL_YN = 'N'
+					AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+					AND IG.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+							AND IIS.UR_STORE_ID = #{urStoreId}
+						</when>
+						<otherwise>
+							AND IG.GOODS_TP != 'GOODS_TYPE.SHOP_ONLY'
+						</otherwise>
+					</choose>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandIdList)">
+						AND II.DP_BRAND_ID IN
+						<foreach collection="dpBrandIdList" item="dpBrandId" separator="," open="(" close=")">
+							#{dpBrandId}
+						</foreach>
+					</if>
+				) > 0
+			THEN 'Y' ELSE 'N' END) AS EXIST_GOODS_YN
+		FROM IL_CTGRY IC
+		WHERE DEPTH = 1
+			AND USE_YN = 'Y'
+			AND DEL_YN = 'N'
+			AND DISP_YN = 'Y'
+			AND PRNTS_CTGRY_ID IN (
+				SELECT IL_CTGRY_ID
+				FROM IL_CTGRY
+				WHERE MALL_DIV = #{mallDiv}
+					AND DEPTH = 0
+					AND USE_YN = 'Y'
+					AND DEL_YN = 'N'
+				)
+		ORDER BY SORT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 카테고리 progress (ex -> 두부 > 콩나물 > 달걀)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.15		최용호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsCategory" resultType = "String">
+		/*	goodsCategory.getGoodsCategory	*/
+		SELECT
+			CONCAT(
+				IFNULL(CONCAT(AA.CTGR_01, ' > '), '')
+				, IFNULL(CONCAT(AA.CTGR_02, ' > '), '')
+				, IFNULL(CONCAT(AA.CTGR_03, ' > '), '')
+				, IFNULL(CONCAT(AA.CTGR_04), '')
+			) CTRG_PRO_LIST
+		FROM (
+			SELECT
+				A.IL_GOODS_ID
+				, 0 AS SORT
+				, A.BASIC_YN
+				, A.IL_GOODS_CTGRY_ID
+				, B.CTGRY_NM AS CTGR_04
+				, C.CTGRY_NM AS CTGR_03
+				, D.CTGRY_NM AS CTGR_02
+				, E.CTGRY_NM AS CTGR_01
+			FROM
+				IL_GOODS_CTGRY A
+				LEFT OUTER JOIN IL_CTGRY B ON (A.IL_CTGRY_ID = B.IL_CTGRY_ID AND B.DISP_YN = 'Y' AND B.USE_YN = 'Y' AND B.DEPTH != 0)
+				LEFT OUTER JOIN IL_CTGRY C ON (B.PRNTS_CTGRY_ID = C.IL_CTGRY_ID AND C.DISP_YN = 'Y' AND C.USE_YN = 'Y' AND C.DEPTH != 0)
+				LEFT OUTER JOIN IL_CTGRY D ON (C.PRNTS_CTGRY_ID = D.IL_CTGRY_ID AND D.DISP_YN = 'Y' AND D.USE_YN = 'Y' AND D.DEPTH != 0)
+				LEFT OUTER JOIN IL_CTGRY E ON (D.PRNTS_CTGRY_ID = E.IL_CTGRY_ID AND E.DISP_YN = 'Y' AND E.USE_YN = 'Y' AND E.DEPTH != 0)
+			WHERE
+				A.IL_GOODS_ID = #{ilGoodsId}
+				AND (
+					(B.IL_CTGRY_ID IS NOT NULL AND B.IL_CTGRY_ID = #{ilCategoryId})
+					OR (C.IL_CTGRY_ID IS NOT NULL AND C.IL_CTGRY_ID = #{ilCategoryId})
+					OR (D.IL_CTGRY_ID IS NOT NULL AND D.IL_CTGRY_ID = #{ilCategoryId})
+					OR (E.IL_CTGRY_ID IS NOT NULL AND E.IL_CTGRY_ID = #{ilCategoryId})
+				)
+			UNION ALL
+			SELECT
+				A.IL_GOODS_ID
+				, 1 AS SORT
+				, A.BASIC_YN
+				, A.IL_GOODS_CTGRY_ID
+				, B.CTGRY_NM AS CTGR_04
+				, C.CTGRY_NM AS CTGR_03
+				, D.CTGRY_NM AS CTGR_02
+				, E.CTGRY_NM AS CTGR_01
+			FROM
+				IL_GOODS_CTGRY A
+				LEFT OUTER JOIN IL_CTGRY B ON (A.IL_CTGRY_ID = B.IL_CTGRY_ID AND B.DISP_YN = 'Y' AND B.USE_YN = 'Y' AND B.DEPTH != 0)
+				LEFT OUTER JOIN IL_CTGRY C ON (B.PRNTS_CTGRY_ID = C.IL_CTGRY_ID AND C.DISP_YN = 'Y' AND C.USE_YN = 'Y' AND C.DEPTH != 0)
+				LEFT OUTER JOIN IL_CTGRY D ON (C.PRNTS_CTGRY_ID = D.IL_CTGRY_ID AND D.DISP_YN = 'Y' AND D.USE_YN = 'Y' AND D.DEPTH != 0)
+				LEFT OUTER JOIN IL_CTGRY E ON (D.PRNTS_CTGRY_ID = E.IL_CTGRY_ID AND E.DISP_YN = 'Y' AND E.USE_YN = 'Y' AND E.DEPTH != 0)
+			WHERE
+				A.IL_GOODS_ID = #{ilGoodsId}
+				AND A.MALL_DIV = #{mallDiv}
+				AND A.BASIC_YN = 'Y'
+			) AA
+		ORDER BY AA.SORT ASC, AA.BASIC_YN DESC, AA.IL_GOODS_CTGRY_ID ASC
+		LIMIT 1
+	</select>
+
+</mapper>

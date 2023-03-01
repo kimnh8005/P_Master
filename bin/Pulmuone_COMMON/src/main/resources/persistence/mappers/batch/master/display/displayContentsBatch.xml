@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.display.DisplayContentsBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: BATCH 대상 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.display.contents.dto.vo.ContentsBatchVo" id="batchTargetResultMap">
+        <result column="DP_CONTS_ID" property="dpContsId"/>
+        <result column="DP_INVENTORY_ID" property="dpInventoryId"/>
+        <result column="CONTS_LEVEL" property="contentsLevel"/>
+        <result column="LEVEL_1_CONTS_ID" property="level1ContentsId"/>
+        <result column="LEVEL_2_CONTS_ID" property="level2ContentsId"/>
+        <result column="DP_RANGE_TP" property="displayRangeType"/>
+        <result column="CONTS_ID" property="contentsId"/>
+        <result column="DP_COND_TP" property="displayContentsType"/>
+        <result column="DP_CTGRY_ID" property="dpCtgryId"/>
+        <result column="TITLE_NM" property="titleName"/>
+    </resultMap>
+
+    <select id="getBatchTarget" resultMap="batchTargetResultMap">
+        /* displayContentsBatch.getBatchTarget */
+        SELECT DC.DP_CONTS_ID ,
+            DC.DP_INVENTORY_ID ,
+            DC.CONTS_LEVEL ,
+            IFNULL(DC.LEVEL_1_CONTS_ID, 0) AS LEVEL_1_CONTS_ID,
+            IFNULL(DC.LEVEL_2_CONTS_ID, 0) AS LEVEL_2_CONTS_ID,
+            DC.DP_RANGE_TP ,
+            IFNULL(DC.CONTS_ID, 0) AS CONTS_ID ,
+            IFNULL(DC.DP_COND_TP, 'SAM') AS DP_COND_TP ,
+            IFNULL(DC.DP_CTGRY_ID, 0) AS DP_CTGRY_ID ,
+            DC.TITLE_NM
+        FROM DP_INVENTORY DI
+            INNER JOIN DP_CONTS DC ON DI.DP_INVENTORY_ID = DC.DP_INVENTORY_ID
+            INNER JOIN DP_PAGE DP ON DI.DP_PAGE_ID = DP.DP_PAGE_ID
+        WHERE DI.INVENTORY_CD = #{inventoryCode}
+            AND DI.USE_YN = 'Y'
+            AND DI.DEL_YN = 'N'
+            AND DC.USE_YN = 'Y'
+            AND DC.DEL_YN = 'N'
+            AND (NOW() BETWEEN DC.DP_START_DT AND DC.DP_END_DT OR NOW() <![CDATA[<]]> DC.DP_START_DT)
+            AND DP.USE_YN = 'Y'
+            AND DP.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 인벤토리 PK 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getInventoryId" resultType="long">
+        /* displayContentsBatch.getBatchTarget */
+        SELECT DI.DP_INVENTORY_ID
+        FROM DP_INVENTORY DI
+            INNER JOIN DP_PAGE DP ON DI.DP_PAGE_ID = DP.DP_PAGE_ID
+        WHERE DI.INVENTORY_CD = #{inventoryCode}
+            AND DI.USE_YN = 'Y'
+            AND DI.DEL_YN = 'N'
+            AND DP.USE_YN = 'Y'
+            AND DP.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 컨텐츠 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addContents">
+        /* displayContentsBatch.addContents */
+        INSERT INTO DP_CONTS (
+            DP_INVENTORY_ID, IL_CTGRY_ID, CONTS_TP, CONTS_LEVEL, PRNTS_CONTS_ID,
+            LEVEL_1_CONTS_ID, LEVEL_2_CONTS_ID, LEVEL_3_CONTS_ID, DP_START_DT, DP_END_DT,
+            DP_RANGE_TP, TITLE_NM, DP_CTGRY_ID, TEXT_1, TEXT_1_COLOR,
+            TEXT_2, TEXT_2_COLOR, TEXT_3, TEXT_3_COLOR, LINK_URL_PC,
+            LINK_URL_MOBILE, HTML_PC, HTML_MOBILE, IMG_PATH_PC, IMG_ORIGIN_NM_PC,
+            IMG_PATH_MOBILE, IMG_ORIGIN_NM_MOBILE, GIF_IMG_PATH_PC, GIF_IMG_ORIGIN_NM_PC, GIF_IMG_PATH_MOBILE,
+            GIF_IMG_ORIGIN_NM_MOBILE, CONTS_ID, DP_COND_TP, DP_SORT_TP, SORT,
+            USE_YN, DEL_YN, CREATE_ID, CREATE_DT)
+        VALUES(
+            #{dpInventoryId}, #{ilCtgryId}, #{contentsType}, #{contentsLevel}, #{parentsContentsId},
+            #{level1ContentsId}, #{level2ContentsId}, #{level3ContentsId}, #{displayStartDate}, #{displayEndDate},
+            #{displayRangeType}, #{titleName}, #{dpCtgryId}, #{text1}, #{text1Color},
+            #{text2}, #{text2Color}, #{text3}, #{text3Color}, #{linkUrlPc},
+            #{linkUrlMobile}, #{htmlPc}, #{htmlMobile}, #{imagePathPc}, #{imageOriginalNamePc},
+            #{imagePathMobile}, #{imageOriginalNameMobile}, #{gifImagePathPc}, #{gifImageOriginalNamePc}, #{gifImagePathMobile},
+            #{gifImageOriginalNameMobile}, #{contentsId}, #{displayContentsType}, #{displaySortType}, #{sort},
+            #{useYn}, #{delYn}, #{createId}, CURRENT_TIMESTAMP
+        )
+
+        <selectKey resultType="long" keyProperty="dpContsId" keyColumn="DP_CONTS_ID" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 컨텐츠 추가정보 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putContentsLevel1">
+        /* displayContentsBatch.putContentsLevel1 */
+        UPDATE DP_CONTS
+        SET LEVEL_1_CONTS_ID=#{dpContsId}
+        WHERE DP_CONTS_ID = #{dpContsId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 컨텐츠 추가정보 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putContentsLevel3">
+        /* displayContentsBatch.putContentsLevel3 */
+        UPDATE DP_CONTS
+        SET LEVEL_3_CONTS_ID=#{dpContsId}
+        WHERE DP_CONTS_ID = #{dpContsId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 컨텐츠 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.15		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delContentsByInventoryId">
+        /* displayContentsBatch.delContentsByInventoryId */
+        DELETE FROM DP_CONTS
+        WHERE DP_INVENTORY_ID = #{dpInventoryId}
+            AND CONTS_LEVEL = #{contentsLevel}
+            AND CONTS_TP = 'DP_CONTENTS_TP.GOODS'
+            AND DP_COND_TP = 'DP_COND_TP.AUTO'
+    </delete>
+
+</mapper>

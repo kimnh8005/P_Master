@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.ItemErpStockCommonMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description : ERP 재고 저장
+	 * @
+	 * @ 수정일                   수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.2.4   이성준   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemErpStock">
+	/* itemErpStockCommon.addItemErpStock */
+		INSERT INTO IL_ITEM_ERP_STOCK
+		(
+			IL_ITEM_WAREHOUSE_ID
+			, BASE_DT
+			, STOCK_TP
+			, STOCK_QTY
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(scheduleDt)">
+				, SCHEDULE_DT
+			</if>
+			, CREATE_ID
+			, CREATE_DT
+		)
+		VALUES
+		(
+			#{ilItemWarehouseId}
+			, #{baseDt}
+			, #{stockTp}
+			, #{stockQty}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(scheduleDt)">
+				, #{scheduleDt}
+			</if>
+			, #{createId}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDt)">
+			        , #{createDt}
+				</when>
+				<otherwise>
+			        , NOW()
+				</otherwise>
+			</choose>
+		)
+		<selectKey resultType="long" keyProperty="ilItemErpStockId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description : ERP 재고 이력저장
+	 * @
+	 * @ 수정일                   수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.2.10   이성준   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemErpStockHistory">
+	/* itemErpStockCommon.addItemErpStockHistory */
+		INSERT INTO IL_ITEM_ERP_STOCK_HISTORY
+		(
+			IL_ITEM_ERP_STOCK_ID
+			, IL_ITEM_WAREHOUSE_ID
+			, BASE_DT
+			, STOCK_TP
+			, STOCK_QTY
+			, SCHEDULE_DT
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			IL_ITEM_ERP_STOCK_ID
+			, IL_ITEM_WAREHOUSE_ID
+			, BASE_DT
+			, STOCK_TP
+			, STOCK_QTY
+			, SCHEDULE_DT
+			, CREATE_ID
+			, CREATE_DT
+		FROM IL_ITEM_ERP_STOCK
+		WHERE
+			IL_ITEM_ERP_STOCK_ID = #{ilItemErpStockId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description : 재고수량 재계산 프로시저
+	 * @
+	 * @ 수정일                   수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.2.4   이성준   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="callSpItemStockCaculated" statementType="CALLABLE">
+	/* itemErpStockCommon.callSpItemStockCaculated */
+		CALL SP_ITEM_STOCK_CACULATED(
+			#{ilItemWarehouseId}
+		)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description   : 기준일/재고분류에 의한 ERP 재고 ID
+	 * @
+	 * @ 수정일                 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.09  이성준         최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemErpStockId" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.ItemErpStockCommonVo">
+	/* itemErpStockCommon.getItemErpStockId */
+		SELECT
+			IL_ITEM_ERP_STOCK_ID
+		FROM
+			IL_ITEM_ERP_STOCK
+		WHERE
+			IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+			AND BASE_DT = #{baseDt}
+			AND STOCK_TP = #{stockTp}
+		ORDER BY IL_ITEM_ERP_STOCK_ID DESC
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description   : ERP 재고 수량 수정
+	 * @
+	 * @ 수정일                 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.09  이성준         최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putItemErpStockQty">
+	/* itemErpStockCommon.putItemErpStockQty */
+		UPDATE IL_ITEM_ERP_STOCK
+		SET
+			STOCK_QTY = #{stockQty}
+			, MODIFY_ID = #{modifyId}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(modifyDt)">
+					, MODIFY_DT = #{modifyDt}
+				</when>
+				<otherwise>
+					, MODIFY_DT = NOW()
+				</otherwise>
+			</choose>
+		WHERE
+			IL_ITEM_ERP_STOCK_ID = #{ilItemErpStockId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description   : ERP 재고이력 수정
+	 * @
+	 * @ 수정일                 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.09  이성준         최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putItemErpStockHistoryQty">
+	/* itemErpStock.putItemErpStockHistoryQty */
+		UPDATE IL_ITEM_ERP_STOCK_HISTORY IIESH
+			INNER JOIN IL_ITEM_ERP_STOCK IIES
+				ON IIES.IL_ITEM_ERP_STOCK_ID = IIESH.IL_ITEM_ERP_STOCK_ID
+		SET
+			IIESH.STOCK_QTY = IIES.STOCK_QTY
+			, IIESH.MODIFY_ID = IIES.MODIFY_ID
+			, IIESH.MODIFY_DT = IIES.MODIFY_DT
+		WHERE
+			IIES.IL_ITEM_ERP_STOCK_ID = #{ilItemErpStockId}
+	</update>
+
+</mapper>

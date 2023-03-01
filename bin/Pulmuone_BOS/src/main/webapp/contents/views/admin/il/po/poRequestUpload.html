@@ -1,0 +1,153 @@
+<div class="wrap-location">
+	 <h1 class="title"></h1>
+	 <span class="location"></span>
+</div>
+<div class="fb__sect">
+	<form id="excelUploadForm" name="excelUploadForm" class="fb__sect__form excelUploadForm" method="post" enctype="multipart/form-data" onsubmit="return false;">
+		<div class="innerbox">
+			<div class="marginB20">
+				<h3>▶  엑셀 업로드</h3>
+			</div>
+			<table class="datatable v-type">
+				<colgroup>
+					<col style="width:12%">
+					<col style="width:88%">
+				</colgroup>
+				<tbody>
+					<tr>
+		                <th scope="row"><label for="uploadItemRegistration">엑셀 등록</label></th>
+		                <td>
+	                        <div class="complex-condition">
+	                            <button type="button" id="fnPoRequestExcelUpload" class="btn-white btn-s marginR5" onclick="$scope.fnPoRequestExcelUpload()">파일첨부</button>
+	                            <span id="uploadViewControl" style="display:none">
+	                                <a id="uploadLink" style="cursor:pointer"></a>
+	                                <button type="button" id="uploadDelete" class="fb__btn__inner--s btn-white ml--default" style="vertical-align:bottom;">삭제</button>
+	                            </span>
+		                        <span>&nbsp;&nbsp;&nbsp;.xls / .xlsx 형식의 파일만 업로드 가능합니다.</span>
+	                        </div>
+		                </td>
+					</tr>
+		        </tbody>
+		    </table>
+			<span class="btn-area">
+				<button type="button" id="fnAddExcelSubmit" class="btn-point btn-l" onclick="$scope.fnAddExcelSubmit()">업로드</button>
+	            <button type="button" id="fnSamepleFormDownload" class="btn-white btn-l formClear-btn" onclick="$scope.fnSamepleFormDownload()">샘플양식 다운로드</button>
+			</span>
+		</div>
+	</form>
+
+	<div class="innerbox">
+		<form id="sellerForm" name="sellerForm" class="fb__sect__form sellerForm" method="post" enctype="multipart/form-data" onsubmit="return false;">
+			<div class="marginB20">
+				<h3>▶  판매처 정보</h3>
+				<label for="" onclick="$scope.fnToggleArea()">펼치기</label>
+			</div>
+			<table class="datatable v-type" style="width: 40%;">
+				<colgroup>
+					<col style="width: 50%">
+					<col style="width: 50%">
+				</colgroup>
+				<tr>
+					<th scope="row"><label>판매처 </label></th>
+					<th scope="row"><label>판매처 코드</label></th>
+				</tr>
+				<tbody data-template="sellerList" data-bind="source: sellerInfo.sellerList, visible: sellerInfo.isSellerListVisible">
+				</tbody>
+
+			</table>
+		</form>
+	</div>
+	<form id="searchForm" name="searchForm" class="fb__sect__form searchForm" method="post" enctype="multipart/form-data" onsubmit="return false;">
+		<input type="hidden" name="logId" id="logId" value="" />
+		<div class="innerbox">
+			<div class="marginB20">
+				<h3>▶  엑셀 업로드 내역</h3>
+			</div>
+			<table class="datatable v-type">
+				<colgroup>
+					<col style="width:12%">
+					<col style="width:88%">
+				</colgroup>
+				<tbody>
+					<tr>
+						<th scope="row"><label>관리자</label></th>
+						<td>
+							<div class="complex-condition" style="margin-bottom:4px;">
+								<input id="searchUserId" class="comm-input disabled " style="width:250px" name="searchUserId" type="hidden" data-bind="value: searchInfo.searchUserId">
+								<input id="searchUserNm" class="comm-input disabled " style="width:250px" name="searchUserNm" type="text" data-bind="value: searchInfo.searchUserNm">
+								<button id='fnEmployeeSearchPopup' class="fb__search-btn marginL10" type="button" onClick="$scope.fnEmployeeSearchPopup('APPR_MANAGER_TP.SECOND')"></button>
+							</div>
+						</td>
+					</tr>
+					<tr>
+		                <th scope="row">등록일자</th>
+                        <td colspan="3">
+                             <div class="datepicker-wrapper startdate-wrapper">
+		                        <input
+		                            type="text"
+		                            id="startDate"
+		                            name="startDate"
+		                            style="width: 150px"
+		                            data-bind="value: searchInfo.startDate"
+		                        >
+		                        </div>
+		                        <div class="datepicker-wrapper">
+		                        <input
+		                            type="text"
+		                            id="endDate"
+		                            name="endDate"
+		                            style="width: 150px"
+		                            data-bind="value: searchInfo.endDate"
+		                        >
+	                        </div>
+                        </td>
+					</tr>
+		        </tbody>
+		    </table>
+			<nav class="btn-nav">
+	            <!-- button area-->
+	            <div class="btn-area">
+	                <button class="set-btn-type4 js__search" type="button" onclick="$scope.fnSearch()">조회
+	                </button>
+	                <button id="fnClear02" class="set-btn-type5 formClear-btn" type="button" onclick="$scope.fnClear()">초기화
+	                </button>
+	            </div>
+	            <!-- button area End -->
+	        </nav>
+
+		</div>
+
+		<div class="innerbox">
+			<div class="marginB20">
+				<h3>▶목록 <span>총 <em id="pageTotalText">0</em> 건 </h3>
+			</div>
+		</div>
+		<div id="itemGrid"></div>
+	</form>
+
+</div>
+
+<!-- 엑셀 업로드 레이어 팝업 -->
+<div id="uploadPopup">
+    <div id="contents" class="pop-contents">
+        <div id="aGrid"></div>
+    </div>
+</div>
+
+<!-- 엑셀 업로드 Form -->
+<form id="excelForm" name="excelForm" method="post" enctype="multipart/form-data" onsubmit="return false;" style="display:none">
+	<input type="file" id="uploadFile" name="uploadFile" accept=".xls, .xlsx" onChange="$scope.fnExcelUpload(event)" />
+</form>
+
+
+<!-- 가격정보 > 판매 가격정보 template -->
+<script id="sellerList" type="text/x-kendo-template">
+	<tr>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5">
+			<div data-bind="text: sellersNm"></div>	<!--할인구분 -->
+		</td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			<div data-bind="text: omSellersId"></div>	<!-- 시작일 -->
+		</td>
+	</tr>
+</script>

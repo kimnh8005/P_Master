@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.company.notice.CompanyNoticeMapper">
+
+	<insert id="addNotice">
+		INSERT INTO CS_COMP_BBS
+		(
+			COMP_BBS_TP,
+			TITLE,
+			CONTENT,
+			NOTI_YN,
+			POPUP_YN,
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupDisplayStartDate)">
+				POPUP_DISP_START_DT,
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupDisplayEndDate)">
+				POPUP_DISP_END_DT,
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupCoordinateX)">
+				POPUP_COORD_X,
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupCoordinateY)">
+				POPUP_COORD_Y,
+			</if>
+			POPUP_DISP_TODAY_YN,
+			USE_YN,
+			CREATE_ID
+		)
+		VALUES
+		(
+			#{companyBbsType},
+			#{title},
+			#{content},
+			#{notificationYn},
+			#{popupYn},
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupDisplayStartDate)">
+				#{popupDisplayStartDate},
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupDisplayEndDate)">
+				#{popupDisplayEndDate},
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupCoordinateX)">
+				#{popupCoordinateX},
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupCoordinateY)">
+				#{popupCoordinateY},
+			</if>
+			#{popupDisplayTodayYn},
+			#{useYn},
+			#{userVo.userId}
+		)
+		<selectKey resultType="String" keyProperty="csCompanyBbsId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<update id="putNotice">
+		UPDATE	CS_COMP_BBS
+		SET		COMP_BBS_TP = #{companyBbsType}
+				,TITLE = #{title}
+				,CONTENT = #{content}
+				,NOTI_YN = #{notificationYn}
+				,POPUP_YN = #{popupYn}
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupDisplayStartDate)">
+						,POPUP_DISP_START_DT = #{popupDisplayStartDate}
+					</when>
+					<otherwise>
+						,POPUP_DISP_START_DT = NULL
+					</otherwise>
+				</choose>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupDisplayEndDate)">
+						,POPUP_DISP_END_DT = #{popupDisplayEndDate}
+					</when>
+					<otherwise>
+						,POPUP_DISP_END_DT = NULL
+					</otherwise>
+				</choose>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupCoordinateX)">
+						,POPUP_COORD_X = #{popupCoordinateX}
+					</when>
+					<otherwise>
+						,POPUP_COORD_X = NULL
+					</otherwise>
+				</choose>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupCoordinateY)">
+						,POPUP_COORD_Y = #{popupCoordinateY}
+					</when>
+					<otherwise>
+						,POPUP_COORD_Y = NULL
+					</otherwise>
+				</choose>
+				,POPUP_DISP_TODAY_YN = #{popupDisplayTodayYn}
+				,USE_YN = #{useYn}
+				,MODIFY_ID = #{userVo.userId}
+				,MODIFY_DT = SYSDATE()
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</update>
+
+	<update id="addNoticeViewCount">
+		UPDATE	CS_COMP_BBS
+		SET		VIEWS = VIEWS + 1
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</update>
+
+	<insert id="addNoticeAttach">
+		INSERT INTO CS_COMP_BBS_ATTC
+		(
+			CS_COMP_BBS_ID,
+		  	FILE_PATH,
+		  	PHYS_ATTC,
+		  	REAL_ATTC,
+		  	CREATE_ID
+		)
+		VALUES
+		(
+			#{csCompanyBbsId},
+		  	#{filePath},
+		  	#{physicalAttachment},
+		  	#{realAttachment},
+		  	#{userVo.userId}
+		)
+	</insert>
+
+	<delete id="delNoticeAttach">
+		DELETE
+		FROM	CS_COMP_BBS_ATTC
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</delete>
+
+	<resultMap id="getNoticeResultMap" type="kr.co.pulmuone.v1.company.notice.dto.vo.GetNoticeResultVo">
+		<result column="CS_COMP_BBS_ID" property="csCompanyBbsId" />
+		<result column="COMP_BBS_TP" property="companyBbsType" />
+		<result column="COMP_BBS_TP_NM" property="companyBbsTypeName" />
+		<result column="TITLE" property="title" />
+		<result column="CONTENT" property="content" />
+		<result column="NOTI_YN" property="notificationYn" />
+		<result column="POPUP_YN" property="popupYn" />
+		<result column="POPUP_DISP_START_DT" property="popupDisplayStartDate" />
+		<result column="POPUP_DISP_END_DT" property="popupDisplayEndDate" />
+		<result column="POPUP_COORD_X" property="popupCoordinateX" />
+		<result column="POPUP_COORD_Y" property="popupCoordinateY" />
+		<result column="POPUP_DISP_TODAY_YN" property="popupDisplayTodayYn" />
+		<result column="USE_YN" property="useYn" />
+		<result column="CREATE_NAME" property="createName" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="MODIFY_NAME" property="modifyName" />
+		<result column="MODIFY_DT" property="modifyDate" />
+	</resultMap>
+
+	<resultMap id="getNoticePopoupListResultMap" type="kr.co.pulmuone.v1.company.notice.dto.vo.GetNoticePopupListResultVo">
+		<result column="CS_COMP_BBS_ID" property="csCompanyBbsId" />
+		<result column="POPUP_COORD_X" property="popupCoordinateX" />
+		<result column="POPUP_COORD_Y" property="popupCoordinateY" />
+	</resultMap>
+
+	<resultMap id="getNoticePopupResultMap" type="kr.co.pulmuone.v1.company.notice.dto.vo.GetNoticePopupResultVo">
+		<result column="CS_COMP_BBS_ID" property="csCompanyBbsId" />
+		<result column="CONTENT" property="content" />
+		<result column="POPUP_DISP_TODAY_YN" property="popupDisplayTodayYn" />
+	</resultMap>
+	<select id="getNotice" resultMap="getNoticeResultMap">
+		SELECT	CS_COMP_BBS_ID
+				,COMP_BBS_TP
+				,FN_COMN_CODE_DIC(COMP_BBS_TP) AS COMP_BBS_TP_NM
+				,TITLE
+				,CONTENT
+				,NOTI_YN
+				,POPUP_YN
+				,POPUP_DISP_START_DT
+				,POPUP_DISP_END_DT
+				,POPUP_COORD_X
+				,POPUP_COORD_Y
+				,POPUP_DISP_TODAY_YN
+				,USE_YN
+				,FN_GET_CREATER_INFO_STR(2, CREATE_ID, NULL, #{DATABASE_ENCRYPTION_KEY}) AS CREATE_NAME
+				,DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT
+				,FN_GET_CREATER_INFO_STR(2, MODIFY_ID, NULL, #{DATABASE_ENCRYPTION_KEY}) AS MODIFY_NAME
+				,DATE_FORMAT(MODIFY_DT, '%Y-%m-%d %T') AS MODIFY_DT
+		FROM 	CS_COMP_BBS
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</select>
+
+	<resultMap id="getNoticeAttachResultMap" type="kr.co.pulmuone.v1.company.notice.dto.vo.GetNoticeAttachResultVo">
+		<result column="CS_COMP_BBS_ATTC_ID" property="csCompanyBbsAttachId" />
+		<result column="FILE_PATH" property="filePath" />
+		<result column="CS_COMP_BBS_ID" property="csCompanyBbsId" />
+		<result column="PHYS_ATTC" property="physicalAttached" />
+		<result column="REAL_ATTC" property="realAttached" />
+	</resultMap>
+
+	<select id="getNoticeAttach" resultMap="getNoticeAttachResultMap">
+		SELECT	CS_COMP_BBS_ATTC_ID
+				,FILE_PATH
+				,CS_COMP_BBS_ID
+				,PHYS_ATTC
+				,REAL_ATTC
+		FROM 	CS_COMP_BBS_ATTC
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</select>
+
+	<resultMap id="getNoticeListResultMap" type="kr.co.pulmuone.v1.company.notice.dto.vo.GetNoticeListResultVo">
+		<result column="NO" property="no" />
+		<result column="CS_COMP_BBS_ID" property="csCompanyBbsId" />
+		<result column="NOTI_YN" property="notificationYn" />
+		<result column="NOTI_MODE_YN" property="notificationModeYn" />
+		<result column="COMP_BBS_TP" property="companyBbsType" />
+		<result column="POPUP_YN" property="popupYn" />
+		<result column="TITLE" property="title" />
+		<result column="CREATE_NAME" property="createName" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="PHYS_ATTC" property="physicalAttachment" />
+		<result column="USE_YN" property="useYn" />
+		<result column="VIEWS" property="views" />
+    <result column="CONTENT" property="content" />
+    <result column="POPUP_DISP_START_DT" property="popupDispStartDt" />
+    <result column="POPUP_DISP_END_DT" property="popupDispEndDt" />
+    <result column="POPUP_COORD_X" property="popupCoordX" />
+    <result column="POPUP_COORD_Y" property="popupCoordY" />
+    <result column="POPUP_DISP_TODAY_YN" property="popupDispTodayYn" />
+    <result column="CREATE_ID" property="createId" />
+    <result column="MODIFY_ID" property="modifyId" />
+    <result column="MODIFY_DT" property="modifyDt" />
+	</resultMap>
+
+	<!-- 최근 접속 정보 VO -->
+	<resultMap id="LoginRecnetlyVOResultMap" type="kr.co.pulmuone.v1.user.login.dto.vo.RecentlyLoginResultVo">
+		<result column="COMP_TP" property="companyType" />
+	</resultMap>
+
+	<select id="getNoticeList" resultMap="getNoticeListResultMap">
+		SELECT	CASE
+					WHEN T.NOTI_MODE_YN = 'Y' THEN '공지'
+					ELSE @ROWNUM := @ROWNUM + 1
+				END AS NO,
+				T.*
+		FROM	(
+					SELECT	X.NOTI_MODE_YN,
+							X.CS_COMP_BBS_ID,
+							X.NOTI_YN,
+							FN_COMN_CODE_DIC(X.COMP_BBS_TP) AS COMP_BBS_TP,
+							X.POPUP_YN,
+							X.TITLE,
+							X.CREATE_NAME,
+							DATE_FORMAT(X.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT,
+							X.PHYS_ATTC,
+							X.USE_YN,
+							X.VIEWS
+					FROM	(
+								SELECT	'Y' AS NOTI_MODE_YN,
+										A.CS_COMP_BBS_ID,
+										A.NOTI_YN,
+										A.COMP_BBS_TP,
+										A.POPUP_YN,
+										A.TITLE,
+										FN_GET_CREATER_INFO_STR(2, A.CREATE_ID, NULL, #{DATABASE_ENCRYPTION_KEY}) AS CREATE_NAME,
+										A.CREATE_DT,
+										B.PHYS_ATTC,
+										A.USE_YN,
+										A.VIEWS
+								FROM 	CS_COMP_BBS A
+										LEFT JOIN CS_COMP_BBS_ATTC B ON A.CS_COMP_BBS_ID = B.CS_COMP_BBS_ID
+								WHERE	A.NOTI_YN = 'Y'
+								UNION ALL
+								SELECT	'N' AS NOTI_MODE_YN,
+										A.CS_COMP_BBS_ID,
+										A.NOTI_YN,
+										A.COMP_BBS_TP,
+										A.POPUP_YN,
+										A.TITLE,
+										FN_GET_CREATER_INFO_STR(2, A.CREATE_ID, NULL, #{DATABASE_ENCRYPTION_KEY}) AS CREATE_NAME,
+										A.CREATE_DT,
+										B.PHYS_ATTC,
+										A.USE_YN,
+										A.VIEWS
+								FROM 	CS_COMP_BBS A
+										LEFT JOIN CS_COMP_BBS_ATTC B ON A.CS_COMP_BBS_ID = B.CS_COMP_BBS_ID
+										JOIN (SELECT @ROWNUM := 0) R
+							) X
+					WHERE 	1 = 1
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+								AND X.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							    </if>
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+						    	AND X.USE_YN = UPPER(#{useYn})
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupYn)">
+						    	AND X.POPUP_YN = UPPER(#{popupYn})
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyBbsType)">
+						    	AND X.COMP_BBS_TP = #{companyBbsType}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+							   <choose>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'CREATE_NAME')">
+										AND X.CREATE_NAME LIKE CONCAT('%',#{conditionValue},'%')
+									</when>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'TITLE')">
+										AND X.TITLE LIKE CONCAT('%',#{conditionValue},'%')
+									</when>
+								</choose>
+							</if>
+				) T
+		WHERE	1 = 1
+		ORDER BY T.NOTI_MODE_YN DESC, T.CREATE_DT DESC, NO DESC
+		<include refid="_common.pageLimit"/>
+	</select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 대시보드용 공지사항리스트 조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.04.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getDashboardNoticeList" resultMap="getNoticeListResultMap">
+    /*notice.getDashboardNoticeList*/
+    SELECT  CS_COMP_BBS_ID
+          , COMP_BBS_TP
+          , TITLE
+          , CONTENT
+          , VIEWS
+          , NOTI_YN
+          , POPUP_YN
+          , POPUP_DISP_START_DT
+          , POPUP_DISP_END_DT
+          , POPUP_COORD_X
+          , POPUP_COORD_Y
+          , POPUP_DISP_TODAY_YN
+          , USE_YN
+          , CREATE_ID
+          , CREATE_DT
+          , MODIFY_ID
+          , MODIFY_DT
+    FROM    CS_COMP_BBS
+    WHERE   USE_YN = 'Y'
+    ORDER BY CAST(CS_COMP_BBS_ID AS SIGNED) DESC
+    LIMIT 0, #{searchCnt}
+  </select>
+
+	<select id="getNoticeListCount" resultType="int">
+		SELECT	COUNT(*)
+		FROM	(
+					SELECT	X.NOTI_MODE_YN,
+							X.CS_COMP_BBS_ID,
+							X.NOTI_YN,
+							FN_COMN_CODE_DIC(X.COMP_BBS_TP) AS COMP_BBS_TP,
+							X.POPUP_YN,
+							X.TITLE,
+							X.CREATE_NAME,
+							DATE_FORMAT(X.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT,
+							X.PHYS_ATTC,
+							X.USE_YN,
+							X.VIEWS
+					FROM	(
+								SELECT	'Y' AS NOTI_MODE_YN,
+										A.CS_COMP_BBS_ID,
+										A.NOTI_YN,
+										A.COMP_BBS_TP,
+										A.POPUP_YN,
+										A.TITLE,
+										FN_GET_CREATER_INFO_STR(2, A.CREATE_ID, NULL, #{DATABASE_ENCRYPTION_KEY}) AS CREATE_NAME,
+										A.CREATE_DT,
+										B.PHYS_ATTC,
+										A.USE_YN,
+										A.VIEWS
+								FROM 	CS_COMP_BBS A
+										LEFT JOIN CS_COMP_BBS_ATTC B ON A.CS_COMP_BBS_ID = B.CS_COMP_BBS_ID
+								WHERE	A.NOTI_YN = 'Y'
+								UNION ALL
+								SELECT	'N' AS NOTI_MODE_YN,
+										A.CS_COMP_BBS_ID,
+										A.NOTI_YN,
+										A.COMP_BBS_TP,
+										A.POPUP_YN,
+										A.TITLE,
+										FN_GET_CREATER_INFO_STR(2, A.CREATE_ID, NULL, #{DATABASE_ENCRYPTION_KEY}) AS CREATE_NAME,
+										A.CREATE_DT,
+										B.PHYS_ATTC,
+										A.USE_YN,
+										A.VIEWS
+								FROM 	CS_COMP_BBS A
+										LEFT JOIN CS_COMP_BBS_ATTC B ON A.CS_COMP_BBS_ID = B.CS_COMP_BBS_ID
+							) X
+					WHERE 	1 = 1
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+								AND X.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							    </if>
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+						    	AND X.USE_YN = UPPER(#{useYn})
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupYn)">
+						    	AND X.POPUP_YN = UPPER(#{popupYn})
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyBbsType)">
+						    	AND X.COMP_BBS_TP = #{companyBbsType}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+							   <choose>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'CREATE_NAME')">
+										AND X.CREATE_NAME LIKE CONCAT('%',#{conditionValue},'%')
+									</when>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'TITLE')">
+										AND X.TITLE LIKE CONCAT('%',#{conditionValue},'%')
+									</when>
+								</choose>
+							</if>
+				) T
+		WHERE	1 = 1
+	</select>
+
+	<delete id="delNotice">
+		DELETE
+		FROM	CS_COMP_BBS
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</delete>
+
+	<update id="putNoticeSet">
+		UPDATE	CS_COMP_BBS
+		SET		NOTI_YN = #{notificationYn}
+				,MODIFY_ID = #{userVo.userId}
+				,MODIFY_DT = CURRENT_TIMESTAMP()
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</update>
+
+	<resultMap id="getNoticePreNextListResultMap" type="kr.co.pulmuone.v1.company.notice.dto.vo.GetNoticePreNextListResultVo">
+		<result column="CS_COMP_BBS_ID" property="csCompanyBbsId" />
+		<result column="PRE_NEXT_TYPE" property="preNextType" />
+		<result column="TITLE" property="title" />
+	</resultMap>
+
+	<select id="getNoticePreNextList" resultMap="getNoticePreNextListResultMap">
+		SELECT 	T.*
+		FROM 	(
+					(
+					SELECT	'PRE' AS PRE_NEXT_TYPE,
+							A.CS_COMP_BBS_ID,
+							A.TITLE
+					FROM 	CS_COMP_BBS A
+							JOIN CS_COMP_BBS B
+					WHERE	A.USE_YN = 'Y'
+							AND A.COMP_BBS_TP IN (B.COMP_BBS_TP, 'BOS_BBS_TYPE.COMMON')
+							AND B.CS_COMP_BBS_ID = #{csCompanyBbsId}
+							AND A.CS_COMP_BBS_ID != B.CS_COMP_BBS_ID
+							AND B.CREATE_DT >= A.CREATE_DT
+					ORDER BY A.CREATE_DT DESC LIMIT 1
+					)
+					UNION ALL
+					(
+					SELECT	'NEXT' AS PRE_NEXT_TYPE,
+							A.CS_COMP_BBS_ID,
+							A.TITLE
+					FROM 	CS_COMP_BBS A
+							JOIN CS_COMP_BBS B
+					WHERE	A.USE_YN = 'Y'
+							AND A.COMP_BBS_TP IN (B.COMP_BBS_TP, 'BOS_BBS_TYPE.COMMON')
+							AND B.CS_COMP_BBS_ID = #{csCompanyBbsId}
+							AND A.CS_COMP_BBS_ID != B.CS_COMP_BBS_ID
+							AND A.CREATE_DT >= B.CREATE_DT
+					ORDER BY A.CREATE_DT ASC LIMIT 1
+					)
+				) T
+		ORDER BY T.PRE_NEXT_TYPE DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 접속 정보 (회사구분코드)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.09		최윤지         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNoticeLoginData"  resultMap="LoginRecnetlyVOResultMap">
+	    /* Notice.getNoticeLoginData */
+		SELECT
+			COMP_TP
+		FROM
+			UR_USER UU
+			INNER JOIN UR_EMPLOYEE UE
+				ON UE.UR_USER_ID = UU.UR_USER_ID
+			INNER JOIN UR_COMPANY UC
+				ON UE.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE 1=1
+		  AND UU.UR_USER_ID = #{userId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 대시보드 공지사항 팝업 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.09		최윤지         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNoticePopupList"  resultMap="getNoticePopoupListResultMap">
+	    /* Notice.getNoticePopupList */
+		SELECT
+              CS_COMP_BBS_ID,
+              POPUP_COORD_X,
+              POPUP_COORD_Y
+		  FROM
+			   CS_COMP_BBS CCB
+		 WHERE
+		       USE_YN = 'Y'
+		   AND POPUP_YN = 'Y'
+		   AND DATE_FORMAT(POPUP_DISP_START_DT, "%Y%m%d") <![CDATA[<=]]> DATE_FORMAT(NOW(), "%Y%m%d")
+		   AND DATE_FORMAT(POPUP_DISP_END_DT, "%Y%m%d") <![CDATA[>=]]> DATE_FORMAT(NOW(), "%Y%m%d")
+		 <choose>
+		 	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType, 'COMPANY_TYPE.HEADQUARTERS')">
+		 		AND CCB.COMP_BBS_TP in ('BOS_BBS_TYPE.COMMON', 'BOS_BBS_TYPE.ADMIN')
+		 	</when>
+		 	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType, 'COMPANY_TYPE.CLIENT')">
+		 		AND CCB.COMP_BBS_TP in ('BOS_BBS_TYPE.COMMON', 'BOS_BBS_TYPE.COMPANY')
+		 	</when>
+		 	<otherwise>
+				AND 1=2
+			</otherwise>
+		 </choose>
+		 ORDER BY NOTI_YN DESC, CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 대시보드 공지사항 팝업 상세내용
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.13		최윤지         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNoticePopup" resultMap="getNoticePopupResultMap">
+	    /* Notice.getNoticePopup */
+		SELECT	CS_COMP_BBS_ID
+				,CONTENT
+				,POPUP_DISP_TODAY_YN
+		FROM 	CS_COMP_BBS
+		WHERE	CS_COMP_BBS_ID = #{csCompanyBbsId}
+	</select>
+</mapper>
+

@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsDirectLinkCategoryMappingMapper">
+
+<!--───────────────────────────────────────────────────────────────────────
+  * description   : 직연동 카테고리 관리
+  * @
+  * @ 수정일         수정자          수정내용
+  * @ ──────────────────────────────────────────────────────────────────────
+  * @ 2021.12.27    송지윤          NEW
+  * @
+ ────────────────────────────────────────────────────────────────────────-->
+
+    <!-- GoodsDirectLinkCategoryMappingListVo -->
+    <resultMap id="getshopliveReplaycontentResultMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsDirectLinkCategoryMappingListVo">
+        <result column="GEAR_CATE_TYPE"			property="gearCateType"/>
+        <result column="IL_CTGRY_STD_ID"		property="ilCtgryStdId"/>
+        <result column="IL_CTGRY_STD_FULL_NAME"	property="ilCtgryStdFullName"/>
+        <result column="CATEGORY_ID"			property="categoryId"/>
+        <result column="CATEGORY_NAME"			property="categoryName"/>
+        <result column="MAPPING_YN"				property="mappingYn"/>
+
+        <result column="FULL_CATEGORY_NAME"		property="fullCategoryName"/>
+        <result column="LAST_YN"				property="lastYn"/>
+        <result column="DEPTH"				    property="depth"/>
+        <result column="CTGRY_NM_EX1"			property="ctgryNmEx1"/>
+        <result column="CTGRY_NM_EX2"			property="ctgryNmEx2"/>
+        <result column="CTGRY_NM_EX3"			property="ctgryNmEx3"/>
+        <result column="CTGRY_NM_EX4"			property="ctgryNmEx4"/>
+
+        <result column="IL_CTGRY_STD_ID1"	    property="ilCtgryStdId1"/>
+        <result column="IL_CTGRY_STD_NM1"	    property="ilCtgryStdNm1"/>
+        <result column="IL_CTGRY_STD_ID2"	    property="ilCtgryStdId2"/>
+        <result column="IL_CTGRY_STD_NM2"	    property="ilCtgryStdNm2"/>
+        <result column="IL_CTGRY_STD_ID3"	    property="ilCtgryStdId3"/>
+        <result column="IL_CTGRY_STD_NM3"	    property="ilCtgryStdNm3"/>
+    </resultMap>
+
+    <!-- #################################################################### -->
+    <!-- 네이버 표준 카테고리 맵핑 조회 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 네이버 표준 카테고리 맵핑 조회 (목록조회)
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.12.27  송지윤    최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsDirectLinkCategoryMappingList" resultMap="getshopliveReplaycontentResultMap">
+    /* goodsGearCategoryMappingMapper.getGoodsGearCategoryMappingList */
+    SELECT	'네이버 장보기'	AS	GEAR_CATE_TYPE	/* 직연동몰 */
+        ,	F.IL_CTGRY_STD_ID         /* 표준 카테고리 코드 */
+        ,	F.IL_CTGRY_STD_FULL_NAME  /* 풀무원 표준 카테고리 */
+        ,	T.CATEGORY_ID             /* 카테고리 코드 */
+        ,	N.CATEGORY_NAME           /* 직연동몰 카테고리 */
+        ,	(CASE WHEN T.IL_CTGRY_STD_ID IS NULL THEN 'N' ELSE 'Y' END) MAPPING_YN  /* 직연동몰 카테고리 매핑 여부 */
+        ,	F.IL_CTGRY_STD_ID1	/* 표준 카테고리 코드(대) */
+        ,	F.IL_CTGRY_STD_NM1
+        ,	F.IL_CTGRY_STD_ID2	/* 표준 카테고리 코드(중) */
+        ,	F.IL_CTGRY_STD_NM2
+        ,	F.IL_CTGRY_STD_ID3	/* 표준 카테고리 코드(소) */
+        ,	F.IL_CTGRY_STD_NM3
+    FROM	(
+            SELECT	D3.IL_CTGRY_STD_ID
+                ,	D1.IL_CTGRY_STD_ID	IL_CTGRY_STD_ID1		/* 표준 카테고리 코드(대) */
+                ,	D2.IL_CTGRY_STD_ID	IL_CTGRY_STD_ID2		/* 표준 카테고리 코드(중) */
+                ,	D3.IL_CTGRY_STD_ID	IL_CTGRY_STD_ID3		/* 표준 카테고리 코드(소) */
+                ,	D1.CTGRY_STD_NM		IL_CTGRY_STD_NM1
+                ,	D2.CTGRY_STD_NM		IL_CTGRY_STD_NM2
+                ,	D3.CTGRY_STD_NM		IL_CTGRY_STD_NM3
+                ,	CONCAT(D1.CTGRY_STD_NM,' > ',D2.CTGRY_STD_NM,' > ',D3.CTGRY_STD_NM)	AS IL_CTGRY_STD_FULL_NAME	/* 풀무원 표준 카테고리 */
+            FROM	IL_CTGRY_STD	D1
+            INNER	JOIN	IL_CTGRY_STD	D2	ON	D1.IL_CTGRY_STD_ID	=	D2.PRNTS_CTGRY_ID
+            INNER	JOIN	IL_CTGRY_STD	D3	ON	D2.IL_CTGRY_STD_ID	=	D3.PRNTS_CTGRY_ID
+            WHERE	D1.USE_YN	=	'Y'
+            AND		D2.USE_YN	=	'Y'
+            AND		D3.USE_YN	=	'Y'
+            AND		D3.PRNTS_CTGRY_ID	IS NOT NULL
+            ORDER	BY	D1.SORT
+                    ,	D2.SORT
+                    ,	D3.SORT
+            )	F
+    LEFT	OUTER	JOIN	IF_NAVER_GOODS_CTGRY_MAPPING	T
+                    ON		T.IL_CTGRY_STD_ID	=	F.IL_CTGRY_STD_ID
+    LEFT	OUTER	JOIN	IF_NAVER_CATEGORY				N
+                    ON		T.CATEGORY_ID	=	N.CATEGORY_ID
+    WHERE   ((CASE WHEN T.IL_CTGRY_STD_ID IS NULL THEN 'N' ELSE 'Y' END)	=	CASE WHEN #{mappingYn} = 'ALL' THEN 'Y' ELSE #{mappingYn} END
+          OR (CASE WHEN T.IL_CTGRY_STD_ID IS NULL THEN 'N' ELSE 'Y' END)	=	CASE WHEN #{mappingYn} = 'ALL' THEN 'N' ELSE #{mappingYn} END)
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth1)">
+    AND   (F.IL_CTGRY_STD_ID1 = #{categoryStandardDepth1} OR  F.IL_CTGRY_STD_ID2  = #{categoryStandardDepth1} OR  F.IL_CTGRY_STD_ID3  = #{categoryStandardDepth1})
+    </if>
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth2)">
+    AND   (F.IL_CTGRY_STD_ID1 = #{categoryStandardDepth2} OR  F.IL_CTGRY_STD_ID2  = #{categoryStandardDepth2} OR  F.IL_CTGRY_STD_ID3  = #{categoryStandardDepth2})
+    </if>
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth3)">
+    AND   (F.IL_CTGRY_STD_ID1 = #{categoryStandardDepth3} OR  F.IL_CTGRY_STD_ID2  = #{categoryStandardDepth3} OR  F.IL_CTGRY_STD_ID3  = #{categoryStandardDepth3})
+    </if>
+    ORDER	BY	F.IL_CTGRY_STD_ID
+    </select>
+
+    <!-- #################################################################### -->
+    <!-- 네이버 표준 카테고리 맵핑 조회 리스트 엑셀다운로드 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 네이버 표준 카테고리 맵핑 조회 리스트 엑셀다운로드
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.12.27  송지윤    최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsDirectLinkCategoryMappingListExcel" resultMap="getshopliveReplaycontentResultMap">
+    /* goodsGearCategoryMappingMapper.getGoodsDirectLinkCategoryMappingListExcel */
+    SELECT	'네이버 장보기'	AS	GEAR_CATE_TYPE	/* 직연동몰 */
+        ,	F.IL_CTGRY_STD_ID         		/* 표준 카테고리 코드 */
+        ,	F.IL_CTGRY_STD_FULL_NAME  		/* 풀무원 표준 카테고리 */
+        ,	IFNULL(T.CATEGORY_ID, ' ') 	  CATEGORY_ID			/* 카테고리 코드 */
+        ,	IFNULL(N.CATEGORY_NAME, ' ')  CATEGORY_NAME    		/* 직연동몰 카테고리 */
+        ,	(CASE WHEN T.IL_CTGRY_STD_ID IS NULL THEN '설정' ELSE '미설정' END) MAPPING_YN  /* 직연동몰 카테고리 매핑 여부 */
+        ,	IFNULL(F.IL_CTGRY_STD_ID1, ' ') IL_CTGRY_STD_ID1	/* 표준 카테고리 코드(대) */
+        ,	IFNULL(F.IL_CTGRY_STD_NM1, ' ') IL_CTGRY_STD_NM1
+        ,	IFNULL(F.IL_CTGRY_STD_ID2, ' ') IL_CTGRY_STD_ID2	/* 표준 카테고리 코드(중) */
+        ,	IFNULL(F.IL_CTGRY_STD_NM2, ' ') IL_CTGRY_STD_NM2
+        ,	IFNULL(F.IL_CTGRY_STD_ID3, ' ') IL_CTGRY_STD_ID3	/* 표준 카테고리 코드(소) */
+        ,	IFNULL(F.IL_CTGRY_STD_NM3, ' ') IL_CTGRY_STD_NM3
+        ,   IFNULL(T.CREATE_DT, ' ')	CREATE_DT
+    FROM	(
+            SELECT	D3.IL_CTGRY_STD_ID
+                ,	D1.IL_CTGRY_STD_ID	IL_CTGRY_STD_ID1		/* 표준 카테고리 코드(대) */
+                ,	D2.IL_CTGRY_STD_ID	IL_CTGRY_STD_ID2		/* 표준 카테고리 코드(중) */
+                ,	D3.IL_CTGRY_STD_ID	IL_CTGRY_STD_ID3		/* 표준 카테고리 코드(소) */
+                ,	D1.CTGRY_STD_NM		IL_CTGRY_STD_NM1
+                ,	D2.CTGRY_STD_NM		IL_CTGRY_STD_NM2
+                ,	D3.CTGRY_STD_NM		IL_CTGRY_STD_NM3
+                ,	CONCAT(D1.CTGRY_STD_NM,' > ',D2.CTGRY_STD_NM,' > ',D3.CTGRY_STD_NM)	AS IL_CTGRY_STD_FULL_NAME	/* 풀무원 표준 카테고리 */
+            FROM	IL_CTGRY_STD	D1
+            INNER	JOIN	IL_CTGRY_STD	D2	ON	D1.IL_CTGRY_STD_ID	=	D2.PRNTS_CTGRY_ID
+            INNER	JOIN	IL_CTGRY_STD	D3	ON	D2.IL_CTGRY_STD_ID	=	D3.PRNTS_CTGRY_ID
+            WHERE	D1.USE_YN	=	'Y'
+            AND		D2.USE_YN	=	'Y'
+            AND		D3.USE_YN	=	'Y'
+            AND		D3.PRNTS_CTGRY_ID	IS NOT NULL
+            ORDER	BY	D1.SORT
+                    ,	D2.SORT
+                    ,	D3.SORT
+            )	F
+    LEFT	OUTER	JOIN	IF_NAVER_GOODS_CTGRY_MAPPING	T
+                    ON		T.IL_CTGRY_STD_ID	=	F.IL_CTGRY_STD_ID
+    LEFT	OUTER	JOIN	IF_NAVER_CATEGORY				N
+                    ON		T.CATEGORY_ID	=	N.CATEGORY_ID
+    WHERE   ((CASE WHEN T.IL_CTGRY_ID IS NULL THEN 'N' ELSE 'Y' END)	=	CASE WHEN #{mappingYn} = 'ALL' THEN 'Y' ELSE #{mappingYn} END
+          OR (CASE WHEN T.IL_CTGRY_ID IS NULL THEN 'N' ELSE 'Y' END)	=	CASE WHEN #{mappingYn} = 'ALL' THEN 'N' ELSE #{mappingYn} END)
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth1)">
+    AND   (F.IL_CTGRY_STD_ID1 = #{categoryStandardDepth1} OR  F.IL_CTGRY_STD_ID2  = #{categoryStandardDepth1} OR  F.IL_CTGRY_STD_ID3  = #{categoryStandardDepth1})
+    </if>
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth2)">
+    AND   (F.IL_CTGRY_STD_ID1 = #{categoryStandardDepth2} OR  F.IL_CTGRY_STD_ID2  = #{categoryStandardDepth2} OR  F.IL_CTGRY_STD_ID3  = #{categoryStandardDepth2})
+    </if>
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth3)">
+    AND   (F.IL_CTGRY_STD_ID1 = #{categoryStandardDepth3} OR  F.IL_CTGRY_STD_ID2  = #{categoryStandardDepth3} OR  F.IL_CTGRY_STD_ID3  = #{categoryStandardDepth3})
+    </if>
+    ORDER	BY	F.IL_CTGRY_STD_ID
+    </select>
+
+
+    <!-- #################################################################### -->
+    <!-- 네이버 카테고리 조회 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 네이버 카테고리 조회
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.12.27  송지윤    최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getIfNaverCategoryList" resultMap="getshopliveReplaycontentResultMap">
+    /* GoodsDirectLinkCategoryMappingMapper.getIfNaverCategoryList */
+    WITH	IF_NAVER_CATEGORY_TMP	AS
+    (
+    SELECT 	A.CATEGORY_ID
+        ,	A.FULL_CATEGORY_NAME
+        , 	A.LAST_YN
+        ,	A.DEPTH
+        , 	SUBSTRING_INDEX(A.FULL_CATEGORY_NAME  , '>', 1) AS CTGRY_NM_EX1
+        , 	CASE WHEN A.LEVEL > 0 THEN SUBSTRING_INDEX(SUBSTRING_INDEX(A.FULL_CATEGORY_NAME  , '>', 2),'>',-1) ELSE '' END CTGRY_NM_EX2
+        , 	CASE WHEN A.LEVEL > 1 THEN SUBSTRING_INDEX(SUBSTRING_INDEX(A.FULL_CATEGORY_NAME  , '>', 3),'>',-1) ELSE '' END CTGRY_NM_EX3
+        , 	CASE WHEN A.LEVEL > 2 THEN SUBSTRING_INDEX(SUBSTRING_INDEX(A.FULL_CATEGORY_NAME  , '>', 4),'>',-1) ELSE '' END CTGRY_NM_EX4
+    FROM 	(
+            SELECT 	CATEGORY_ID
+                , 	CATEGORY_NAME
+                , 	FULL_CATEGORY_NAME
+                ,	CHAR_LENGTH(FULL_CATEGORY_NAME)-CHAR_LENGTH(REPLACE(FULL_CATEGORY_NAME,'>','')) + 1 AS DEPTH
+                , 	LAST_YN
+                , 	MODIFY_ID
+                , 	MODIFY_DT
+                , 	(LENGTH(FULL_CATEGORY_NAME) - LENGTH(REPLACE(FULL_CATEGORY_NAME, '>', ''))) AS LEVEL
+            FROM 	IF_NAVER_CATEGORY
+            ) 	A
+    ORDER BY A.CATEGORY_ID
+    )
+    SELECT	DT.CATEGORY_ID	CODE
+        ,	DT.FULL_CATEGORY_NAME
+        ,	CASE DT.DEPTH   WHEN 1 THEN DT.CTGRY_NM_EX1
+                            WHEN 2 THEN DT.CTGRY_NM_EX2
+                            WHEN 3 THEN DT.CTGRY_NM_EX3
+                            WHEN 4 THEN DT.CTGRY_NM_EX4
+                            END NAME
+        ,	DT.LAST_YN
+    FROM	IF_NAVER_CATEGORY_TMP	DT
+    WHERE	DT.DEPTH =	#{depth}																		           /* 1 : 가구/인테리어 */
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryId1)">
+    AND		DT.CTGRY_NM_EX1	IN (SELECT CTGRY_NM_EX1 FROM IF_NAVER_CATEGORY_TMP WHERE CATEGORY_ID = #{categoryId1}) /* 2 : 커튼/블라인드 */
+    </if>
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryId2)">
+    AND		DT.CTGRY_NM_EX2	IN (SELECT CTGRY_NM_EX2 FROM IF_NAVER_CATEGORY_TMP WHERE CATEGORY_ID = #{categoryId2}) /* 3 : 커튼 */
+    </if>
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryId3)">
+    AND		DT.CTGRY_NM_EX3	IN (SELECT CTGRY_NM_EX3 FROM IF_NAVER_CATEGORY_TMP WHERE CATEGORY_ID = #{categoryId3}) /* 4 : 거실용커튼 / 창문용커튼 / 커튼링/봉 */
+    </if>
+    </select>
+
+    <!-- #################################################################### -->
+    <!-- 네이버 표준 카테고리 맵핑 등록 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 네이버 표준 카테고리 맵핑 등록 (목록조회)
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.12.27  송지윤    최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addGoodsDirectLinkCategoryMapping">
+    /* GoodsDirectLinkCategoryMappingMapper.addGoodsDirectLinkCategoryMapping */
+    INSERT	INTO	IF_NAVER_GOODS_CTGRY_MAPPING
+    (
+        IL_CTGRY_STD_ID
+    ,	CATEGORY_ID
+    ,	CREATE_ID
+    ,	CREATE_DT
+    )
+    VALUES
+    (
+        #{ilCtgryId}
+    ,	#{categoryId}
+    ,	#{createId}
+    ,	NOW()
+    )
+    </insert>
+
+    <!-- #################################################################### -->
+    <!-- 네이버 표준 카테고리 맵핑 수정 -->
+    <!-- #################################################################### -->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 네이버 표준 카테고리 맵핑 등록 (목록조회)
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.12.27  송지윤    최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="putGoodsDirectLinkCategoryMapping">
+    /* GoodsDirectLinkCategoryMappingMapper.putGoodsDirectLinkCategoryMapping */
+    UPDATE  IF_NAVER_GOODS_CTGRY_MAPPING
+    SET     CATEGORY_ID = #{categoryId}
+      ,     MODIFY_ID   = #{modifyId}
+      ,     MODIFY_DT   = NOW()
+    WHERE   IL_CTGRY_STD_ID = #{ilCtgryId}
+    </insert>
+
+</mapper>

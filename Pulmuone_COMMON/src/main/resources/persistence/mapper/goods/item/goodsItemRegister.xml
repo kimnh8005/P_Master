@@ -1,0 +1,2366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemRegisterMapper">
+
+    <!-- 마스터 품목 등록 화면 관련 로직 Start -->
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : ERP 연동 마스터 품목 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.23        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getErpLinkMasterItemMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ErpLinkMasterItemVo">
+        <result column="ITEM_NAME" property="itemName" />
+        <result column="CATEGORY_STANDARD_FIRST_ID" property="bosCategoryStandardFirstId" />
+        <result column="CATEGORY_STANDARD_SECOND_ID" property="bosCategoryStandardSecondId" />
+        <result column="CATEGORY_STANDARD_THIRD_ID" property="bosCategoryStandardThirdId" />
+        <result column="CATEGORY_STANDARD_FOURTH_ID" property="bosCategoryStandardFourthId" />
+        <result column="ORIGIN_TYPE" property="originType" />
+        <result column="ORIGIN_DETAIL" property="originDetail" />
+        <result column="SIZE_PER_PACKAGE" property="sizePerPackage" />
+        <result column="SIZE_UNIT" property="sizeUnit" />
+        <result column="SIZE_UNIT_ETC" property="sizeUnitEtc" />
+        <result column="QUANTITY_PER_PACKAGE" property="quantityPerPackage" javaType="INTEGER" />
+        <result column="PACKAGE_UNIT" property="packageUnit" />
+        <result column="PACKAGE_UNIT_ETC" property="packageUnitEtc" />
+        <result column="NUTRITION_DISPLAY_YN" property="nutritionDisplayYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="IL_SPEC_MASTER_ID" property="ilSpecMasterId" javaType="int" />
+        <result column="VIDEO_URL" property="videoUrl" />
+        <result column="VIDEO_AUTOPLAY_YN" property="videoAutoplayYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="BASIC_DESCRIPTION" property="basicDescription" />
+        <result column="DETAIL_DESCRIPTION" property="detaillDescription" />
+    </resultMap>
+
+	<resultMap id="getErpLinkMasterRegisterMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ErpLinkMasterItemRegisterVo">
+        <result column="IL_ITEM_CD" property="itemCd" />
+        <result column="ITEM_BARCODE" property="itemBarcode" />
+        <result column="DP_BRAND_ID" property="dpBrandId" />
+        <result column="DP_BRAND_NM" property="dpBrandNm" />
+    </resultMap>
+
+    <select id="getErpLinkMasterItem" resultMap="getErpLinkMasterItemMap">
+    /* goodsItemRegister.getErpLinkMasterItem */
+    WITH RECURSIVE CTE AS ( /* 해당 품목코드의 표준 카테고리 정보를 RECURSIVE 쿼리로 조회 */
+        SELECT
+            IL_CTGRY_STD_ID
+          , CTGRY_STD_NM
+          , PRNTS_CTGRY_ID
+          , DEPTH
+         FROM IL_CTGRY_STD
+        WHERE DEL_YN = 'N'
+          AND IL_CTGRY_STD_ID = (
+                 SELECT IL_CTGRY_STD_ID
+                   FROM IL_ITEM
+                  WHERE 1 = 1
+                 <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+                    AND IL_ITEM_CD = #{ilItemCode}
+                 </if>
+             )
+        UNION ALL
+        SELECT
+            t.IL_CTGRY_STD_ID
+          , t.CTGRY_STD_NM
+          , t.PRNTS_CTGRY_ID
+          , t.DEPTH
+          FROM IL_CTGRY_STD t
+         INNER JOIN CTE cte
+            ON t.IL_CTGRY_STD_ID = cte.PRNTS_CTGRY_ID
+    )
+    , BOS_CATEGORY_INFO AS (
+        SELECT
+            MAX( CASE WHEN DEPTH = 1 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_FIRST_ID  /* 표준 카테고리 대분류 ID */
+          , MAX( CASE WHEN DEPTH = 2 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_SECOND_ID /* 표준 카테고리 중분류 ID */
+          , MAX( CASE WHEN DEPTH = 3 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_THIRD_ID  /* 표준 카테고리 소분류 ID */
+          , MAX( CASE WHEN DEPTH = 4 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_FOURTH_ID /* 표준 카테고리 세분류 ID */
+         FROM CTE
+        ORDER BY DEPTH
+    )
+    SELECT
+        ITEM_NM                                                       AS ITEM_NAME
+      , ( SELECT CATEGORY_STANDARD_FIRST_ID FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_FIRST_ID
+      , ( SELECT CATEGORY_STANDARD_SECOND_ID FROM BOS_CATEGORY_INFO ) AS CATEGORY_STANDARD_SECOND_ID
+      , ( SELECT CATEGORY_STANDARD_THIRD_ID FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_THIRD_ID
+      , ( SELECT CATEGORY_STANDARD_FOURTH_ID FROM BOS_CATEGORY_INFO ) AS CATEGORY_STANDARD_FOURTH_ID
+      , ORIGIN_TP                                                     AS ORIGIN_TYPE
+      , ORIGIN_DETL                                                   AS ORIGIN_DETAIL
+      , SIZE_PER_PACKAGE                                              AS SIZE_PER_PACKAGE
+      , SIZE_UNIT                                                     AS SIZE_UNIT
+      , SIZE_UNIT_ETC                                                 AS SIZE_UNIT_ETC
+      , QTY_PER_PACKAGE                                               AS QUANTITY_PER_PACKAGE
+      , PACKAGE_UNIT                                                  AS PACKAGE_UNIT
+      , PACKAGE_UNIT_ETC                                              AS PACKAGE_UNIT_ETC
+      , NUTRITION_DISP_YN                                             AS NUTRITION_DISPLAY_YN
+      , IL_SPEC_MASTER_ID                                             AS IL_SPEC_MASTER_ID
+      , VIDEO_URL                                                     AS VIDEO_URL
+      , VIDEO_AUTOPLAY_YN                                             AS VIDEO_AUTOPLAY_YN
+      , BASIC_DESC                                                    AS BASIC_DESCRIPTION
+      , DETL_DESC                                                     AS DETAIL_DESCRIPTION
+     FROM IL_ITEM A
+    WHERE 1 = 1
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+      AND A.IL_ITEM_CD = #{ilItemCode}
+    </if>
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : ERP 미연동 마스터 품목 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.23        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getErpNotLinkMasterItemMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ErpNotLinkMasterItemVo">
+        <result column="ITEM_NAME" property="itemName" />
+        <result column="CATEGORY_STANDARD_FIRST_ID" property="bosCategoryStandardFirstId" />
+        <result column="CATEGORY_STANDARD_SECOND_ID" property="bosCategoryStandardSecondId" />
+        <result column="CATEGORY_STANDARD_THIRD_ID" property="bosCategoryStandardThirdId" />
+        <result column="CATEGORY_STANDARD_FOURTH_ID" property="bosCategoryStandardFourthId" />
+        <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+        <result column="UR_BRAND_ID" property="urBrandId" />
+        <result column="DP_BRAND_ID" property="dpBrandId" />
+        <result column="ITEM_GRP" property="bosItemGroup" />
+        <result column="STORAGE_METHOD_TYPE" property="storageMethodType" />
+        <result column="DISTRIBUTION_PERIOD" property="distributionPeriod" />
+        <result column="BOX_WIDTH" property="boxWidth" />
+        <result column="BOX_DEPTH" property="boxDepth" />
+        <result column="BOX_HEIGHT" property="boxHeight" />
+        <result column="PCS_PER_BOX" property="piecesPerBox" />
+        <result column="OMS" property="unitOfMeasurement" />
+        <result column="ORIGIN_TYPE" property="originType" />
+        <result column="ORIGIN_DETAIL" property="originDetail" />
+        <result column="SIZE_PER_PACKAGE" property="sizePerPackage" />
+        <result column="SIZE_UNIT" property="sizeUnit" />
+        <result column="SIZE_UNIT_ETC" property="sizeUnitEtc" />
+        <result column="QUANTITY_PER_PACKAGE" property="quantityPerPackage" javaType="INTEGER" />
+        <result column="PACKAGE_UNIT" property="packageUnit" />
+        <result column="PACKAGE_UNIT_ETC" property="packageUnitEtc" />
+        <result column="TAX_YN" property="taxYn" />
+        <result column="NUTRITION_DISPLAY_YN" property="nutritionDisplayYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="NUTRITION_DISPLAY_DEFAULT" property="nutritionDisplayDefalut" />
+        <result column="NUTRITION_QUANTITY_PER_ONCE" property="nutritionQuantityPerOnce" />
+        <result column="NUTRITION_QUANTITY_TOTAL" property="nutritionQuantityTotal" />
+        <result column="NUTRITION_ETC" property="nutritionEtc" />
+        <result column="IL_SPEC_MASTER_ID" property="ilSpecMasterId" javaType="int" />
+        <result column="VIDEO_URL" property="videoUrl" />
+        <result column="VIDEO_AUTOPLAY_YN" property="videoAutoplayYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="BASIC_DESCRIPTION" property="basicDescription" />
+        <result column="DETAIL_DESCRIPTION" property="detaillDescription" />
+
+    </resultMap>
+
+    <select id="getErpNotLinkMasterItem" resultMap="getErpNotLinkMasterItemMap">
+    /* goodsItemRegister.getErpLinkMasterItem */
+    WITH RECURSIVE CTE AS ( /* 해당 품목코드의 표준 카테고리 정보를 RECURSIVE 쿼리로 조회 */
+        SELECT
+            IL_CTGRY_STD_ID
+          , CTGRY_STD_NM
+          , PRNTS_CTGRY_ID
+          , DEPTH
+         FROM IL_CTGRY_STD
+        WHERE DEL_YN = 'N'
+          AND IL_CTGRY_STD_ID = (
+                 SELECT IL_CTGRY_STD_ID
+                   FROM IL_ITEM
+                  WHERE 1 = 1
+                 <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+                    AND IL_ITEM_CD = #{ilItemCode}
+                 </if>
+             )
+        UNION ALL
+        SELECT
+            t.IL_CTGRY_STD_ID
+          , t.CTGRY_STD_NM
+          , t.PRNTS_CTGRY_ID
+          , t.DEPTH
+          FROM IL_CTGRY_STD t
+         INNER JOIN CTE cte
+            ON t.IL_CTGRY_STD_ID = cte.PRNTS_CTGRY_ID
+    )
+    , BOS_CATEGORY_INFO AS (
+        SELECT
+            MAX( CASE WHEN DEPTH = 1 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_FIRST_ID  /* 표준 카테고리 대분류 ID */
+          , MAX( CASE WHEN DEPTH = 2 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_SECOND_ID /* 표준 카테고리 중분류 ID */
+          , MAX( CASE WHEN DEPTH = 3 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_THIRD_ID  /* 표준 카테고리 소분류 ID */
+          , MAX( CASE WHEN DEPTH = 4 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_FOURTH_ID /* 표준 카테고리 세분류 ID */
+         FROM CTE
+        ORDER BY DEPTH
+    )
+    SELECT
+        ITEM_NM                                                       AS ITEM_NAME
+      , ( SELECT CATEGORY_STANDARD_FIRST_ID FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_FIRST_ID
+      , ( SELECT CATEGORY_STANDARD_SECOND_ID FROM BOS_CATEGORY_INFO ) AS CATEGORY_STANDARD_SECOND_ID
+      , ( SELECT CATEGORY_STANDARD_THIRD_ID FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_THIRD_ID
+      , ( SELECT CATEGORY_STANDARD_FOURTH_ID FROM BOS_CATEGORY_INFO ) AS CATEGORY_STANDARD_FOURTH_ID
+      , UR_SUPPLIER_ID                                                AS UR_SUPPLIER_ID
+      , UR_BRAND_ID                                                   AS UR_BRAND_ID
+      , DP_BRAND_ID                                                   AS DP_BRAND_ID
+      , ITEM_GRP                                                      AS ITEM_GRP
+      , STORAGE_METHOD_TP                                             AS STORAGE_METHOD_TYPE
+      , ( CASE WHEN  A.ERP_IF_YN = 'Y'  THEN A.ERP_DISTRIBUTION_PERIOD
+               ELSE  A.DISTRIBUTION_PERIOD
+           END )                                                      AS DISTRIBUTION_PERIOD
+      , ( CASE WHEN  A.ERP_IF_YN = 'Y'  THEN A.ERP_BOX_WIDTH
+               ELSE  A.BOX_WIDTH
+           END )                                                      AS BOX_WIDTH
+      , ( CASE WHEN  A.ERP_IF_YN = 'Y'  THEN A.ERP_BOX_DEPTH
+               ELSE  A.BOX_DEPTH
+           END )                                                      AS BOX_DEPTH
+      , ( CASE WHEN  A.ERP_IF_YN = 'Y'  THEN A.ERP_BOX_HEIGHT
+               ELSE  A.BOX_HEIGHT
+           END )                                                      AS BOX_HEIGHT
+      , ( CASE WHEN  A.ERP_IF_YN = 'Y'  THEN A.ERP_PCS_PER_BOX
+               ELSE  A.PCS_PER_BOX
+           END )                                                      AS PCS_PER_BOX
+      , OMS                                                           AS OMS
+      , ORIGIN_TP                                                     AS ORIGIN_TYPE
+      , ORIGIN_DETL                                                   AS ORIGIN_DETAIL
+      , SIZE_PER_PACKAGE                                              AS SIZE_PER_PACKAGE
+      , SIZE_UNIT                                                     AS SIZE_UNIT
+      , SIZE_UNIT_ETC                                                 AS SIZE_UNIT_ETC
+      , QTY_PER_PACKAGE                                               AS QUANTITY_PER_PACKAGE
+      , PACKAGE_UNIT                                                  AS PACKAGE_UNIT
+      , PACKAGE_UNIT_ETC                                              AS PACKAGE_UNIT_ETC
+      , TAX_YN                                                        AS TAX_YN
+      , NUTRITION_DISP_YN                                             AS NUTRITION_DISPLAY_YN
+      , NUTRITION_DISP_DEFAULT                                        AS NUTRITION_DISPLAY_DEFAULT
+      , NUTRITION_QTY_PER_ONCE                                        AS NUTRITION_QUANTITY_PER_ONCE
+      , NUTRITION_QTY_TOTAL                                           AS NUTRITION_QUANTITY_TOTAL
+      , NUTRITION_ETC                                                 AS NUTRITION_ETC
+      , IL_SPEC_MASTER_ID                                             AS IL_SPEC_MASTER_ID
+      , VIDEO_URL                                                     AS VIDEO_URL
+      , VIDEO_AUTOPLAY_YN                                             AS VIDEO_AUTOPLAY_YN
+      , BASIC_DESC                                                    AS BASIC_DESCRIPTION
+      , DETL_DESC                                                     AS DETAIL_DESCRIPTION
+     FROM IL_ITEM A
+    WHERE 1 = 1
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+      AND A.IL_ITEM_CD = #{ilItemCode}
+    </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 인자로 받은 품목코드 리스트 중에서 BOS 상에 등록된 품목 코드 목록 조회 : ERP API 로 품목 검색시 등록 여부 확인용
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.14        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRegisteredIlItemCodeList" resultMap="getErpLinkMasterRegisterMap">
+    /* goodsItemRegister.getRegisteredIlItemCodeList */
+    	SELECT
+			ITEM.IL_ITEM_CD,
+    		ITEM.DP_BRAND_ID,
+    		DP.DP_BRAND_NM
+		FROM  IL_ITEM ITEM
+		LEFT OUTER JOIN DP_BRAND DP
+		ON ITEM.DP_BRAND_ID = DP.DP_BRAND_ID
+		WHERE  ITEM.IL_ITEM_CD IN
+        <foreach collection="ilItemCodeList" item="ilItemCodeList" separator="," open="(" close=")">
+           	#{ilItemCodeList}
+        </foreach>
+
+    </select>
+
+	    <!--───────────────────────────────────────────────────────────────────────
+     * description : 인자로 받은 품목코드 리스트 중에서 BOS 상에 등록된 품목 코드 목록 조회 : ERP API 로 품목 검색시 등록 여부 확인용
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.14        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRegisteredIlItemBarCodeList" resultMap="getErpLinkMasterRegisterMap">
+    /* goodsItemRegister.getRegisteredIlItemBarCodeList */
+    	SELECT
+			ITEM.IL_ITEM_CD,
+			ITEM.ITEM_BARCODE,
+    		ITEM.DP_BRAND_ID,
+    		DP.DP_BRAND_NM
+		FROM  IL_ITEM ITEM
+		LEFT OUTER JOIN DP_BRAND DP
+		ON ITEM.DP_BRAND_ID = DP.DP_BRAND_ID
+		WHERE  ITEM.ERP_ITEM_BARCODE IN
+        <foreach collection="ilItemBarCodeList" item="ilItemBarCodeList" separator="," open="(" close=")">
+           	#{ilItemBarCodeList}
+        </foreach>
+
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : BOS 상에 등록된 품목의 기초 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.27        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMasterItem" resultMap="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemMapper.getItemListResultMap">
+    /* goodsItemRegister.getMasterItem */
+    SELECT
+          A.IL_ITEM_CD                                AS  IL_ITEM_CODE                  /*품목코드*/
+        , A.ERP_IF_YN                                 AS  ERP_IF_YN                     /*ERP 연동여부*/
+        , A.ITEM_TP                                   AS  ITEM_TYPE                     /*마스터 품목유형*/
+      FROM  IL_ITEM  A
+     WHERE  A.IL_ITEM_CD = #{ilItemCode}
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : BOS 상에 등록된 품목의 기초 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.27        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMasterItemBarcode" resultMap="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemMapper.getItemListResultMap">
+    /* goodsItemRegister.getMasterItemBarcode */
+    SELECT
+          A.IL_ITEM_CD                                AS  IL_ITEM_CODE                  /*품목코드*/
+        , A.ERP_IF_YN                                 AS  ERP_IF_YN                     /*ERP 연동여부*/
+        , A.ITEM_TP                                   AS  ITEM_TYPE                     /*마스터 품목유형*/
+      FROM  IL_ITEM  A
+     WHERE  A.ERP_ITEM_BARCODE = #{itemBarcode}
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목코드로 추가 등록 가능한 영양정보 분류 코드 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.25        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getAddAvailableNutritionMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.AvailableNutritionVo">
+        <result column="NUTRITION_CODE" property="nutritionCode" />
+        <result column="NUTRITION_NAME" property="nutritionName" />
+        <result column="NUTRITION_UNIT" property="nutritionUnit" />
+        <result column="NUTRITION_PERCENT_YN" property="nutritionPercentYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+
+    </resultMap>
+
+    <select id="getAddAvailableNutritionCodeList" resultMap="getAddAvailableNutritionMap">
+    /* goodsItemRegister.getAddAvailableNutritionCodeList */
+    SELECT
+        IL_NUTRITION_CD       AS NUTRITION_CODE
+      , NUTRITION_NM          AS NUTRITION_NAME
+      , NUTRITION_UNIT        AS NUTRITION_UNIT
+      , NUTRITION_PERCENT_YN  AS NUTRITION_PERCENT_YN
+      FROM IL_NUTRITION  A
+     WHERE DEL_YN = 'N'
+     ORDER BY A.SORT
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목코드로 IL_ITEM_NUTRITION 에 등록된 영양정보 세부항목 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.25        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemNutritionDetailMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemNutritionDetailVo">
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="IL_NUTRITION_CODE" property="nutritionCode" />
+        <result column="CAN_DELETED" property="canDeleted" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="ERP_NUTRITION_QUANTITY" property="erpNutritionQuantity" />
+        <result column="ERP_NUTRITION_PERCENT" property="erpNutritionPercent" />
+        <result column="NUTRITION_QUANTITY" property="nutritionQuantity" />
+        <result column="NUTRITION_PERCENT" property="nutritionPercent" />
+        <result column="SORT" property="sort" />
+        <result column="CREATE_ID" property="createId" />
+        <result column="MODIFY_ID" property="modifyId" />
+
+    </resultMap>
+
+    <select id="getItemNutritionDetailList" resultMap="getItemNutritionDetailMap">
+    /* goodsItemRegister.getItemNutritionDetailList */
+    SELECT
+        IL_ITEM_CD             AS  IL_ITEM_CODE
+      , IL_NUTRITION_CD        AS  IL_NUTRITION_CODE
+      , CASE WHEN  ERP_NUTRITION_QTY     IS NOT NULL AND ERP_NUTRITION_QTY     <![CDATA[>=]]>0  THEN 'N'
+             WHEN  ERP_NUTRITION_PERCENT IS NOT NULL AND ERP_NUTRITION_PERCENT <![CDATA[>=]]>0  THEN 'N'
+             ELSE  'Y'
+         END                   AS  CAN_DELETED
+      , ERP_NUTRITION_QTY      AS  ERP_NUTRITION_QUANTITY
+      , ERP_NUTRITION_PERCENT  AS  ERP_NUTRITION_PERCENT
+      , NUTRITION_QTY          AS  NUTRITION_QUANTITY
+      , NUTRITION_PERCENT      AS  NUTRITION_PERCENT
+      , SORT                   AS  SORT
+      , CREATE_ID              AS CREATE_ID
+      , MODIFY_ID              AS MODIFY_ID
+      FROM IL_ITEM_NUTRITION   A
+     WHERE A.IL_ITEM_CD = #{ilItemCode}
+     ORDER BY A.SORT
+
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 마스터 품목 상품영양정보
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.06		임상건		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemApprNutritionDetailList" resultMap="getItemNutritionDetailMap">
+		/* goodsItemRegister.getItemApprNutritionDetailList */
+    SELECT
+        IL_ITEM_CD             AS  IL_ITEM_CODE
+      , IL_NUTRITION_CD        AS  IL_NUTRITION_CODE
+      , CASE WHEN  ERP_NUTRITION_QTY     IS NOT NULL AND ERP_NUTRITION_QTY     <![CDATA[>=]]>0  THEN 'N'
+             WHEN  ERP_NUTRITION_PERCENT IS NOT NULL AND ERP_NUTRITION_PERCENT <![CDATA[>=]]>0  THEN 'N'
+             ELSE  'Y'
+         END                   AS  CAN_DELETED
+      , ERP_NUTRITION_QTY      AS  ERP_NUTRITION_QUANTITY
+      , ERP_NUTRITION_PERCENT  AS  ERP_NUTRITION_PERCENT
+      , NUTRITION_QTY          AS  NUTRITION_QUANTITY
+      , NUTRITION_PERCENT      AS  NUTRITION_PERCENT
+      , SORT                   AS  SORT
+      , CREATE_ID              AS CREATE_ID
+      , MODIFY_ID              AS MODIFY_ID
+      FROM IL_ITEM_NUTRITION_APPR   A
+     WHERE A.IL_ITEM_APPR_ID = #{ilItemApprId}
+     ORDER BY A.SORT
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 상품 영양정보 상세항목 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.28        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemNutritionDetail">
+    /* goodsItemRegister.addItemNutritionDetail */
+    INSERT INTO IL_ITEM_NUTRITION (
+          IL_ITEM_CD
+        , IL_NUTRITION_CD
+        , ERP_NUTRITION_QTY
+        , ERP_NUTRITION_PERCENT
+        , NUTRITION_QTY
+        , NUTRITION_PERCENT
+        , SORT
+        , CREATE_ID
+    ) VALUES (
+          #{ilItemCode}
+        , #{nutritionCode}
+        , #{erpNutritionQuantity}
+        , #{erpNutritionPercent}
+        , #{nutritionQuantity}
+        , #{nutritionPercent}
+        , #{sort}
+        , #{createId}
+    )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 상품 인증정보 코드 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.05        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemCertificationCodeMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemCertificationCodeVo">
+        <result column="IL_CERTIFICATION_ID" property="ilCertificationId" />
+        <result column="CERTIFICATION_NAME" property="certificationName" />
+        <result column="DEFAULT_CERTIFICATION_DESCRIPTION" property="defaultCertificationDescription" />
+        <result column="IMAGE_PATH" property="imagePath" />
+        <result column="IMAGE_NAME" property="imageName" />
+
+    </resultMap>
+
+    <select id="getItemCertificationCode" resultMap="getItemCertificationCodeMap">
+    /* goodsItemRegister.getItemCertificationCode */
+    SELECT
+        IL_CERTIFICATION_ID         AS  IL_CERTIFICATION_ID
+      , CERTIFICATION_NM            AS  CERTIFICATION_NAME
+      , DEFAULT_CERTIFICATION_DESC  AS  DEFAULT_CERTIFICATION_DESCRIPTION
+      , IMG_PATH                    AS  IMAGE_PATH
+      , IMG_NM                      AS  IMAGE_NAME
+     FROM  IL_CERTIFICATION
+    WHERE  USE_YN = 'Y'
+      AND  DEL_YN = 'N'
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 상품 인증정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.05        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemCertificationListMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemCertificationListVo">
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="IL_CERTIFICATION_ID" property="ilCertificationId" />
+        <result column="CERTIFICATION_DESCRIPTION" property="certificationDescription" />
+
+    </resultMap>
+
+    <select id="getItemCertificationList" resultMap="getItemCertificationListMap">
+    /* goodsItemRegister.getItemCertificationList */
+    SELECT
+        IL_ITEM_CD          AS  IL_ITEM_CODE
+      , IL_CERTIFICATION_ID  AS  IL_CERTIFICATION_ID
+      , CERTIFICATION_DESC   AS  CERTIFICATION_DESCRIPTION
+      FROM IL_ITEM_CERTIFICATION  A
+     WHERE A.IL_ITEM_CD = #{ilItemCode}
+
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 승인 요청된 상품 인증정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.05        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemApprCertificationList" resultMap="getItemCertificationListMap">
+    /* goodsItemRegister.getItemApprCertificationList */
+    SELECT
+        IL_ITEM_CD          AS  IL_ITEM_CODE
+      , IL_CERTIFICATION_ID  AS  IL_CERTIFICATION_ID
+      , CERTIFICATION_DESC   AS  CERTIFICATION_DESCRIPTION
+      FROM IL_ITEM_CERTIFICATION_APPR  A
+     WHERE A.IL_ITEM_APPR_ID = #{ilItemApprId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 상품 인증정보 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.05        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+   <insert id="addItemCertification">
+    /* goodsItemRegister.addItemCertification */
+    INSERT INTO IL_ITEM_CERTIFICATION (
+          IL_ITEM_CD
+        , IL_CERTIFICATION_ID
+        , CERTIFICATION_DESC
+        , CREATE_ID
+    ) VALUES (
+          #{ilItemCode}
+        , #{ilCertificationId}
+        , #{certificationDescription}
+        , #{createId}
+    )
+
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 상품정보 제공고시 상품군 코드 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.30        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+   <select id="getItemSpecCode" resultMap="kr.co.pulmuone.v1.comm.mapper.base.StComnMapper.getCodeListResultMap">
+    /* goodsItemRegister.getItemSpecCode */
+    SELECT
+        IL_SPEC_MASTER_ID    AS CODE
+      , SPEC_MASTER_NM       AS NAME
+      FROM IL_SPEC_MASTER
+     WHERE USE_YN = 'Y'
+  ORDER BY SORT ASC, IL_SPEC_MASTER_ID DESC
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 상품정보 제공고시 분류 / 항목 조회 ( 전체 or 품목코드별 )
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.30        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemSpecListMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemSpecVo">
+        <result column="IL_SPEC_MASTER_ID" property="ilspecMasterId" />
+        <result column="IL_SPEC_FIELD_ID" property="ilSpecFieldId" />
+        <result column="SPEC_MASTER_CODE" property="specMasterCode" />
+        <result column="SPEC_MASTER_NAME" property="specMasterName" />
+        <result column="SPEC_FIELD_CODE" property="specFieldCode" />
+        <result column="SPEC_FIELD_NAME" property="specFieldName" />
+        <result column="BASIC_VALUE" property="basicValue" />
+        <result column="SPEC_DESCRIPTION" property="specDescription" />
+        <result column="SPEC_MASTER_SORT" property="specMasterSort" javaType="int"/>
+        <result column="SPEC_MASTER_FIELD_SORT" property="specMasterFieldSort" javaType="int"/>
+
+    </resultMap>
+
+   <select id="getItemSpecList" resultMap="getItemSpecListMap">
+    /* goodsItemRegister.getItemSpecList */
+    SELECT
+        ISM.IL_SPEC_MASTER_ID  AS IL_SPEC_MASTER_ID
+      , ISF.IL_SPEC_FIELD_ID   AS IL_SPEC_FIELD_ID
+      , ISM.SPEC_MASTER_CD     AS SPEC_MASTER_CODE
+      , ISM.SPEC_MASTER_NM     AS SPEC_MASTER_NAME
+      , ISF.SPEC_FIELD_CD      AS SPEC_FIELD_CODE
+      , ISF.SPEC_FIELD_NM      AS SPEC_FIELD_NAME
+      , ISF.BASIC_VAL          AS BASIC_VALUE
+      , ISF.SPEC_DESC          AS SPEC_DESCRIPTION
+      , ISM.SORT               AS SPEC_MASTER_SORT
+      , ISMF.SORT              AS SPEC_MASTER_FIELD_SORT
+      FROM IL_SPEC_MASTER  ISM
+     INNER JOIN IL_SPEC_MASTER_FIELD  ISMF
+        ON ISM.IL_SPEC_MASTER_ID = ISMF.IL_SPEC_MASTER_ID
+     INNER JOIN IL_SPEC_FIELD  ISF
+        ON ISMF.IL_SPEC_FIELD_ID = ISF.IL_SPEC_FIELD_ID
+     WHERE ISM.USE_YN = 'Y'
+     ORDER BY SPEC_MASTER_SORT, SPEC_MASTER_FIELD_SORT
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 상품정보제공고시 세부 항목 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.30        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemSpecValueListMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemSpecValueVo">
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="IL_SPEC_FIELD_ID" property="ilSpecFieldId" />
+        <result column="SPEC_FIELD_VALUE" property="specFieldValue" />
+        <result column="DIRECT_YN" property="directYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="CREATE_ID" property="createId" />
+        <result column="MODIFY_ID" property="modifyId" />
+
+    </resultMap>
+
+   <select id="getItemSpecValueList" resultMap="getItemSpecValueListMap">
+    /* goodsItemRegister.getItemSpecValueList */
+    SELECT
+        IL_ITEM_CD         AS IL_ITEM_CODE
+      , IL_SPEC_FIELD_ID   AS IL_SPEC_FIELD_ID
+      , SPEC_FIELD_VAL     AS SPEC_FIELD_VALUE
+      , DIRECT_YN          AS DIRECT_YN
+      , CREATE_ID          AS CREATE_ID
+      , MODIFY_ID          AS MODIFY_ID
+      FROM IL_ITEM_SPEC_VALUE
+     WHERE 1 = 1
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+       AND IL_ITEM_CD = #{ilItemCode}
+    </if>
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목 승인 요청 상품정보제공고시 세부 항목 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.30        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+   <select id="getItemApprSpecValueList" resultMap="getItemSpecValueListMap">
+    /* goodsItemRegister.getItemApprSpecValueList */
+    SELECT
+        IL_ITEM_CD         AS IL_ITEM_CODE
+      , IL_SPEC_FIELD_ID   AS IL_SPEC_FIELD_ID
+      , SPEC_FIELD_VAL     AS SPEC_FIELD_VALUE
+      , DIRECT_YN          AS DIRECT_YN
+      , CREATE_ID          AS CREATE_ID
+      , MODIFY_ID          AS MODIFY_ID
+      FROM IL_ITEM_SPEC_VALUE_APPR
+     WHERE 1 = 1
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemApprId)">
+       AND IL_ITEM_APPR_ID = #{ilItemApprId}
+    </if>
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 상품정보제공고시 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.30        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+   <insert id="addItemSpecValue">
+    /* goodsItemRegister.addItemSpecValue */
+    INSERT INTO IL_ITEM_SPEC_VALUE (
+          IL_ITEM_CD
+        , IL_SPEC_FIELD_ID
+        , SPEC_FIELD_VAL
+        , DIRECT_YN
+        , CREATE_ID
+    ) VALUES (
+          #{ilItemCode}
+        , #{ilSpecFieldId}
+        , #{specFieldValue}
+        , #{directYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{createId}
+    )
+
+    </insert>
+
+	<insert id="addItemSpecAppr">
+    /* goodsItemRegister.addItemSpecAppr */
+    INSERT INTO IL_ITEM_SPEC_VALUE_APPR (
+    	IL_ITEM_APPR_ID
+        ,  IL_ITEM_CD
+        , IL_SPEC_FIELD_ID
+        , SPEC_FIELD_VAL
+        , DIRECT_YN
+        , CREATE_ID
+    ) VALUES (
+    	#{ilItemApprId}
+        , #{ilItemCode}
+        , #{ilSpecFieldId}
+        , #{specFieldValue}
+        , #{directYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{createId}
+    )
+
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 공급업체 PK 값에 해당하는 발주유형 코드 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.07        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemPoTypeCodeMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoTypeCodeVo">
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="IL_SPEC_FIELD_ID" property="ilSpecFieldId" />
+        <result column="SPEC_FIELD_VALUE" property="specFieldValue" />
+        <result column="EPR_PO_TP" property="erpPoTp" />
+        <result column="TEMPLATE_YN" property="templateYn" />
+
+    </resultMap>
+
+   <select id="getItemPoTypeCode" resultMap="getItemPoTypeCodeMap" parameterType="string">
+    /* goodsItemRegister.getItemPoTypeCode */
+    SELECT
+        IL_PO_TP_ID      AS PO_TYPE_CODE
+      , PO_TP_NM         AS PO_TYPE_NAME
+      , PO_PER_ITEM_YN   AS PO_PER_ITEM_YN
+      , ERP_PO_TP		 AS EPR_PO_TP
+      , TEMPLATE_YN    		AS TEMPLATE_YN
+      FROM  IL_PO_TP
+     WHERE  UR_SUPPLIER_ID = #{urSupplierId}
+     AND IL_PO_TP.TEMPLATE_YN = 'Y'
+     AND IL_PO_TP.PO_PER_ITEM_YN = 'N'
+    </select>
+
+   <select id="getItemPoTypeOrgaCode" resultMap="getItemPoTypeCodeMap" parameterType="string">
+    /* goodsItemRegister.getItemPoTypeOrgaCode */
+    	SELECT
+        	IL_PO_TP_ID      AS PO_TYPE_CODE
+      		, PO_TP_NM         AS PO_TYPE_NAME
+      		, PO_PER_ITEM_YN   AS PO_PER_ITEM_YN
+      		, ERP_PO_TP		 AS EPR_PO_TP
+      		, TEMPLATE_YN    AS TEMPLATE_YN
+      	FROM  IL_PO_TP
+     	WHERE  UR_SUPPLIER_ID = #{urSupplierId}
+     	AND TEMPLATE_YN = 'Y'
+		AND PO_PER_ITEM_YN = 'Y'
+    </select>
+
+ 	<select id="getItemPoTypeAllCode" resultMap="getItemPoTypeCodeMap" parameterType="string">
+    /* goodsItemRegister.getItemPoTypeAllCode */
+    	SELECT
+        	IL_PO_TP_ID      AS PO_TYPE_CODE
+      		, PO_TP_NM         AS PO_TYPE_NAME
+      		, PO_PER_ITEM_YN   AS PO_PER_ITEM_YN
+      		, ERP_PO_TP		 AS EPR_PO_TP
+      		, TEMPLATE_YN    AS TEMPLATE_YN
+      	FROM  IL_PO_TP
+     	WHERE  UR_SUPPLIER_ID = #{urSupplierId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목코드의 공급업체 PK 에 해당하는 출고처 그룹, 출고처 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.28        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemWarehouseCodeMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemWarehouseCodeVo">
+        <result column="UR_SUPPLIER_WAREHOUSE_ID" property="urSupplierWarehouseId" />
+        <result column="WAREHOUSE_GROUP_CD" property="warehouseGroupCode" />
+        <result column="WAREHOUSE_GROUP_NAME" property="warehouseGroupName" />
+        <result column="WAREHOUSE_NAME" property="warehouseName" />
+        <result column="WAREHOUSE_ADDRESS" property="warehouseAddress" />
+        <result column="STORE_YN" property="storeYn" />
+        <result column="UR_WAREHOUSE_ID" property="urWarehouseId" />
+        <result column="STOCK_ORDER_YN" property="stockOrderYn" />
+		<result column="STORE_WAREHOUSE_YN" property="storeWarehouseYn" />
+		<result column="YONGIN_WAREHOUSE_YN" property="yonginWarehouseYn" />
+    </resultMap>
+
+    <select id="getItemWarehouseCodeList" resultMap="getItemWarehouseCodeMap">
+    /* goodsItemRegister.getItemWarehouseCodeList */
+    SELECT  T1.UR_SUPPLIER_WAREHOUSE_ID              AS  UR_SUPPLIER_WAREHOUSE_ID
+          , T2.WAREHOUSE_GRP_CD                      AS  WAREHOUSE_GROUP_CD
+          , T3.DIC_MST_NM                            AS  WAREHOUSE_GROUP_NAME
+          , T2.WAREHOUSE_NM                          AS  WAREHOUSE_NAME
+          , CONCAT( T2.ADDRESS1, ' ', IFNULL(T2.ADDRESS2, '') )  AS  WAREHOUSE_ADDRESS
+          , T2.STORE_YN                              AS  STORE_YN
+          , T2.UR_WAREHOUSE_ID						 AS  UR_WAREHOUSE_ID
+          , T2.STOCK_ORDER_YN						 AS  STOCK_ORDER_YN
+          , IF(T2.UR_WAREHOUSE_ID = IFNULL(WAREHOUSE_STORE_ID.PS_VAL,''), 'Y', 'N') AS STORE_WAREHOUSE_YN
+          , IF(T2.UR_WAREHOUSE_ID = IFNULL(WAREHOUSE_YONGIN_ID.PS_VAL,''), 'Y', 'N') AS YONGIN_WAREHOUSE_YN
+      FROM UR_SUPPLIER_WAREHOUSE  T1
+     INNER JOIN UR_WAREHOUSE      T2
+        ON  T1.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID
+     INNER JOIN (
+        SELECT  COMNCODE.ST_COMN_CODE_ID,  GBDIC.DIC_MST_NM
+          FROM  ST_COMN_CODE COMNCODE  /* 출고처 그룹 Code, Name 조회  */
+    	  INNER JOIN  GB_DIC_MST GBDIC
+            ON  COMNCODE.GB_DIC_MST_ID = GBDIC.GB_DIC_MST_ID
+         WHERE  ST_COMN_CODE_MST_CD = 'WAREHOUSE_GROUP'
+           AND  USE_YN = UPPER('Y')
+      ) T3
+        ON  T2.WAREHOUSE_GRP_CD = T3.ST_COMN_CODE_ID
+     JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_STORE_ID' ) WAREHOUSE_STORE_ID
+     JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_YONGIN_ID' ) WAREHOUSE_YONGIN_ID
+     WHERE  T1.UR_SUPPLIER_ID = #{urSupplierId}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(masterItemType, 'MASTER_ITEM_TYPE.INCORPOREITY')">
+            AND  T2.STORE_YN = 'N'
+        </if>
+    ORDER BY  T2.WAREHOUSE_GRP_CD, T2.CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목코드로  IL_ITEM_WAREHOUSE 에 등록된 품목별 출고처 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+   <resultMap id="getItemWarehouseMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemWarehouseVo">
+        <result column="IL_ITEM_WAREHOUSE_ID" property="ilItemWarehouseId" />
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="UR_WAREHOUSE_ID" property="urWarehouseId" />
+        <result column="UR_SUPPLIER_WAREHOUSE_ID" property="urSupplierWarehouseId" />
+        <result column="UNLIMIT_STOCK_YN" property="unlimitStockYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="STOCK_PO_YN" property="stockPoYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="PRE_ORDER_YN" property="preOrderYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="PRE_ORDER_TP" property="preOrderTp" />
+        <result column="MEMO" property="memo" />
+        <result column="WAREHOUSE_GROUP_CD" property="warehouseGroupCode" />
+        <result column="WAREHOUSE_GROUP_NAME" property="warehouseGroupName" />
+        <result column="WAREHOUSE_NAME" property="warehouseName" />
+        <result column="WAREHOUSE_ADDRESS" property="warehouseAddress" />
+        <result column="STORE_YN" property="storeYn" />
+        <result column="CAN_DELETED_YN" property="canDeleted" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="UPDATE_FLAG" property="updateFlag"/>
+        <result column="CREATE_ID" property="createId" />
+        <result column="MODIFY_ID" property="modifyId" />
+        <result column="STOCK_ORDER_YN" property="stockOrderYn" />
+        <result column="IL_PO_TP_ID" property="ilPoTpId" />
+		<result column="STORE_WAREHOUSE_YN" property="storeWarehouseYn" />
+		<result column="YONGIN_WAREHOUSE_YN" property="yonginWarehouseYn" />
+    </resultMap>
+
+    <select id="getItemWarehouseList" resultMap="getItemWarehouseMap">
+    /* goodsItemRegister.getRegisteredItemWarehouseList */
+    SELECT
+        T1.IL_ITEM_WAREHOUSE_ID                  AS  IL_ITEM_WAREHOUSE_ID
+      , T1.IL_ITEM_CD                            AS  IL_ITEM_CODE
+      , T2.UR_WAREHOUSE_ID                       AS  UR_WAREHOUSE_ID
+      , T1.UR_SUPPLIER_WAREHOUSE_ID              AS  UR_SUPPLIER_WAREHOUSE_ID
+      , T1.UNLIMIT_STOCK_YN                      AS  UNLIMIT_STOCK_YN
+      , T1.STOCK_PO_YN                           AS  STOCK_PO_YN
+      , T1.PRE_ORDER_YN                          AS  PRE_ORDER_YN
+      , T1.PRE_ORDER_TP                          AS  PRE_ORDER_TP
+      , T1.MEMO                                  AS  MEMO
+      , T3.WAREHOUSE_GRP_CD                      AS  WAREHOUSE_GROUP_CD
+      , T4.DIC_MST_NM                            AS  WAREHOUSE_GROUP_NAME
+      , T3.WAREHOUSE_NM                          AS  WAREHOUSE_NAME
+      , CONCAT( T3.ADDRESS1, ' ', IFNULL(T3.ADDRESS2, '') )  AS  WAREHOUSE_ADDRESS
+      , T3.STORE_YN                              AS  STORE_YN
+      , T3.STOCK_ORDER_YN						 AS  STOCK_ORDER_YN
+      , IF(T5.ITEM_TP = 'MASTER_ITEM_TYPE.SHOP_ONLY'
+      	 , 'N'
+      	 , CASE WHEN ( SELECT  COUNT(*)
+                      FROM  IL_GOODS  T5
+                     WHERE  T1.IL_ITEM_CD      = T5.IL_ITEM_CD
+                       AND  T2.UR_WAREHOUSE_ID = T5.UR_WAREHOUSE_ID ) > 0
+             THEN 'N'
+             ELSE 'Y'
+         END)                                     AS  CAN_DELETED_YN
+      , T1.CREATE_ID                             AS  CREATE_ID
+      , T1.MODIFY_ID                             AS  MODIFY_ID
+      , 'UPDATE'								 AS UPDATE_FLAG
+      , T1.IL_PO_TP_ID							 AS IL_PO_TP_ID
+      , IF(T2.UR_WAREHOUSE_ID = IFNULL(WAREHOUSE_STORE_ID.PS_VAL,''), 'Y', 'N') AS STORE_WAREHOUSE_YN
+      , IF(T2.UR_WAREHOUSE_ID = IFNULL(WAREHOUSE_YONGIN_ID.PS_VAL,''), 'Y', 'N') AS YONGIN_WAREHOUSE_YN
+     FROM  IL_ITEM_WAREHOUSE            T1
+	    INNER JOIN  UR_SUPPLIER_WAREHOUSE   T2
+	            ON  T1.UR_SUPPLIER_WAREHOUSE_ID = T2.UR_SUPPLIER_WAREHOUSE_ID
+	    INNER JOIN  UR_WAREHOUSE            T3
+	            ON  T2.UR_WAREHOUSE_ID = T3.UR_WAREHOUSE_ID
+	    INNER JOIN  (
+	            SELECT  COMNCODE.ST_COMN_CODE_ID,  GBDIC.DIC_MST_NM
+	              FROM  ST_COMN_CODE COMNCODE  /* 출고처 그룹 Code, Name 조회  */
+	        INNER JOIN  GB_DIC_MST GBDIC
+	                ON  COMNCODE.GB_DIC_MST_ID = GBDIC.GB_DIC_MST_ID
+	             WHERE  ST_COMN_CODE_MST_CD = 'WAREHOUSE_GROUP'
+	               AND  USE_YN = UPPER('Y')
+	    )                                   T4
+        ON  T3.WAREHOUSE_GRP_CD = T4.ST_COMN_CODE_ID
+        INNER JOIN  IL_ITEM   T5
+	            ON  T5.IL_ITEM_CD = T1.IL_ITEM_CD
+	    JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_STORE_ID' ) WAREHOUSE_STORE_ID
+	    JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_YONGIN_ID' ) WAREHOUSE_YONGIN_ID
+     WHERE  T1.IL_ITEM_CD       = #{ilItemCode}
+  ORDER BY  T1.IL_ITEM_WAREHOUSE_ID
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 공급처 ID / 유통기한 정보로 출고기준일 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.07        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getItemDeliveryBySupplierAndDistributionPeriod" resultType="integer">
+    /* goodsItemRegister.getItemDeliveryBySupplierAndDistributionPeriod */
+    SELECT  DELIVERY
+      FROM  IL_STOCK_DEADLINE
+     WHERE  UR_SUPPLIER_ID  = #{urSupplierId}
+       AND  UR_WAREHOUSE_ID = 0  /* 품목 등록 / 수정시는 출고처 ID 를 0 으로 설정 */
+       AND  DISTRIBUTION_PERIOD <![CDATA[<=]]> #{distributionPeriod}
+       AND  BASIC_YN = 'Y'
+  ORDER BY  DISTRIBUTION_PERIOD DESC
+     LIMIT  1
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 상품정보 제공고시 상세항목과 관련된 고정 메시지 조회 ( "풀무원고객기쁨센터 전화번호" 등등 )
+     *               ItemEnums 의 SpecFieldCode enum 참조
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.08        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getItemSpecFieldFixedMessage" resultType="string">
+    /* goodsItemRegister.getItemSpecFieldFixedMessage */
+    <choose>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(specFieldCode, 'SPEC_FIELD_02')">
+            SELECT  UH.CSTMR_SRVC_TEL
+              FROM  UR_COMPANY UC
+        INNER JOIN  UR_HEADQUARTERS UH
+                ON  UH.UR_COMPANY_ID = UC.UR_COMPANY_ID
+             WHERE  UC.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+
+        </when>
+    </choose>
+
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 출고처 정보 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.28        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemWarehouse">
+    /* goodsItemRegister.addItemWarehouse */
+    INSERT INTO IL_ITEM_WAREHOUSE (
+          IL_ITEM_CD
+        , UR_SUPPLIER_WAREHOUSE_ID
+        , UNLIMIT_STOCK_YN
+        , STOCK_PO_YN
+        , PRE_ORDER_YN
+        , PRE_ORDER_TP
+        , MEMO
+        , CREATE_ID
+        , IL_PO_TP_ID
+    ) VALUES (
+          #{ilItemCode}
+        , #{urSupplierWarehouseId}
+        , #{unlimitStockYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{stockPoYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{preOrderYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{preOrderTp}
+        , #{memo}
+        , #{createId}
+        , #{ilPoTpId}
+    )
+    </insert>
+
+	<update id="putItemWarehouse">
+    /* goodsItemRegister.putItemWarehouse */
+	    UPDATE
+	    	IL_ITEM_WAREHOUSE
+	    SET
+	    	PRE_ORDER_YN 				= #{preOrderYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler},
+	    	PRE_ORDER_TP 				= #{preOrderTp},
+	    	MODIFY_ID 					= #{createId},
+	    	IL_PO_TP_ID					= #{ilPoTpId}
+	    WHERE IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+
+    </update>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 등록된 품목 이미지 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemImageMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemImageVo">
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="BASIC_YN" property="basicYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler"/>
+        <result column="IMAGE_PATH" property="imagePath" />
+        <result column="IMAGE_PHYSICAL_NAME" property="imagePhysicalName" />
+        <result column="IMAGE_ORIGINAL_NAME" property="imageOriginalName" />
+        <result column="SIZE_640_IMAGE_PATH" property="size640ImagePath" />
+        <result column="SIZE_640_IMAGE_PHYSICAL_NAME" property="size640ImagePhysicalName" />
+        <result column="SIZE_320_IMAGE_PATH" property="size320ImagePath" />
+        <result column="SIZE_320_IMAGE_PHYSICAL_NAME" property="size320ImagePhysicalName" />
+        <result column="SIZE_216_IMAGE_PATH" property="size216ImagePath" />
+        <result column="SIZE_216_IMAGE_PHYSICAL_NAME" property="size216ImagePhysicalName" />
+        <result column="SIZE_180_IMAGE_PATH" property="size180ImagePath" />
+        <result column="SIZE_180_IMAGE_PHYSICAL_NAME" property="size180ImagePhysicalName" />
+        <result column="SIZE_75_IMAGE_PATH" property="size75ImagePath" />
+        <result column="SIZE_75_IMAGE_PHYSICAL_NAME" property="size75ImagePhysicalName" />
+        <result column="SORT" property="sort" />
+        <result column="CREATE_ID" property="createId" />
+        <result column="MODIFY_ID" property="modifyId" />
+
+    </resultMap>
+
+    <select id="getItemImage" resultMap="getItemImageMap">
+    /* goodsItemRegister.getItemImage */
+    SELECT  IL_ITEM_CD                          AS  IL_ITEM_CODE
+          , BASIC_YN                            AS  BASIC_YN
+          , IMG_NM                              AS  IMAGE_PATH
+          , SUBSTRING_INDEX( IMG_NM, '/' , -1)  AS  IMAGE_PHYSICAL_NAME
+          , IMG_ORIGIN_NM                       AS  IMAGE_ORIGINAL_NAME
+          , B_IMG                               AS  SIZE_640_IMAGE_PATH
+          , SUBSTRING_INDEX( B_IMG, '/' , -1)   AS  SIZE_640_IMAGE_PHYSICAL_NAME
+          , M_IMG                               AS  SIZE_320_IMAGE_PATH
+          , SUBSTRING_INDEX( M_IMG, '/' , -1)   AS  SIZE_320_IMAGE_PHYSICAL_NAME
+          , MS_IMG                              AS  SIZE_216_IMAGE_PATH
+          , SUBSTRING_INDEX( MS_IMG, '/' , -1)  AS  SIZE_216_IMAGE_PHYSICAL_NAME
+          , S_IMG                               AS  SIZE_180_IMAGE_PATH
+          , SUBSTRING_INDEX( S_IMG, '/' , -1)   AS  SIZE_180_IMAGE_PHYSICAL_NAME
+          , C_IMG                               AS  SIZE_75_IMAGE_PATH
+          , SUBSTRING_INDEX( C_IMG, '/' , -1)   AS  SIZE_75_IMAGE_PHYSICAL_NAME
+          , SORT                                AS  SORT
+          , CREATE_ID                           AS  CREATE_ID
+          , MODIFY_ID                           AS  MODIFY_ID
+      FROM  IL_ITEM_IMG
+     WHERE  1 = 1
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+       AND  IL_ITEM_CD = #{ilItemCode}
+    </if>
+    ORDER BY SORT
+
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 승인 요청된 품목 이미지 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemApprImage" resultMap="getItemImageMap">
+    /* goodsItemRegister.getItemImage */
+    SELECT  IL_ITEM_CD                          AS  IL_ITEM_CODE
+          , BASIC_YN                            AS  BASIC_YN
+          , IMG_NM                              AS  IMAGE_PATH
+          , SUBSTRING_INDEX( IMG_NM, '/' , -1)  AS  IMAGE_PHYSICAL_NAME
+          , IMG_ORIGIN_NM                       AS  IMAGE_ORIGINAL_NAME
+          , B_IMG                               AS  SIZE_640_IMAGE_PATH
+          , SUBSTRING_INDEX( B_IMG, '/' , -1)   AS  SIZE_640_IMAGE_PHYSICAL_NAME
+          , M_IMG                               AS  SIZE_320_IMAGE_PATH
+          , SUBSTRING_INDEX( M_IMG, '/' , -1)   AS  SIZE_320_IMAGE_PHYSICAL_NAME
+          , MS_IMG                              AS  SIZE_216_IMAGE_PATH
+          , SUBSTRING_INDEX( MS_IMG, '/' , -1)  AS  SIZE_216_IMAGE_PHYSICAL_NAME
+          , S_IMG                               AS  SIZE_180_IMAGE_PATH
+          , SUBSTRING_INDEX( S_IMG, '/' , -1)   AS  SIZE_180_IMAGE_PHYSICAL_NAME
+          , C_IMG                               AS  SIZE_75_IMAGE_PATH
+          , SUBSTRING_INDEX( C_IMG, '/' , -1)   AS  SIZE_75_IMAGE_PHYSICAL_NAME
+          , SORT                                AS  SORT
+          , CREATE_ID                           AS  CREATE_ID
+          , MODIFY_ID                           AS  MODIFY_ID
+      FROM  IL_ITEM_IMG_APPR
+     WHERE  1 = 1
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemApprId)">
+       AND  IL_ITEM_APPR_ID = #{ilItemApprId}
+    </if>
+    ORDER BY SORT
+    </select>
+
+    <select id="getRegenImageList" resultMap="getItemImageMap">
+    /* goodsItemRegister.getRegenImageList */
+	    SELECT  IL_ITEM_CD                          AS  IL_ITEM_CODE
+	          , BASIC_YN                            AS  BASIC_YN
+	          , IMG_NM                              AS  IMAGE_PATH
+	          , SUBSTRING_INDEX( IMG_NM, '/' , -1)  AS  IMAGE_PHYSICAL_NAME
+	          , IMG_ORIGIN_NM                       AS  IMAGE_ORIGINAL_NAME
+	          , B_IMG                               AS  SIZE_640_IMAGE_PATH
+	          , SUBSTRING_INDEX( B_IMG, '/' , -1)   AS  SIZE_640_IMAGE_PHYSICAL_NAME
+	          , M_IMG                               AS  SIZE_320_IMAGE_PATH
+	          , SUBSTRING_INDEX( M_IMG, '/' , -1)   AS  SIZE_320_IMAGE_PHYSICAL_NAME
+	          , MS_IMG                              AS  SIZE_216_IMAGE_PATH
+	          , SUBSTRING_INDEX( MS_IMG, '/' , -1)  AS  SIZE_216_IMAGE_PHYSICAL_NAME
+	          , S_IMG                               AS  SIZE_180_IMAGE_PATH
+	          , SUBSTRING_INDEX( S_IMG, '/' , -1)   AS  SIZE_180_IMAGE_PHYSICAL_NAME
+	          , C_IMG                               AS  SIZE_75_IMAGE_PATH
+	          , SUBSTRING_INDEX( C_IMG, '/' , -1)   AS  SIZE_75_IMAGE_PHYSICAL_NAME
+	          , SORT                                AS  SORT
+	          , CREATE_ID                           AS  CREATE_ID
+	          , MODIFY_ID                           AS  MODIFY_ID
+	      FROM  IL_ITEM_IMG
+		UNION ALL
+	    SELECT  CAST(CONCAT('G', IL_GOODS_IMG_ID) AS CHAR(20))    AS  IL_ITEM_CODE
+	          , BASIC_YN                            AS  BASIC_YN
+	          , IMG_NM                              AS  IMAGE_PATH
+	          , SUBSTRING_INDEX( IMG_NM, '/' , -1)  AS  IMAGE_PHYSICAL_NAME
+	          , IMG_ORIGIN_NM                       AS  IMAGE_ORIGINAL_NAME
+	          , B_IMG                               AS  SIZE_640_IMAGE_PATH
+	          , SUBSTRING_INDEX( B_IMG, '/' , -1)   AS  SIZE_640_IMAGE_PHYSICAL_NAME
+	          , M_IMG                               AS  SIZE_320_IMAGE_PATH
+	          , SUBSTRING_INDEX( M_IMG, '/' , -1)   AS  SIZE_320_IMAGE_PHYSICAL_NAME
+	          , MS_IMG                              AS  SIZE_216_IMAGE_PATH
+	          , SUBSTRING_INDEX( MS_IMG, '/' , -1)  AS  SIZE_216_IMAGE_PHYSICAL_NAME
+	          , S_IMG                               AS  SIZE_180_IMAGE_PATH
+	          , SUBSTRING_INDEX( S_IMG, '/' , -1)   AS  SIZE_180_IMAGE_PHYSICAL_NAME
+	          , C_IMG                               AS  SIZE_75_IMAGE_PATH
+	          , SUBSTRING_INDEX( C_IMG, '/' , -1)   AS  SIZE_75_IMAGE_PHYSICAL_NAME
+	          , SORT                                AS  SORT
+	          , CREATE_ID                           AS  CREATE_ID
+	          , MODIFY_ID                           AS  MODIFY_ID
+	      FROM  IL_GOODS_IMG
+    </select>
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 이미지 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemImage">
+    /* goodsItemRegister.addItemImage */
+    INSERT INTO IL_ITEM_IMG (
+        IL_ITEM_CD
+        , BASIC_YN
+        , IMG_NM
+        , IMG_ORIGIN_NM
+        , B_IMG
+        , M_IMG
+        , MS_IMG
+        , S_IMG
+        , C_IMG
+        , SORT
+        , CREATE_ID
+    ) VALUES (
+          #{ilItemCode}
+        , #{basicYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{imagePath}
+        , #{imageOriginalName}
+        , #{size640imagePath}
+        , #{size320imagePath}
+        , #{size216imagePath}
+        , #{size180imagePath}
+        , #{size75imagePath}
+        , #{sort}
+        , #{createId}
+    )
+    </insert>
+
+	<insert id="addItemImageUpdate">
+    /* goodsItemRegister.addItemImageUpdate */
+    INSERT INTO IL_ITEM_IMG (
+        IL_ITEM_CD
+        , BASIC_YN
+        , IMG_NM
+        , IMG_ORIGIN_NM
+        , B_IMG
+        , M_IMG
+        , MS_IMG
+        , S_IMG
+        , C_IMG
+        , SORT
+        , CREATE_ID
+    ) VALUES (
+          #{ilItemCd}
+        , #{basicYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{imgNm}
+        , #{imgOriginNm}
+        , #{bImg}
+        , #{mImg}
+        , #{msImg}
+        , #{sImg}
+        , #{cImg}
+        , #{sort}
+        , #{createId}
+    )
+    </insert>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 가격정보 원본 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.01        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemPriceOrigin">
+    /* goodsItemRegister.addItemPriceOrigin */
+    INSERT INTO IL_ITEM_PRICE_ORIG (
+          IL_ITEM_CD
+        , START_DT
+        , STANDARD_PRICE
+        , RECOMMENDED_PRICE
+        , CREATE_ID
+        , SYSTEM_UPDATE_YN
+        , MANAGER_UPDATE_YN
+    ) VALUES (
+          #{ilItemCode}
+        , STR_TO_DATE( CONCAT( REPLACE( #{priceApplyStartDate} , '-', '' ) , '000000' ) , '%Y%m%d%H%i%s' )
+        , #{standardPrice}
+        , #{recommendedPrice}
+        , #{createId}
+        , #{systemUpdateYn}
+        , #{managerUpdateYn}
+    )
+    ON DUPLICATE KEY UPDATE
+    	  STANDARD_PRICE = #{standardPrice}
+    	, RECOMMENDED_PRICE = #{recommendedPrice}
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목 할인 등록 => 올가 ERP 품목 등록시 ERP API 로 조회한 행사가격 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.29        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemDiscount">
+    /* goodsItemRegister.addItemDiscount */
+    INSERT INTO IL_ITEM_DISCOUNT (
+          IL_ITEM_CD
+        , DISCOUNT_TP
+        , DISCOUNT_START_DT
+        , DISCOUNT_END_DT
+        , DISCOUNT_METHOD_TP
+        , DISCOUNT_RATIO
+        , DISCOUNT_SALE_PRICE
+        , USE_YN
+        , CREATE_ID
+    ) VALUES (
+          #{ilItemCode}
+        , #{discountType}
+        , STR_TO_DATE( CONCAT( REPLACE( #{discountStartDate} , '-', '' ) , '000000' ) , '%Y%m%d%H%i%s' )
+        , STR_TO_DATE( CONCAT( REPLACE( #{discountEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' )
+        , #{discountMethodType}
+        , NULL
+        , #{discountSalePrice}
+        , #{useYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{createId}
+    )
+    ON DUPLICATE KEY UPDATE
+    	  DISCOUNT_END_DT = STR_TO_DATE( CONCAT( REPLACE( #{discountEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' )
+    	, DISCOUNT_METHOD_TP = #{discountMethodType}
+    	, DISCOUNT_RATIO = NULL
+    	, DISCOUNT_SALE_PRICE = #{discountSalePrice}
+    	, USE_YN = #{useYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 표준 카테고리, 보관방법에 따른 반품 가능여부, 반품 가능기간 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.27        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getItemReturnPeriodMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemReturnPeriodVo">
+        <result column="RETURN_REQUEST_AVAILABLE_YN" property="returnRequestAvailableYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler"/>
+        <result column="RETURN_PERIOD" property="returnPeriod" />
+
+    </resultMap>
+
+    <select id="getReturnPeriod" resultMap="getItemReturnPeriodMap">
+    /* goodsItemRegister.getReturnPeriod */
+    WITH RETURNABLE_YN_TBL AS (
+        SELECT  RETURNABLE_YN  /* 반품 가능여부 */
+          FROM  IL_CTGRY_STD
+         WHERE  IL_CTGRY_STD_ID = #{ilCategoryStandardId}
+    )
+    , RETURN_PERIOD_TBL AS (
+        SELECT  ATTR1   /*반품 가능여부*/
+              , ATTR2   /*반품 가능기간*/
+          FROM  ST_COMN_CODE
+         WHERE  ST_COMN_CODE_MST_CD = 'ERP_STORAGE_TYPE'
+           AND  ST_COMN_CODE_ID     = #{storageMethodType}
+           AND  USE_YN = UPPER('Y')
+    )
+    SELECT
+        CASE WHEN  ( SELECT  RETURNABLE_YN  FROM RETURNABLE_YN_TBL ) = 'Y'
+               OR  ( SELECT  ATTR1          FROM RETURN_PERIOD_TBL ) = 'Y'
+             THEN  'Y'
+             ELSE  'N'
+         END          AS RETURN_REQUEST_AVAILABLE_YN
+      , CASE WHEN  ( SELECT  RETURNABLE_YN  FROM RETURNABLE_YN_TBL ) = 'Y'
+               OR  ( SELECT  ATTR1          FROM RETURN_PERIOD_TBL ) = 'Y'
+             THEN  ( SELECT  ATTR2          FROM RETURN_PERIOD_TBL )
+             ELSE  NULL
+         END          AS RETURN_PERIOD
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.22        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @ 2021.12.10        남기승          ERP 생산처 추가
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItem">
+    /* goodsItemRegister.addItem */
+    INSERT INTO IL_ITEM (
+          IL_ITEM_CD
+        , ITEM_TP
+        , ITEM_NM
+        , ITEM_BARCODE
+        , ERP_IF_YN
+        , ERP_STOCK_IF_YN
+        , IL_CTGRY_STD_ID
+        , UR_SUPPLIER_ID
+        , UR_BRAND_ID
+        , DP_BRAND_ID
+        , ITEM_GRP
+        , STORAGE_METHOD_TP
+        , ORIGIN_TP
+        , ORIGIN_DETL
+        , DISTRIBUTION_PERIOD
+        , BOX_WIDTH
+        , BOX_DEPTH
+        , BOX_HEIGHT
+        , PCS_PER_BOX
+        , OMS
+        , SIZE_PER_PACKAGE
+        , SIZE_UNIT
+        , SIZE_UNIT_ETC
+        , QTY_PER_PACKAGE
+        , PACKAGE_UNIT
+        , PACKAGE_UNIT_ETC
+        , PDM_GROUP_CD
+        , TAX_YN
+        , IL_SPEC_MASTER_ID
+        , NUTRITION_DISP_YN
+        , NUTRITION_DISP_DEFAULT
+        , NUTRITION_QTY_PER_ONCE
+        , NUTRITION_QTY_TOTAL
+        , NUTRITION_ETC
+        , UNDELIVERABLE_AREA_TP
+        , EXTINCTION_YN
+        , VIDEO_URL
+        , VIDEO_AUTOPLAY_YN
+        , BASIC_DESC
+        , DETL_DESC
+        , ETC_DESC
+        , ERP_ITEM_NM
+        , ERP_ITEM_BARCODE
+        , ERP_CTGRY_LV1_ID
+        , ERP_CTGRY_LV2_ID
+        , ERP_CTGRY_LV3_ID
+        , ERP_CTGRY_LV4_ID
+        , ERP_BRAND_NM
+        , ERP_ITEM_GRP
+        , ERP_STORAGE_METHOD
+        , ERP_ORIGIN_NM
+        , ERP_DISTRIBUTION_PERIOD
+        , ERP_BOX_WIDTH
+        , ERP_BOX_DEPTH
+        , ERP_BOX_HEIGHT
+        , ERP_ITEM_WIDTH
+        , ERP_ITEM_DEPTH
+        , ERP_ITEM_HEIGHT
+        , ERP_PCS_PER_BOX
+        , ERP_TAX_YN
+        , ERP_PO_TYPE
+        , ERP_CAN_PO_YN
+        , ERP_NUTRITION_QTY_PER_ONCE
+        , ERP_NUTRITION_QTY_TOTAL
+        , ERP_NUTRITION_ETC
+        , ERP_O2O_EXPOSURE_TP
+        , ERP_PRODUCT_TP
+        , ERP_REGAL_CD
+        , ERP_SUPPLIER_NM
+        , CREATE_ID
+        , RENTAL_FEE_PER_MONTH
+		, RENTAL_DUE_MONTH
+		, RENTAL_DEPOSIT
+		, RENTAL_INSTALL_FEE
+		, RENTAL_REGIST_FEE
+		, ITEM_STATUS_TP
+		, ITEM_DISP_WEIGHT
+		, ITEM_REAL_WEIGHT
+    ) VALUES (
+          #{ilItemCode}
+        , #{itemType}
+        , SUBSTR( #{itemName}, 1, 50 )
+        , #{itemBarcode}
+        , #{erpLinkIfYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{erpStockIfYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{ilCategoryStandardId}
+        , #{urSupplierId}
+        , #{urBrandId}
+        , #{dpBrandId}
+        , #{bosItemGroup}
+        , #{storageMethodType}
+        , #{originType}
+        , #{originDetail}
+        , #{distributionPeriod}
+        , #{boxWidth}
+        , #{boxDepth}
+        , #{boxHeight}
+        , #{piecesPerBox}
+        , #{unitOfMeasurement}
+        , #{sizePerPackage}
+        , #{sizeUnit}
+        , #{sizeUnitEtc}
+        , #{quantityPerPackage}
+        , #{packageUnit}
+        , #{packageUnitEtc}
+        , #{pdmGroupCode}
+        , #{taxYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{ilSpecMasterId}
+        , #{nutritionDisplayYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{nutritionDisplayDefalut}
+        , #{nutritionQuantityPerOnce}
+        , #{nutritionQuantityTotal}
+        , #{nutritionEtc}
+        , #{undeliverableAreaType}
+        , #{extinctionYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{videoUrl}
+        , #{videoAutoplayYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{basicDescription}
+        , #{detaillDescription}
+        , #{etcDescription}
+        , #{erpItemName}
+        , #{erpItemBarcode}
+        , #{erpCategoryLevel1Id}
+        , #{erpCategoryLevel2Id}
+        , #{erpCategoryLevel3Id}
+        , #{erpCategoryLevel4Id}
+        , #{erpBrandName}
+        , #{erpItemGroup}
+        , #{erpStorageMethod}
+        , #{erpOriginName}
+        , #{erpDistributionPeriod}
+        , #{erpBoxWidth}
+        , #{erpBoxDepth}
+        , #{erpBoxHeight}
+        , #{erpItemWidth}
+        , #{erpItemDepth}
+        , #{erpItemHeight}
+        , #{erpPiecesPerBox}
+        , #{erpTaxYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{erpPoType}
+        , #{erpCanPoYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{erpNutritionQtyPerOnce}
+        , #{erpNutritionQtyTotal}
+        , #{erpNutritionEtc}
+        , #{erpO2oExposureType}
+        , #{erpProductType}
+        , #{erpLegalTypeCode}
+        , #{erpSupplierName}
+        , #{createId}
+        , #{rentalFeePerMonth}
+        , #{rentalDueMonth}
+        , #{rentalDeposit}
+        , #{rentalInstallFee}
+        , #{rentalRegistFee}
+		, #{itemStatusTp}
+        , #{itemDispWeight}
+        , #{itemRealWeight}
+    )
+    </insert>
+
+	<insert id="addItemPriceOrig" >
+		/* goodsItemRegister.addItemPriceOrig */
+		INSERT INTO IL_ITEM_PRICE_ORIG (
+        	  IL_ITEM_CD
+        	, START_DT
+        	, STANDARD_PRICE
+        	, RECOMMENDED_PRICE
+        	, CREATE_ID
+            ,SYSTEM_UPDATE_YN
+            ,MANAGER_UPDATE_YN
+    	) VALUES (
+          	#{ilItemCode}
+        	, STR_TO_DATE( CONCAT( REPLACE( #{priceApplyStartDate} , '-', '' ) , '000000' ) , '%Y%m%d%H%i%s' )
+        	, #{standardPrice}
+        	, #{recommendedPrice}
+        	, #{createId}
+        	, 'Y'
+        	, 'Y'
+    	)
+    	ON DUPLICATE KEY UPDATE
+    		  STANDARD_PRICE = #{standardPrice}
+    		, RECOMMENDED_PRICE = #{recommendedPrice}
+
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : ERP 미연동 품목코드 생성
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.29        손진구          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getErpNotLinkItemCode" resultType="java.lang.String">
+    /* goodsItemRegister.getErpNotLinkItemCode */
+    SELECT CONCAT( T1.SUPPLIER_CODE
+                 , LPAD( ( CASE WHEN T2.NUM_ITEM <![CDATA[ >= ]]> 999999
+                              THEN 1
+                              ELSE T2.NUM_ITEM
+                          END ), 6, '0' )
+                 ) AS ITEM_CODE
+      FROM ( SELECT SUPPLIER_CD  AS SUPPLIER_CODE
+              FROM UR_SUPPLIER
+             WHERE UR_SUPPLIER_ID = #{urSupplierId} ) T1
+      JOIN ( SELECT IFNULL( (
+          SELECT REGEXP_REPLACE(I.IL_ITEM_CD, '[^0-9]', '') AS NUM_ITEM
+            FROM IL_ITEM I
+           WHERE I.ERP_IF_YN = 'N'
+				AND I.IL_ITEM_CD LIKE CONCAT(
+					(
+						SELECT
+							SUPPLIER_CD  AS SUPPLIER_CODE
+						FROM UR_SUPPLIER
+						WHERE UR_SUPPLIER_ID = #{urSupplierId}
+					)
+				, '%')
+        ORDER BY NUM_ITEM DESC
+           LIMIT 1
+        ), 0 ) + 1 AS NUM_ITEM
+            FROM DUAL ) T2
+    </select>
+
+    <!-- 마스터 품목 등록 화면 관련 로직 End -->
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description   : 발주유형 저장
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.17  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPoSearch">
+    /* goodsItemRegister.addPoSearch */
+		INSERT INTO IL_PO_TP_IF_TEMP
+		(
+			 UR_SUPPLIER_ID
+			, PO_TP_NM
+			, PO_TP
+			, TEMPLATE_YN
+			, IL_ITEM_CD
+			, PO_SUN_YN
+			, PO_MON_YN
+			, PO_TUE_YN
+			, PO_WED_YN
+			, PO_THU_YN
+			, PO_FRI_YN
+			, PO_SAT_YN
+			, SCHEDULED_SUN
+			, SCHEDULED_MON
+			, SCHEDULED_TUE
+			, SCHEDULED_WED
+			, SCHEDULED_THU
+			, SCHEDULED_FRI
+			, SCHEDULED_SAT
+			, MOVE_REQ_SUN
+			, MOVE_REQ_MON
+			, MOVE_REQ_TUE
+			, MOVE_REQ_WED
+			, MOVE_REQ_THU
+			, MOVE_REQ_FRI
+			, MOVE_REQ_SAT
+			, PO_REQ_SUN
+			, PO_REQ_MON
+			, PO_REQ_TUE
+			, PO_REQ_WED
+			, PO_REQ_THU
+			, PO_REQ_FRI
+			, PO_REQ_SAT
+			, PO_PER_ITEM_YN
+			, PO_DEADLINE_HOUR
+			, PO_DEADLINE_MIN
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			IPT.UR_SUPPLIER_ID
+			, #{poTpNm} AS PO_TP_NM
+			, IPT.PO_TP
+			, 'N'
+			, #{ilItemCd} AS IL_ITEM_CD
+			, #{poSunYn} AS PO_SUN_YN
+			, #{poMonYn} AS PO_MON_YN
+			, #{poTueYn} AS PO_TUE_YN
+			, #{poWedYn} AS PO_WED_YN
+			, #{poThuYn} AS PO_THU_YN
+			, #{poFriYn} AS PO_FRI_YN
+			, #{poSatYn} AS PO_SAT_YN
+			, #{scheduledSun} AS SCHEDULED_SUN
+			, #{scheduledMon} AS SCHEDULED_MON
+			, #{scheduledTue} AS SCHEDULED_TUE
+			, #{scheduledWed} AS SCHEDULED_WED
+			, #{scheduledThu} AS SCHEDULED_THU
+			, #{scheduledFri} AS SCHEDULED_FRI
+			, #{scheduledSat} AS SCHEDULED_SAT
+			, #{moveReqSun} AS MOVE_REQ_SUN
+			, #{moveReqMon} AS MOVE_REQ_MON
+			, #{moveReqTue} AS MOVE_REQ_TUE
+			, #{moveReqWed} AS MOVE_REQ_WED
+			, #{moveReqThu} AS MOVE_REQ_THU
+			, #{moveReqFri} AS MOVE_REQ_FRI
+			, #{moveReqSat} AS MOVE_REQ_SAT
+			, #{poReqSun} AS PO_REQ_SUN
+			, #{poReqMon} AS PO_REQ_MON
+			, #{poReqTue} AS PO_REQ_TUE
+			, #{poReqWed} AS PO_REQ_WED
+			, #{poReqThu} AS PO_REQ_THU
+			, #{poReqFri} AS PO_REQ_FRI
+			, #{poReqSat} AS PO_REQ_SAT
+			, 'Y'
+			, IPT.PO_DEADLINE_HOUR
+			, IPT.PO_DEADLINE_MIN
+			, 0
+			, NOW()
+		FROM
+			IL_PO_TP IPT
+			INNER JOIN UR_SUPPLIER US
+				ON US.UR_SUPPLIER_ID = IPT.UR_SUPPLIER_ID
+		WHERE
+			US.SUPPLIER_CD = 'OG'
+			AND IPT.TEMPLATE_YN = 'Y'
+			AND IPT.PO_PER_ITEM_YN = 'Y'
+			AND IPT.PO_TP = 'PO_TYPE.PRODUCTION'
+			AND IPT.ERP_PO_TP = 'ERP_PO_TP.R2'
+		LIMIT 1
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 발주유형 Merge
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.22  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPoSearchMerge">
+
+    	<selectKey resultType="string" keyProperty="ilPoTpId" order="AFTER">
+            SELECT IFNULL(MAX(IL_PO_TP_ID), 1)  FROM IL_PO_TP
+		</selectKey>
+    /* goodsItemRegister.addPoSearchMerge */
+		INSERT INTO IL_PO_TP (
+			UR_SUPPLIER_ID
+			, PO_TP_NM
+			, PO_TP
+			, TEMPLATE_YN
+			, ERP_PO_TP
+			, IL_ITEM_CD
+			, PO_SUN_YN
+			, PO_MON_YN
+			, PO_TUE_YN
+			, PO_WED_YN
+			, PO_THU_YN
+			, PO_FRI_YN
+			, PO_SAT_YN
+			, SCHEDULED_SUN
+			, SCHEDULED_MON
+			, SCHEDULED_TUE
+			, SCHEDULED_WED
+			, SCHEDULED_THU
+			, SCHEDULED_FRI
+			, SCHEDULED_SAT
+			, MOVE_REQ_SUN
+			, MOVE_REQ_MON
+			, MOVE_REQ_TUE
+			, MOVE_REQ_WED
+			, MOVE_REQ_THU
+			, MOVE_REQ_FRI
+			, MOVE_REQ_SAT
+			, PO_REQ_SUN
+			, PO_REQ_MON
+			, PO_REQ_TUE
+			, PO_REQ_WED
+			, PO_REQ_THU
+			, PO_REQ_FRI
+			, PO_REQ_SAT
+			, PO_PER_ITEM_YN
+			, PO_DEADLINE_HOUR
+			, PO_DEADLINE_MIN
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			*
+		FROM (
+			SELECT
+				T.UR_SUPPLIER_ID AS UR_SUPPLIER_ID
+				, T.PO_TP_NM AS PO_TP_NM
+				, T.PO_TP AS PO_TP
+				, T.TEMPLATE_YN AS TEMPLATE_YN
+				, T.ERP_PO_TP AS ERP_PO_TP
+				, T.IL_ITEM_CD AS IL_ITEM_CD
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN T.PO_SUN_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_SUN_YN, 'N')
+					ELSE 'N'
+				END AS PO_SUN_YN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN T.PO_MON_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_MON_YN, 'N')
+					ELSE 'N'
+				END AS PO_MON_YN
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN T.PO_TUE_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_TUE_YN, 'N')
+					ELSE 'N'
+				END AS PO_TUE_YN
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN T.PO_WED_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_WED_YN, 'N')
+					ELSE 'N'
+				END AS PO_WED_YN
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN T.PO_THU_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_THU_YN, 'N')
+					ELSE 'N'
+				END AS PO_THU_YN
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN T.PO_FRI_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_FRI_YN, 'N')
+					ELSE 'N'
+				END AS PO_FRI_YN
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN T.PO_SAT_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_SAT_YN, 'N')
+					ELSE 'N'
+				END AS PO_SAT_YN
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_SUN, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_SUN, 0)
+					ELSE 0
+				END AS SCHEDULED_SUN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_MON, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_MON, 0)
+					ELSE 0
+				END AS SCHEDULED_MON
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_TUE, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_TUE, 0)
+					ELSE 0
+				END AS SCHEDULED_TUE
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_WED, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_WED, 0)
+					ELSE 0
+				END AS SCHEDULED_WED
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_THU, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_THU, 0)
+					ELSE 0
+				END AS SCHEDULED_THU
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_FRI, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_FRI, 0)
+					ELSE 0
+				END AS SCHEDULED_FRI
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_SAT, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_SAT, 0)
+					ELSE 0
+				END AS SCHEDULED_SAT
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_SUN, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_SUN, 0)
+					ELSE 0
+				END AS MOVE_REQ_SUN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_MON, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_MON, 0)
+					ELSE 0
+				END AS MOVE_REQ_MON
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_TUE, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_TUE, 0)
+					ELSE 0
+				END AS MOVE_REQ_TUE
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_WED, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_WED, 0)
+					ELSE 0
+				END AS MOVE_REQ_WED
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_THU, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_THU, 0)
+					ELSE 0
+				END AS MOVE_REQ_THU
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_FRI, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_FRI, 0)
+					ELSE 0
+				END AS MOVE_REQ_FRI
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_SAT, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_SAT, 0)
+					ELSE 0
+				END AS MOVE_REQ_SAT
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_SUN, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_SUN, 0)
+					ELSE 0
+				END AS PO_REQ_SUN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_MON, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_MON, 0)
+					ELSE 0
+				END AS PO_REQ_MON
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_TUE, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_TUE, 0)
+					ELSE 0
+				END AS PO_REQ_TUE
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_WED, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_WED, 0)
+					ELSE 0
+				END AS PO_REQ_WED
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_THU, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_THU, 0)
+					ELSE 0
+				END AS PO_REQ_THU
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_FRI, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_FRI, 0)
+					ELSE 0
+				END AS PO_REQ_FRI
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_SAT, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_SAT, 0)
+					ELSE 0
+				END AS PO_REQ_SAT
+				, T.PO_PER_ITEM_YN AS PO_PER_ITEM_YN
+				, T.PO_DEADLINE_HOUR AS PO_DEADLINE_HOUR
+				, T.PO_DEADLINE_MIN AS PO_DEADLINE_MIN
+				, T.CREATE_ID AS CREATE_ID
+				, T.CREATE_DT AS CREATE_DT
+			FROM (
+				SELECT
+					UR_SUPPLIER_ID
+					, PO_TP_NM
+					, PO_TP
+					, TEMPLATE_YN
+					, ERP_PO_TP
+					, IL_ITEM_CD
+					, MAX(PO_SUN_YN) AS PO_SUN_YN
+					, MAX(PO_MON_YN) AS PO_MON_YN
+					, MAX(PO_TUE_YN) AS PO_TUE_YN
+					, MAX(PO_WED_YN) AS PO_WED_YN
+					, MAX(PO_THU_YN) AS PO_THU_YN
+					, MAX(PO_FRI_YN) AS PO_FRI_YN
+					, MAX(PO_SAT_YN) AS PO_SAT_YN
+					, MAX(SCHEDULED_SUN) AS SCHEDULED_SUN
+					, MAX(SCHEDULED_MON) AS SCHEDULED_MON
+					, MAX(SCHEDULED_TUE) AS SCHEDULED_TUE
+					, MAX(SCHEDULED_WED) AS SCHEDULED_WED
+					, MAX(SCHEDULED_THU) AS SCHEDULED_THU
+					, MAX(SCHEDULED_FRI) AS SCHEDULED_FRI
+					, MAX(SCHEDULED_SAT) AS SCHEDULED_SAT
+					, MAX(MOVE_REQ_SUN) AS MOVE_REQ_SUN
+					, MAX(MOVE_REQ_MON) AS MOVE_REQ_MON
+					, MAX(MOVE_REQ_TUE) AS MOVE_REQ_TUE
+					, MAX(MOVE_REQ_WED) AS MOVE_REQ_WED
+					, MAX(MOVE_REQ_THU) AS MOVE_REQ_THU
+					, MAX(MOVE_REQ_FRI) AS MOVE_REQ_FRI
+					, MAX(MOVE_REQ_SAT) AS MOVE_REQ_SAT
+					, MAX(PO_REQ_SUN) AS PO_REQ_SUN
+					, MAX(PO_REQ_MON) AS PO_REQ_MON
+					, MAX(PO_REQ_TUE) AS PO_REQ_TUE
+					, MAX(PO_REQ_WED) AS PO_REQ_WED
+					, MAX(PO_REQ_THU) AS PO_REQ_THU
+					, MAX(PO_REQ_FRI) AS PO_REQ_FRI
+					, MAX(PO_REQ_SAT) AS PO_REQ_SAT
+					, PO_PER_ITEM_YN
+					, PO_DEADLINE_HOUR
+					, PO_DEADLINE_MIN
+					, CREATE_ID
+					, CREATE_DT
+				FROM
+					IL_PO_TP_IF_TEMP
+				GROUP BY UR_SUPPLIER_ID, PO_TP_NM
+			) T
+			LEFT JOIN IL_PO_TP IPT
+				ON IPT.IL_ITEM_CD = T.IL_ITEM_CD
+		) TT
+		ON DUPLICATE KEY
+		UPDATE
+			PO_SUN_YN = TT.PO_SUN_YN
+			, PO_MON_YN = TT.PO_MON_YN
+			, PO_TUE_YN = TT.PO_TUE_YN
+			, PO_WED_YN = TT.PO_WED_YN
+			, PO_THU_YN = TT.PO_THU_YN
+			, PO_FRI_YN = TT.PO_FRI_YN
+			, PO_SAT_YN = TT.PO_SAT_YN
+			, SCHEDULED_SUN = TT.SCHEDULED_SUN
+			, SCHEDULED_MON = TT.SCHEDULED_MON
+			, SCHEDULED_TUE = TT.SCHEDULED_TUE
+			, SCHEDULED_WED = TT.SCHEDULED_WED
+			, SCHEDULED_THU = TT.SCHEDULED_THU
+			, SCHEDULED_FRI = TT.SCHEDULED_FRI
+			, SCHEDULED_SAT = TT.SCHEDULED_SAT
+			, MOVE_REQ_SUN = TT.MOVE_REQ_SUN
+			, MOVE_REQ_MON = TT.MOVE_REQ_MON
+			, MOVE_REQ_TUE = TT.MOVE_REQ_TUE
+			, MOVE_REQ_WED = TT.MOVE_REQ_WED
+			, MOVE_REQ_THU = TT.MOVE_REQ_THU
+			, MOVE_REQ_FRI = TT.MOVE_REQ_FRI
+			, MOVE_REQ_SAT = TT.MOVE_REQ_SAT
+			, PO_REQ_SUN = TT.PO_REQ_SUN
+			, PO_REQ_MON = TT.PO_REQ_MON
+			, PO_REQ_TUE = TT.PO_REQ_TUE
+			, PO_REQ_WED = TT.PO_REQ_WED
+			, PO_REQ_THU = TT.PO_REQ_THU
+			, PO_REQ_FRI = TT.PO_REQ_FRI
+			, PO_REQ_SAT = TT.PO_REQ_SAT
+			, MODIFY_ID = 0
+			, MODIFY_DT = NOW()
+    </insert>
+
+ 	<delete id="delPoSearch">
+    	/* goodsItemRegister.delPoSearch */
+		DELETE FROM IL_PO_TP_IF_TEMP
+    </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 변경내역 저장
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.04.08		정형진		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemChangeLog">
+		/* goodsItemRegister.addItemChangeLog */
+		INSERT INTO IL_ITEM_CHNAGE_LOG
+		(
+			IL_ITEM_CD
+		,	TABLE_NM
+		,	TABLE_ID_ORIG
+		,	TABLE_ID_NEW
+		,	BEFORE_DATA
+		,	AFTER_DATA
+		,	COLUMN_NM
+		,	COLUMN_LABEL
+		,	CREATE_ID
+		,	CREATE_DT
+		)
+		VALUES
+		(
+			#{ilItemCd}
+		,	#{tableNm}
+		,	#{tableIdOrig}
+		,	#{tableIdNew}
+		,	#{beforeData}
+		,	#{afterData}
+		,	#{columnNm}
+		,	#{columnLabel}
+		,	#{createId}
+		,	#{createDt}
+		)
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 승인 내역 확인, 승인 내역 존재시 요청 자격 확인
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.06		임상건		  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemRegistApprVo" id="itemApprInfoMap">
+		<result column="IL_ITEM_APPR_ID"	property="ilItemApprId"/>
+		<result column="IL_ITEM_CD"		property="ilItemCd"/>
+		<result column="APPR_REQ_USER_YN"	property="apprReqUserYn"/>
+		<result column="APPR_REQ_USER_ID"	property="apprReqUserId"/>
+		<result column="APPR_STAT"			property="apprStat"/>
+		<result column="NOW_SALE_STATUS"	property="nowSaleStatus"/>
+
+	</resultMap>
+
+	<select id="itemApprInfo" resultMap="itemApprInfoMap">
+		/* goodsItemRegister.itemApprInfo */
+		SELECT
+			IGA.IL_ITEM_APPR_ID
+		,	IGA.IL_ITEM_CD
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userId)">
+		,	CASE WHEN IGA.APPR_REQ_USER_ID = #{userId} THEN TRUE ELSE FALSE END APPR_REQ_USER_YN
+		</if>
+		,	IGA.APPR_REQ_USER_ID
+		,	IGA.APPR_STAT
+		,	IG.ITEM_STATUS_TP AS NOW_SALE_STATUS
+		FROM
+			IL_ITEM_APPR IGA
+		INNER JOIN IL_ITEM IG ON IG.IL_ITEM_CD = IGA.IL_ITEM_CD
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCd)">
+                AND IGA.IL_ITEM_CD = #{ilItemCd}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemApprId)">
+                AND IGA.IL_ITEM_APPR_ID = #{ilItemApprId}
+            </if>
+            AND	IGA.APPR_KIND_TP = #{apprKindTp}
+        </where>
+        ORDER BY IGA.IL_ITEM_APPR_ID DESC
+        LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 승인 내역 저장
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		임상건		  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemAppr" useGeneratedKeys="true" keyProperty="ilItemApprId">
+		/* goodsItemRegister.addItemAppr */
+		INSERT INTO IL_ITEM_APPR (
+			IL_ITEM_CD
+		,	APPR_KIND_TP
+		,	APPR_STAT
+		,	APPR_REQ_DT
+		,	APPR_REQ_USER_ID
+		,	APPR_SUB_USER_ID
+		,	APPR_USER_ID
+		,	CREATE_DT
+		,	CREATE_ID
+		, 	ITEM_NM
+		, 	ERP_IF_YN
+		, 	ERP_STOCK_IF_YN
+		,	IL_CTGRY_STD_ID
+		,	UR_SUPPLIER_ID
+		,	UR_BRAND_ID
+		,	STORAGE_METHOD_TP
+		,	DISTRIBUTION_PERIOD
+		,	SIZE_PER_PACKAGE
+		,	SIZE_UNIT
+		,	SIZE_UNIT_ETC
+		,	IL_SPEC_MASTER_ID
+		, ITEM_GRP
+		, ORIGIN_TP
+		, ORIGIN_DETL
+		, BOX_WIDTH
+		, BOX_DEPTH
+		, BOX_HEIGHT
+		, PCS_PER_BOX
+		, OMS
+		, QTY_PER_PACKAGE
+		, PACKAGE_UNIT
+		, PACKAGE_UNIT_ETC
+		, DP_BRAND_ID
+		, NUTRITION_DISP_YN
+		, NUTRITION_DISP_DEFAULT
+		, NUTRITION_QTY_PER_ONCE
+		, NUTRITION_QTY_TOTAL
+		, NUTRITION_ETC
+		, VIDEO_URL
+		, VIDEO_AUTOPLAY_YN
+		, BASIC_DESC
+		, DETL_DESC
+		, ETC_DESC
+		)
+		VALUES (
+			#{ilItemCd}
+		,	#{apprKindTp}
+		,	#{apprStat}
+		,	NOW()
+		,	#{apprReqUserId}
+		,	#{apprSubUserId}
+		,	#{apprUserId}
+		,	NOW()
+		,	#{apprReqUserId}
+		,	#{itemNm}
+		,	#{erpIfYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+		,	#{erpStockIfYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+		,	#{ilCtgryStdId}
+		,	#{urSupplierId}
+		,	#{urBrandId}
+		,	#{storageMethodTp}
+		,   #{distributionPeriod}
+		,	#{sizePerPackage}
+		,	#{sizeUnit}
+		,	#{sizeUnitEtc}
+		,	#{ilSpecMasterId}
+		,	#{itemGrp}
+		,	#{originTp}
+		,	#{originDetl}
+		,	#{boxWidth}
+		,	#{boxDepth}
+		,	#{boxHeight}
+		,	#{piecesPerBox}
+		,	#{oms}
+		,	#{qtyPerPackage}
+		,	#{packageUnit}
+		,	#{packageUnitEtc}
+		,	#{dpBrandId}
+		,	#{nutritionDispYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+		,	#{nutritionDispDefault}
+		,	#{nutritionQtyPerOnce}
+		,	#{nutritionQtyTotal}
+		,	#{nutritionEtc}
+		,	#{videoUrl}
+		,	#{videoAutoplayYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+		,	#{basicDesc}
+		,	#{detlDesc}
+		,	#{etcDesc}
+
+		)
+
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 승인 상태 이력 저장
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		임상건		  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemApprStatusHistory" useGeneratedKeys="true" keyProperty="ilItemApprId">
+		/* goodsItemRegister.addItemApprStatusHistory */
+		INSERT INTO IL_ITEM_APPR_STATUS_HISTORY (
+			IL_ITEM_APPR_ID
+		,	PREV_APPR_STAT
+		,	APPR_STAT
+		,	STATUS_CMNT
+		,	APPR_SUB_USER_ID
+		,	APPR_USER_ID
+		,	CREATE_DT
+		,	CREATE_ID
+		)
+		VALUES (
+			#{ilItemApprId}
+		,	#{prevApprStat}
+		,	#{apprStat}
+		,	#{statusCmnt}
+		,	#{apprSubUserId}
+		,	#{apprUserId}
+		,	NOW()
+		,	#{apprReqUserId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 상태 변경
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		임상건		  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="updateItemRequestStatus">
+		/* goodsItemRegister.updateItemRequestStatus */
+
+		UPDATE
+			IL_ITEM
+		SET
+			ITEM_STATUS_TP = #{itemStatusTp},
+			MODIFY_DT = NOW()
+		WHERE IL_ITEM_CD = #{ilItemCd}
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 인증정보 상태 변경
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.28		정형진		  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemCertificationAppr">
+		/* goodsItemRegister.addItemCertificationAppr */
+		INSERT INTO IL_ITEM_CERTIFICATION_APPR (
+			IL_ITEM_APPR_ID,
+			IL_ITEM_CD,
+			IL_CERTIFICATION_ID,
+			CERTIFICATION_DESC,
+			CREATE_ID,
+			CREATE_DT
+
+		)
+		VALUES (
+			#{ilItemApprId},
+			#{ilItemCd},
+			#{ilCertificationId},
+			#{certificationDesc},
+			#{createId},
+			NOW()
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 이미지 승인 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.28        정형진          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemImageAppr">
+    /* goodsItemRegister.addItemImageAppr */
+    INSERT INTO IL_ITEM_IMG_APPR (
+    	IL_ITEM_APPR_ID
+        , IL_ITEM_CD
+        , BASIC_YN
+        , IMG_NM
+        , IMG_ORIGIN_NM
+        , B_IMG
+        , M_IMG
+        , MS_IMG
+        , S_IMG
+        , C_IMG
+        , SORT
+        , CREATE_ID
+    ) VALUES (
+		#{ilItemApprId}
+        , #{ilItemCode}
+        , #{basicYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+        , #{imagePath}
+        , #{imageOriginalName}
+        , #{size640imagePath}
+        , #{size320imagePath}
+        , #{size216imagePath}
+        , #{size180imagePath}
+        , #{size75imagePath}
+        , #{sort}
+        , #{createId}
+    )
+    </insert>
+
+	 <insert id="addItemNutritionAppr">
+    /* goodsItemRegister.addItemNutritionAppr */
+    INSERT INTO IL_ITEM_NUTRITION_APPR (
+    	  IL_ITEM_APPR_ID
+        , IL_ITEM_CD
+        , IL_NUTRITION_CD
+        , ERP_NUTRITION_QTY
+        , ERP_NUTRITION_PERCENT
+        , NUTRITION_QTY
+        , NUTRITION_PERCENT
+        , SORT
+        , CREATE_ID
+    ) VALUES (
+    		#{ilItemApprId}
+        , #{ilItemCd}
+        , #{nutritionCode}
+        , #{erpNutritionQuantity}
+        , #{erpNutritionPercent}
+        , #{nutritionQuantity}
+        , #{nutritionPercent}
+        , #{sort}
+        , #{createId}
+    )
+    </insert>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description : 품목가격 시스템 승인
+      * @
+      * @ 수정일            수정자          수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.07.28        신선미          최초생성
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <insert id="setItemPriceAppr" parameterType="kr.co.pulmuone.v1.goods.item.dto.ItemPriceApprovalRequestDto" useGeneratedKeys="true" keyProperty="ilItemPriceApprId">
+        /* goodsItemRegister.setItemPriceAppr */
+        INSERT INTO IL_ITEM_PRICE_APPR (
+            IL_ITEM_CD, START_DT, STANDARD_PRICE, STANDARD_PRICE_CHG, RECOMMENDED_PRICE,
+            RECOMMENDED_PRICE_CHG, PRICE_MANAGE_TP, APPR_STAT, APPR_REQ_DT, APPR_REQ_USER_ID,
+            APPR_USER_ID, APPR_CHG_USER_ID, APPR_CHG_DT, CREATE_DT, CREATE_ID, MODIFY_DT, MODIFY_ID)
+        VALUES(
+                  #{ilItemCode}, #{priceApplyStartDate}, #{standardPrice}, #{standardPriceChange}, #{recommendedPrice},
+                  #{recommendedPriceChange}, #{priceManageTp}, #{approvalStatus}, CURRENT_TIMESTAMP, #{approvalRequestUserId},
+                  0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{approvalRequestUserId}, CURRENT_TIMESTAMP, 0
+              )
+    </insert>
+</mapper>

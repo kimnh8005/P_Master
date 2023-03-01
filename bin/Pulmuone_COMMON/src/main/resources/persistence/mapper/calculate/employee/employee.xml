@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.employee.EmployeeMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부문 구문 전체 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOuIdAllList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.vo.SettleOuMngVo">
+		/*	employee.getOuIdAllList  */
+		SELECT
+			OU_ID,
+			OU_NM,
+			USE_YN,
+			CREATE_DT
+		FROM
+			CA_SETTLE_OU_MNG
+		ORDER BY OU_ID ASC
+	</select>
+
+	<sql id="findEmployeeItem">
+		<where>
+			1=1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findOuId)">
+				AND csem.OU_ID = #{findOuId}
+			</if>
+			<if test="confirmList.size() > 0">
+				AND csem.CONFIRM_YN IN
+				<foreach collection="confirmList" item="confirmYn" index="index" separator="," open="(" close=")">
+					#{confirmYn}
+				</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findStartYear)
+						and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findStartMonth)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findEndYear)
+							and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findEndMonth)">
+					AND csem.SETTLE_MONTH BETWEEN CONCAT(#{findStartYear}, #{findStartMonth}) AND CONCAT(#{findEndYear}, #{findEndMonth})
+				</if>
+			</if>
+		</where>
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부문 구문 전체 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getEmployeeListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.employee.dto.EmployeeListRequestDto">
+		/*	employee.getEmployeeListCount  */
+		SELECT
+			COUNT(*) AS CNT
+		FROM
+			CA_SETTLE_EMPLOYEE_MASTER csem
+		<include refid="findEmployeeItem" />
+	</select>
+
+	<select id="getEmployeeList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.EmployeeListDto" parameterType="kr.co.pulmuone.v1.calculate.employee.dto.EmployeeListRequestDto">
+		/*	employee.getEmployeeList  */
+		SELECT
+			SUM(x.SALE_PRICE) OVER() AS TOTAL_SALE_PRICE,
+			x.CA_SETTLE_EMPLOYEE_MONTH_ID,
+			x.SETTLE_MONTH,
+			x.START_DT,
+			x.END_DT,
+			x.OU_ID,
+			x.OU_NM,
+			x.SALE_PRICE,
+			x.CONFIRM_YN,
+			x.CONFIRM_DT,
+			x.SESSION_ID
+		FROM
+		(
+			SELECT
+				csem.CA_SETTLE_EMPLOYEE_MONTH_ID,
+				csem.SETTLE_MONTH,
+				csem.START_DT,
+				csem.END_DT,
+				csem.OU_ID,
+				csem.OU_NM,
+				(
+					SELECT
+						SUM(TOTAL_EMPLOYEE_DISCOUNT_PRICE) AS SALE_PRICE
+					FROM CA_SETTLE_EMPLOYEE_DAY csed
+					INNER JOIN CA_SETTLE_EMPLOYEE cse ON csed.UR_ERP_EMPLOYEE_CD = cse.UR_ERP_EMPLOYEE_CD
+					WHERE DATE_FORMAT(SETTLE_DAY, '%Y%m') = csem.SETTLE_MONTH
+					AND cse.OU_ID = csem.OU_ID
+					AND cse.SETTLE_MONTH = csem.SETTLE_MONTH
+					GROUP BY cse.OU_ID
+				) AS SALE_PRICE,
+				csem.CONFIRM_YN,
+				csem.CONFIRM_DT,
+				csem.SESSION_ID
+			FROM CA_SETTLE_EMPLOYEE_MASTER csem
+			<include refid="findEmployeeItem" />
+			<include refid="_common.pageLimit"/>
+		) x
+
+	</select>
+
+	<!-- 임직원 지원금 정산 확정 대상목록 조회 -->
+	<select id="selectCalculateConfirmProcList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.vo.CalculateConfirmProcVo">
+		/* employee.selectCalculateConfirmProcList */
+		SELECT
+			x.ERP_ORGANIZATION_CD AS erpOrganizationCd
+			, x.FIN_REGAL_CD AS finRegalCd
+			, x.FIN_ORGANIZATION_CD AS finOrganizationCd
+			, x.FIN_ACCOUNT_CD AS finAccountCd
+			, x.SOB AS sob
+			, x.TOTAL_SALE_PRICE AS totalSalePrice
+			, x.TOTAL_EMPLOYEE_DISCOUNT_PRICE AS totalEmployeeDiscountPrice
+			, x.TOTAL_EMPLOYEE_PRICE AS totalEmployeePrice
+			, #{settleMonth} AS settleMonth
+			, #{ouId} AS ouId
+			, DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS createDt
+			, x.DEBIT_SIDE_PRICE AS debitSidePrice
+			, (CASE @val WHEN x.FIN_REGAL_CD THEN @rownum:=@rownum+1 ELSE @rownum:=1 END) as debitSideNo
+			, (@val:=x.FIN_REGAL_CD) finRegalCdTemp
+			, (SELECT DATE_FORMAT(END_DT, '%Y%m%d') FROM CA_SETTLE_EMPLOYEE_MASTER WHERE SETTLE_MONTH = #{settleMonth} AND SESSION_ID = #{sessionId}) AS endDt
+			, (SELECT ATTR2 FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD = 'SETTLE_AP' AND ATTR1 = #{ouId}) AS creDepCd
+		FROM
+		(
+			SELECT
+				cse.ERP_ORGANIZATION_CD
+				, cse.FIN_REGAL_CD
+				, cse.FIN_ORGANIZATION_CD
+				, cse.FIN_ACCOUNT_CD
+				, cse.SOB
+				, SUM(csed.TOTAL_SALE_PRICE) AS TOTAL_SALE_PRICE
+				, SUM(csed.TOTAL_EMPLOYEE_DISCOUNT_PRICE) AS TOTAL_EMPLOYEE_DISCOUNT_PRICE
+				, SUM(csed.TOTAL_EMPLOYEE_PRICE) AS TOTAL_EMPLOYEE_PRICE
+				, SUM(SUM(csed.TOTAL_EMPLOYEE_DISCOUNT_PRICE)) OVER(PARTITION BY cse.FIN_REGAL_CD) AS DEBIT_SIDE_PRICE
+			FROM CA_SETTLE_EMPLOYEE_DAY csed
+			JOIN (SELECT @val:='', @rownum:=0) SUB
+			INNER JOIN CA_SETTLE_EMPLOYEE cse ON csed.UR_ERP_EMPLOYEE_CD = cse.UR_ERP_EMPLOYEE_CD AND cse.SETTLE_MONTH = #{settleMonth}
+			WHERE DATE_FORMAT(csed.SETTLE_DAY, '%Y%m') = #{settleMonth}
+			AND cse.OU_ID = #{ouId}
+			AND csed.SETTLE_YN = 'N'
+			GROUP BY cse.ERP_ORGANIZATION_CD, cse.FIN_REGAL_CD, cse.FIN_ORGANIZATION_CD, cse.FIN_ACCOUNT_CD, cse.SOB
+			HAVING SUM(csed.TOTAL_EMPLOYEE_DISCOUNT_PRICE) != 0
+			ORDER BY cse.FIN_REGAL_CD
+		) x
+		ORDER BY x.FIN_REGAL_CD, (CASE @val WHEN x.FIN_REGAL_CD THEN @rownum:=@rownum+1 ELSE @rownum:=1 END)
+	</select>
+
+	<!-- 임직원정산 (일마감) 정산여부 업데이트 -->
+	<update id="putSettleEmployeeDayYn">
+        /* employee.putSettleEmployeeDayYn */
+        UPDATE CA_SETTLE_EMPLOYEE_DAY
+        SET SETTLE_YN = 'Y'
+            , SETTLE_DT = NOW()
+            , SESSION_ID = #{sessionId}
+        WHERE ERP_ORGANIZATION_CD = #{headerItem.erpOrganizationCd}
+        AND FIN_REGAL_CD = #{headerItem.finRegalCd}
+        AND FIN_ORGANIZATION_CD = #{headerItem.finOrganizationCd}
+        AND FIN_ACCOUNT_CD = #{headerItem.finAccountCd}
+        AND SOB = #{headerItem.sob}
+        AND OU_ID = #{headerItem.ouId}
+        AND DATE_FORMAT(SETTLE_DAY, '%Y%m') = #{headerItem.settleMonth}
+        AND SETTLE_YN = 'N'
+    </update>
+
+	<!-- 임직원정산 마스터 확정 업데이트 -->
+	<update id="putSettleEmployeeMasterConfirm">
+        /* employee.putSettleEmployeeMasterConfirm */
+        UPDATE CA_SETTLE_EMPLOYEE_MASTER
+        SET CONFIRM_YN = 'Y'
+            , CONFIRM_DT = NOW()
+            , CONFIRM_ID = #{userId}
+        WHERE SESSION_ID = #{sessionId}
+        AND OU_ID = #{ouId}
+        AND SETTLE_MONTH = #{settleMonth}
+        AND CONFIRM_YN = 'N'
+    </update>
+
+	<!-- 임직원정산 이력 저장 -->
+	<insert id="addSettleEmployeeHist">
+        /* employee.addSettleEmployeeHist */
+		INSERT INTO CA_SETTLE_EMPLOYEE_HIST
+		(
+			SETTLE_MONTH
+			, OU_ID
+			, SESSION_ID
+			, CRE_DAT
+			, LEG_CD
+			, LIN_NO
+			, GL_DAT
+			, INV_DAT
+			, ACC_DES
+			, INV_AMT
+			, SUP_NO
+			, SUP_NAM
+			, PAY_MET
+			, PAY_TER
+			, PAY_GRP
+			, CRE_LEG_CD
+			, CRE_DEP_CD
+			, CRE_ACC_CD
+			, CRE_ORG
+			, DEB_LIN_NO
+			, DEB_LIN_AMT
+			, DEB_LEG_CD
+			, DEB_DEP_CD
+			, DEB_ACC_CD
+			, DEB_ORG
+		)
+		VALUES
+		(
+			#{perId}
+			, #{ouId}
+			, #{sesId}
+			, #{creDat}
+			, #{legCd}
+			, #{linNo}
+			, #{glDat}
+			, #{invDat}
+			, #{accDes}
+			, #{invAmt}
+			, #{supNo}
+			, #{supNam}
+			, #{payMet}
+			, #{payTer}
+			, #{payGrp}
+			, #{creLegCd}
+			, #{creDepCd}
+			, #{creAccCd}
+			, #{creOrg}
+			, #{debLinNo}
+			, #{debLinAmt}
+			, #{debLegCd}
+			, #{debDepCd}
+			, #{debAccCd}
+			, #{debOrg}
+		)
+    </insert>
+
+	<!-- 임직원 한도 사용액 엑셀다운로드 -->
+	<select id="selectLimitUsePriceExceDownloadlList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.vo.LimitUsePriceExceDownloadVo">
+		/* employee.selectLimitUsePriceExceDownloadlList */
+		SELECT
+			csed.UR_ERP_EMPLOYEE_CD AS urErpEmployeeCd
+			, csed.ERP_NM AS erpNm
+			, cse.ERP_REGAL_NM AS erpRegalNm
+			, cse.ERP_ORGANIZATION_NM AS erpOrganizationNm
+			, SUM(csed.TOTAL_EMPLOYEE_DISCOUNT_PRICE) AS employeeDiscountPrice
+			, pedbg.GROUP_NM AS brandNm
+			, DATE_FORMAT(csed.SETTLE_DAY, '%Y-%m-%d') AS settleDay
+		FROM CA_SETTLE_EMPLOYEE_DAY csed
+		INNER JOIN CA_SETTLE_EMPLOYEE cse ON csed.UR_ERP_EMPLOYEE_CD = cse.UR_ERP_EMPLOYEE_CD AND cse.SETTLE_MONTH = #{settleMonth}
+		INNER JOIN PS_EMPL_DISC_BRAND_GRP_BRAND pedbgb ON csed.UR_BRAND_ID = pedbgb.UR_BRAND_ID
+		INNER JOIN PS_EMPL_DISC_BRAND_GRP pedbg ON pedbgb.PS_EMPL_DISC_BRAND_GRP_ID = pedbg.PS_EMPL_DISC_BRAND_GRP_ID
+		WHERE DATE_FORMAT(csed.SETTLE_DAY, '%Y%m') = #{settleMonth}
+		AND cse.OU_ID = #{ouId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(confirmYn,'Y') ">
+			AND csed.SESSION_ID = #{sessionId}
+		</if>
+		GROUP BY csed.ORDER_STATUS, csed.UR_ERP_EMPLOYEE_CD, csed.ERP_NM, cse.ERP_REGAL_NM, cse.ERP_ORGANIZATION_NM, pedbg.GROUP_NM, csed.SETTLE_DAY
+		ORDER BY csed.UR_ERP_EMPLOYEE_CD, pedbg.GROUP_NM, csed.SETTLE_DAY
+	</select>
+
+	<!-- 임직원 지원금 정산 엑셀다운로드 -->
+	<select id="selectSupportPriceExceDownloadlList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.vo.SupportPriceExceDownloadlVo">
+		/* employee.selectSupportPriceExceDownloadlList */
+		SELECT
+			LEG_CD AS legCd
+			, LIN_NO AS linNo
+			, GL_DAT AS glDat
+			, INV_DAT AS invDat
+			, ACC_DES AS accDes
+			, INV_AMT AS invAmt
+			, SUP_NO AS supNo
+			, SUP_NAM AS supNam
+			, PAY_MET AS payMet
+			, PAY_TER AS payTer
+			, PAY_GRP AS payGrp
+			, CRE_LEG_CD AS creLegCd
+			, CRE_DEP_CD AS creDepCd
+			, CRE_ACC_CD AS creAccCd
+			, CRE_ORG AS creOrg
+			, DEB_LIN_NO AS debLinNo
+			, DEB_LIN_AMT AS debLinAmt
+			, DEB_LEG_CD AS debLegCd
+			, DEB_DEP_CD AS debDepCd
+			, DEB_ACC_CD AS debAccCd
+			, DEB_ORG AS debOrg
+		FROM CA_SETTLE_EMPLOYEE_HIST
+		WHERE SETTLE_MONTH = #{settleMonth}
+		AND OU_ID = #{ouId}
+		AND SESSION_ID = #{sessionId}
+	</select>
+
+</mapper>

@@ -1,0 +1,1801 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.outmall.order.OutmallOrderMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 수집몰 연동 내역 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getCollectionMallInterfaceResultMap" type="kr.co.pulmuone.v1.outmall.order.dto.vo.CollectionMallInterfaceListVo">
+        <result column="IF_EASYADMIN_INFO_ID"   property="ifEasyadminInfoId"/>
+        <result column="SYNC_CD_NM"             property="syncCodeName"/>
+        <result column="BATCH_START_DT"         property="batchStartDateTime"/>
+        <result column="BATCH_END_DT"           property="batchEndDateTime"/>
+        <result column="BATCH_EXEC_TIME"        property="batchExecutionTime"/>
+        <result column="SUCC_CNT"               property="successCount"/>
+        <result column="FAIL_CNT"               property="failCount"/>
+        <result column="PROCESS_CD"             property="processCode"/>
+        <result column="PROCESS_CD_NM"          property="processCodeName"/>
+        <result column="ADMIN_NM"               property="adminName"/>
+        <result column="ADMIN_ID"               property="adminId"/>
+        <result column="ADMIN_LOGIN_ID"         property="adminLoginId"/>
+        <result column="COLLECT_CD_NAME"        property="collectCodeName"/>
+        <result column="ORDER_SUCC_CNT"         property="orderSuccCnt"/>
+        <result column="ORDER_FAIL_CNT"         property="orderFailCnt"/>
+    </resultMap>
+    <select id="getCollectionMallInterfaceList" resultMap="getCollectionMallInterfaceResultMap">
+        /* outmallOrder.getCollectionMallInterfaceList */
+        SELECT T1.IF_EASYADMIN_INFO_ID,
+            (CASE WHEN T1.SYNC_CD = 'W' THEN '대기중'
+                WHEN T1.SYNC_CD = 'I' THEN '진행중'
+                WHEN T1.SYNC_CD = 'E' THEN '완료' END) AS SYNC_CD_NM,
+            DATE_FORMAT(T1.BATCH_START_DT, '%Y-%m-%d %T') AS BATCH_START_DT,
+            DATE_FORMAT(T1.BATCH_END_DT, '%Y-%m-%d %T') AS BATCH_END_DT,
+            T1.BATCH_EXEC_TIME,
+            T1.SUCC_CNT AS SUCC_CNT,
+            T1.FAIL_CNT AS FAIL_CNT,
+            T1.PROCESS_CD,
+            (CASE WHEN T1.PROCESS_CD = 'W' THEN '미처리'
+                WHEN T1.PROCESS_CD = 'I' THEN '처리중'
+                WHEN T1.PROCESS_CD = 'E' THEN '처리완료'
+                ELSE '-' END) AS PROCESS_CD_NM,
+            T1.ADMIN_ID,
+            FN_DECRYPT(UU.USER_NM) AS ADMIN_NM, /* 이름 (암호화) */
+            UU.LOGIN_ID AS ADMIN_LOGIN_ID,
+            (CASE (SELECT COLLECT_CD FROM IF_EASYADMIN_INFO_REQ_DATA WHERE IF_EASYADMIN_INFO_ID = T1.IF_EASYADMIN_INFO_ID LIMIT 1) WHEN 'I' THEN '수집중'
+            WHEN 'S' THEN '수집성공'
+            ELSE '수집실패' END) AS COLLECT_CD_NAME,
+            (SELECT COUNT(*) FROM IF_EASYADMIN_ORDER_SUCC_DETL WHERE IF_EASYADMIN_INFO_ID= T1.IF_EASYADMIN_INFO_ID) AS ORDER_SUCC_CNT,
+            (SELECT
+                COUNT(*)
+            FROM IF_EASYADMIN_ORDER_FAIL IEOF
+                JOIN IF_EASYADMIN_ORDER_FAIL_DETL IEOFD ON IEOF.IF_EASYADMIN_ORDER_FAIL_ID = IEOFD.IF_EASYADMIN_ORDER_FAIL_ID
+            WHERE IEOF.IF_EASYADMIN_INFO_ID= T1.IF_EASYADMIN_INFO_ID AND IEOF.FAIL_TYPE='B') AS ORDER_FAIL_CNT /* 실패구분(B:배치) */
+        FROM
+            IF_EASYADMIN_INFO T1
+            LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = T1.ADMIN_ID
+        WHERE
+            T1.REQ_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+		AND
+			T1.EASYADMIN_BATCH_TP = #{easyadminBatchTp}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(syncCode)">
+                AND T1.SYNC_CD = #{syncCode}
+            </if>
+            <if test="processCodeList !=null and processCodeList.size != 0">
+                AND T1.PROCESS_CD IN
+                <foreach collection="processCodeList" item="processCode" index="index" separator="," open="(" close=")">
+                    #{processCode}
+                </foreach>
+            </if>
+        ORDER BY T1.IF_EASYADMIN_INFO_ID DESC
+    </select>
+
+    <select id="getCollectionMallInterfaceListForTrans" resultMap="getCollectionMallInterfaceResultMap">
+        /* outmallOrder.getCollectionMallInterfaceListForTrans */
+        SELECT
+            0 AS IF_EASYADMIN_INFO_ID
+            , '-' AS SYNC_CD_NM
+            , AA.BATCH_START_DT AS BATCH_START_DT
+            , AA.BATCH_START_DT AS BATCH_END_DT
+            , '0' AS BATCH_EXEC_TIME
+            , SUM(AA.SUCC_CNT) SUCC_CNT
+            , SUM(AA.FAIL_CNT) FAIL_CNT
+            , 'T' AS PROCESS_CD
+            , '-' AS PROCESS_CD_NM
+            , '' AS ADMIN_ID
+            , '' AS ADMIN_NM
+            , '' AS ADMIN_LOGIN_ID
+            , '전송성공' AS COLLECT_CD_NAME
+            , 0 AS ORDER_SUCC_CNT
+            , 0 AS ORDER_FAIL_CNT
+        FROM (
+            SELECT
+                DATE_FORMAT(OOD.DI_DT, '%Y-%m-%d') AS BATCH_START_DT
+                , IF(OTN.EZADMIN_API_YN = 'Y', 1, 0) AS SUCC_CNT
+                , IF(OTN.EZADMIN_API_YN = 'E', 1, 0) AS FAIL_CNT
+            FROM
+                OD_ORDER OO
+                JOIN OD_ORDER_DETL OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+                JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID
+                JOIN PS_SHIPPING_COMP_OUTMALL PSCO ON PSCO.PS_SHIPPING_COMP_ID = OTN.PS_SHIPPING_COMP_ID
+            WHERE
+                OO.AGENT_TYPE_CD = 'AGENT_TYPE.O' /* AGENT_TYPE.O : 주문유형(외부몰) */
+                AND IFNULL(OO.COLLECTION_MALL_ID, '') != ''
+                AND OOD.OUTMALL_TYPE = 'E' /* E : 외부몰구분(E:이지어드민) */
+                AND OOD.DI_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                AND PSCO.OUTMALL_CD = 'E' /* E : 외부몰구분(E:이지어드민) */
+            GROUP BY PSCO.OUTMALL_SHIPPING_COMP_CD, OTN.TRACKING_NO
+        ) AA
+        GROUP BY AA.BATCH_START_DT
+        ORDER BY AA.BATCH_START_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 수집몰 연동 처리 상태 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putCollectionMallInterfaceProgress">
+        /* outmallOrder.putCollectionMallInterfaceProgress */
+        UPDATE IF_EASYADMIN_INFO
+        SET PROCESS_CD = #{processCode}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminId) ">
+            ,ADMIN_ID = #{adminId}
+            </if>
+        WHERE IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 수집몰 연동 처리 상태 List
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putCollectionMallInterfaceProgressList">
+        /* outmallOrder.putCollectionMallInterfaceProgressList */
+        <foreach collection="ifEasyadminInfoIdList" item="ifEasyadminInfoId" separator=";">
+            UPDATE IF_EASYADMIN_INFO
+            SET PROCESS_CD = 'E'
+            WHERE IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+        </foreach>
+        ;
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 수집몰 연동 내역 실패 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getCollectionMallInterfaceFailResultMap" type="kr.co.pulmuone.v1.outmall.order.dto.vo.CollectionMallInterfaceFailVo">
+        <result column="ERROR_MSG"          property="errorMessage" />
+        <result column="PACK"               property="pack"/>
+        <result column="SEQ"                property="seq"/>
+        <result column="SHOP_ID"            property="shopId"/>
+        <result column="SHOP_PRODUCT_ID"    property="shopProductId"/>
+        <result column="IL_ITEM_CD"         property="ilItemCd"/>
+        <result column="PRODUT_NAME"        property="productName"/>
+        <result column="QTY"                property="qty"/>
+        <result column="AMOUNT"             property="amount"/>
+        <result column="ORDER_NAME"         property="orderName"/>
+        <result column="ORDER_TEL"          property="orderTel"/>
+        <result column="ORDER_MOBILE"       property="orderMobile"/>
+        <result column="RECV_NAME"          property="receiverName"/>
+        <result column="RECV_TEL"           property="receiverTel"/>
+        <result column="RECV_MOBILE"        property="receiverMobile"/>
+        <result column="RECV_ZIP"           property="receiverZip"/>
+        <result column="RECV_ADDRESS1"      property="receiverAddress1"/>
+        <result column="RECV_ADDRESS2"      property="receiverAddress2"/>
+        <result column="SHIPPING_PRICE"     property="shippingPrice"/>
+        <result column="MEMO"               property="memo"/>
+        <result column="LOGISTICS_CD"       property="logisticsCd"/>
+        <result column="TRACKING_NO"        property="trackingNo"/>
+        <result column="ORDER_ID"           property="orderId"/>
+
+        <result column="DELIVERY_MSG"       property="deliveryMessage"/>
+        <result column="OUTMALL_ORDER_DT"   property="outmallOrderDt"/>
+        <result column="OUTMALL_GOODS_NM"   property="outmallGoodsNm"/>
+        <result column="OUTMALL_OPT_NM"     property="outmallOptNm"/>
+
+    </resultMap>
+    <select id="getCollectionMallFailExcelDownload" resultMap="getCollectionMallInterfaceFailResultMap">
+        /* outmallOrder.getCollectionMallFailExcelDownload */
+        SELECT IFNULL(T3.ERROR_MSG, T1.ERROR_MSG) AS  ERROR_MSG,
+            T1.PACK ,
+            T3.PRD_SEQ AS SEQ ,/*T1.SEQ ,*/
+            IFNULL(T4.OM_SELLERS_ID, '-') AS SHOP_ID ,
+            T3.BRAND AS SHOP_PRODUCT_ID ,
+            IFNULL(T2.IL_ITEM_CD, '') AS IL_ITEM_CD,
+            T3.NAME AS PRODUT_NAME,
+            T3.QTY,
+            T3.PRD_AMOUNT AS AMOUNT,
+            T1.ORDER_NAME ,
+            T1.ORDER_TEL ,
+            T1.ORDER_MOBILE ,
+            T1.RECV_NAME ,
+            T1.RECV_TEL ,
+            T1.RECV_MOBILE ,
+            T1.RECV_ZIP ,
+            T1.RECV_ADDRESS AS RECV_ADDRESS1,
+            T1.RECV_ADDRESS2,
+            '0' AS SHIPPING_PRICE,
+            T1.MEMO,
+            '' AS LOGISTICS_CD,
+			'' AS TRACKING_NO,
+			T1.ORDER_ID,
+			'' AS DELIVERY_MSG,
+			'' AS OUTMALL_ORDER_DT,
+			'' AS OUTMALL_GOODS_NM,
+			'' AS OUTMALL_OPT_NM
+        FROM
+        	IF_EASYADMIN_ORDER_FAIL T1
+        	INNER JOIN IF_EASYADMIN_ORDER_FAIL_DETL T3 ON T1.IF_EASYADMIN_INFO_ID = T3.IF_EASYADMIN_INFO_ID AND T1.IF_EASYADMIN_ORDER_FAIL_ID  = T3.IF_EASYADMIN_ORDER_FAIL_ID
+	        LEFT OUTER JOIN IL_GOODS T2 ON T1.SHOP_PRODUCT_ID = T2.IL_GOODS_ID
+	        LEFT OUTER JOIN OM_SELLERS T4 ON T1.SHOP_ID = T4.OUTMALL_CD
+        WHERE T1.IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+        AND T1.FAIL_TYPE = #{failType}
+    </select>
+
+    <select id="getCollectionMallFailExcelDownloadForTrans" resultMap="getCollectionMallInterfaceFailResultMap">
+        /* outmallOrder.getCollectionMallFailExcelDownloadForTrans */
+        SELECT
+            B.RES_DATA AS ERROR_MSG
+            , D.OUTMALL_SHIPPING_COMP_NM AS LOGISTICS_CD
+            , A.TRACKING_NO AS TRACKING_NO
+            , C.ODID AS ORDER_ID
+            , C.DI_DT AS OUTMALL_ORDER_DT
+        FROM
+            OD_TRACKING_NUMBER A
+            LEFT OUTER JOIN IF_EASYADMIN_INFO B ON (A.TRACKING_NO = B.RES_ERROR)
+            LEFT OUTER JOIN OD_ORDER_DETL C ON (A.OD_ORDER_DETL_ID = C.OD_ORDER_DETL_ID)
+            LEFT OUTER JOIN PS_SHIPPING_COMP_OUTMALL D ON (D.PS_SHIPPING_COMP_ID = A.PS_SHIPPING_COMP_ID AND D.OUTMALL_CD = 'E')
+        WHERE
+            A.EZADMIN_API_YN = 'E'
+            AND C.DI_DT BETWEEN #{batchStartDateTime} AND (#{batchStartDateTime} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 외부몰 클레임 주문리스트 조회조건
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.14		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getCodeListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetCodeListResultVo">
+        <result column="CODE" property="code" />
+        <result column="NAME" property="name" />
+    </resultMap>
+    <select id="getSellersList" resultMap="getCodeListResultMap">
+        SELECT OM_SELLERS_ID AS CODE,
+            SELLERS_NM AS NAME
+        FROM OM_SELLERS
+        WHERE USE_YN = 'Y'
+            AND OM_SELLERS_ID != 0
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCode) ">
+            AND SELLERS_GROUP_CD = #{sellersGroupCode}
+        </if>
+        ORDER BY OM_SELLERS_ID ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 외부몰 클레임 주문리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getClaimOrderListResultMap" type="kr.co.pulmuone.v1.outmall.order.dto.vo.ClaimOrderListVo">
+        <result column="IF_EASYADMIN_ORDER_CLAIM_ID"    property="ifEasyadminOrderClaimId"/>
+        <result column="SHOP_NAME"              property="shopName"/>
+        <result column="ORDER_ID"               property="orderId"/>
+        <result column="ORDER_ID_SEQ"           property="orderIdSeq1"/>
+        <result column="ORDER_ID_SEQ2"          property="orderIdSeq2"/>
+        <result column="SEQ"                    property="seq"/>
+        <result column="ORDER_NAME"             property="orderName"/>
+        <result column="ORDER_MOBILE"           property="orderMobile"/>
+        <result column="RECV_NAME"              property="receiverName"/>
+        <result column="RECV_MOBILE"            property="receiverMobile"/>
+        <result column="ORDER_CS_NAME"          property="orderCsName"/>
+        <result column="ORDER_DATE"             property="orderDate"/>
+        <result column="PRODUCT_ID"             property="productId"/>
+        <result column="ORDER_DETAIL_ID"        property="orderDetailId"/>
+        <result column="MASTER_PRODUCT_CODE_NM" property="masterProductCodeName"/>
+        <result column="SHOP_PRODUCT_ID"        property="shopProductId"/>
+        <result column="ENABLE_SALE_NAME"       property="enableSaleName"/>
+        <result column="NAME"                   property="name"/>
+        <result column="QTY"                    property="qty"/>
+        <result column="SHOP_PRICE"             property="shopPrice"/>
+        <result column="PROCESS_CD"             property="processCode"/>
+        <result column="PROCESS_CD_NM"          property="processCodeName"/>
+        <result column="ADMIN_ID"               property="adminId"/>
+        <result column="ADMIN_NM"               property="adminName"/>
+    </resultMap>
+    <select id="getClaimOrderList" resultMap="getClaimOrderListResultMap">
+        /* outmallOrder.getClaimOrderList */
+        SELECT T1.IF_EASYADMIN_ORDER_CLAIM_ID ,
+            T1.SHOP_NAME ,
+            T1.ORDER_ID,
+            T1.ORDER_ID_SEQ,
+            T1.ORDER_ID_SEQ2,
+            T1.SEQ ,
+            T1.ORDER_NAME ,
+            T1.ORDER_MOBILE ,
+            T1.RECV_NAME ,
+            T1.RECV_MOBILE ,
+            (CASE WHEN T1.ORDER_CS = '0' THEN '정상'
+                    WHEN T1.ORDER_CS = '1' THEN '배송전 전체 취소'
+                    WHEN T1.ORDER_CS = '2' THEN '배송전 부분 취소'
+                    WHEN T1.ORDER_CS = '3' THEN '배송후 전체 취소'
+                    WHEN T1.ORDER_CS = '4' THEN '배송후 부분 취소'
+                    WHEN T1.ORDER_CS = '5' THEN '배송전 전체 교환'
+                    WHEN T1.ORDER_CS = '6' THEN '배송전 부분 교환'
+                    WHEN T1.ORDER_CS = '7' THEN '배송후 전체 교환'
+                    WHEN T1.ORDER_CS = '8' THEN '배송후 부분 교환'
+                ELSE T1.ORDER_CS END) AS ORDER_CS_NAME,
+            T1.ORDER_DATE ,
+            T2.PRODUCT_ID ,
+            OOD.OD_ORDER_DETL_ID AS ORDER_DETAIL_ID,
+            CONCAT(OOD.IL_ITEM_CD, '(' ,OOD.ITEM_BARCODE, ')') AS MASTER_PRODUCT_CODE_NM,
+            T1.SHOP_PRODUCT_ID,
+            (CASE WHEN T2.ENABLE_SALE = '1' THEN '판매중'
+            WHEN T2.ENABLE_SALE = '0' THEN '품절'
+            ELSE '' END) AS ENABLE_SALE_NAME,
+            T2.NAME,
+            T2.QTY,
+            T2.SHOP_PRICE,
+            T1.PROCESS_CD,
+            (CASE WHEN T1.PROCESS_CD = 'W' THEN '미처리'
+                WHEN T1.PROCESS_CD = 'I' THEN '처리중'
+                WHEN T1.PROCESS_CD = 'E' THEN '처리완료' END) AS PROCESS_CD_NM,
+            T1.ADMIN_ID,
+            FN_DECRYPT(UU.USER_NM) AS ADMIN_NM /* 이름 (암호화) */
+        FROM IF_EASYADMIN_ORDER_CLAIM T1
+            INNER JOIN IF_EASYADMIN_ORDER_CLAIM_DETL T2 ON T1.IF_EASYADMIN_ORDER_CLAIM_ID = T2.IF_EASYADMIN_ORDER_CLAIM_ID
+            LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = T1.ADMIN_ID
+            LEFT OUTER JOIN OD_ORDER_DETL OOD ON T2.PRD_SEQ = OOD.PRD_SEQ
+        WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'singleSection') ">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(singleSearchType) ">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(singleSearchType,'SEARCH_TYPE_1') ">
+                    AND T1.ORDER_ID IN (#{singleSearchValue})
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(singleSearchType,'SEARCH_TYPE_2') ">
+                    AND T1.SEQ IN (#{singleSearchValue})
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(singleSearchType,'SEARCH_TYPE_3') ">
+                    AND OOD.OD_ORDER_ID IN (#{singleSearchValue})
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(singleSearchType,'SEARCH_TYPE_4') ">
+                    AND T1.SHOP_PRODUCT_ID = #{singleSearchValue}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(singleSearchType,'SEARCH_TYPE_5') ">
+                    AND T2.PRODUCT_ID = #{singleSearchValue}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(singleSearchType,'SEARCH_TYPE_6') ">
+                    AND OOD.IL_ITEM_CD = #{singleSearchValue}
+                </if>
+            </if>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'multiSection') ">
+            <if test="shopIdList !=null and shopIdList.size != 0">
+                AND T1.SHOP_ID IN
+                <foreach collection="shopIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'ORDER_DATE') ">
+                AND T1.ORDER_DATE BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'COLLECT_DATE') ">
+                AND T1.COLLECT_DATE BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            </if>
+            <if test="orderCsList !=null and orderCsList.size != 0">
+                AND T2.ORDER_CS IN
+                <foreach collection="orderCsList" item="orderCs" index="index" separator="," open="(" close=")">
+                    #{orderCs}
+                </foreach>
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(orderStatusNotFilter,'NULL') ">
+                AND (OOD.ORDER_STATUS_CD IS NULL
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(orderStatusNotFilter,'NULL') ">
+                AND (OOD.ORDER_STATUS_CD IS NOT NULL
+            </if>
+            <if test="orderStatusList !=null and orderStatusList.size != 0">
+                OR OOD.ORDER_STATUS_CD IN
+                <foreach collection="orderStatusList" item="orderStatus" index="index" separator="," open="(" close=")">
+                    #{orderStatus}
+                </foreach>
+            </if>
+            )
+
+            <if test="adminIdList!=null and adminIdList.size!=0">
+                AND T1.ADMIN_ID IN
+                <foreach collection="adminIdList" item="adminId" index="index" separator="," open="(" close=")">
+                    #{adminId}
+                </foreach>
+            </if>
+            <if test="processCodeList !=null and processCodeList.size != 0">
+                AND T1.PROCESS_CD IN
+                <foreach collection="processCodeList" item="processCode" index="index" separator="," open="(" close=")">
+                    #{processCode}
+                </foreach>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(multiSearchValue) ">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(multiSearchType,'SEARCH_TYPE_1') ">
+                    AND T1.ORDER_ID IN (#{multiSearchValue})
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(multiSearchType,'SEARCH_TYPE_2') ">
+                    AND T1.SEQ IN (#{singleSearchValue})
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(multiSearchType,'SEARCH_TYPE_3') ">
+                    AND OOD.OD_ORDER_ID IN (#{singleSearchValue})
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(multiSearchType,'SEARCH_TYPE_4') ">
+                    AND T1.SHOP_PRODUCT_ID = #{multiSearchValue}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(multiSearchType,'SEARCH_TYPE_5') ">
+                    AND T2.PRODUCT_ID = #{multiSearchValue}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(multiSearchType,'SEARCH_TYPE_6') ">
+                    AND OOD.IL_ITEM_CD = #{multiSearchValue}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(multiSearchType,'SEARCH_TYPE_7') ">
+                    AND T1.ORDER_NAME LIKE CONCAT('%', #{multiSearchValue}, '%')
+                </if>
+            </if>
+        </if>
+        ORDER BY T1.IF_EASYADMIN_ORDER_CLAIM_ID DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 외부몰 클레임 주문 처리 상태 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putClaimOrderProgress">
+        /* outmallOrder.putClaimOrderProgress */
+        UPDATE IF_EASYADMIN_ORDER_CLAIM
+        SET PROCESS_CD = #{processCode}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminId) ">
+            ,ADMIN_ID = #{adminId}
+        </if>
+        WHERE IF_EASYADMIN_ORDER_CLAIM_ID = #{ifEasyadminOrderClaimId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 외부몰 클레임 주문 처리 상태 List
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putClaimOrderProgressList">
+        /* outmallOrder.putClaimOrderProgressList */
+        <foreach collection="ifEasyadminOrderClaimIdList" item="itemValue" separator=";">
+            UPDATE IF_EASYADMIN_ORDER_CLAIM
+            SET PROCESS_CD = #{processCode}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminId) ">
+                ,ADMIN_ID = #{adminId}
+            </if>
+            WHERE IF_EASYADMIN_ORDER_CLAIM_ID = #{itemValue}
+        </foreach>
+        ;
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 엑셀업로드 - 현황
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.18		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addOutMallExcelInfo">
+        /* outmallOrder.addOutMallExcelInfo */
+        INSERT INTO IF_OUTMALL_EXCEL_INFO (
+            OUTMALL_TYPE, TOTAL_CNT, UPLOAD_START_DT, UPLOAD_STATUS_CD, UPLOAD_JSON_DATA, CREATE_ID,
+            CREATE_DT, FILE_NM
+        ) VALUES (
+            #{outMallType}, #{totalCount}, #{uploadStartDateTime}, #{uploadStatusCode}, #{uploadJsonData}, #{createId},
+            NOW(), #{fileNm}
+        )
+        <selectKey resultType="Long" keyProperty="ifOutmallExcelInfoId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 엑셀업로드 - 현황 - 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.19		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putOutMallExcelInfo">
+        /* outmallOrder.putOutMallExcelInfo */
+        UPDATE IF_OUTMALL_EXCEL_INFO
+        SET SUCC_CNT = #{successCount},
+            FAIL_CNT = #{failCount},
+            UPLOAD_END_DT = #{uploadEndDateTime},
+            UPLOAD_EXEC_TIME = #{uploadExecutionTime},
+            UPLOAD_STATUS_CD = #{uploadStatusCode},
+            BATCH_STATUS_CD = #{batchStatusCode}
+        WHERE IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 엑셀업로드 - 성공 건
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.18		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addOutMallExcelSuccess">
+        /* outmallOrder.addOutMallExcelSuccess */
+        INSERT INTO IF_OUTMALL_EXCEL_SUCC (
+            IF_OUTMALL_EXCEL_INFO_ID, COLLECTION_MALL_ID, COLLECTION_MALL_DETAIL_ID, OM_SELLERS_ID, IL_ITEM_CD,
+            IL_GOODS_ID, GOODS_NM, ORDER_CNT, PAID_PRICE, BUYER_NM,
+            BUYER_TEL, BUYER_HP, RECV_NM, RECV_TEL, RECV_HP,
+            RECV_MAIL, RECV_ZIP_CD, RECV_ADDR1, RECV_ADDR2, SHIPPING_PRICE,
+            DELIVERY_MSG, OUTMALL_ID, OUTMALL_ID_SEQ1, OUTMALL_ID_SEQ2,
+            MEMO, OUTMALL_ORDER_DT, OUTMALL_GOODS_NM, OUTMALL_OPT_NM
+        ) VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+            (
+            #{ifOutmallExcelInfoId}, #{vo.collectionMallId}, #{vo.collectionMallDetailId}, #{vo.omSellersId}, #{vo.ilItemCd},
+            #{vo.ilGoodsId}, #{vo.goodsName}, #{vo.orderCount}, #{vo.paidPrice}, #{vo.buyerName},
+            #{vo.buyerTel}, #{vo.buyerMobile}, #{vo.receiverName}, #{vo.receiverTel}, #{vo.receiverMobile},
+            #{vo.receiverMail}, #{vo.receiverZipCode}, #{vo.receiverAddress1}, #{vo.receiverAddress2}, #{vo.shippingPrice},
+            #{vo.deliveryMessage}, #{vo.outMallId}, #{vo.outMallIdSeq1}, #{vo.outMallIdSeq2},
+            #{vo.memo}, #{vo.outmallOrderDt}, #{vo.outmallGoodsNm}, #{vo.outmallOptNm}
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 엑셀업로드 - 성공 건 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.18		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteOutMallExcelSuccess">
+        /* outmallOrder.deleteOutMallExcelSuccess */
+        DELETE FROM IF_OUTMALL_EXCEL_SUCC WHERE IF_OUTMALL_EXCEL_SUCC_ID = #{ifOutmallExcelSuccId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 엑셀업로드 - 현황
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.18		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addOutMallExcelFail">
+        /* outmallOrder.addOutMallExcelFail */
+        INSERT INTO IF_OUTMALL_EXCEL_FAIL (
+            IF_OUTMALL_EXCEL_INFO_ID, COLLECTION_MALL_ID, COLLECTION_MALL_DETAIL_ID, OM_SELLERS_ID, IL_ITEM_CD,
+            IL_GOODS_ID, GOODS_NM, ORDER_CNT, PAID_PRICE, BUYER_NM,
+            BUYER_TEL, BUYER_HP, RECV_NM, RECV_TEL, RECV_HP,
+            RECV_MAIL, RECV_ZIP_CD, RECV_ADDR1, RECV_ADDR2, SHIPPING_PRICE,
+            DELIVERY_MSG, OUTMALL_ID, OUTMALL_ID_SEQ1, OUTMALL_ID_SEQ2,
+            MEMO, OUTMALL_ORDER_DT, OUTMALL_GOODS_NM, OUTMALL_OPT_NM, FAIL_MSG
+        ) VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+            (
+            #{ifOutmallExcelInfoId}, #{vo.collectionMallId}, #{vo.collectionMallDetailId}, #{vo.omSellersId}, #{vo.ilItemCd},
+            #{vo.ilGoodsId}, #{vo.goodsName}, #{vo.orderCount}, #{vo.paidPrice}, #{vo.buyerName},
+            #{vo.buyerTel}, #{vo.buyerMobile}, #{vo.receiverName}, #{vo.receiverTel}, #{vo.receiverMobile},
+            #{vo.receiverMail}, #{vo.receiverZipCode}, #{vo.receiverAddress1}, #{vo.receiverAddress2}, #{vo.shippingPrice},
+            #{vo.deliveryMessage}, #{vo.outMallId}, #{vo.outMallIdSeq1}, #{vo.outMallIdSeq2},
+            #{vo.memo}, #{vo.outmallOrderDt}, #{vo.outmallGoodsNm}, #{vo.outmallOptNm}, #{vo.failMessage}
+            )
+        </foreach>
+    </insert>
+
+    <insert id="addOutMallExcelFailSelectInsert">
+        /* outmallOrder.addOutMallExcelFailSelectInsert */
+        INSERT INTO IF_OUTMALL_EXCEL_FAIL (
+        IF_OUTMALL_EXCEL_INFO_ID, COLLECTION_MALL_ID, COLLECTION_MALL_DETAIL_ID, OM_SELLERS_ID, IL_ITEM_CD,
+        IL_GOODS_ID, GOODS_NM, ORDER_CNT, PAID_PRICE, BUYER_NM,
+        BUYER_TEL, BUYER_HP, RECV_NM, RECV_TEL, RECV_HP,
+        RECV_MAIL, RECV_ZIP_CD, RECV_ADDR1, RECV_ADDR2, SHIPPING_PRICE,
+        DELIVERY_MSG, OUTMALL_ID, OUTMALL_ID_SEQ1, OUTMALL_ID_SEQ2,
+        MEMO, OUTMALL_ORDER_DT, OUTMALL_GOODS_NM, OUTMALL_OPT_NM, FAIL_MSG, FAIL_TYPE
+        )
+        SELECT
+            IF_OUTMALL_EXCEL_INFO_ID, COLLECTION_MALL_ID, COLLECTION_MALL_DETAIL_ID, OM_SELLERS_ID, IL_ITEM_CD,
+            IL_GOODS_ID, GOODS_NM, ORDER_CNT, PAID_PRICE, BUYER_NM,
+            BUYER_TEL, BUYER_HP, RECV_NM, RECV_TEL, RECV_HP,
+            RECV_MAIL, RECV_ZIP_CD, RECV_ADDR1, RECV_ADDR2, SHIPPING_PRICE,
+            DELIVERY_MSG, OUTMALL_ID, OUTMALL_ID_SEQ1, OUTMALL_ID_SEQ2,
+            MEMO, OUTMALL_ORDER_DT, OUTMALL_GOODS_NM, OUTMALL_OPT_NM, #{failMessage}, 'B'
+        FROM
+            IF_OUTMALL_EXCEL_SUCC
+        WHERE
+            IF_OUTMALL_EXCEL_SUCC_ID = #{ifOutmallExcelSuccId}
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외불 엑셀업로드 - 기존 입력내용 검색
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.19		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutMallExcelDetailId" resultType="string">
+        /*	outmallOrder.getOutMallExcelDetailId	*/
+        SELECT
+            T2.COLLECTION_MALL_DETAIL_ID
+        FROM
+            IF_OUTMALL_EXCEL_INFO T1
+            INNER JOIN IF_OUTMALL_EXCEL_SUCC T2 ON T1.IF_OUTMALL_EXCEL_INFO_ID  = T2.IF_OUTMALL_EXCEL_INFO_ID
+        WHERE
+                T1.OUTMALL_TYPE = #{outmallType}
+            AND T2.COLLECTION_MALL_DETAIL_ID IN
+            <foreach collection="detailIdList" item="value" separator="," open="(" close=")">
+                #{value}
+            </foreach>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 외부몰 주문 엑셀업로드 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getOutMallExcelInfoResultMap" type="kr.co.pulmuone.v1.outmall.order.dto.vo.OutMallExcelInfoVo">
+        <result column="IF_OUTMALL_EXCEL_INFO_ID"   property="ifOutmallExcelInfoId"/>
+        <result column="OUTMALL_TYPE_NM"            property="outMallTypeName"/>
+        <result column="SUCC_CNT"                   property="successCount"/>
+        <result column="FAIL_CNT"                   property="failCount"/>
+        <result column="UPLOAD_STATUS_CD_NM"        property="uploadStatusCodeName"/>
+        <result column="ORDER_CREATE_CNT"           property="orderCount"/>
+        <result column="BATCH_END_DT_NM"            property="batchEndDateTime"/>
+        <result column="BATCH_EXEC_TIME"            property="batchExecutionTime"/>
+        <result column="BATCH_STATUS_CD"            property="batchStatusCode"/>
+        <result column="CREATE_ID"                  property="createId"/>
+        <result column="CREATE_NM"                  property="createName"/>
+        <result column="CREATE_DT_NM"               property="createDateName"/>
+        <result column="LOGIN_ID"                   property="loginId"/>
+        <result column="UPLOAD_JSON_DATA"           property="uploadJsonData"/>
+        <result column="ORDER_CREATE_DETL_COUNT"    property="orderCreateDetlCount"/>
+        <result column="UPLOAD_FAIL_COUNT"          property="uploadFailCount"/>
+        <result column="BATCH_FAIL_COUNT"           property="batchFailCount"/>
+        <result column="FILE_NM"                    property="fileNm"/>
+    </resultMap>
+    <select id="getOutMallExcelInfoList" resultMap="getOutMallExcelInfoResultMap">
+        /* outmallOrder.getOutMallExcelInfoList */
+        SELECT T1.IF_OUTMALL_EXCEL_INFO_ID,
+            (CASE WHEN T1.OUTMALL_TYPE = 'E' THEN '이지어드민'
+                WHEN T1.OUTMALL_TYPE = 'S' THEN '사방넷' END) AS OUTMALL_TYPE_NM,
+            T1.SUCC_CNT,
+            T1.FAIL_CNT,
+            (CASE
+                WHEN T1.UPLOAD_STATUS_CD = '10' THEN '등록중'
+                WHEN T1.UPLOAD_STATUS_CD = '11' THEN '등록완료'
+                ELSE '등록실패' END) AS UPLOAD_STATUS_CD_NM,
+            T1.ORDER_CREATE_CNT,
+            IFNULL((CASE WHEN T1.BATCH_END_DT IS NOT NULL THEN DATE_FORMAT(T1.BATCH_END_DT, '%Y-%m-%d %T') END), '') AS BATCH_END_DT_NM,
+            T1.BATCH_EXEC_TIME,
+            T1.BATCH_STATUS_CD,
+            T1.CREATE_ID,
+            UU.LOGIN_ID,
+            FN_DECRYPT(UU.USER_NM) AS CREATE_NM,
+            DATE_FORMAT(T1.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT_NM,
+            /*IFNULL(UPLOAD_JSON_DATA, '') AS UPLOAD_JSON_DATA,*/
+            (SELECT COUNT(*) FROM IF_OUTMALL_EXCEL_SUCC WHERE IF_OUTMALL_EXCEL_INFO_ID = T1.IF_OUTMALL_EXCEL_INFO_ID AND ORDER_CREATE_YN = 'Y') AS ORDER_CREATE_DETL_COUNT,
+            (SELECT COUNT(*) FROM IF_OUTMALL_EXCEL_FAIL WHERE IF_OUTMALL_EXCEL_INFO_ID = T1.IF_OUTMALL_EXCEL_INFO_ID AND FAIL_TYPE = 'U') AS UPLOAD_FAIL_COUNT,
+            (SELECT COUNT(*) FROM IF_OUTMALL_EXCEL_FAIL WHERE IF_OUTMALL_EXCEL_INFO_ID = T1.IF_OUTMALL_EXCEL_INFO_ID AND FAIL_TYPE = 'B') AS BATCH_FAIL_COUNT
+            , IFNULL(T1.FILE_NM, '') AS FILE_NM
+        FROM IF_OUTMALL_EXCEL_INFO T1
+            LEFT OUTER JOIN UR_USER UU ON T1.CREATE_ID = UU.UR_USER_ID
+        WHERE
+            T1.CREATE_DT BETWEEN #{createStartDate} AND (#{createEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(outMallType)">
+                AND T1.OUTMALL_TYPE = #{outMallType}
+            </if>
+            <if test="adminIdList!=null and adminIdList.size!=0">
+                AND T1.CREATE_ID IN
+                <foreach collection="adminIdList" item="adminId" index="index" separator="," open="(" close=")">
+                    #{adminId}
+                </foreach>
+            </if>
+        ORDER BY T1.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 엑셀 업로드 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.11		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutMallExcelInfo" resultType="kr.co.pulmuone.v1.outmall.order.dto.vo.OutMallExcelInfoVo">
+        /* outmallOrder.getOutMallExcelInfo */
+    	SELECT
+			IF_OUTMALL_EXCEL_INFO_ID,
+			OUTMALL_TYPE,
+			TOTAL_CNT,
+			SUCC_CNT,
+			FAIL_CNT,
+			ORDER_CREATE_CNT,
+			UPLOAD_START_DT,
+			UPLOAD_END_DT,
+			UPLOAD_EXEC_TIME,
+			UPLOAD_STATUS_CD,
+			BATCH_START_DT,
+			BATCH_END_DT,
+			BATCH_EXEC_TIME,
+			BATCH_STATUS_CD,
+			CREATE_ID,
+			CREATE_DT,
+            IFNULL(UPLOAD_JSON_DATA, '') AS UPLOAD_JSON_DATA
+            , IFNULL(FILE_NM, '') AS FILE_NM
+    	FROM
+    		IF_OUTMALL_EXCEL_INFO
+    	WHERE
+    		IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 외부몰 주문 엑셀업로드 실패 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="outMallFailExcelDownloadResultMap" type="kr.co.pulmuone.v1.outmall.order.dto.vo.OutMallExcelFailVo">
+        <result column="FAIL_MSG"                   property="failMessage" />
+        <result column="COLLECTION_MALL_ID"         property="collectionMallId"/>
+        <result column="COLLECTION_MALL_DETAIL_ID"  property="collectionMallDetailId"/>
+        <result column="OM_SELLERS_ID"              property="omSellersId"/>
+        <result column="IL_ITEM_CD"                 property="ilItemCd"/>
+        <result column="IL_GOODS_ID"                property="ilGoodsId"/>
+        <result column="GOODS_NM"                   property="goodsName"/>
+        <result column="ORDER_CNT"                  property="orderCount"/>
+        <result column="PAID_PRICE"                 property="paidPrice"/>
+        <result column="BUYER_NM"                   property="buyerName"/>
+        <result column="BUYER_TEL"                  property="buyerTel"/>
+        <result column="BUYER_HP"                   property="buyerMobile"/>
+        <result column="RECV_NM"                    property="receiverName"/>
+        <result column="RECV_TEL"                   property="receiverTel"/>
+        <result column="RECV_HP"                    property="receiverMobile"/>
+        <result column="RECV_MAIL"                  property="receiverMail"/>
+        <result column="RECV_ZIP_CD"                property="receiverZipCode"/>
+        <result column="RECV_ADDR1"                 property="receiverAddress1"/>
+        <result column="RECV_ADDR2"                 property="receiverAddress2"/>
+        <result column="SHIPPING_PRICE"             property="shippingPrice"/>
+        <result column="DELIVERY_MSG"               property="deliveryMessage"/>
+        <result column="LOGISTICS_CD"               property="logisticsCd"/>
+        <result column="TRACKING_NO"                property="trackingNo"/>
+        <result column="OUTMALL_ID"                 property="outMallId"/>
+        <result column="OUTMALL_ID_SEQ1"            property="outMallIdSeq1"/>
+        <result column="OUTMALL_ID_SEQ2"            property="outMallIdSeq2"/>
+        <result column="MEMO"                       property="memo"/>
+        <result column="OUTMALL_ORDER_DT"           property="outmallOrderDt"/>
+        <result column="OUTMALL_GOODS_NM"           property="outmallGoodsNm"/>
+        <result column="OUTMALL_OPT_NM"             property="outmallOptNm"/>
+    </resultMap>
+    <select id="getOutMallFailExcelDownload" resultMap="outMallFailExcelDownloadResultMap">
+        /* outmallOrder.getOutMallFailExcelDownload */
+        SELECT
+        	FAIL_MSG,
+            IF_OUTMALL_EXCEL_FAIL_ID,
+			CASE WHEN #{outmallType} = 'E' THEN COLLECTION_MALL_ID ELSE '' END COLLECTION_MALL_ID,
+			COLLECTION_MALL_DETAIL_ID,
+			OM_SELLERS_ID,
+			'' AS IL_ITEM_CD,
+			IL_GOODS_ID,
+			GOODS_NM,
+			ORDER_CNT,
+			PAID_PRICE,
+			BUYER_NM,
+			BUYER_TEL,
+			BUYER_HP,
+			RECV_NM,
+			RECV_TEL,
+			RECV_HP,
+			RECV_MAIL,
+			RECV_ZIP_CD,
+			RECV_ADDR1,
+			RECV_ADDR2,
+			SHIPPING_PRICE,
+			DELIVERY_MSG,
+			IFNULL(LOGISTICS_CD, '') AS LOGISTICS_CD,
+			IFNULL(TRACKING_NO, '') AS TRACKING_NO,
+			OUTMALL_ID,
+			OUTMALL_ID_SEQ1,
+			OUTMALL_ID_SEQ2,
+			MEMO,
+			OUTMALL_ORDER_DT,
+			OUTMALL_GOODS_NM,
+			OUTMALL_OPT_NM
+        FROM IF_OUTMALL_EXCEL_FAIL
+        WHERE
+                IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+            AND FAIL_TYPE = #{failType}
+        ORDER BY
+            IF_OUTMALL_EXCEL_FAIL_ID ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 수집몰번호 줌복체크 - Validation 용도
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.19		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getCollectionMallIdList" resultType="String">
+        /*	outmallOrder.getCollectionMallIdList	*/
+        WITH DETAIL_ID_DATA AS (
+            <foreach collection="collectionMallIdList" item="value" separator="UNION ALL" open="" close="">
+                SELECT #{value} AS COLLECTION_MALL_ID
+            </foreach>
+        )
+        SELECT
+            COLLECTION_MALL_ID AS collectionMallId
+        FROM
+        (
+            SELECT
+                T1.COLLECTION_MALL_ID
+            FROM
+                OD_ORDER T1
+                INNER JOIN DETAIL_ID_DATA T2 ON T1.COLLECTION_MALL_ID = T2.COLLECTION_MALL_ID
+            WHERE
+                    T1.ORDER_YN = 'Y'
+                AND IFNULL(T1.COLLECTION_MALL_ID, '') != ''
+                AND T1.CREATE_DT > (NOW() - INTERVAL 3 MONTH)
+            UNION ALL
+            SELECT
+                T1.COLLECTION_MALL_ID
+            FROM
+                IF_OUTMALL_EXCEL_SUCC T1
+                INNER JOIN DETAIL_ID_DATA T2 ON T1.COLLECTION_MALL_ID = T2.COLLECTION_MALL_ID
+        ) TT
+        GROUP BY COLLECTION_MALL_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 수집몰상세번호 줌복체크 - Validation 용도
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.19		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getCollectionMallDetailIdList" resultType="String">
+        /*	outmallOrder.getCollectionMallDetailIdList	*/
+
+        WITH DETAIL_ID_DATA AS (
+        <foreach collection="collectionMallDetailIdList" item="value" separator="UNION ALL" open="" close="">
+            SELECT #{value} AS COLLECTION_MALL_DETAIL_ID
+        </foreach>
+        )
+        SELECT
+            COLLECTION_MALL_DETAIL_ID AS collectionMallDetailId
+        FROM
+        (
+        SELECT
+            T2.COLLECTION_MALL_DETAIL_ID
+        FROM
+            OD_ORDER T1
+            INNER JOIN OD_ORDER_DETL T2     ON T1.OD_ORDER_ID = T2.OD_ORDER_ID
+            INNER JOIN DETAIL_ID_DATA T3    ON T2.COLLECTION_MALL_DETAIL_ID = T3.COLLECTION_MALL_DETAIL_ID
+        WHERE
+                T1.ORDER_YN = 'Y'
+            AND IFNULL(T2.COLLECTION_MALL_DETAIL_ID, '') != ''
+            AND T1.CREATE_DT >  (NOW() - INTERVAL 3 MONTH)
+        UNION ALL
+        SELECT
+            T1.COLLECTION_MALL_DETAIL_ID
+        FROM
+            IF_OUTMALL_EXCEL_SUCC T1
+            INNER JOIN DETAIL_ID_DATA T2 ON T1.COLLECTION_MALL_DETAIL_ID = T2.COLLECTION_MALL_DETAIL_ID
+        ) TT
+        GROUP BY COLLECTION_MALL_DETAIL_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문번호 줌복체크 - Validation 용도
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.19		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutmallIdList" resultType="String">
+        /*	outmallOrder.getOutmallIdList	*/
+        WITH DETAIL_ID_DATA AS (
+        <foreach collection="outmallIdList" item="value" separator="UNION ALL" open="" close="">
+            SELECT #{value} AS OUTMALL_ID
+        </foreach>
+        )
+        SELECT
+            OUTMALL_ID AS outmallId
+        FROM
+        (
+            SELECT
+                T1.OUTMALL_ID
+            FROM
+                OD_ORDER T1
+                INNER JOIN DETAIL_ID_DATA T2 ON T1.OUTMALL_ID = T2.OUTMALL_ID
+            WHERE
+                    T1.ORDER_YN = 'Y'
+                AND IFNULL(T1.OUTMALL_ID, '') != ''
+                AND T1.CREATE_DT > (NOW() - INTERVAL 3 MONTH)
+            UNION ALL
+            SELECT
+                T1.OUTMALL_ID
+            FROM
+                IF_OUTMALL_EXCEL_SUCC T1
+                INNER JOIN DETAIL_ID_DATA T2 ON T1.OUTMALL_ID = T2.OUTMALL_ID
+        ) TT
+        GROUP BY OUTMALL_ID
+
+    </select>
+
+    <insert id="addEasyAdminExcelRatioPrice">
+    /*	outmallOrder.addEasyAdminExcelRatioPrice	*/
+        INSERT INTO IF_OUTMALL_EXCEL_RATIO
+        (IF_OUTMALL_EXCEL_INFO_ID, IF_OUTMALL_EXCEL_SUCC_ID, COLLECTION_MALL_ID, COLLECTION_MALL_DETAIL_ID, IL_GOODS_ID, OUTMALL_ID, RNK, PAID_PRICE, GOODS_PRICE, TOT_GOODS_PRICE, TOT_ORDER_PRICE, RATIO_GOODS_PRICE, OM_SELLERS_ID)
+        WITH EXCEL_DATA AS (
+        SELECT
+            T1.IF_OUTMALL_EXCEL_INFO_ID,
+            T1.IF_OUTMALL_EXCEL_SUCC_ID,
+            T1.OM_SELLERS_ID,
+            T1.COLLECTION_MALL_ID,
+            T1.COLLECTION_MALL_DETAIL_ID,
+            T1.PAID_PRICE,
+            T1.IL_GOODS_ID,
+            T1.OUTMALL_ID,
+            IFNULL(T3.RECOMMENDED_PRICE, T1.PAID_PRICE)*T1.ORDER_CNT AS GOODS_PRICE,
+            T2.GOODS_TP
+        FROM
+            IF_OUTMALL_EXCEL_SUCC T1
+            LEFT OUTER JOIN IL_GOODS T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+            LEFT OUTER JOIN IL_GOODS_PRICE T3 ON T1.IL_GOODS_ID = T3.IL_GOODS_ID AND T3.USE_YN ='Y' AND CURDATE() >= T3.PRICE_START_DT AND CURDATE()  <![CDATA[<=]]>  T3.PRICE_END_DT
+            , (SELECT @GRP_NM:='', @ROWNUM:=0 FROM DUAL) XX
+            , (SELECT @GRP_NM2:='', @ROWNUM2:=0 FROM DUAL) XXX
+        WHERE
+                T1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+            AND
+                EXISTS (
+                    SELECT
+                        'X'
+                    FROM
+                        IF_OUTMALL_EXCEL_SUCC S1
+                        INNER JOIN IL_GOODS S2 ON S1.IL_GOODS_ID = S2.IL_GOODS_ID
+                    WHERE
+                            S1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+                        AND S1.COLLECTION_MALL_ID       = T1.COLLECTION_MALL_ID
+                        AND S1.OUTMALL_ID               = T1.OUTMALL_ID
+                        AND
+                        (
+                            S1.PAID_PRICE <![CDATA[<=]]> 0 AND S2.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                        OR
+                            S1.PAID_PRICE > 0 AND S2.GOODS_TP IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                        )
+                )
+        ORDER BY IFNULL(T3.RECOMMENDED_PRICE, T1.PAID_PRICE)*T1.ORDER_CNT DESC
+        )
+        SELECT
+            IF_OUTMALL_EXCEL_INFO_ID,
+            IF_OUTMALL_EXCEL_SUCC_ID,
+            COLLECTION_MALL_ID,
+            COLLECTION_MALL_DETAIL_ID,
+            IL_GOODS_ID,
+            OUTMALL_ID,
+            ROW_NUMBER() OVER(PARTITION BY TRIM(CONCAT(OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID)) ORDER BY COLLECTION_MALL_ID ASC) AS RNK,
+            PAID_PRICE,
+            GOODS_PRICE,
+            TOT_GOODS_PRICE,
+            TOT_ORDER_PRICE,
+            RATIO_GOODS_PRICE,
+            OM_SELLERS_ID
+        FROM
+        (
+            SELECT
+                T1.IF_OUTMALL_EXCEL_INFO_ID,
+                T1.IF_OUTMALL_EXCEL_SUCC_ID,
+                T1.OM_SELLERS_ID,
+                T1.COLLECTION_MALL_ID,
+                T1.COLLECTION_MALL_DETAIL_ID,
+                T1.IL_GOODS_ID,
+                T1.OUTMALL_ID,
+                T1.PAID_PRICE,
+                T1.GOODS_PRICE,
+                T2.TOT_GOODS_PRICE,
+                T3.TOT_ORDER_PRICE,
+                TRUNCATE(FLOOR(T3.TOT_ORDER_PRICE * (T1.GOODS_PRICE / T2.TOT_GOODS_PRICE)) / 1, 0) * 1 RATIO_GOODS_PRICE,
+                (CASE @GRP_NM WHEN CONCAT(T1.OM_SELLERS_ID, T1.COLLECTION_MALL_ID, T1.OUTMALL_ID) THEN @ROWNUM:=@ROWNUM+1 ELSE @ROWNUM:=1 END) RNK,
+                (@GRP_NM:=CONCAT(T1.OM_SELLERS_ID, T1.COLLECTION_MALL_ID, T1.OUTMALL_ID)) AS GRP_NM,
+                (CASE @GRP_NM2 WHEN CONCAT(T1.COLLECTION_MALL_DETAIL_ID, T1.OUTMALL_ID, T1.OM_SELLERS_ID) THEN @ROWNUM2:=@ROWNUM2+1 ELSE @ROWNUM2:=1 END) RNK2,
+                (@GRP_NM2:=CONCAT(T1.COLLECTION_MALL_DETAIL_ID, T1.OUTMALL_ID, T1.OM_SELLERS_ID)) AS GRP_NM2
+            FROM
+                EXCEL_DATA T1
+            INNER JOIN (
+                SELECT
+                    IF_OUTMALL_EXCEL_INFO_ID,
+                    OM_SELLERS_ID,
+                    COLLECTION_MALL_ID,
+                    OUTMALL_ID,
+                    SUM(GOODS_PRICE) AS TOT_GOODS_PRICE
+                FROM
+                    EXCEL_DATA
+                WHERE
+                    GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID
+            ) T2
+                ON T1.IF_OUTMALL_EXCEL_INFO_ID = T2.IF_OUTMALL_EXCEL_INFO_ID AND T1.OM_SELLERS_ID = T2.OM_SELLERS_ID AND T1.COLLECTION_MALL_ID = T2.COLLECTION_MALL_ID AND T1.OUTMALL_ID = T2.OUTMALL_ID
+            INNER JOIN (
+                SELECT
+                    IF_OUTMALL_EXCEL_INFO_ID,
+                    OM_SELLERS_ID,
+                    COLLECTION_MALL_ID,
+                    OUTMALL_ID,
+                    SUM(PAID_PRICE) AS TOT_ORDER_PRICE
+                FROM
+                    IF_OUTMALL_EXCEL_SUCC T1
+                    INNER JOIN IL_GOODS T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+                WHERE
+                    IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+                GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID
+            ) T3
+                ON T2.IF_OUTMALL_EXCEL_INFO_ID = T3.IF_OUTMALL_EXCEL_INFO_ID AND T2.OM_SELLERS_ID = T3.OM_SELLERS_ID AND T2.COLLECTION_MALL_ID = T3.COLLECTION_MALL_ID AND T2.OUTMALL_ID = T3.OUTMALL_ID
+            WHERE
+                GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+            GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID, GRP_NM2
+        ) TT
+    </insert>
+
+    <update id="putEasyAdminExcelRatioPrice">
+    /*	outmallOrder.putEasyAdminExcelRatioPrice	*/
+    UPDATE
+        IF_OUTMALL_EXCEL_RATIO T1
+        INNER JOIN (
+        SELECT
+            IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID, SUM(RATIO_GOODS_PRICE) AS RATIO_GOODS_PRICE
+        FROM
+            IF_OUTMALL_EXCEL_RATIO
+        WHERE
+            IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+            AND RNK > 1
+        GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID
+        ) T2
+        ON T1.IF_OUTMALL_EXCEL_INFO_ID = T2.IF_OUTMALL_EXCEL_INFO_ID AND T1.OM_SELLERS_ID = T2.OM_SELLERS_ID AND T1.COLLECTION_MALL_ID = T2.COLLECTION_MALL_ID AND T1.OUTMALL_ID = T2.OUTMALL_ID
+    SET T1.RATIO_GOODS_PRICE = (T1.TOT_ORDER_PRICE - T2.RATIO_GOODS_PRICE)
+    WHERE
+            T1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+        AND T1.RNK = 1
+    </update>
+
+    <insert id="addSabangnetExcelRatioPrice">
+    /*	outmallOrder.addSabangnetExcelRatioPrice	*/
+        INSERT INTO IF_OUTMALL_EXCEL_RATIO
+        (IF_OUTMALL_EXCEL_INFO_ID, IF_OUTMALL_EXCEL_SUCC_ID, COLLECTION_MALL_ID, COLLECTION_MALL_DETAIL_ID, IL_GOODS_ID, OUTMALL_ID, RNK, PAID_PRICE, GOODS_PRICE, TOT_GOODS_PRICE, TOT_ORDER_PRICE, RATIO_GOODS_PRICE, OM_SELLERS_ID)
+        WITH EXCEL_DATA AS (
+        SELECT
+            T1.IF_OUTMALL_EXCEL_INFO_ID,
+            T1.IF_OUTMALL_EXCEL_SUCC_ID,
+            T1.OM_SELLERS_ID,
+            T1.COLLECTION_MALL_ID,
+            T1.COLLECTION_MALL_DETAIL_ID,
+            T1.PAID_PRICE,
+            T1.IL_GOODS_ID,
+            T1.OUTMALL_ID,
+            IFNULL(T3.RECOMMENDED_PRICE, T1.PAID_PRICE)*T1.ORDER_CNT AS GOODS_PRICE,
+            T2.GOODS_TP
+        FROM
+            IF_OUTMALL_EXCEL_SUCC T1
+            LEFT OUTER JOIN IL_GOODS T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+            LEFT OUTER JOIN IL_GOODS_PRICE T3 ON T1.IL_GOODS_ID = T3.IL_GOODS_ID AND T3.USE_YN ='Y' AND CURDATE() >= T3.PRICE_START_DT AND CURDATE()  <![CDATA[<=]]>  T3.PRICE_END_DT
+            , (SELECT @GRP_NM:='', @ROWNUM:=0 FROM DUAL) XX
+            , (SELECT @GRP_NM2:='', @ROWNUM2:=0 FROM DUAL) XXX
+        WHERE
+                T1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+            AND
+                EXISTS (
+                    SELECT
+                        'X'
+                    FROM
+                        IF_OUTMALL_EXCEL_SUCC S1
+                        INNER JOIN IL_GOODS S2 ON S1.IL_GOODS_ID = S2.IL_GOODS_ID
+                    WHERE
+                            S1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+                        AND S1.COLLECTION_MALL_ID       = T1.COLLECTION_MALL_ID
+                        AND S1.OUTMALL_ID               = T1.OUTMALL_ID
+                        AND
+                        (
+                            S1.PAID_PRICE <![CDATA[<=]]> 0 AND S2.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                        OR
+                            S1.PAID_PRICE > 0 AND S2.GOODS_TP IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                        )
+                )
+        ORDER BY IFNULL(T3.RECOMMENDED_PRICE, T1.PAID_PRICE)*T1.ORDER_CNT DESC
+        )
+        SELECT
+            IF_OUTMALL_EXCEL_INFO_ID,
+            IF_OUTMALL_EXCEL_SUCC_ID,
+            COLLECTION_MALL_ID,
+            COLLECTION_MALL_DETAIL_ID,
+            IL_GOODS_ID,
+            OUTMALL_ID,
+            ROW_NUMBER() OVER(PARTITION BY TRIM(CONCAT(OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID)) ORDER BY COLLECTION_MALL_ID ASC) AS RNK,
+            PAID_PRICE,
+            GOODS_PRICE,
+            TOT_GOODS_PRICE,
+            TOT_ORDER_PRICE,
+            RATIO_GOODS_PRICE,
+            OM_SELLERS_ID
+        FROM
+        (
+            SELECT
+                T1.IF_OUTMALL_EXCEL_INFO_ID,
+                T1.IF_OUTMALL_EXCEL_SUCC_ID,
+                T1.OM_SELLERS_ID,
+                T1.COLLECTION_MALL_ID,
+                T1.COLLECTION_MALL_DETAIL_ID,
+                T1.IL_GOODS_ID,
+                T1.OUTMALL_ID,
+                T1.PAID_PRICE,
+                T1.GOODS_PRICE,
+                T2.TOT_GOODS_PRICE,
+                T3.TOT_ORDER_PRICE,
+                TRUNCATE(FLOOR(T3.TOT_ORDER_PRICE * (T1.GOODS_PRICE / T2.TOT_GOODS_PRICE)) / 1, 0) * 1 RATIO_GOODS_PRICE,
+                (CASE @GRP_NM WHEN CONCAT(T1.OM_SELLERS_ID, T1.COLLECTION_MALL_ID, T1.OUTMALL_ID) THEN @ROWNUM:=@ROWNUM+1 ELSE @ROWNUM:=1 END) RNK,
+                (@GRP_NM:=CONCAT(T1.OM_SELLERS_ID, T1.COLLECTION_MALL_ID, T1.OUTMALL_ID)) AS GRP_NM,
+                (CASE @GRP_NM2 WHEN CONCAT(T1.COLLECTION_MALL_DETAIL_ID, T1.OUTMALL_ID, T1.OM_SELLERS_ID) THEN @ROWNUM2:=@ROWNUM2+1 ELSE @ROWNUM2:=1 END) RNK2,
+                (@GRP_NM2:=CONCAT(T1.COLLECTION_MALL_DETAIL_ID, T1.OUTMALL_ID, T1.OM_SELLERS_ID)) AS GRP_NM2
+            FROM
+                EXCEL_DATA T1
+            INNER JOIN (
+                SELECT
+                    IF_OUTMALL_EXCEL_INFO_ID,
+                    OM_SELLERS_ID,
+                    COLLECTION_MALL_ID,
+                    OUTMALL_ID,
+                    SUM(GOODS_PRICE) AS TOT_GOODS_PRICE
+                FROM
+                    EXCEL_DATA
+                WHERE
+                    GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID
+            ) T2
+                ON T1.IF_OUTMALL_EXCEL_INFO_ID = T2.IF_OUTMALL_EXCEL_INFO_ID AND T1.OM_SELLERS_ID = T2.OM_SELLERS_ID AND T1.COLLECTION_MALL_ID = T2.COLLECTION_MALL_ID AND T1.OUTMALL_ID = T2.OUTMALL_ID
+            INNER JOIN (
+                SELECT
+                    IF_OUTMALL_EXCEL_INFO_ID,
+                    OM_SELLERS_ID,
+                    COLLECTION_MALL_ID,
+                    OUTMALL_ID,
+                    SUM(PAID_PRICE) AS TOT_ORDER_PRICE
+                FROM
+                    IF_OUTMALL_EXCEL_SUCC T1
+                    INNER JOIN IL_GOODS T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+                WHERE
+                    IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+                GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID
+            ) T3
+                ON T2.IF_OUTMALL_EXCEL_INFO_ID = T3.IF_OUTMALL_EXCEL_INFO_ID AND T2.OM_SELLERS_ID = T3.OM_SELLERS_ID AND T2.COLLECTION_MALL_ID = T3.COLLECTION_MALL_ID AND T2.OUTMALL_ID = T3.OUTMALL_ID
+            WHERE
+                GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+            GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID, GRP_NM2
+        ) TT
+
+    </insert>
+
+    <update id="putSabangnetExcelRatioPrice">
+    /*	outmallOrder.putSabangnetExcelRatioPrice	*/
+    UPDATE
+        IF_OUTMALL_EXCEL_RATIO T1
+        INNER JOIN (
+        SELECT
+            IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID, SUM(RATIO_GOODS_PRICE) AS RATIO_GOODS_PRICE
+        FROM
+            IF_OUTMALL_EXCEL_RATIO
+        WHERE
+            IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+            AND RNK > 1
+        GROUP BY IF_OUTMALL_EXCEL_INFO_ID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID
+        ) T2
+        ON T1.IF_OUTMALL_EXCEL_INFO_ID = T2.IF_OUTMALL_EXCEL_INFO_ID AND T1.OM_SELLERS_ID = T2.OM_SELLERS_ID AND T1.COLLECTION_MALL_ID = T2.COLLECTION_MALL_ID AND T1.OUTMALL_ID = T2.OUTMALL_ID
+    SET T1.RATIO_GOODS_PRICE = (T1.TOT_ORDER_PRICE - T2.RATIO_GOODS_PRICE)
+    WHERE
+            T1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+        AND T1.RNK = 1
+    </update>
+
+
+
+
+    <update id="putOutMallExcelSuccRatioPrice">
+    /*	outmallOrder.putOutMallExcelRatioPrice	*/
+    UPDATE
+        IF_OUTMALL_EXCEL_SUCC T1
+        INNER JOIN IF_OUTMALL_EXCEL_RATIO T2 ON T1.IF_OUTMALL_EXCEL_INFO_ID = T2.IF_OUTMALL_EXCEL_INFO_ID AND T1.IF_OUTMALL_EXCEL_SUCC_ID = T2.IF_OUTMALL_EXCEL_SUCC_ID
+    SET T1.PAID_PRICE = T2.RATIO_GOODS_PRICE
+    WHERE
+        T1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+    </update>
+
+    <update id="putOutMallExcelSuccGiftPrice">
+    /*	outmallOrder.putOutMallExcelSuccGiftPrice	*/
+    UPDATE
+        IF_OUTMALL_EXCEL_SUCC T1
+        INNER JOIN IL_GOODS T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+    SET T1.PAID_PRICE = 0
+    WHERE
+            T1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+        AND T2.GOODS_TP IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description 		: 외불 엑셀업로드 배치 실행 정보 조회
+    * @
+    * @ 수정일			수정자          수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.02.24		이명수          최초생성
+    * @
+   ────────────────────────────────────────────────────────────────────────-->
+    <select id="getLastIfOutmallExcelInfo" resultType="long">
+        /*	outmallOrder.getLastIfOutmallExcelInfo	*/
+        SELECT
+            IF_OUTMALL_EXCEL_INFO_ID
+        FROM
+            IF_OUTMALL_EXCEL_INFO
+        WHERE
+            UPLOAD_STATUS_CD = '11'
+            AND BATCH_STATUS_CD = '20'
+        ORDER BY IF_OUTMALL_EXCEL_INFO_ID ASC
+        LIMIT 1
+    </select>
+
+
+    <resultMap id="getOutmallOrderCreateTargetListResultMap" type="kr.co.pulmuone.v1.outmall.order.dto.OutMallOrderDto">
+        <result column="OUTMALL_TYPE"                         property="outmallType"/>
+        <result column="IF_OUTMALL_EXCEL_SUCC_ID"             property="ifOutmallExcelSuccId"/>
+        <result column="COLLECTION_MALL_ID"                   property="collectionMallId"/>
+        <result column="COLLECTION_MALL_DETAIL_ID"            property="collectionMallDetailId"/>
+        <result column="OM_SELLERS_ID"                        property="omSellersId"/>
+        <result column="SELLERS_GROUP_CD"                     property="sellersGroupCd"/>
+        <result column="IL_ITEM_CD"                           property="ilItemCd"/>
+        <result column="IL_GOODS_ID"                          property="ilGoodsId"/>
+        <result column="GOODS_NM"                             property="goodsName"/>
+        <result column="ORDER_CNT"                            property="orderCount"/>
+        <result column="PAID_PRICE"                           property="paidPrice"/>
+        <result column="BUYER_NM"                             property="buyerName"/>
+        <result column="BUYER_TEL"                            property="buyerTel"/>
+        <result column="BUYER_HP"                             property="buyerMobile"/>
+        <result column="RECV_NM"                              property="receiverName"/>
+        <result column="RECV_TEL"                             property="receiverTel"/>
+        <result column="RECV_HP"                              property="receiverMobile"/>
+        <result column="RECV_MAIL"                            property="receiverMail"/>
+        <result column="RECV_ZIP_CD"                          property="receiverZipCode"/>
+        <result column="RECV_ADDR1"                           property="receiverAddress1"/>
+        <result column="RECV_ADDR2"                           property="receiverAddress2"/>
+        <result column="SHIPPING_PRICE"                       property="shippingPrice"/>
+        <result column="DELIVERY_MSG"                         property="deliveryMessage"/>
+        <result column="OUTMALL_ID"                           property="outMallId"/>
+        <result column="LOGISTICS_CD"                         property="logisticsCd"/>
+        <result column="TRACKING_NO"                          property="trackingNo"/>
+        <result column="OUTMALL_ID_SEQ1"                      property="outMallIdSeq1"/>
+        <result column="OUTMALL_ID_SEQ2"                      property="outMallIdSeq2"/>
+        <result column="UR_SUPPLIER_ID"                       property="urSupplierId"/>
+        <result column="UR_WAREHOUSE_ID"                      property="urWarehouseId"/>
+        <result column="GOODS_DAILY_TP"                       property="goodsDailyTp"/>
+        <result column="GOODS_TP"                             property="goodsTp"/>
+        <result column="SALE_TP"                              property="saleTp"/>
+        <result column="IL_GOODS_SHIPPING_TEMPLATE_ID"        property="ilShippingTmplId"/>
+        <result column="WAREHOUSE_GRP_CD"                     property="warehouseGrpCd"/>
+        <result column="STORAGE_METHOD_TP"                    property="storageMethodTp"/>
+        <result column="ITEM_BARCODE"                         property="itemBarcode"/>
+        <result column="MEMO"                                 property="memo"/>
+        <result column="TAX_YN"                               property="taxYn"/>
+        <result column="IL_CTGRY_STD_ID"                      property="ilCtgryStdId"/>
+        <result column="IL_CTGRY_DISPLAY_ID"                  property="ilCtgryDisplayId"/>
+        <result column="IL_CTGRY_MALL_ID"                     property="ilCtgryMallId"/>
+        <result column="GRP_SHIPPING_ZONE"                    property="grpShippingZone"/>
+        <result column="GRP_SHIPPING_PRICE"                   property="grpShippingPrice"/>
+        <result column="STANDARD_PRICE"                       property="standardPrice"/>
+        <result column="RECOMMENDED_PRICE"                    property="recommendedPrice"/>
+        <result column="SALE_PRICE"                           property="salePrice"/>
+        <result column="PROMOTION_NM"                         property="promotionNm"/>
+    </resultMap>
+    <select id="getOutmallOrderCreateTargetList" resultMap="getOutmallOrderCreateTargetListResultMap">
+        /* outmallOrder.getOutmallOrderCreateTargetList */
+
+        SELECT
+            T1.*,
+            T2.STANDARD_PRICE,  /* 원가 */
+            T2.RECOMMENDED_PRICE, /* 정상가 */
+            T2.SALE_PRICE, /* 판매가 */
+            CASE
+             	WHEN T1.GOODS_TP = 'GOODS_TYPE.PACKAGE' AND T1.PACKAGE_UNIT_DISP_YN = 'Y' THEN CONCAT(T1.GOODS_NAME, ' (', T1.PACKAGE_UNIT_DESC, ')')
+             	WHEN T1.GOODS_TP = 'GOODS_TYPE.PACKAGE' AND T1.PACKAGE_UNIT_DISP_YN = 'N' THEN T1.GOODS_NAME
+             	WHEN T1.QTY_PER_PACKAGE = '' THEN CONCAT(T1.GOODS_NAME, ' (', T1.SIZE_PER_PACKAGE, T1.SIZE_UNIT, ')')
+             	ELSE CONCAT(T1.GOODS_NAME, ' (', T1.SIZE_PER_PACKAGE, T1.SIZE_UNIT, 'X', T1.QTY_PER_PACKAGE, T1.PACKAGE_UNIT, ')')
+             END AS GOODS_NM /* 상품명 */
+        FROM
+        (
+            SELECT
+                TT.OUTMALL_TYPE,
+                T1.IF_OUTMALL_EXCEL_SUCC_ID,
+                T1.COLLECTION_MALL_ID, T1.COLLECTION_MALL_DETAIL_ID, T1.OM_SELLERS_ID,
+                (SELECT SELLERS_GROUP_CD FROM OM_SELLERS WHERE OM_SELLERS_ID = T1.OM_SELLERS_ID) AS SELLERS_GROUP_CD,
+                CASE WHEN IFNULL(T1.IL_ITEM_CD, '') = '' THEN T2.IL_ITEM_CD ELSE T1.IL_ITEM_CD END AS IL_ITEM_CD, T1.IL_GOODS_ID, T2.GOODS_NM AS GOODS_NAME,
+                T1.ORDER_CNT, T1.PAID_PRICE, T1.BUYER_NM, T1.BUYER_TEL, T1.BUYER_HP,
+                T1.RECV_NM, T1.RECV_TEL, T1.RECV_HP, T1.RECV_MAIL, T1.RECV_ZIP_CD, T1.RECV_ADDR1, T1.RECV_ADDR2, T1.SHIPPING_PRICE, T1.DELIVERY_MSG,
+                T1.LOGISTICS_CD, T1.TRACKING_NO, T1.OUTMALL_ID, T1.OUTMALL_ID_SEQ1, T1.OUTMALL_ID_SEQ2,
+                II.UR_SUPPLIER_ID, T2.UR_WAREHOUSE_ID, T2.GOODS_DAILY_TP, T2.GOODS_TP, T2.SALE_TP, ST.IL_SHIPPING_TMPL_ID AS IL_GOODS_SHIPPING_TEMPLATE_ID,
+                UW.WAREHOUSE_GRP_CD, II.STORAGE_METHOD_TP, II.ITEM_BARCODE, II.TAX_YN, T1.MEMO
+                , IFNULL(IL_CTGRY_STD_ID, 0) AS IL_CTGRY_STD_ID			/* 표준카테고리 */
+                , IFNULL((	SELECT IL_CTGRY_ID
+                            FROM IL_GOODS_CTGRY T
+                            WHERE BASIC_YN = 'Y' AND MALL_DIV = 'MALL_DIV.PULMUONE'
+                                AND T.IL_GOODS_ID = T2.IL_GOODS_ID), 0) AS IL_CTGRY_DISPLAY_ID	/* 전시 카테고리 */
+                , IFNULL((	SELECT IL_CTGRY_ID
+                            FROM IL_GOODS_CTGRY T
+                            WHERE BASIC_YN = 'Y' AND MALL_DIV != 'MALL_DIV.PULMUONE'
+                                AND T.IL_GOODS_ID = T2.IL_GOODS_ID), 0) AS IL_CTGRY_MALL_ID,		/* 몰인몰 카테고리 */
+                (
+                SELECT
+                    IL_GOODS_PRICE_ID
+                FROM
+                    IL_GOODS_PRICE
+                WHERE
+                        IL_GOODS_ID = T2.IL_GOODS_ID
+                    AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+                ORDER BY IL_GOODS_PRICE_ID DESC
+                LIMIT 1) AS IL_GOODS_PRICE_ID,
+                CONCAT(T1.RECV_NM, '∀', T1.RECV_HP, '∀', T1.RECV_ZIP_CD, '∀', T1.RECV_ADDR1, '∀', T1.RECV_ADDR2, '∀', IF_OUTMALL_EXCEL_SUCC_ID) AS GRP_SHIPPING_ZONE,
+                CONCAT('SPG_', T1.COLLECTION_MALL_ID, '∀', T2.UR_WAREHOUSE_ID, '∀', ST.BUNDLE_YN, '∀', IF (ST.BUNDLE_YN = 'N', T1.IF_OUTMALL_EXCEL_SUCC_ID , 0)) AS GRP_SHIPPING_PRICE,
+                CASE
+                    WHEN II.SIZE_PER_PACKAGE IS NULL THEN ''
+                    ELSE TRIM(II.SIZE_PER_PACKAGE)+0
+                END AS SIZE_PER_PACKAGE /* 포장단위별 용량 */
+                , CASE
+                    WHEN II.SIZE_UNIT_ETC IS NOT NULL AND TRIM(II.SIZE_UNIT_ETC) != '' THEN II.SIZE_UNIT_ETC
+                    ELSE IFNULL(FN_COMN_CODE_DIC(II.SIZE_UNIT), '')
+                END AS SIZE_UNIT /* 용량(중량)단위 */
+                , IFNULL(II.QTY_PER_PACKAGE, '') AS QTY_PER_PACKAGE /* 구성정보 용량 */
+                , CASE
+                    WHEN II.PACKAGE_UNIT_ETC IS NOT NULL AND TRIM(II.PACKAGE_UNIT_ETC) != '' THEN II.PACKAGE_UNIT_ETC
+                    ELSE IFNULL(FN_COMN_CODE_DIC(II.PACKAGE_UNIT), '')
+                END AS PACKAGE_UNIT /* 구성정보 단위 */
+                , T2.PACKAGE_UNIT_DISP_YN
+                , T2.PACKAGE_UNIT_DESC
+                , IF(
+                    NOW() BETWEEN T2.PROMOTION_NM_START_DT AND T2.PROMOTION_NM_END_DT
+                    , IF(
+                        T2.PROMOTION_NM IS NULL OR TRIM(T2.PROMOTION_NM) = ''
+                        , ''
+                        , CONCAT('[', T2.PROMOTION_NM, '] ')
+                        )
+                    , ''
+                    ) AS PROMOTION_NM
+            FROM
+                IF_OUTMALL_EXCEL_INFO TT
+                INNER JOIN IF_OUTMALL_EXCEL_SUCC T1 ON TT.IF_OUTMALL_EXCEL_INFO_ID = T1.IF_OUTMALL_EXCEL_INFO_ID
+                INNER JOIN IL_GOODS T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+                INNER JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (T2.IL_GOODS_ID = GST.IL_GOODS_ID AND T2.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+                INNER JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+                INNER JOIN UR_WAREHOUSE UW ON (UW.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID)
+                INNER JOIN IL_ITEM II ON T2.IL_ITEM_CD = II.IL_ITEM_CD
+            WHERE
+                T1.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+                AND T1.ORDER_CREATE_YN = 'N'
+        ) T1
+        INNER JOIN IL_GOODS_PRICE T2 ON T1.IL_GOODS_PRICE_ID = T2.IL_GOODS_PRICE_ID
+        ORDER BY COLLECTION_MALL_ID, IF_OUTMALL_EXCEL_SUCC_ID DESC
+    </select>
+
+	<select id="getOmSellersInfoList" resultType="kr.co.pulmuone.v1.outmall.order.dto.OutMallOrderSellersDto">
+        /* outmallOrder.getOmSellersInfoList */
+       	SELECT
+			OM_SELLERS_ID,
+			SELLERS_GROUP_CD
+		FROM
+			OM_SELLERS
+		WHERE
+		        OM_SELLERS_ID != 0
+		    AND	OM_SELLERS_ID IN
+            <foreach collection="excelList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+	</select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 외부몰 배송정보 내역 다운로드 정보 조회
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.21     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutmallShippingInfoDownload" resultType="kr.co.pulmuone.v1.outmall.order.dto.vo.OutMallShippingInfoVo">
+        /* outmallOrder.getOutmallShippingInfoDownload */
+        SELECT
+        	IF(OOD.OUTMALL_TYPE ='E' AND OOD.PRD_SEQ > 0, OOD.PRD_SEQ, OOD.COLLECTION_MALL_DETAIL_ID) AS COLLECTION_MALL_DETAIL_ID /* 관리번호 */
+		    ,OTN.TRACKING_NO                                                        /* 송장번호 */
+		    ,IFNULL(PSC.SHIPPING_COMP_NM,'') AS SHIPPING_COMP_NM                    /* 택배사명 */
+		    ,IFNULL(PSCO.OUTMALL_SHIPPING_COMP_CD,'') AS OUTMALL_SHIPPING_COMP_CD   /* 사방넷 택배사 코드*/
+            ,OS.STATUS_NM AS ORDER_STATUS                                           /* 배송상태 */
+            ,UW.WAREHOUSE_NM                                                        /* 출고처 */
+            ,OTN.CREATE_DT                                                          /* 송장등록일 */
+            ,OOD.OUTMALL_DETAIL_ID                                                  /* 외부몰 상세번호 */
+            ,OMS.SELLERS_NM                                                         /* 주문경로 */
+		FROM
+		    OD_ORDER OO
+		    JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+								  AND OOD.UR_WAREHOUSE_ID IN (
+							<foreach collection="listAuthWarehouseId" item="warehouseId" separator=",">
+									#{warehouseId}
+							</foreach>
+															 )
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+					AND OOD.UR_SUPPLIER_ID IN (
+						<foreach collection="listAuthSupplierId" item="authSupplierId" separator=",">
+							#{authSupplierId}
+						</foreach>
+					)
+				</if>
+		    LEFT JOIN OD_TRACKING_NUMBER OTN ON OTN.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		    LEFT JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+		    LEFT JOIN PS_SHIPPING_COMP_OUTMALL PSCO ON PSCO.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID AND PSCO.OUTMALL_CD = 'S'
+            LEFT JOIN OD_STATUS OS ON OS.STATUS_CD = OOD.ORDER_STATUS_CD
+            LEFT JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = OOD.UR_WAREHOUSE_ID
+            LEFT JOIN OM_SELLERS OMS ON OMS.OM_SELLERS_ID = OO.OM_SELLERS_ID
+		WHERE
+		    OOD.ORDER_STATUS_CD IN ('DI','DC','EC')
+		    AND OOD.COLLECTION_MALL_DETAIL_ID != ''
+		    AND OTN.TRACKING_NO IS NOT NULL
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchSellersGroupCd)">
+		      AND OO.SELLERS_GROUP_CD = #{searchSellersGroupCd}  /* 판매처 그룹 코드 */
+		    </if>
+            <if test="omSellersIdList.size() > 0">
+                AND OO.OM_SELLERS_ID IN
+                <foreach collection="omSellersIdList" item="sellersDetail" index="index" separator="," open="(" close=")">
+                    #{sellersDetail}
+                </foreach>
+            </if>
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPeriodType)">
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodType,'DI_DT')">
+			      AND DATE_FORMAT(OOD.DI_DT,'%Y%m%d%H') BETWEEN concat(#{searchStartDate}, #{searchStHour}) AND concat(#{searchEndDate}, #{searchEdHour})  /* 기간 검색 : 배송중 일자 */
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodType,'SHIPPING_DT')">
+			      AND DATE_FORMAT(OOD.SHIPPING_DT,'%Y%m%d%H') BETWEEN concat(#{searchStartDate}, #{searchStHour}) AND concat(#{searchEndDate}, #{searchEdHour})  /* 기간 검색 : 출고예정일 */
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodType,'DELIVERY_DT')">
+			      AND DATE_FORMAT(OOD.DELIVERY_DT,'%Y%m%d%H') BETWEEN concat(#{searchStartDate}, #{searchStHour}) AND concat(#{searchEndDate}, #{searchEdHour})  /* 기간 검색 : 도착예정일 */
+			    </if>
+			</if>
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+		      AND OOD.UR_WAREHOUSE_GRP_CD = #{warehouseGroup} /* 출고처 그룹 */
+		    </if>
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+		      AND OOD.UR_WAREHOUSE_ID = #{warehouseId} /* 출고처  PK*/
+		    </if>
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(outmallType)">
+              AND EXISTS (
+                  SELECT 'X'
+                  FROM OD_ORDER INOO
+                  INNER JOIN OD_ORDER_DETL INOOD
+                  ON INOO.OD_ORDER_ID  = INOOD.OD_ORDER_ID
+                  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ezadminType)">
+                      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ezadminType,'API')">
+                          INNER JOIN IF_EASYADMIN_ORDER_SUCC IEOS ON IEOS.PACK = INOO.COLLECTION_MALL_ID AND IEOS.ORDER_CREATE_YN ='Y'
+                      </if>
+                      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ezadminType,'EXCEL')">
+                          INNER JOIN IF_OUTMALL_EXCEL_SUCC IOES ON IOES.COLLECTION_MALL_ID = INOO.COLLECTION_MALL_ID AND IOES.ORDER_CREATE_YN = 'Y'
+                      </if>
+                  </if>
+                  WHERE INOO.OD_ORDER_ID = OO.OD_ORDER_ID
+                  AND INOO.AGENT_TYPE_CD IN
+                      (
+                          'AGENT_TYPE.O'
+                      )
+                  AND
+                    INOOD.OUTMALL_TYPE = #{outmallType} /* 수집몰 구분 */
+                  )
+		    </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 외부몰 배송정보 다운로드 내역
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.21     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addOutmallShippingExcelDownHist">
+        /* outmallOrder.addOutmallShippingExcelDownHist */
+        INSERT INTO IF_OUTMALL_SHIPPING_EXCELDOWN_HIST(
+			SELLERS_GROUP_CD
+			,PERIOD_TYPE
+			,START_DT
+			,END_DT
+			,UR_WAREHOUSE_ID
+			,OUTMALL_TYPE
+			,OM_SELLERS_ID_TEXT
+			,CREATE_ID
+		) VALUES(
+			#{searchSellersGroupCd}
+			,#{searchPeriodType}
+			,#{searchStartDate}
+			,#{searchEndDate}
+			,#{warehouseId}
+			,#{outmallType}
+			,#{omSellersId}
+			,#{userVo.userId}
+		)
+    </insert>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 외부몰 배송정보 내역 다운로드 정보 조회
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.21     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutMallShippingExceldownHist" resultType="kr.co.pulmuone.v1.outmall.order.dto.vo.OutMallShippingExceldownHistVo">
+        /* outmallOrder.getOutMallShippingExceldownHist */
+        SELECT
+		    IFNULL(FN_COMN_CODE_DIC(IOSEH.SELLERS_GROUP_CD), '판매처 그룹 전체') AS SELLERS_GROUP
+		    ,CASE IOSEH.PERIOD_TYPE WHEN 'DI_DT' THEN '배송중 일자'
+		                            WHEN 'SHIPPING_DT' THEN '출고예정일'
+		                            ELSE '도착예정일' END AS PERIOD_TYPE
+		    ,DATE_FORMAT(IOSEH.START_DT,'%Y-%m-%d') AS START_DT
+		    ,DATE_FORMAT(IOSEH.END_DT,'%Y-%m-%d') AS END_DT
+		    ,IFNULL(UW.WAREHOUSE_NM, '출고처 전체') AS WAREHOUSE_NM
+		    ,IF(IOSEH.OUTMALL_TYPE = 'E', '이지어드민','사방넷') AS OUTMALL_TYPE
+		    ,CONCAT(FN_DECRYPT(UU.USER_NM),' / ',UU.LOGIN_ID) AS USER_INFO
+		    ,IOSEH.CREATE_DT AS DOWNLOAD_DT
+		FROM
+		    IF_OUTMALL_SHIPPING_EXCELDOWN_HIST IOSEH
+		    JOIN UR_USER UU ON UU.UR_USER_ID = IOSEH.CREATE_ID
+		    LEFT JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = IOSEH.UR_WAREHOUSE_ID
+		<where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupSellersGroupCd)">
+              AND IOSEH.SELLERS_GROUP_CD = #{popupSellersGroupCd}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupSearchStartDate)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupSearchEndDate)">
+                    AND IOSEH.CREATE_DT BETWEEN #{popupSearchStartDate} AND #{popupSearchEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupWarehouseId)">
+              AND IOSEH.UR_WAREHOUSE_ID = #{popupWarehouseId}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupOutmallType)">
+              AND IOSEH.OUTMALL_TYPE = #{popupOutmallType}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupOmSellersId)">
+                <if test="omSellersIdList.size() > 0">
+                    AND
+                    <foreach collection="omSellersIdList" item="sellersDetail" index="index" separator="OR" open="(" close=")">
+                        IOSEH.OM_SELLERS_ID_TEXT LIKE CONCAT('%', #{sellersDetail}, '%')
+                    </foreach>
+                </if>
+            </if>
+         </where>
+         ORDER BY IOSEH.IF_OUTMALL_SHIPPING_EXCELDOWN_HIST_ID DESC
+    </select>
+
+        <select id="getOutMallShippingExceldownHistCount" resultType="int">
+        /* outmallOrder.getOutMallShippingExceldownHistCount */
+        SELECT
+            COUNT(*)
+        FROM
+            IF_OUTMALL_SHIPPING_EXCELDOWN_HIST IOSEH
+            JOIN UR_USER UU ON UU.UR_USER_ID = IOSEH.CREATE_ID
+            LEFT JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = IOSEH.UR_WAREHOUSE_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupSellersGroupCd)">
+              AND IOSEH.SELLERS_GROUP_CD = #{popupSellersGroupCd}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupSearchStartDate)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupSearchEndDate)">
+                    AND IOSEH.CREATE_DT BETWEEN #{popupSearchStartDate} AND #{popupSearchEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupWarehouseId)">
+              AND IOSEH.UR_WAREHOUSE_ID = #{popupWarehouseId}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupOutmallType)">
+              AND IOSEH.OUTMALL_TYPE = #{popupOutmallType}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupOmSellersId)">
+                <if test="omSellersIdList.size() > 0">
+                    AND
+                    <foreach collection="omSellersIdList" item="sellersDetail" index="index" separator="OR" open="(" close=")">
+                        IOSEH.OM_SELLERS_ID_TEXT LIKE CONCAT('%', #{sellersDetail}, '%')
+                    </foreach>
+                </if>
+            </if>
+         </where>
+         ORDER BY IOSEH.IF_OUTMALL_SHIPPING_EXCELDOWN_HIST_ID DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문관리  - 외부몰 상태 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.19		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putGoodsOutmallStatus">
+        /* outmallOrder.putGoodsOutmallStatus */
+        UPDATE IL_GOODS T1
+        INNER JOIN (
+            <foreach collection="updateTargetList" item="value" separator="UNION ALL" open="" close="">
+                SELECT #{value} AS IL_GOODS_ID
+            </foreach>
+        ) T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+        SET GOODS_OUTMALL_SALE_STAT = 'GOODS_OUTMALL_SALE_STAT.ON_SALE'
+        WHERE
+            T1.GOODS_OUTMALL_SALE_STAT = 'GOODS_OUTMALL_SALE_STAT.NONE'
+                AND SALE_STATUS IN (
+                                    'SALE_STATUS.ON_SALE',
+                                    'SALE_STATUS.WAIT',
+                                    'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM'
+                                    )
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 외부몰 송장등록이력 조회
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.14     오영재          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutMallTrackingNumberHist" resultType="kr.co.pulmuone.v1.outmall.order.dto.vo.OutMallTrackingNumberHistVo">
+        /* outmallOrder.getOutMallTrackingNumberHist */
+        SELECT
+          DATE_FORMAT(OOD.DI_DT,'%Y-%m-%d %H') AS SEND_END_DT
+          ,IFNULL(PSC.SHIPPING_COMP_NM,'') AS SHIPPING_COMP_NM                    /* 출고처 */
+          ,COUNT(*) AS UPDATE_CNT
+        FROM
+        OD_ORDER OO
+        JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+        LEFT JOIN OD_TRACKING_NUMBER OTN ON OTN.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+        LEFT JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+        LEFT JOIN PS_SHIPPING_COMP_OUTMALL PSCO ON PSCO.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID AND PSCO.OUTMALL_CD = 'S'
+        WHERE
+        OOD.ORDER_STATUS_CD = 'DI'
+        AND OOD.COLLECTION_MALL_DETAIL_ID != ''
+        AND OTN.TRACKING_NO IS NOT NULL
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchTrackNumHistPeriodType)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTrackNumHistPeriodType,'DI_DT')">
+                AND DATE_FORMAT(OOD.DI_DT,'%Y%m%d%H') BETWEEN concat(#{startDate}, #{startHour}) AND concat(#{endDate}, #{endHour})  /* 기간 검색 : 배송중 일자 */
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTrackNumHistPeriodType,'SHIPPING_DT')">
+                AND DATE_FORMAT(OOD.SHIPPING_DT,'%Y%m%d%H') BETWEEN concat(#{startDate}, #{startHour}) AND concat(#{endDate}, #{endHour})  /* 기간 검색 : 출고예정일 */
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTrackNumHistPeriodType,'DELIVERY_DT')">
+                AND DATE_FORMAT(OOD.DELIVERY_DT,'%Y%m%d%H') BETWEEN concat(#{startDate}, #{startHour}) AND concat(#{endDate}, #{endHour})  /* 기간 검색 : 도착예정일 */
+            </if>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(trackNumHistWarehouseGroup)">
+            AND OOD.UR_WAREHOUSE_GRP_CD = #{trackNumHistWarehouseGroup} /* 출고처 그룹 */
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(trackNumHistWarehouseId)">
+            AND OOD.UR_WAREHOUSE_ID = #{trackNumHistWarehouseId} /* 출고처  PK*/
+        </if>
+        GROUP BY DATE_FORMAT(OOD.DI_DT,'%Y-%m-%d %H'), PSC.SHIPPING_COMP_NM
+        ORDER BY DATE_FORMAT(OOD.DI_DT,'%Y-%m-%d %H') DESC
+    </select>
+
+    <select id="getOutMallTrackingNumberHistCount" resultType="int">
+        /* outmallOrder.getOutMallTrackingNumberHistCount */
+        SELECT COUNT(T.Cnt) FROM (
+            SELECT
+              COUNT(*) as Cnt
+            FROM
+                OD_ORDER OO
+                JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+                LEFT JOIN OD_TRACKING_NUMBER OTN ON OTN.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+                LEFT JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+                LEFT JOIN PS_SHIPPING_COMP_OUTMALL PSCO ON PSCO.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID AND PSCO.OUTMALL_CD = 'S'
+            WHERE
+                OOD.ORDER_STATUS_CD = 'DI'
+                AND OOD.COLLECTION_MALL_DETAIL_ID != ''
+                AND OTN.TRACKING_NO IS NOT NULL
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchTrackNumHistPeriodType)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTrackNumHistPeriodType,'DI_DT')">
+                    AND DATE_FORMAT(OOD.DI_DT,'%Y%m%d%H') BETWEEN concat(#{startDate}, #{startHour}) AND concat(#{endDate}, #{endHour})  /* 기간 검색 : 배송중 일자 */
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTrackNumHistPeriodType,'SHIPPING_DT')">
+                    AND DATE_FORMAT(OOD.SHIPPING_DT,'%Y%m%d%H') BETWEEN concat(#{startDate}, #{startHour}) AND concat(#{endDate}, #{endHour})  /* 기간 검색 : 출고예정일 */
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTrackNumHistPeriodType,'DELIVERY_DT')">
+                    AND DATE_FORMAT(OOD.DELIVERY_DT,'%Y%m%d%H') BETWEEN concat(#{startDate}, #{startHour}) AND concat(#{endDate}, #{endHour})  /* 기간 검색 : 도착예정일 */
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(trackNumHistWarehouseGroup)">
+                AND OOD.UR_WAREHOUSE_GRP_CD = #{trackNumHistWarehouseGroup} /* 출고처 그룹 */
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(trackNumHistWarehouseId)">
+                AND OOD.UR_WAREHOUSE_ID = #{trackNumHistWarehouseId} /* 출고처  PK*/
+            </if>
+            GROUP BY DATE_FORMAT(OOD.DI_DT,'%Y-%m-%d %H'), PSC.SHIPPING_COMP_NM
+        ) T
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부몰 주문 생성 - 주문생성여부 업데이트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.16		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putOutmallExcelSuccOrderCreateYn">
+        /* outmallOrder.putOutmallExcelSuccOrderCreateYn */
+        UPDATE IF_OUTMALL_EXCEL_SUCC
+        SET ORDER_CREATE_YN = 'Y'
+        WHERE
+            COLLECTION_MALL_ID = #{collectionMallId}
+            AND IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부몰 주문 생성 - 주문생성 안된 건 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.20		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getNotOrderCreateInIfOutmallExcelSucc" resultType="HashMap">
+        /* outmallOrder.getNotOrderCreateInIfOutmallExcelSucc */
+        SELECT
+            A.IF_OUTMALL_EXCEL_SUCC_ID AS IF_OUTMALL_EXCEL_SUCC_ID
+        FROM
+            IF_OUTMALL_EXCEL_SUCC A
+            LEFT OUTER JOIN OD_ORDER B ON (A.COLLECTION_MALL_ID = B.COLLECTION_MALL_ID AND B.ORDER_YN = 'Y')
+        WHERE
+            A.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+          AND A.ORDER_CREATE_YN = 'Y'
+          AND B.COLLECTION_MALL_ID IS NULL
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부몰 주문 생성 - 주문생성 총 개수 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.20		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderCreateCount" resultType="int">
+        /* outmallOrder.getOrderCreateCount */
+        SELECT
+            COUNT(DISTINCT A.COLLECTION_MALL_ID)
+        FROM
+            IF_OUTMALL_EXCEL_SUCC A
+        WHERE
+            A.IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+          AND A.ORDER_CREATE_YN = 'Y'
+    </select>
+</mapper>

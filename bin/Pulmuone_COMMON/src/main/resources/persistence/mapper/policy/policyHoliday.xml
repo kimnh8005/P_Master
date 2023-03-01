@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.holiday.PolicyHolidayMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴무일관리 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getHolidayListResultMap" type="kr.co.pulmuone.v1.policy.holiday.dto.vo.GetHolidayListResultVo">
+		<result column="HOLIDAY_DATE" property="holidayDate" />
+	</resultMap>
+	<select id="getHolidayList" resultMap="getHolidayListResultMap">
+		/* holiday.xml > getHolidayList */
+		SELECT
+			HOLIDAY_DT AS HOLIDAY_DATE
+		FROM
+			PS_HOLIDAY
+		WHERE
+			HOLIDAY_DT > CURRENT_DATE()
+		ORDER BY HOLIDAY_DT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴무일관리 휴일 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteHoliday">
+	DELETE FROM PS_HOLIDAY
+	WHERE HOLIDAY_DT > CURRENT_DATE()
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴무일관리 휴일 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addHoliday">
+			INSERT INTO PS_HOLIDAY(
+				HOLIDAY_DT
+				,CREATE_ID
+			)
+			VALUES
+			<foreach item="insertData" index="index" collection="insertHolidayRequestDtoList" open="" separator="," close="">
+				(
+					#{insertData.holidayDate}
+					,#{insertData.userVo.userId}
+				)
+			</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일그룹 관리 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getHolidayGroupListResultMap" type="kr.co.pulmuone.v1.policy.holiday.dto.vo.GetHolidayGroupListResultVo">
+		<result column="PS_HOLIDAY_GROUP_ID" property="psHolidayGroupId" />
+		<result column="HOLIDAY_GROUP_NAME" property="holidayGroupName" />
+		<result column="COMMON_HOLIDAY_YN" property="commonHolidayYn" />
+		<result column="ADD_HOLIDAY_YN" property="addHolidayYn" />
+		<result column="ADD_HOLIDAY_COUNT" property="addHolidayCount" />
+		<result column="MODIFY_DATE" property="modifyDate" />
+		<result column="CREATE_DATE" property="createDate" />
+	</resultMap>
+
+	<select id="getHolidayGroupList" resultMap="getHolidayGroupListResultMap">
+		SELECT
+			HG.PS_HOLIDAY_GRP_ID AS PS_HOLIDAY_GROUP_ID
+			,HG.HOLIDAY_GRP_NM AS HOLIDAY_GROUP_NAME
+			,HG.COMMON_HOLIDAY_YN AS COMMON_HOLIDAY_YN
+			,HG.ADD_HOLIDAY_YN AS ADD_HOLIDAY_YN
+			,COUNT(HGAD.HOLIDAY_DT) AS ADD_HOLIDAY_COUNT
+			,HG.MODIFY_DT AS MODIFY_DATE
+			,HG.CREATE_DT AS CREATE_DATE
+		FROM
+			PS_HOLIDAY_GRP HG
+			LEFT OUTER JOIN PS_HOLIDAY_GRP_ADD_DATE HGAD
+			ON HG.PS_HOLIDAY_GRP_ID = HGAD.PS_HOLIDAY_GRP_ID
+			AND HGAD.HOLIDAY_DT > CURRENT_DATE()
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(commonHolidayCondition)">
+				AND HG.COMMON_HOLIDAY_YN = #{commonHolidayCondition}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(addHolidayCondition)">
+				AND HG.ADD_HOLIDAY_YN = #{addHolidayCondition}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(groupName)">
+				AND HG.HOLIDAY_GRP_NM LIKE CONCAT(#{groupName},'%')
+			</if>
+		</where>
+		GROUP BY HG.PS_HOLIDAY_GRP_ID
+		ORDER BY HG.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일그룹 관리 리스트 카운트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getHolidayGroupListCount" resultType="int">
+		SELECT
+			COUNT(*)
+		FROM
+			PS_HOLIDAY_GRP HG
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(commonHolidayCondition)">
+				AND HG.COMMON_HOLIDAY_YN = #{commonHolidayCondition}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(addHolidayCondition)">
+				AND HG.ADD_HOLIDAY_YN = #{addHolidayCondition}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(groupName)">
+				AND HG.HOLIDAY_GRP_NM LIKE CONCAT(#{groupName},'%')
+			</if>
+		</where>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일그룹 관리 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getHolidayGroupResultMap" type="kr.co.pulmuone.v1.policy.holiday.dto.vo.GetHolidayGroupResultVo">
+		<result column="PS_HOLIDAY_GROUP_ID" property="psHolidayGroupId" />
+		<result column="HOLIDAY_GROUP_NAME" property="holidayGroupName" />
+		<result column="COMMON_HOLIDAY_YN" property="commonHolidayYn" />
+		<result column="ADD_HOLIDAY_YN" property="addHolidayYn" />
+		<result column="CREATE_DATE" property="createDate" />
+		<result column="MODIFY_DATE" property="modifyDate" />
+		<result column="HOLIDAY_DATE" property="holidayDate" />
+	</resultMap>
+
+	<select id="getHolidayGroup" resultMap="getHolidayGroupResultMap">
+		SELECT
+			HG.PS_HOLIDAY_GRP_ID AS PS_HOLIDAY_GROUP_ID
+			,HG.HOLIDAY_GRP_NM AS HOLIDAY_GROUP_NAME
+			,HG.COMMON_HOLIDAY_YN AS COMMON_HOLIDAY_YN
+			,HG.ADD_HOLIDAY_YN AS ADD_HOLIDAY_YN
+			,HG.CREATE_DT AS CREATE_DATE
+			,HG.MODIFY_DT AS MODIFY_DATE
+			,HGAD.HOLIDAY_DT AS HOLIDAY_DATE
+		FROM PS_HOLIDAY_GRP HG
+			LEFT OUTER JOIN PS_HOLIDAY_GRP_ADD_DATE HGAD
+			ON HG.PS_HOLIDAY_GRP_ID = HGAD.PS_HOLIDAY_GRP_ID
+			AND HGAD.HOLIDAY_DT > CURRENT_DATE()
+		WHERE
+			HG.PS_HOLIDAY_GRP_ID = #{psHolidayGroupId}
+		ORDER BY HGAD.HOLIDAY_DT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일그룹 관리 휴일그룹 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addHolidayGroup">
+		INSERT INTO PS_HOLIDAY_GRP (
+			HOLIDAY_GRP_NM
+			,COMMON_HOLIDAY_YN
+			,ADD_HOLIDAY_YN
+			,CREATE_ID
+		) VALUES (
+			#{holidayGroupName}
+			,#{commonHolidayYn}
+			,#{addHolidayYn}
+			,#{userVo.userId}
+		)
+		<selectKey resultType="String" keyProperty="psHolidayGroupId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일그룹 관리 휴일그룹 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putHolidayGroup">
+		UPDATE PS_HOLIDAY_GRP
+		SET HOLIDAY_GRP_NM = #{holidayGroupName}
+			,COMMON_HOLIDAY_YN = #{commonHolidayYn}
+			,ADD_HOLIDAY_YN = #{addHolidayYn}
+			,CREATE_ID = #{userVo.userId}
+			,MODIFY_DT = NOW()
+		WHERE
+			PS_HOLIDAY_GRP_ID = #{psHolidayGroupId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일그룹 관리 추가휴일 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delHolidayGroupAddDate">
+		DELETE FROM PS_HOLIDAY_GRP_ADD_DATE
+		WHERE PS_HOLIDAY_GRP_ID = #{psHolidayGroupId}
+		AND HOLIDAY_DT > CURRENT_DATE()
+		OR
+			<foreach collection="deleteRequestDtoList" item="deleteData" open="" close="" separator="OR">
+				(HOLIDAY_DT = #{deleteData.holidayDateList})
+			</foreach>
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일그룹 관리 추가휴일 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addHolidayGroupAddDate">
+		INSERT IGNORE INTO PS_HOLIDAY_GRP_ADD_DATE(
+			PS_HOLIDAY_GRP_ID
+			, HOLIDAY_DT
+			, CREATE_ID
+		)
+		VALUES
+		<foreach item="insertData" index="index" collection="insertRequestDtoList" open="" separator="," close="">
+			(
+				#{psHolidayGroupId}
+				, #{insertData.holidayDateList}
+				, #{insertData.userVo.userId}
+			)
+		</foreach>
+	</insert>
+
+	<select id="validateHolidayGroupName" resultType="int">
+		SELECT COUNT(*)
+		FROM PS_HOLIDAY_GRP
+		WHERE HOLIDAY_GRP_NM = #{holidayGroupName}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 전체 휴일 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getAllHolidayListResultMap" type="kr.co.pulmuone.v1.policy.holiday.dto.vo.GetHolidayListResultVo">
+		<result column="HOLIDAY_DATE" property="holidayDate" />
+	</resultMap>
+	<select id="getAllHolidayList" resultMap="getAllHolidayListResultMap">
+		/* policyHoliday.getAllHolidayList */
+		SELECT
+			DATE_FORMAT(HOLIDAY_DT, '%Y-%m-%d') AS HOLIDAY_DATE
+		FROM
+			PS_HOLIDAY
+		ORDER BY HOLIDAY_DT ASC
+	</select>
+</mapper>

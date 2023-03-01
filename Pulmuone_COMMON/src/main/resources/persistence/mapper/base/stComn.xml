@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.base.StComnMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 분류관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.01		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<resultMap id="getCodeListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetCodeListResultVo">
+		<result column="CODE" property="code" />
+		<result column="NAME" property="name" />
+		<result column="COMMENT" property="comment" />
+		<result column="ATTR1" property="attr1" />
+		<result column="ATTR2" property="attr2" />
+		<result column="ATTR3" property="attr3" />
+	</resultMap>
+
+	<select id="getCodeList" resultMap="getCodeListResultMap">
+		/* stComn.xml > getCodeList */
+		SELECT	COMNCODE.ST_COMN_CODE_ID AS CODE
+				,FN_DIC(COMNCODE.GB_DIC_MST_ID, #{gbLangId}) AS NAME
+				,COMMENT AS COMMENT
+				,ATTR1 AS ATTR1
+				,ATTR2 AS ATTR2
+				,ATTR3 AS ATTR3
+		FROM 	ST_COMN_CODE COMNCODE
+		WHERE 	1 = 1
+				AND ST_COMN_CODE_MST_CD = #{stCommonCodeMasterCode}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    	AND USE_YN = UPPER(#{useYn})
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(attr1)">
+		    	AND ATTR1 = UPPER(#{attr1})
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(attr2)">
+		    	AND ATTR2 = UPPER(#{attr2})
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(attr3)">
+		    	AND ATTR3 = UPPER(#{attr3})
+				</if>
+		ORDER BY SORT
+	</select>
+
+	<resultMap id="getProgramListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetProgramListResultVo">
+		<result column="PG_ID" property="programId" />
+		<result column="URL" property="url" />
+		<result column="HTML_PATH" property="htmlPath" />
+	</resultMap>
+
+	<select id="getProgramList" resultMap="getProgramListResultMap">
+		/* stComn.xml > getProgramList */
+		SELECT	A.PG_ID AS PG_ID
+				,A.URL AS URL
+				,A.HTML_PATH AS HTML_PATH
+		FROM ST_PROGRAM A
+		<choose>
+			<when test="masterAuth">
+				WHERE A.USE_YN = 'Y'
+			</when>
+			<otherwise>
+				JOIN ST_PROGRAM_AUTH B ON (B.ST_PROGRAM_ID = A.ST_PROGRAM_ID)
+				JOIN ST_ROLE_MENU_AUTH_MAPPING C ON (C.ST_PROGRAM_AUTH_ID = B.ST_PROGRAM_AUTH_ID)
+				WHERE A.USE_YN = 'Y' AND
+					C.ST_ROLE_TP_ID IN
+					<foreach collection="userVo.listRoleId" item="roleId" index="index" separator="," open="(" close=")">
+						#{roleId}
+					</foreach>
+				GROUP BY A.ST_PROGRAM_ID
+			</otherwise>
+		</choose>
+	</select>
+
+	<resultMap id="getMenuGroupListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetMenuGroupListResultVo">
+		<result column="MENU_GRP_ID"      property="menuGroupId" />
+		<result column="MENU_IMG_ID"      property="menuImageId" />
+		<result column="MENU_GRP_NAME"    property="menuGroupName" />
+		<result column="SORT"             property="sort" />
+		<result column="USE_YN"           property="useYn" />
+		<result column="MENU_GRP_DEF_PG"  property="menuGroupDefaultProgram" />
+		<result column="MENU_GRP_DEF_URL" property="menuGroupDefaultUrl" />
+	</resultMap>
+
+	<select id="getMenuGroupList" resultMap="getMenuGroupListResultMap">
+        /* stComn.xml > getMenuGroupList */
+
+		SELECT 	A.ST_MENU_GRP_ID AS MENU_GRP_ID
+			  	,A.ST_MENU_GRP_ID AS MENU_IMG_ID
+				,MAX(A.MENU_GRP_NM) AS MENU_GRP_NAME
+				,MAX(A.SORT) AS SORT
+				,MAX(A.USE_YN) AS USE_YN
+				,CASE WHEN MAX(B.ST_PROGRAM_ID) IS NOT NULL THEN MAX(B.PG_ID) ELSE ' ' END AS MENU_GRP_DEF_PG
+				,CASE WHEN MAX(B.URL) IS NOT NULL THEN MAX(B.URL) ELSE '' END AS MENU_GRP_DEF_URL
+		FROM 	ST_MENU_GRP A
+				LEFT OUTER JOIN ST_PROGRAM B ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+                JOIN ST_MENU C ON A.ST_MENU_GRP_ID = C.ST_MENU_GRP_ID
+            	JOIN ST_ROLE_MENU_AUTH_MAPPING D ON C.ST_MENU_ID = D.ST_MENU_ID
+		WHERE 	A.USE_YN ='Y'
+			    AND C.USE_YN ='Y'
+			    AND C.PRNTS_ST_MENU_ID = 0
+				AND D.ST_ROLE_TP_ID IN
+				<foreach collection="userVo.listRoleId" item="roleId" index="index" separator="," open="(" close=")">
+					#{roleId}
+				</foreach>
+	    GROUP BY A.ST_MENU_GRP_ID
+		ORDER BY A.SORT
+	</select>
+
+	<resultMap id="getMenuListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetMenuListResultVo">
+		<result column="TREE_MENU_NAME" property="treeMenuName" />
+		<result column="MENU_ID" property="menuId" />
+		<result column="MENU_NAME" property="menuName" />
+		<result column="P_MENU_ID" property="parentsMenuId" />
+		<result column="ST_PROGRAM_ID" property="stProgramId" />
+		<result column="MENU_TYPE" property="menuType" />
+		<result column="LV" property="level" />
+		<result column="URL" property="url" />
+		<result column="POP_YN" property="popYn" />
+		<result column="ST_MENU_GRP_ID" property="stMenuGroupId" />
+		<result column="MENU_GRP_NAME" property="menuGroupName" />
+	</resultMap>
+
+	<select id="getMenuList" resultMap="getMenuListResultMap">
+        /* stComn.xml > getMenuList */
+
+		SELECT 	CONCAT(REPEAT('    ', LV - 1), CAST(M.MENU_NM AS CHAR)) AS TREE_MENU_NAME
+				,M.ST_MENU_ID AS MENU_ID
+				,FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS MENU_NAME
+				,M.PRNTS_ST_MENU_ID AS P_MENU_ID
+				,M.ST_PROGRAM_ID AS ST_PROGRAM_ID
+				,M.MENU_TP AS MENU_TYPE
+				,LV AS LV
+				,P.URL AS URL
+				,M.POP_YN AS POP_YN
+				,M.ST_MENU_GRP_ID AS ST_MENU_GRP_ID
+				,GRP.MENU_GRP_NM AS MENU_GRP_NAME
+		FROM	(
+		  			SELECT 	FN_MENU_CONNECT_BY() AS ID
+							,@level AS LV
+					FROM    (
+						        SELECT  @start_with :=0,
+						                @id := @start_with,
+						                @level := 0
+					        ) VARS,
+					        ST_MENU
+					WHERE 	@id IS NOT NULL
+				) INNER_T
+				JOIN ST_MENU M					ON      M.ST_MENU_ID = INNER_T.ID
+				JOIN ST_PROGRAM P				ON      M.ST_PROGRAM_ID =  P.ST_PROGRAM_ID
+				JOIN ST_MENU_GRP GRP		ON	  	M.ST_MENU_GRP_ID = GRP.ST_MENU_GRP_ID AND GRP.USE_YN = 'Y'
+				<if test="!masterAuth">
+					JOIN ( 	SELECT 	ST_MENU_ID
+							FROM 	ST_ROLE_MENU_AUTH_MAPPING
+							WHERE
+								ST_ROLE_TP_ID IN
+								<foreach collection="userVo.listRoleId" item="roleId" index="index" separator="," open="(" close=")">
+									#{roleId}
+								</foreach>
+							GROUP BY ST_MENU_ID
+						 )  D ON M.ST_MENU_ID = D.ST_MENU_ID
+				</if>
+		WHERE M.USE_YN ='Y'
+    ORDER BY  GRP.SORT
+            , CASE  WHEN LV = 1 THEN M.SORT
+                    WHEN LV = 2 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                    WHEN LV = 3 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))
+                    WHEN LV = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)))
+                    WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))))
+                    ELSE 0
+              END
+            , CASE  WHEN LV = 2 THEN M.SORT
+                    WHEN LV = 3 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                    WHEN LV = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))
+                    WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)))
+                    ELSE 0
+              END
+            , CASE  WHEN LV = 3 THEN M.SORT
+                    WHEN LV = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                    WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))
+                    ELSE 0
+              END
+            , CASE  WHEN LV = 4 THEN M.SORT
+                    WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                    ELSE 0
+              END
+            , CASE  WHEN LV = 5 THEN M.SORT
+                    ELSE 0
+              END
+	</select>
+
+	<select id="isRoleMenuAuthUrl" resultType="boolean">
+		/* stComn.xml > isRoleMenuAuthUrl */
+		SELECT IFNULL(
+			(SELECT IF( COUNT(*) > 0 , TRUE, FALSE)
+			FROM 	ST_ROLE_MENU_AUTH_MAPPING A
+					JOIN ST_PROGRAM_AUTH B ON (B.ST_PROGRAM_AUTH_ID = A.ST_PROGRAM_AUTH_ID)
+					JOIN ST_PROGRAM_AUTH_URL_MAPPING C ON (C.ST_PROGRAM_AUTH_ID = A.ST_PROGRAM_AUTH_ID)
+					JOIN ST_MENU_URL D ON (D.ST_MENU_URL_ID = C.ST_MENU_URL_ID)
+			WHERE 	B.USE_YN = 'Y'
+					AND A.ST_MENU_ID = #{stMenuId}
+		        	AND A.ST_ROLE_TP_ID IN
+                        <foreach collection="listRoleId" item="roleId" index="index" separator="," open="(" close=")">
+                          #{roleId}
+                        </foreach>
+					AND D.URL = #{url})
+		, FALSE)
+	</select>
+
+	<select id="getAuthMenu" resultType="String">
+		/* stComn.xml > getAuthMenu */
+		<choose>
+			<when test="masterAuth">
+				SELECT 	B.PG_AUTH_CD
+				FROM	ST_MENU A
+						JOIN ST_PROGRAM_AUTH B ON (B.ST_PROGRAM_ID = A.ST_PROGRAM_ID)
+				WHERE 	B.USE_YN = 'Y'
+						AND A.ST_MENU_ID = #{stMenuId}
+			</when>
+			<otherwise>
+				SELECT 	B.PG_AUTH_CD
+				FROM 	ST_ROLE_MENU_AUTH_MAPPING A
+						JOIN ST_PROGRAM_AUTH B ON (B.ST_PROGRAM_AUTH_ID = A.ST_PROGRAM_AUTH_ID)
+				WHERE 	B.USE_YN = 'Y'
+						AND A.ST_MENU_ID = #{stMenuId}
+						AND A.ST_ROLE_TP_ID IN
+						<foreach collection="userVo.listRoleId" item="roleId" index="index" separator="," open="(" close=")">
+							#{roleId}
+						</foreach>
+			</otherwise>
+		</choose>
+	</select>
+
+	<resultMap id="getMenuNameResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetMenuNameResultVo">
+		<result column="MENU_ID" property="menuId" />
+		<result column="PARENT_MENU_ID" property="parentMenuId" />
+		<result column="MENU_NAME" property="menuName" />
+		<result column="ST_HELP_ID" property="stHelpId" />
+	</resultMap>
+
+	<select id="getMenuName" resultMap="getMenuNameResultMap">
+		/* stComn.xml > getMenuName */
+		SELECT 	sm.ST_MENU_ID AS MENU_ID
+				,sm.PRNTS_ST_MENU_ID	AS PARENT_MENU_ID
+				,FN_DIC(sm.GB_DIC_MST_ID, 1) AS MENU_NAME
+				,sh.ST_HELP_ID
+		FROM 	ST_MENU sm
+				LEFT JOIN ST_HELP sh ON (sh.ST_MENU_ID = sm.ST_MENU_ID AND sh.DIV_CD = 'HELP_DIV.HELP_MENU')
+		WHERE 	sm.ST_MENU_ID = #{stMenuId}
+	</select>
+
+	<select id="getCodeName" resultType="String">
+		/* stComn.xml > getCodeName */
+		SELECT
+			FN_COMN_CODE_DIC(#{code}) AS NAME
+		FROM DUAL
+	</select>
+
+</mapper>

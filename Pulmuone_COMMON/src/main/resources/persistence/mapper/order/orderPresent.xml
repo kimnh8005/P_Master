@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.present.OrderPresentMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 선물하기 데이터 presentId로 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.15		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderPresentByPresentId" resultType="kr.co.pulmuone.v1.order.present.dto.OrderPresentDto">
+		/* orderpresent.getOrderPresentByPresentId */
+		SELECT
+			FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+			,FN_DECRYPT(OO.BUYER_HP) AS BUYER_HP
+			,OOP.PRESENT_EXPIRATION_DT
+			,CASE
+				WHEN OOP.PRESENT_ORDER_STATUS = 'PRESENT_ORDER_STATUS.WAIT' AND NOW() >= OOP.PRESENT_EXPIRATION_DT THEN 'PRESENT_ORDER_STATUS.EXPIRED'
+			 	ELSE OOP.PRESENT_ORDER_STATUS
+		 	END AS PRESENT_ORDER_STATUS
+			,OOP.OD_ORDER_ID
+			,OO.ODID
+		FROM OD_ORDER_PRESENT OOP
+		JOIN OD_ORDER OO ON (OO.OD_ORDER_ID = OOP.OD_ORDER_ID)
+		WHERE OOP.PRESENT_ID = #{presentId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 선물하기 데이터 odOrderId로 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderPresentByOdOrderId" resultType="kr.co.pulmuone.v1.order.present.dto.OrderPresentDto">
+		/* orderpresent.getOrderPresentByOdOrderId */
+		SELECT
+			OOP.PRESENT_EXPIRATION_DT
+			,OOP.PRESENT_ORDER_STATUS
+			,OOP.OD_ORDER_ID
+			,OO.ODID
+			,OO.UR_USER_ID AS BUYER_UR_USER_ID
+			,OO.GOODS_NM
+			,IFNULL(FN_DECRYPT(OO.BUYER_HP), FN_DECRYPT(OO.BUYER_TEL)) AS BUYER_HP
+			,OPM.PAYMENT_PRICE
+			,FN_DECRYPT(OOP.PRESENT_RECEIVE_NM) AS PRESENT_RECEIVE_NM
+		FROM OD_ORDER_PRESENT OOP
+		JOIN OD_ORDER OO ON (OO.OD_ORDER_ID = OOP.OD_ORDER_ID)
+		INNER JOIN OD_PAYMENT OP ON (OO.OD_ORDER_ID = OP.OD_ORDER_ID)
+		INNER JOIN OD_PAYMENT_MASTER OPM ON (OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID AND OPM.TYPE = 'G')
+		WHERE OOP.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 선물하기 데이터 presentId, presentAuthCd 로 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.15		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderPresentByPresentIdAndAuthCode" resultType="kr.co.pulmuone.v1.order.present.dto.OrderPresentDto">
+		/* orderpresent.getOrderPresentByPresentIdAndAuthCode */
+		SELECT
+			OOP.OD_ORDER_ID
+			,OOP.PRESENT_CARD_TYPE
+			,OOP.PRESENT_CARD_MSG
+			,OOP.PRESENT_ORDER_STATUS
+		FROM OD_ORDER_PRESENT OOP
+		WHERE OOP.PRESENT_ID = #{presentId}
+		AND OOP.PRESENT_AUTH_CD = #{presentAuthCd}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 선물하기 상태 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPresentOrderStatus">
+		/*	orderpresent.putPresentOrderStatus	*/
+		UPDATE
+			OD_ORDER_PRESENT
+		SET
+			PRESENT_ORDER_STATUS = #{presentOrderStatus}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(presentOrderStatus,'PRESENT_ORDER_STATUS.RECEIVE_COMPLET')">
+			,PRESENT_RECEIVE_DT = NOW()
+			</if>
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 선물하기 취소 상품 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderPresentCancelGoodsList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+		/* orderpresent.getOrderPresentGoodsList */
+		SELECT
+			OOD.OD_ORDER_ID,
+			OOD.OD_ORDER_DETL_ID,
+			OOD.OD_ORDER_DETL_SEQ,
+			OOD.ORDER_CNT,
+			OOD.ORDER_CNT AS CLAIM_CNT,
+			OOD.GOODS_NM,
+			OOD.UR_WAREHOUSE_ID,
+			OOD.IL_GOODS_ID
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		WHERE OD.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 유효기간 만료 선물하기 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="orderPresentExpiredMap" type="kr.co.pulmuone.v1.order.present.dto.OrderPresentExpiredResponseDto">
+		<result column="OD_ORDER_ID" property="odOrderId" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="USER_NM" property="userName" />
+		<result column="PRESENT_RECEIVE_NM" property="presentReceiveName" />
+		<result column="PRESENT_RECEIVE_HP" property="presentReceiveHp" />
+		<result column="GOODS_NM" property="goodsName" />
+		<result column="PRESENT_EXPIRATION_DT" property="presentExpirationDate" />
+	</resultMap>
+	<select id="getExpiredCancelOrderList" resultMap="orderPresentExpiredMap">
+		/* orderPresent.getExpiredCancelOrderList */
+		SELECT OOP.OD_ORDER_ID
+			, OO.UR_USER_ID
+			, FN_DECRYPT(UU.USER_NM) AS USER_NM
+			, FN_DECRYPT(OOP.PRESENT_RECEIVE_NM) AS PRESENT_RECEIVE_NM
+			, FN_DECRYPT(OOP.PRESENT_RECEIVE_HP) AS PRESENT_RECEIVE_HP
+			, OO.GOODS_NM
+			, DATE_FORMAT(OOP.PRESENT_EXPIRATION_DT, '%Y-%m-%d') AS PRESENT_EXPIRATION_DT
+		FROM OD_ORDER_PRESENT OOP
+			INNER JOIN OD_ORDER OO ON OOP.OD_ORDER_ID = OO.OD_ORDER_ID
+			INNER JOIN UR_USER UU ON OO.UR_USER_ID = UU.UR_USER_ID
+		WHERE OOP.PRESENT_ORDER_STATUS = 'PRESENT_ORDER_STATUS.WAIT'
+			AND PRESENT_EXPIRATION_DT <![CDATA[ <= ]]> NOW()
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 선물 하기 odShippingZoneId 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.19		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderPresentOdShippingZoneIds" resultType="Long">
+		/* orderpresent.getOrderPresentOdShippingZoneIds */
+		SELECT
+			OSZ.OD_SHIPPING_ZONE_ID
+		FROM OD_SHIPPING_ZONE OSZ
+		WHERE OSZ.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 메시지 발송 count 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.19		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPresentMsgSendCnt">
+		/*	orderpresent.putPresentMsgSendCnt	*/
+		UPDATE
+			OD_ORDER_PRESENT
+		SET
+			PRESENT_MSG_SEND_CNT = PRESENT_MSG_SEND_CNT + 1
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</update>
+</mapper>

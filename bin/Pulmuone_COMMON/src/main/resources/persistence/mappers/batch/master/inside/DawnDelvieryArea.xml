@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.inside.DwanDeliveryMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 임시데이터 있는지 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDawnDelivderyTempCheck"  resultType="int">
+		/*	batch.inside.getDawnDelivderyTempCheck  */
+		SELECT COUNT(1) AS CNT FROM UR_DAWN_DELIVERY_AREA_TEMP
+	</select>
+
+	<!-- 새벽배송권역 추가 또는 삭제 결과 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.batch.order.inside.dto.vo.DawnDeliveryAreaVo" id="getDawnDelivderyInfoResultMap" >
+		<result column="ZIP_CD" 		property="zipCd" />
+		<result column="BUILDING_NO" 	property="buildingNo" />
+		<result column="ACT_TP" 		property="actTp" />
+		<result column="REMARK" 		property="remark" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 새벽배송권역 삭제할 데이터 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDawnDelivderyRemoveInfoList"  resultMap="getDawnDelivderyInfoResultMap">
+		/*	batch.inside.getDawnDelivderyRemoveInfoList  */
+		SELECT
+			UDDA.ZIP_CD			/* 삭제할 우편번호 */
+			, UDDA.BUILDING_NO	/* 삭제할 건물번호 */
+			, '삭제' AS ACT_TP	/* 구분 : 삭제, 추가 */
+			, CONCAT(UDDA.ZIP_CD, ' ', UDDA.BUILDING_NO, ' ', '삭제 했음') AS REMARK	/* 비고 */
+		FROM
+			UR_DAWN_DELIVERY_AREA UDDA
+			LEFT JOIN UR_DAWN_DELIVERY_AREA_TEMP UDDAT
+				ON UDDA.ZIP_CD = UDDAT.ZIP_CD
+				AND UDDA.BUILDING_NO = UDDAT.BUILDING_NO
+		WHERE
+			UDDAT.ZIP_CD IS NULL
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 새벽배송권역 추가할 데이터 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDawnDelivderyAddInfoList"  resultMap="getDawnDelivderyInfoResultMap">
+		/*	batch.inside.getDawnDelivderyAddInfoList  */
+		SELECT
+			UDDAT.ZIP_CD		/* 추가할 우편번호 */
+			, UDDAT.BUILDING_NO	/* 추가할 건물번호 */
+			, '추가' AS ACT_TP	/* 구분 : 삭제, 추가 */
+			, CONCAT(UDDAT.ZIP_CD, ' ', UDDAT.BUILDING_NO, ' ', '추가 했음') AS REMARK	/* 비고 */
+		FROM
+			UR_DAWN_DELIVERY_AREA_TEMP UDDAT
+			LEFT JOIN UR_DAWN_DELIVERY_AREA UDDA
+				ON UDDAT.ZIP_CD = UDDA.ZIP_CD
+				AND UDDAT.BUILDING_NO = UDDA.BUILDING_NO
+		WHERE
+			UDDA.ZIP_CD IS NULL
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 새벽배송권역임시를 추가한다.
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.18		강상국          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addDawnDeliveryTemp" parameterType="kr.co.pulmuone.v1.batch.order.inside.dto.DawnDeliveryInfoDto" >
+        /* batch.inside.addDawnDeliveryTemp */
+	   	INSERT INTO UR_DAWN_DELIVERY_AREA_TEMP (
+	        ZIP_CD
+	        , BUILDING_NO
+        )
+		VALUES
+		<foreach collection="tempList" item="vo" index="index"  open="" separator="," close="">
+			(
+			#{vo.zipCd}
+			, #{vo.buildingNo}
+			)
+		</foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 새벽배송권역을 추가한다.
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.18		강상국          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addDawnDelivery" parameterType="kr.co.pulmuone.v1.batch.order.inside.dto.DawnDeliveryInfoDto">
+        /* batch.inside.addDawnDelivery */
+	   	INSERT INTO UR_DAWN_DELIVERY_AREA (
+	        ZIP_CD
+	        , BUILDING_NO
+        )
+		SELECT
+			UDDAT.ZIP_CD		/* 추가할 우편번호 */
+			, UDDAT.BUILDING_NO	/* 추가할 건물번호 */
+		FROM
+			UR_DAWN_DELIVERY_AREA_TEMP UDDAT
+		LEFT JOIN UR_DAWN_DELIVERY_AREA UDDA ON UDDAT.ZIP_CD = UDDA.ZIP_CD
+											AND UDDAT.BUILDING_NO = UDDA.BUILDING_NO
+		WHERE
+			UDDA.ZIP_CD IS NULL
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 새벽배송권역을 삭제한다.
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.18		강상국          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteDawnDelivery" parameterType="kr.co.pulmuone.v1.batch.order.inside.dto.vo.DawnDeliveryAreaVo">
+		/* batch.inside.deleteDawnDelivery */
+		DELETE
+		FROM UR_DAWN_DELIVERY_AREA
+		WHERE (ZIP_CD, BUILDING_NO) IN (
+			SELECT T1.ZIP_CD
+				 , T1.BUILDING_NO
+			FROM (
+					 SELECT UDDA.ZIP_CD /* 삭제할 우편번호 */
+						  , UDDA.BUILDING_NO /* 삭제할 건물번호 */
+					 FROM UR_DAWN_DELIVERY_AREA UDDA
+					 LEFT JOIN UR_DAWN_DELIVERY_AREA_TEMP UDDAT ON UDDA.ZIP_CD = UDDAT.ZIP_CD
+															   AND UDDA.BUILDING_NO = UDDAT.BUILDING_NO
+					 WHERE UDDAT.ZIP_CD IS NULL
+				 ) T1
+		)
+	</delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 새벽배송권역 이력을 저장한다.
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.18		강상국          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addDawnDeliveryHist" parameterType="kr.co.pulmuone.v1.batch.order.inside.dto.DawnDeliveryInfoDto">
+        /* batch.inside.addDawnDeliveryHist */
+        INSERT INTO UR_DAWN_DELIVERY_AREA_HIST (
+        	ZIP_CD
+        	, BUILDING_NO
+        	, ACT_TP
+        	, REMARK
+        )
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(addDeleteTp, 'ADD')">
+				SELECT
+					UDDAT.ZIP_CD		/* 추가할 우편번호 */
+					, UDDAT.BUILDING_NO	/* 추가할 건물번호 */
+					, #{addDeleteTpNm} AS ACT_TP	/* 구분 : 삭제, 추가 */
+					, CONCAT(UDDAT.ZIP_CD, ' ', UDDAT.BUILDING_NO, ' ', #{addDeleteTpNm}) AS REMARK	/* 비고 */
+				FROM
+					UR_DAWN_DELIVERY_AREA_TEMP UDDAT
+				LEFT JOIN UR_DAWN_DELIVERY_AREA UDDA ON UDDAT.ZIP_CD = UDDA.ZIP_CD
+													AND UDDAT.BUILDING_NO = UDDA.BUILDING_NO
+				WHERE
+					UDDA.ZIP_CD IS NULL
+
+			</when>
+			<otherwise>
+				SELECT
+					UDDA.ZIP_CD			/* 삭제할 우편번호 */
+					, UDDA.BUILDING_NO	/* 삭제할 건물번호 */
+					, #{addDeleteTpNm} AS ACT_TP	/* 구분 : 삭제, 추가 */
+					, CONCAT(UDDA.ZIP_CD, ' ', UDDA.BUILDING_NO, ' ', #{addDeleteTpNm}) AS REMARK	/* 비고 */
+				FROM
+					UR_DAWN_DELIVERY_AREA UDDA
+				LEFT JOIN UR_DAWN_DELIVERY_AREA_TEMP UDDAT   ON UDDA.ZIP_CD = UDDAT.ZIP_CD
+															AND UDDA.BUILDING_NO = UDDAT.BUILDING_NO
+				WHERE
+					UDDAT.ZIP_CD IS NULL
+			</otherwise>
+		</choose>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 새벽배송권역임시 데이터를 삭제한다.
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.18		강상국          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteDawnDeliveryTemp">
+        /* batch.inside.deleteDawnDelivery */
+        TRUNCATE TABLE UR_DAWN_DELIVERY_AREA_TEMP
+    </delete>
+</mapper>
+
+

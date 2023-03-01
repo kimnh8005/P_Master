@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.collation.CalPgDetlMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 대사 상세내역 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.26		이원호	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPgDetailList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalPgDetlListDto">
+		/* calPgDetl.getPgDetailList */
+		SELECT
+			IFNULL(o.UPLOAD_PG_SERVICE_NM,'') AS UPLOAD_PG_SERVICE_NM -- 업로드 PG구분
+			,IFNULL(o.UPLOAD_TYPE_NM,'') AS UPLOAD_TYPE_NM -- 업로드 구분
+			,IFNULL(o.UPLOAD_ODID, '') AS UPLOAD_ODID -- 업로드 주문번호
+			,IFNULL(o.UPLOAD_TID, '') AS UPLOAD_TID -- 업로드 TID
+			,IFNULL(o.UPLOAD_APPROVAL_DT, '') AS UPLOAD_APPROVAL_DT -- 결제일자/환불일자
+			,IFNULL(o.TRANS_AMT, '') AS TRANS_AMT -- 결제금액/환불금액
+			,IFNULL(o.DEDUCT_AMT, '') AS DEDUCT_AMT -- 공제금액
+			,IFNULL(o.ACCOUNT_AMT, '') AS ACCOUNT_AMT -- 정산금액
+			,IFNULL(o.PG_SERVICE_NM, '') AS PG_SERVICE_NM -- PG구분
+			,IFNULL(o.TYPE_NM, '') AS TYPE_NM -- 구분
+			,IFNULL(o.PAY_TP_NM, '') AS PAY_TP_NM -- 결제 수단
+			<!--<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(summaryListView,'Y') ">
+					,IFNULL(MAX(o.ODID), '') AS ODID &#45;&#45; 주문번호
+				</when>
+				<otherwise>
+					,IFNULL(o.ODID, '') AS ODID &#45;&#45; 주문번호
+				</otherwise>
+			</choose>-->
+			,o.UR_USER_ID
+			,o.CREATE_DT -- 주문일자
+			,o.APPROVAL_DT -- 승인일자
+			,IF(IFNULL(o.OD_CLAIM_ID , 0) > 0,
+				(SELECT SUM(ocd.CLAIM_CNT) FROM OD_CLAIM_DETL ocd WHERE ocd.OD_CLAIM_ID = o.OD_CLAIM_ID),
+				(SELECT SUM(ood.ORDER_CNT) FROM OD_ORDER_DETL ood WHERE ood.OD_ORDER_ID = o.OD_ORDER_ID)) AS CNT -- 수량
+			,IFNULL(o.SALE_PRICE, '') AS SALE_PRICE -- 주문금액
+			,IFNULL(o.SHIPPING_PRICE, '') AS SHIPPING_PRICE -- 배송비 금액
+			,IFNULL(o.COUPON_PRICE, '') AS COUPON_PRICE -- 쿠폰할인금액
+			,IFNULL(o.POINT_PRICE, '') AS POINT_PRICE -- 적립금
+			,IFNULL(o.PAYMENT_PRICE, '') AS PAYMENT_PRICE -- 결제금액
+		FROM (
+		-- PG 거래 매칭 및 결제 정보 데이터 없는 리스트
+			SELECT
+				FN_COMN_CODE_DIC(opcud.PG_SERVICE) AS UPLOAD_PG_SERVICE_NM -- 업로드 PG구분
+				,IF(opcud.`TYPE` IS NULL, '', CASE opcud.`TYPE` WHEN 'A' THEN '추가' WHEN 'F' THEN '환불' ELSE '결제' END) AS UPLOAD_TYPE_NM -- 업로드 구분
+				,opcud.ODID AS UPLOAD_ODID -- 업로드 주문번호
+				,opcud.TID AS UPLOAD_TID -- 업로드 TID
+				,opcud.APPROVAL_DT AS UPLOAD_APPROVAL_DT -- 결제일자/환불일자
+				,opcud.TRANS_AMT -- 결제금액/환불금액
+				,opcud.DEDUCT_AMT -- 공제금액
+				,opcud.ACCOUNT_AMT -- 정산금액
+				,IF(opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.INICIS%', '이니시스' ,'kcp') AS PG_SERVICE_NM -- PG구분
+				,CASE opm.`TYPE` WHEN 'A' THEN '추가' WHEN 'F' THEN '환불' ELSE '결제' END AS TYPE_NM -- 구분
+				,FN_COMN_CODE_DIC(opm.PAY_TP) AS PAY_TP_NM -- 결제 수단
+				,oo.ODID -- 주문번호
+				,ood2.CREATE_DT -- 주문일자
+				,opm.APPROVAL_DT -- 승인일자
+				,oo.OD_ORDER_ID -- 주문 PK
+				,op.OD_CLAIM_ID -- 클래임 PK
+				,opm.SALE_PRICE -- 주문금액
+				,opm.SHIPPING_PRICE -- 배송비 금액
+				,opm.CART_COUPON_PRICE + opm.GOODS_COUPON_PRICE AS COUPON_PRICE -- 쿠폰할인금액
+				,opm.POINT_PRICE -- 적립금
+				,opm.PAYMENT_PRICE -- 결제금액
+				,oo.UR_USER_ID
+			FROM OD_PAYMENT_MASTER opm
+				JOIN OD_PAYMENT op ON (op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID)
+				JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = op.OD_ORDER_ID)
+				JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				LEFT JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = op.OD_CLAIM_ID)
+				<!--LEFT JOIN OD_PG_COMPARE_UPLOAD_DETAIL opcud ON (opm.TID = opcud.TID AND IF(opm.`TYPE` = 'A', 'G', opm.`TYPE`) = opcud.`TYPE` AND opm.PAYMENT_PRICE = opcud.TRANS_AMT)-->
+				JOIN OD_PG_COMPARE_UPLOAD_DETAIL opcud ON (opm.TID = opcud.TID AND IF(opm.`TYPE` = 'A', 'G', opm.`TYPE`) = opcud.`TYPE` AND opm.PAYMENT_PRICE = opcud.TRANS_AMT
+															AND opcud.OD_PG_COMPARE_UPLOAD_INFO_ID = #{odPgCompareUploadInfoId}
+															AND opcud.SUCCESS_YN = 'Y'
+															)
+		WHERE
+				opm.STATUS = 'IC' AND PAY_TP NOT IN ('PAY_TP.FREE','PAY_TP.DIRECT','PAY_TP.COLLECTION')
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'ORDER_DT') ">
+					AND ood2.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'IC_DT') ">
+					AND ood2.IC_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'CREATE_DT') ">
+					AND opcud.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+				</if>
+
+				<if test="salesOrderGubunList !=null and salesOrderGubunList.size != 0">
+					<foreach collection="salesOrderGubunList" item="salesOrder" index="index">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'S') ">
+							AND opm.`TYPE` = 'S'
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'R') ">
+							AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP != 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(환불)
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'A') ">
+							AND opm.`TYPE` = 'A'
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'C') ">
+							AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(cs 환불)
+						</if>
+					</foreach>
+				</if>
+
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findPgGubn)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.KCP') ">
+						AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.KCP%' -- PG 구분 - KCP
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.INICIS') ">
+						AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.INICIS%' -- PG 구분 - 이니시스
+					</if>
+				</if>
+
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PG_NOT') ">
+						AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL -- PG 내역 미매칭
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'BOS_NOT') ">
+<!--						AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL BOS 주문 내역 미매칭 -->
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PRICE_NOT') ">
+						AND (opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NOT NULL AND opcud.TRANS_AMT != opm.PAYMENT_PRICE) -- 금액 상의
+					</if>
+				</if>
+
+				<if test="paymentMethodCodeList !=null and paymentMethodCodeList.size != 0">
+					AND opm.PAY_TP IN
+					<foreach collection="paymentMethodCodeList" item="paymentMethod" index="index" separator="," open="(" close=")">
+						#{paymentMethod}
+					</foreach>
+				</if>
+
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword) ">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'OD_ORDER_ID') ">
+						AND oo.ODID IN (#{findKeyword})
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'TID') ">
+						AND opm.TID IN (#{findKeyword})
+					</if>
+				</if>
+				-- PG 거래 데이터만 있는 경우 (매칭여부:PG 내역 미매칭 검색일때 경우는 아래 쿼리 필요 없음)
+			UNION ALL
+			SELECT
+				FN_COMN_CODE_DIC(opcud.PG_SERVICE) AS UPLOAD_PG_SERVICE_NM -- 업로드 PG구분
+				,IF(opcud.`TYPE` IS NULL, '', CASE opcud.`TYPE` WHEN 'A' THEN '추가' WHEN 'F' THEN '환불' ELSE '결제' END) AS UPLOAD_TYPE_NM -- 업로드 구분
+				,opcud.ODID AS UPLOAD_ODID -- 업로드 주문번호
+				,opcud.TID AS UPLOAD_TID -- 업로드 TID
+				,opcud.APPROVAL_DT AS UPLOAD_APPROVAL_DT -- 결제일자/환불일자
+				,opcud.TRANS_AMT -- 결제금액/환불금액
+				,opcud.DEDUCT_AMT -- 공제금액
+				,opcud.ACCOUNT_AMT -- 정산금액
+				,NULL AS PG_SERVICE_NM -- PG구분
+				,NULL AS TYPE_NM -- 구분
+				,NULL AS PAY_TP_NM -- 결제 수단
+				,NULL AS ODID -- 주문번호
+				,NULL AS CREATE_DT -- 주문일자
+				,NULL AS APPROVAL_DT -- 승인일자
+				,NULL AS OD_ORDER_ID -- 주문 PK
+				,NULL AS OD_CLAIM_ID -- 클래임 PK
+				,NULL AS SALE_PRICE -- 주문금액
+				,NULL AS SHIPPING_PRICE -- 배송비 금액
+				,NULL AS COUPON_PRICE -- 쿠폰할인금액
+				,NULL AS POINT_PRICE -- 적립금
+				,NULL AS PAYMENT_PRICE -- 결제금액
+				,oo.UR_USER_ID
+			FROM OD_PG_COMPARE_UPLOAD_DETAIL opcud
+				LEFT JOIN OD_PAYMENT_MASTER opm ON (opcud.TID = opm.TID AND opcud.`TYPE` = IF(opm.`TYPE` = 'A', 'G', opm.`TYPE`) AND opcud.TRANS_AMT = opm.PAYMENT_PRICE)
+				JOIN OD_PAYMENT op ON (op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID)
+				JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = op.OD_ORDER_ID)
+				JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				LEFT JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = op.OD_CLAIM_ID)
+			WHERE
+				opm.OD_PAYMENT_MASTER_ID IS NULL
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'ORDER_DT') ">
+					AND ood2.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'IC_DT') ">
+					AND ood2.IC_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'CREATE_DT') ">
+					AND opcud.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+				</if>
+
+				<if test="salesOrderGubunList !=null and salesOrderGubunList.size != 0">
+					<foreach collection="salesOrderGubunList" item="salesOrder" index="index">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'S') ">
+							AND opm.`TYPE` = 'S'
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'R') ">
+							AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP != 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(환불)
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'A') ">
+							AND opm.`TYPE` = 'A'
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'C') ">
+							AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(cs 환불)
+						</if>
+					</foreach>
+				</if>
+
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findPgGubn)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.KCP') ">
+						AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.KCP%' -- PG 구분 - KCP
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.INICIS') ">
+						AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.INICIS%' -- PG 구분 - 이니시스
+					</if>
+				</if>
+
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PG_NOT') ">
+						AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL -- PG 내역 미매칭
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'BOS_NOT') ">
+						<!--						AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL BOS 주문 내역 미매칭 -->
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PRICE_NOT') ">
+						AND (opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NOT NULL AND opcud.TRANS_AMT != opm.PAYMENT_PRICE) -- 금액 상의
+					</if>
+				</if>
+
+				<if test="paymentMethodCodeList !=null and paymentMethodCodeList.size != 0">
+					AND opm.PAY_TP IN
+					<foreach collection="paymentMethodCodeList" item="paymentMethod" index="index" separator="," open="(" close=")">
+						#{paymentMethod}
+					</foreach>
+				</if>
+
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword) ">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'OD_ORDER_ID') ">
+						AND oo.ODID IN (#{findKeyword})
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'TID') ">
+						AND opm.TID IN (#{findKeyword})
+					</if>
+				</if>
+		) o
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(summaryListView,'Y') ">
+	<!--		GROUP BY o.UR_USER_ID-->
+			WHERE o.TRANS_AMT <![CDATA[<>]]> o.PAYMENT_PRICE
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+			<include refid="_common.pageLimit"/>
+		</if>
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: PG 대사 상세내역 조회
+ * @ 수정일			수정자		  수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.09.02		안치열	  		최초생성
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getPgDetailListCount" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalPgUploadResponseDto">
+		/* calPgDetl.getPgDetailListCount */
+		SELECT
+			COUNT(*) AS TOTAL_CNT, IFNULL(SUM(k.TRANS_AMT), 0) AS TOTAL_AMT
+		FROM (
+			SELECT o.TRANS_AMT -- 결제금액/환불금액
+				  ,o.PAYMENT_PRICE
+			FROM (
+			-- PG 거래 매칭 및 결제 정보 데이터 없는 리스트
+			SELECT
+				opcud.TRANS_AMT -- 결제금액/환불금액
+				,oo.UR_USER_ID
+				,opm.PAYMENT_PRICE -- 결제금액
+			FROM OD_PAYMENT_MASTER opm
+			JOIN OD_PAYMENT op ON (op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID)
+			JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = op.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			LEFT JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = op.OD_CLAIM_ID)
+			<!--LEFT JOIN OD_PG_COMPARE_UPLOAD_DETAIL opcud ON (opm.TID = opcud.TID AND IF(opm.`TYPE` = 'A', 'G', opm.`TYPE`) = opcud.`TYPE` AND opm.PAYMENT_PRICE = opcud.TRANS_AMT)-->
+			JOIN OD_PG_COMPARE_UPLOAD_DETAIL opcud ON (opm.TID = opcud.TID AND IF(opm.`TYPE` = 'A', 'G', opm.`TYPE`) = opcud.`TYPE` AND opm.PAYMENT_PRICE = opcud.TRANS_AMT
+														AND opcud.OD_PG_COMPARE_UPLOAD_INFO_ID = #{odPgCompareUploadInfoId}
+														AND opcud.SUCCESS_YN = 'Y'
+														)
+			WHERE
+			opm.STATUS = 'IC' AND PAY_TP NOT IN ('PAY_TP.FREE','PAY_TP.DIRECT','PAY_TP.COLLECTION')
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'ORDER_DT') ">
+				AND ood2.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'IC_DT') ">
+				AND ood2.IC_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'CREATE_DT') ">
+				AND opcud.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+			</if>
+
+			<if test="salesOrderGubunList !=null and salesOrderGubunList.size != 0">
+				<foreach collection="salesOrderGubunList" item="salesOrder" index="index">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'S') ">
+						AND opm.`TYPE` = 'S'
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'R') ">
+						AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP != 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(환불)
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'A') ">
+						AND opm.`TYPE` = 'A'
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'C') ">
+						AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(cs 환불)
+					</if>
+				</foreach>
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findPgGubn)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.KCP') ">
+					AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.KCP%' -- PG 구분 - KCP
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.INICIS') ">
+					AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.INICIS%' -- PG 구분 - 이니시스
+				</if>
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PG_NOT') ">
+					AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL -- PG 내역 미매칭
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'BOS_NOT') ">
+					<!--						AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL BOS 주문 내역 미매칭 -->
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PRICE_NOT') ">
+					AND (opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NOT NULL AND opcud.TRANS_AMT != opm.PAYMENT_PRICE) -- 금액 상의
+				</if>
+			</if>
+
+			<if test="paymentMethodCodeList !=null and paymentMethodCodeList.size != 0">
+				AND opm.PAY_TP IN
+				<foreach collection="paymentMethodCodeList" item="paymentMethod" index="index" separator="," open="(" close=")">
+					#{paymentMethod}
+				</foreach>
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword) ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'OD_ORDER_ID') ">
+					AND oo.ODID IN (#{findKeyword})
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'TID') ">
+					AND opm.TID IN (#{findKeyword})
+				</if>
+			</if>
+			-- PG 거래 데이터만 있는 경우 (매칭여부:PG 내역 미매칭 검색일때 경우는 아래 쿼리 필요 없음)
+			UNION ALL
+			SELECT
+				opcud.TRANS_AMT -- 결제금액/환불금액
+				,oo.UR_USER_ID
+				,opm.PAYMENT_PRICE -- 결제금액
+			FROM OD_PG_COMPARE_UPLOAD_DETAIL opcud
+			LEFT JOIN OD_PAYMENT_MASTER opm ON (opcud.TID = opm.TID AND opcud.`TYPE` = IF(opm.`TYPE` = 'A', 'G', opm.`TYPE`) AND opcud.TRANS_AMT = opm.PAYMENT_PRICE)
+			JOIN OD_PAYMENT op ON (op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID)
+			JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = op.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			LEFT JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = op.OD_CLAIM_ID)
+			WHERE
+			opm.OD_PAYMENT_MASTER_ID IS NULL
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'ORDER_DT') ">
+				AND ood2.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'IC_DT') ">
+				AND ood2.IC_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'CREATE_DT') ">
+				AND opcud.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+			</if>
+
+			<if test="salesOrderGubunList !=null and salesOrderGubunList.size != 0">
+				<foreach collection="salesOrderGubunList" item="salesOrder" index="index">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'S') ">
+						AND opm.`TYPE` = 'S'
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'R') ">
+						AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP != 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(환불)
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'A') ">
+						AND opm.`TYPE` = 'A'
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesOrder,'C') ">
+						AND (opm.`TYPE` = 'F' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CS_REFUND') -- 구분(cs 환불)
+					</if>
+				</foreach>
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findPgGubn)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.KCP') ">
+					AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.KCP%' -- PG 구분 - KCP
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findPgGubn,'PG_SERVICE.INICIS') ">
+					AND opm.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.INICIS%' -- PG 구분 - 이니시스
+				</if>
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PG_NOT') ">
+					AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL -- PG 내역 미매칭
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'BOS_NOT') ">
+					<!--						AND opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NULL BOS 주문 내역 미매칭 -->
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'PRICE_NOT') ">
+					AND (opcud.OD_PG_COMPARE_UPLOAD_DETAIL_ID IS NOT NULL AND opcud.TRANS_AMT != opm.PAYMENT_PRICE) -- 금액 상의
+				</if>
+			</if>
+
+			<if test="paymentMethodCodeList !=null and paymentMethodCodeList.size != 0">
+				AND opm.PAY_TP IN
+				<foreach collection="paymentMethodCodeList" item="paymentMethod" index="index" separator="," open="(" close=")">
+					#{paymentMethod}
+				</foreach>
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword) ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'OD_ORDER_ID') ">
+					AND oo.ODID IN (#{findKeyword})
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'TID') ">
+					AND opm.TID IN (#{findKeyword})
+				</if>
+			</if>
+			) o
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(summaryListView,'Y') ">
+				<!--GROUP BY o.UR_USER_ID-->
+				WHERE o.TRANS_AMT <![CDATA[<>]]> o.PAYMENT_PRICE
+			</if>
+		) k
+	</select>
+
+</mapper>

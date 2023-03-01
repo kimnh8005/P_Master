@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.buyer.UserBlackMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 블랙리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.25		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBlackListUserListMap" type="kr.co.pulmuone.v1.user.dormancy.dto.vo.GetUserBlackListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="USER_NAME" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="ACCUMULATE_COUNT" property="accumulateCount" />
+		<result column="LAST_CREATE_DATE" property="lastCreateDate" />
+		<result column="EVENT_LIMIT_TP" property="eventLimitTp" />
+	</resultMap>
+
+	<resultMap id="getUserBlackHistoryListMap" type="kr.co.pulmuone.v1.user.dormancy.dto.vo.GetUserBlackHistoryListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="UR_BUYER_BLACKLIST_ID" property="urBuyerBlacklistId" />
+		<result column="REASON" property="reason" />
+		<result column="CREATE_DATE" property="createDate" />
+		<result column="REGISTER_USER_ID" property="registerUserId" />
+		<result column="REGISTER_USER_NAME" property="registerUserName" />
+		<result column="EVENT_LIMIT_TP" property="eventLimitTp" />
+	</resultMap>
+
+
+	<sql id="getBlackListUser">
+		SELECT
+			@ROWNUM := @ROWNUM +1 AS RNUM
+			,TBL.*
+		FROM (
+			SELECT
+				T1.*
+			FROM (
+				SELECT
+					  UU.UR_USER_ID
+					, UU.LOGIN_ID
+					, IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y')  AS EMPLOYEE_YN
+					, UU.USER_TP
+					, FN_DECRYPT(UU.USER_NM) AS USER_NAME
+					, FN_DECRYPT(UB.MOBILE)  AS MOBILE
+					, FN_DECRYPT(UB.MAIL) AS MAIL
+					, UB.MOBILE AS ENC_MOBILE
+					, UB.MAIL AS ENC_MAIL
+					, COUNT(UBB.UR_BUYER_BLACKLIST_ID ) AS ACCUMULATE_COUNT
+					, DATE_FORMAT(MAX(UBB.CREATE_DT), '%Y-%m-%d') AS LAST_CREATE_DATE
+					, MAX(UBB.CREATE_DT) AS LAST_CREATE_DT
+					, UB.UR_ERP_EMPLOYEE_CD
+					, IF( UB.EVENT_JOIN_YN = 'Y','예','아니오') AS EVENT_LIMIT_TP
+				FROM
+					UR_USER UU
+					INNER JOIN UR_BUYER UB
+						ON UU.UR_USER_ID = UB.UR_USER_ID
+					INNER JOIN UR_BUYER_BLACKLIST UBB
+						ON UU.UR_USER_ID = UBB.UR_USER_ID
+					JOIN (SELECT @ROWNUM := 0) R
+				GROUP BY
+					UU.UR_USER_ID, UB.UR_BUYER_ID, UB.MOBILE, UB.MAIL
+			) T1
+			WHERE 1 = 1
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+						AND T1.USER_NAME IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+						AND
+						<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+							T1.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+						</foreach>
+					</if>
+				</when>
+				<otherwise>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+						AND T1.MOBILE LIKE CONCAT('%',#{mobile},'%')
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+						AND T1.MAIL LIKE CONCAT('%',#{mail},'%')
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+								AND IFNULL(T1.UR_ERP_EMPLOYEE_CD, '') = ''
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+								AND IFNULL(T1.UR_ERP_EMPLOYEE_CD, '') != ''
+							</when>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+							AND T1.LAST_CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+						</if>
+					</if>
+				</otherwise>
+			</choose>
+			ORDER BY T1.LOGIN_ID ASC
+		)TBL
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(eventLimitTp)">
+			AND IF(TBL.EVENT_LIMIT_TP = '예', 'Y', 'N') = #{eventLimitTp}
+		</if>
+		ORDER BY RNUM DESC
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 블랙리스트 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.25		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBlackListUserList" resultMap="getBlackListUserListMap">
+		/*	userBlack.getBlackListUserList  */
+		<include refid="getBlackListUser" />
+		<!--페이징-->
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 블랙리스트 리스트카운트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.25		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBlackListUserListCount" resultType="int" >
+		/*	userBlack.getBlackListUserListCount	*/
+		SELECT	COUNT(*) AS TOTAL
+		FROM 	(
+		<include refid="getBlackListUser" />
+				) AS BLACK_LIST_USER
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 블랙리스트 이력 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.26		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserBlackHistoryList" resultMap="getUserBlackHistoryListMap" >
+		/*	userBlack.getUserBlackHistoryList  */
+		SELECT
+			@ROWNUM := @ROWNUM +1 AS RNUM
+			,TBL.*
+		FROM (
+			SELECT
+				UBB.UR_BUYER_BLACKLIST_ID
+				, UBB.REASON
+				, DATE_FORMAT(UBB.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE
+				, CONCAT(UU2.LOGIN_ID) AS REGISTER_USER_ID
+				, CONCAT(FN_DECRYPT(UU2.USER_NM)) AS REGISTER_USER_NAME
+			FROM
+				UR_BUYER_BLACKLIST UBB
+				INNER JOIN UR_USER UU
+					ON UBB.UR_USER_ID = UU.UR_USER_ID
+				INNER JOIN UR_USER UU2
+					ON UBB.CREATE_ID = UU2.UR_USER_ID
+				JOIN (SELECT @ROWNUM := 0) R
+			WHERE
+				UU.UR_USER_ID = #{urUserId}
+			ORDER BY UBB.UR_BUYER_BLACKLIST_ID ASC
+		) TBL
+		ORDER BY RNUM DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 블랙 리스트 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUserBlack">
+		/* userBlack.addUserBlack */
+		INSERT INTO UR_BUYER_BLACKLIST (
+			UR_USER_ID
+			,REASON
+			,CREATE_ID
+		) VALUES(
+			#{urUserId}
+			,#{userBlackReason}
+			,#{userVo.userId}
+		)
+	</insert>
+
+	<update id="putUserEventJoinYn">
+		/* userBlack.putUserEventJoinYn */
+		UPDATE UR_BUYER
+		SET EVENT_JOIN_YN = IFNULL(#{eventLimitTp}, 'N')
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<select id="selectLoginIdCheck" resultType="String">
+		/*	userBlack.selectLoginIdCheck  */
+		SELECT
+			UR_USER_ID
+		FROM UR_USER
+		WHERE LOGIN_ID = #{loginId}
+	</select>
+
+	<select id="getBlackListUserListExportExcel" resultType="kr.co.pulmuone.v1.user.dormancy.dto.vo.GetUserBlackListResultVo">
+		/*	userBlack.getBlackListUserListExportExcel  */
+		SELECT
+			T1.UR_USER_ID
+			, T1.LOGIN_ID
+			, T1.EMPLOYEE_YN
+			, T1.USER_TP
+			, T1.USER_NAME
+			, T1.MOBILE
+			, T1.MAIL
+			, T1.ENC_MOBILE
+			, T1.ENC_MAIL
+			, T1.ACCUMULATE_COUNT
+			, T1.LAST_CREATE_DATE
+			, T1.LAST_CREATE_DT
+			, T1.UR_ERP_EMPLOYEE_CD
+			, T1.EVENT_LIMIT_TP
+		FROM (
+			SELECT
+				UU.UR_USER_ID
+				, UU.LOGIN_ID
+				, IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','일반','임직원')  AS EMPLOYEE_YN
+				, UU.USER_TP
+				, FN_DECRYPT(UU.USER_NM) AS USER_NAME
+				, FN_DECRYPT(UB.MOBILE)  AS MOBILE
+				, FN_DECRYPT(UB.MAIL) AS MAIL
+				, UB.MOBILE AS ENC_MOBILE
+				, UB.MAIL AS ENC_MAIL
+				, COUNT(UBB.UR_BUYER_BLACKLIST_ID ) AS ACCUMULATE_COUNT
+				, DATE_FORMAT(MAX(UBB.CREATE_DT), '%Y-%m-%d') AS LAST_CREATE_DATE
+				, MAX(UBB.CREATE_DT) AS LAST_CREATE_DT
+				, UB.UR_ERP_EMPLOYEE_CD
+				, IF( UB.EVENT_JOIN_YN = 'Y','예','아니오') AS EVENT_LIMIT_TP
+			FROM UR_USER UU
+			INNER JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+			INNER JOIN UR_BUYER_BLACKLIST UBB ON UU.UR_USER_ID = UBB.UR_USER_ID
+			GROUP BY UU.UR_USER_ID, UB.UR_BUYER_ID, UB.MOBILE, UB.MAIL
+		) T1
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND T1.USER_NAME IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND
+					<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+						T1.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+					AND T1.MOBILE LIKE CONCAT('%',#{mobile},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+					AND T1.MAIL LIKE CONCAT('%',#{mail},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+							AND IFNULL(T1.UR_ERP_EMPLOYEE_CD, '') = ''
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+							AND IFNULL(T1.UR_ERP_EMPLOYEE_CD, '') != ''
+						</when>
+					</choose>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+						AND T1.LAST_CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+					</if>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(eventLimitTp)">
+					AND IF(T1.EVENT_LIMIT_TP = '예', 'Y', 'N') = #{eventLimitTp}
+				</if>
+			</otherwise>
+		</choose>
+		ORDER BY T1.LOGIN_ID ASC
+	</select>
+
+</mapper>
+

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsMealMapper">
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품별 식단조회 조회 조건
+     * @
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.13		천혜현	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <sql id="findSearch">
+    <where>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeywordList)"> <!-- 복수검색 -->
+            AND (
+                TBL.IL_GOODS_ID IN
+                <foreach collection="findKeywordList" item="goodsId" index="index" separator="," open="(" close=")">
+                    #{goodsId}
+                </foreach>
+                OR TBL.IL_ITEM_CD IN
+                <foreach collection="findKeywordList" item="itemCode" index="index" separator="," open="(" close=")">
+                    #{itemCode}
+                </foreach>
+                OR TBL.ITEM_BARCODE IN
+                <foreach collection="findKeywordList" item="itemBarcode" index="index" separator="," open="(" close=")">
+                    #{itemBarcode}
+                </foreach>
+            )
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchGoodsName)">
+            AND   TBL.GOODS_NM LIKE CONCAT (#{searchGoodsName},'%')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchMealPatternCdList)">
+            <if test="searchMealPatternCdList.size() > 0">
+                AND (
+                <foreach collection="searchMealPatternCdList" item="searchMealPatternCd" index="index" separator="OR"
+                         open="(" close=")">
+                    TBL.MEAL_PATTERN_LIST LIKE CONCAT('%',#{searchMealPatternCd},'%')
+                </foreach>
+                )
+            </if>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchMealPatternNm)">
+            AND   TBL.MEAL_PATTERN_LIST LIKE CONCAT('%',#{searchMealPatternNm},'%')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+            AND   TBL.MEAL_PATTERN_LIST LIKE CONCAT('%',#{mallDiv},'%')
+        </if>
+    </where>
+    </sql>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품별 식단조회 조회
+     * @
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.13		천혜현	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <sql id="goodsMealList">
+        SELECT
+            IT.IL_ITEM_CD
+             ,IFNULL(IT.ITEM_BARCODE,'') AS ITEM_BARCODE
+             ,IG.IL_GOODS_ID
+             ,IFNULL(IG.PROMOTION_NM,'') AS PROMOTION_NM
+             ,IG.GOODS_NM
+             ,UC.COMP_NM
+             ,FN_COMN_CODE_DIC(IGC.MALL_DIV) AS BRAND_NM
+             ,FN_COMN_CODE_DIC(IG.SALE_STATUS) AS SALE_STATUS
+             ,IF(IG.DISP_YN = 'Y','전시','미전시') AS DISP_YN
+             ,(SELECT
+                   GROUP_CONCAT(TBL.STR SEPARATOR'∀')
+               FROM(
+                       SELECT
+                           CONCAT(A.IL_GOODS_DAILY_MEAL_PATTERN_CD,'||',B.IL_GOODS_DAILY_MEAL_PATTERN_NM,'||',B.MALL_DIV) AS STR
+                       FROM
+                           IL_GOODS_DAILY_MEAL_PATTERN_GOODS A
+                               JOIN IL_GOODS_DAILY_MEAL_PATTERN B ON B.IL_GOODS_DAILY_MEAL_PATTERN_CD = A.IL_GOODS_DAILY_MEAL_PATTERN_CD
+                       WHERE
+                           A.IL_GOODS_ID = IG.IL_GOODS_ID
+                   )
+                       TBL) AS MEAL_PATTERN_LIST
+        FROM
+            IL_GOODS IG
+                JOIN IL_ITEM IT ON IT.IL_ITEM_CD = IG.IL_ITEM_CD
+                JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = IT.UR_SUPPLIER_ID
+                JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+                JOIN IL_GOODS_CTGRY IGC ON IGC.IL_GOODS_ID = IG.IL_GOODS_ID
+        WHERE
+            IG.GOODS_TP = 'GOODS_TYPE.DAILY'
+            AND UC.UR_COMPANY_ID = 6	    /* UR_COMPANY(6:풀무원녹즙(PDM)) */
+            AND IGC.MALL_DIV IN ('MALL_DIV.BABYMEAL', 'MALL_DIV.EATSLIM')
+    </sql>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일일상품 식단 등록 내역 카운트 조회
+     * @
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.13		천혜현	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsMealListCount" resultType="long">
+        /* goodsMeal.getGoodsMealListCount */
+        SELECT
+            COUNT(*)
+        FROM(
+            <include refid="goodsMealList"/>
+        )TBL
+        <include refid="findSearch" />
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 일일상품 식단 등록 내역 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.07    안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.GoodsMealVo" id="getGoodsMealListResultMap">
+        <result column="IL_ITEM_CD"    property="ilItemCd"  />
+        <result column="ITEM_BARCODE"  property="itemBarcode" />
+        <result column="IL_GOODS_ID"   property="ilGoodsId" />
+        <result column="PROMOTION_NM"  property="promotionNm" />
+        <result column="GOODS_NM"      property="goodsNm" />
+        <result column="COMP_NM"       property="compNm"  />
+        <result column="BRAND_NM"      property="brandNm" />
+        <result column="SALE_STATUS"   property="saleStatus" />
+        <result column="DISP_YN"       property="dispYn" />
+        <result column="MEAL_PATTERN_LIST"  property="mealPatternList" />
+    </resultMap>
+    <select id="getGoodsMealList" resultMap="getGoodsMealListResultMap">
+        /* goodsMeal.getGoodsMealList */
+        SELECT
+            TBL.*
+        FROM(
+            <include refid="goodsMealList"/>
+        )TBL
+        <include refid="findSearch" />
+        <include refid="_common.pageLimit"/>
+    </select>
+
+</mapper>

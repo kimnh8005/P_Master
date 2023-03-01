@@ -1,0 +1,304 @@
+﻿<!DOCTYPE html>
+<html ng-controller="CommonController">
+<head>
+    <meta charset="utf-8">
+    <title>kgcshop Admin</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!--
+    <link href="js/lib/kendo/styles/kendo.default.min.css"      type="text/css" rel="stylesheet"/>
+    <link href="js/lib/kendo/styles/kendo.common.min.css"       type="text/css" rel="stylesheet"/>
+    -->
+
+	<link href="js/lib/kendo/styles/2020.1.219/kendo.default.min.css"       type="text/css" rel="stylesheet"/>
+	<link href="js/lib/kendo/styles/2020.1.219/kendo.common.min.css"       type="text/css" rel="stylesheet"/>
+
+	<link rel="stylesheet" href="contents/css/jquery.ui.min.css" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.3.2/main.min.css">
+	<link rel="stylesheet" href="contents/css/master.css"       type="text/css" rel="stylesheet"/>
+	<link rel="stylesheet" href="contents/css/operate.min.css"  type="text/css" rel="stylesheet"/>
+	<link rel="stylesheet" href="contents/css/dev.css"      	type="text/css" rel="stylesheet"/>
+	<link rel="stylesheet" href="contents/css/fb_common.css" type="text/css" rel="stylesheet"/>
+	<script src="/js/controllers/admin/common/fbCommonController.js"></script>
+</head>
+<!-- 우클릭 방지 주석요청 20.07.14<body oncontextmenu="return false" ondragstart="return false" onselectstart="return false"> -->
+<body>
+<div id="document" class="popup-document">
+	<div id="wrapHeaderMain" class="wrap-header" style="display:none"><div class="wrap-header-inner">
+		<header id="header">
+			<h1><a href="javascript:void(0);" onclick="$scope.fnGoMain()"><img src="./contents/images/shoplogo.png" alt="shoplogo.png" title="헤더 로고"></a></h1>
+			<span class="utill-area">
+				<!-- span id="indexUserInfo" class="user-info" style="cursor:pointer"> </span -->
+				<span id="indexUserInfo" class="user-info"> </span>
+				<a href="#" class="logout" onclick="$scope.fnLogOut()">로그아웃</a>
+				<a href="javascript:;" class="mystore" onclick="$scope.fnGoMyStore()">마이스토어</a>
+				<!--span class="voc-area">
+					<a href="#" class="voc">VOC</a>
+					<a href="#" class="system"><span class="hidden">설정</span></a>
+				</span-->
+			</span>
+			<nav id="navigation">
+				<div class="swiper-container">
+					<div id="naviMenuGroup" class="swiper-wrapper">
+
+					</div>
+					<div class="swiper-scrollbar"></div>
+				</div>
+				<span class="menu-aside">
+					<a href="#menu-all-on" rel-target="menu-all-area" class="menu-all">전체</a>
+					<!--
+					<a href="#" class="favorite"><span class="hidden">즐겨찾기</span></a>
+					-->
+				</span>
+			</nav>
+			<article class="menu-all-area" id="menu-all-on">
+				<h1 class="hidden">전체메뉴</h1>
+				<div class="menu-all-area-table" id="menu-all-area">
+				</div>
+			</article>
+		</header>
+		<div class="wrap-member-bar">
+			<div class="member-bar" style="display:none;">
+				<button id="fnBuyerPop" class="set-btn-type4" onclick="$scope.fnBuyerPop()" msg-key="5210">회원찾기</button>
+				<div class="mem-txt" id="nonMemTxt">
+					<span>회원을 먼저 찾아주세요.</span>
+				</div>
+				<div class="mem-txt" id="memTxt" style="display:none;">
+					<span id="crmInfo"></span>
+					<span id="crmInfo2"></span>
+					<span id="crmInfo3"></span>
+					<span id="crmInfo4"></span>
+					<span>
+						<!--
+						<select>
+							<option>보유 적립금 및 쿠폰</option>
+						</select>
+						 -->
+					</span>
+					<input id="CRM_USER_ID" 	name="CRM_USER_ID" 		type="hidden">
+					<input id="CRM_LOGIN_ID" 	name="CRM_LOGIN_ID" 	type="hidden">
+					<input id="CRM_USER_NAME" 	name="CRM_USER_NAME" 	type="hidden">
+
+				</div>
+			</div>
+			<!--a href="javascript:void(0)" onClick="$('.member-bar').slideToggle();" class="btn-toggle">CRM 회원찾기</a-->
+		</div>
+	</div></div>
+	<hr>
+	<article id="container">
+		<nav id="lnb" style="display:none">
+			<div class="/*scrollbar-inner*/">
+				<ul id="lnbMenuList" class="lnb-sub">
+				</ul>
+			</div>
+		</nav>
+		<div id="contents" class="modal__contents">
+			<div id="ng-view" class="modal__ng-view" style="display:none"></div>
+			<footer id="footer" style="display:none;">COPYRIGHT ⓒ 2017 KOREA GINSENG CORP. All RIGHT RESERVED.</footer>
+		</div>
+	</article>
+</div>
+
+
+	<div class="modal"> </div>
+	<div id="forbizMessage"> </div>
+
+	<script src="js/polyfill/polyfill.js"></script>
+	<script src="js/lib/jquery/jquery.js"></script>
+	<script src="js/lib/jquery/jquery-ui-1.10.2.min.js"></script>
+	<script src="js/lib/jquery/jquery.validate.min.js"></script>
+	<script src="js/lib/jquery/jquery.form.min.js"></script>
+	<script src="/js/lib/forbiz/password.js"></script>
+    <script src="/js/lib/forbiz/sha256.js"></script>
+
+    <!-- 3rd party libraries -->
+	<script src="js/lib/kendo/js/2020.1.219/kendo.all.min.js"></script>
+	<script src="js/lib/html2canvas/html2canvas.min.js"></script>
+  	<script src="js/lib/jquery/jquery.tmpl.min.js"></script>
+    <!--  script src="js/lib/kendo/js/kendo.all.min.js"></script> -->
+
+	<script src="js/lib/forbiz/ui.js"></script>
+
+    <!-- Load custom scripts via RequireJS -->
+    <script src="js/comn/comn.js"></script>
+	<script src="js/comn/comn.code.js"></script>
+	<script src="js/comn/comm.ajax.min.js"></script>
+	<script src="/js/comn/comm.date.min.js"></script>
+	<script src="js/comn/comm.editor.min.js"></script>
+	<script src="js/comn/comm.form.min.js"></script>
+	<script src="js/comn/comm.kendo.min.js"></script>
+	<script src="js/comn/comm.layout.min.js"></script>
+	<script src="js/comn/comm.loading.min.js"></script>
+	<script src="js/comn/comm.popup.min.js"></script>
+	<script src="js/comn/comm.repos.min.js"></script>
+	<script src="js/comn/comm.tag.min.js"></script>
+	<script src="js/comn/comm.lang.min.js"></script>
+	<script src="js/lib/forbiz/daumPost.js"></script>
+
+    <!--
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=2705c7293c2ac0a67ad9556cb2a53b8e&libraries=services"></script>
+    -->
+	<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.3.2/main.min.js"></script>
+
+    <script type="text/javascript">
+
+		$.ajaxSetup({
+			headers: { "X-CSRF": "ShopPulmuoneBos" }
+		});
+
+		var IS_SESSION_CHECK_TIME  = 1000;
+		var AUTO_LOGOUT_COUNT_TIME = 5;
+    	var queryString = new URLSearchParams(window.location.search);
+		var programID = getProgramID(location.href);
+		var pgmList = window.parent.pgmList;
+		var oldProgramID = null;
+		var newProgramID = getProgramID();
+
+		window.addEventListener("hashchange",function(event){
+			oldProgramID = newURL;
+			newProgramID = getProgramID();
+
+	    	if(oldProgramID != newProgramID){
+	    		getContentsHtml(getProgramID(newURL));
+	    	}
+		});
+
+		$(document).ready(function() {
+			init();
+		});
+
+		function init() {
+			//최초 로드시
+			getContentsHtml(queryString.get("lpId"));
+			setInterval(isSessionCheck, (IS_SESSION_CHECK_TIME * 1000));
+
+		}
+
+	    function getProgramID(url){
+			return queryString.get("lpId");
+	    }
+
+	   	function getPgmData(programID) {
+	   		var pgmData = false;
+
+	   		$.each(pgmList, function (index, data) {
+	    		if(data.PG_ID == programID){
+	    			pgmData = data;
+
+	    			return false;
+	    		}
+	    	});
+
+	   		return pgmData;
+	   	}
+
+	    function getContentsHtml(programID){
+			if (programID == "#") {
+				return;
+			}
+
+			var pgmData = getPgmData(programID);
+
+	    	if(pgmData !== false){
+	    		$.ajax({
+					type     : 'GET',
+					dataType : 'html',
+					url      : '/contents/views/' + pgmData.HTML_PATH + programID + '.html',
+			    	data     : {},
+			    	success : function(data, status, xhr){
+			    		var jsPath = '/js/controllers/' + pgmData.HTML_PATH + programID + 'Controller.js';
+
+			    		$('#contentJS').remove();
+			    		$('#ng-view').hide().empty().append(data).show();
+
+			    		//addngEvents();
+			    		importScript(jsPath);
+			    		$('script[src="'+jsPath+'"]').attr('id','contentJS');
+
+			    	},
+			    	error : function(xhr, status, strError){	//ajax Error
+			    		console.error(strError)
+			    	}
+			    });
+	    	} else {
+	      	  fnKendoMessage({message : '권한이 없습니다. programID : ' + programID});
+	        }
+	    }
+
+	    function importScript(path, callback) {
+	    	var script = document.createElement('script');
+
+	    	script.type = "text/javascript";
+	    	script.src = path;
+			script.id = "contentJS";
+			if(typeof callback == "function"){
+				script.onload = function() {
+					callback();
+				}
+			}
+	    	document.getElementsByTagName('head')[0].appendChild(script);
+	    }
+
+	    /*
+	    function addngEvents() {
+	    	var eventEls = $("#ng-view").find("[ng-click]");
+
+
+			for(var i = 0, maxCnt = eventEls.length; i < maxCnt; i++) {
+				$(eventEls[i]).on("click", function($event) {
+					var args = $(this).attr("ng-click").match(/(?:\()(.*.||)(?:\))/);
+					var functionName = $(this).attr("ng-click").replace(args[0], "");
+
+					// args.slice(1, args.length).join(", ")
+
+					var argsList = args[1].split(',');
+					$scope[functionName](argsList[0], argsList[1], argsList[2]);
+				});
+			}
+	    }
+	    */
+
+		function isSessionCheck(){
+			$.ajax({
+				type     : 'POST',
+				dataType : 'json',
+				url      : '/admin/comn/hasSessionInfoByLoginId',
+		    	data     : {},
+		    	success : function(data, status, xhr){
+		    		if( data.code != '0000' ){
+
+		    			IS_SESSION_CHECK_TIME = 999999999;
+
+						setInterval(function(e){
+										if(AUTO_LOGOUT_COUNT_TIME == 1){
+											fnLogoutProcess();
+										}else{
+											AUTO_LOGOUT_COUNT_TIME--;
+										}
+
+										if(AUTO_LOGOUT_COUNT_TIME > 0) $('#forbizMsgBox').text(AUTO_LOGOUT_COUNT_TIME);
+
+									}, 1000);
+
+						fnKendoMessage({message : "<div id=''>다른 PC에서 로그인한 사용자가 있어 자동로그아웃 처리됩니다.<br/><span id='forbizMsgBox'>5</span>초 후 로그인페이지로 이동합니다.</div>"
+						                    ,ok : function(e){
+																fnLogoutProcess();
+											}
+										});
+		    		}
+		    	},
+		    	error : function(xhr, status, strError){	//ajax Error
+
+		    	}
+		    });
+		}
+
+		function fnAddPopupClass(className) {
+			$("#document").addClass(className);
+		}
+    </script>
+
+</body>
+</html>

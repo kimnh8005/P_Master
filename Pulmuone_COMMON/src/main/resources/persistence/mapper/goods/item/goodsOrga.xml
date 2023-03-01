@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsOrgaDisMapper">
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description : 마스터 품목 리스트 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.14     임상건          최초생성
+     * @ 2020.10.21     박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.OrgaDiscountListVo" id="getOrgaDisListResultMap">
+        <result column="RNUM"                           property="rowNumber"/>
+        <result column="IL_ITEM_CD"                   property="ilItemCd"/>
+        <result column="ITEM_BARCODE"                property="itemBarcode"/>
+        <result column="ITEM_NM"                      property="itemNm"/>
+        <result column="DISCOUNT_TP"                      property="discountTp"/>
+        <result column="DISCOUNT_TP_NM"                      property="discountTpNm"/>
+        <result column="DISCOUNT_START_DT"                      property="discountStartDt"/>
+        <result column="DISCOUNT_END_DT"                  property="discountEndDt"/>
+        <result column="DISCOUNT_SALE_PRICE"                     property="discountSalePrice"/>
+        <result column="DISCOUNT_SALE_PRICE_STR"                     property="discountSalePriceStr"/>
+
+    </resultMap>
+
+    <select id="getOrgaDisList" resultMap="getOrgaDisListResultMap">
+        /* goodsOrga.getOrgaDisList */
+		SELECT
+			ITEM_DIS.IL_ITEM_CD,
+			ITEM.ITEM_BARCODE,
+			ITEM.ITEM_NM,
+			ITEM_DIS.DISCOUNT_TP,
+			FN_COMN_CODE_DIC(ITEM_DIS.DISCOUNT_TP) as DISCOUNT_TP_NM,
+			ITEM_DIS.DISCOUNT_METHOD_TP,
+			FN_COMN_CODE_DIC(ITEM_DIS.DISCOUNT_METHOD_TP) as DISCOUNT_METHOD_TP_NM,
+			DATE_FORMAT(ITEM_DIS.DISCOUNT_START_DT, '%Y-%m-%d') AS DISCOUNT_START_DT,
+			DATE_FORMAT(ITEM_DIS.DISCOUNT_END_DT, '%Y-%m-%d') AS DISCOUNT_END_DT,
+			ITEM_DIS.DISCOUNT_RATIO,
+			ITEM_DIS.DISCOUNT_SALE_PRICE
+		FROM IL_ITEM_DISCOUNT ITEM_DIS
+		INNER JOIN IL_ITEM ITEM ON ITEM_DIS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+		WHERE 1=1
+		AND ITEM_DIS.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.ERP_EVENT'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'codeSearch') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemCodesArray)">
+				AND ITEM_DIS.IL_ITEM_CD IN
+	                <foreach item="data" index="index" collection="itemCodesArray" open="(" separator="," close=")">
+	                    #{data}
+	                </foreach>
+	            OR ITEM.ITEM_BARCODE IN
+	                <foreach item="data" index="index" collection="itemCodesArray" open="(" separator="," close=")">
+	                    #{data}
+	                </foreach>
+			</if>
+		</if>
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'condSearch') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND DATE_FORMAT(ITEM_DIS.DISCOUNT_START_DT, '%Y%m%d') <![CDATA[ <= ]]> #{endDate}
+		            AND DATE_FORMAT(ITEM_DIS.DISCOUNT_END_DT, '%Y%m%d') <![CDATA[ >= ]]> #{startDate}
+				</if>
+			</if>
+
+		</if>
+		ORDER BY ITEM_DIS.DISCOUNT_START_DT DESC
+    </select>
+
+	 <select id="getOrgaDisListExcel" resultMap="getOrgaDisListResultMap">
+        /* goodsOrga.getOrgaDisListExcel */
+		SELECT
+			ITEM_DIS.IL_ITEM_CD,
+			ITEM.ITEM_BARCODE,
+			ITEM.ITEM_NM,
+			ITEM_DIS.DISCOUNT_TP,
+			FN_COMN_CODE_DIC(ITEM_DIS.DISCOUNT_TP) as DISCOUNT_TP_NM,
+			ITEM_DIS.DISCOUNT_METHOD_TP,
+			FN_COMN_CODE_DIC(ITEM_DIS.DISCOUNT_METHOD_TP) as DISCOUNT_METHOD_TP_NM,
+			DATE_FORMAT(ITEM_DIS.DISCOUNT_START_DT, '%Y-%m-%d') AS DISCOUNT_START_DT,
+			DATE_FORMAT(ITEM_DIS.DISCOUNT_END_DT, '%Y-%m-%d') AS DISCOUNT_END_DT,
+			ITEM_DIS.DISCOUNT_RATIO,
+			ITEM_DIS.DISCOUNT_SALE_PRICE AS DISCOUNT_SALE_PRICE_STR
+		FROM IL_ITEM_DISCOUNT ITEM_DIS
+		INNER JOIN IL_ITEM ITEM ON ITEM_DIS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+		WHERE 1=1
+		AND ITEM_DIS.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.ERP_EVENT'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'codeSearch') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemCodesArray)">
+				AND ITEM_DIS.IL_ITEM_CD IN
+	                <foreach item="data" index="index" collection="itemCodesArray" open="(" separator="," close=")">
+	                    #{data}
+	                </foreach>
+	            OR ITEM.ITEM_BARCODE IN
+	                <foreach item="data" index="index" collection="itemCodesArray" open="(" separator="," close=")">
+	                    #{data}
+	                </foreach>
+			</if>
+		</if>
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'condSearch') ">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND DATE_FORMAT(ITEM_DIS.DISCOUNT_START_DT, '%Y%m%d') <![CDATA[ <= ]]> #{endDate}
+		            AND DATE_FORMAT(ITEM_DIS.DISCOUNT_END_DT, '%Y%m%d') <![CDATA[ >= ]]> #{startDate}
+				</if>
+			</if>
+
+		</if>
+		ORDER BY ITEM_DIS.DISCOUNT_START_DT DESC
+    </select>
+
+
+
+</mapper>

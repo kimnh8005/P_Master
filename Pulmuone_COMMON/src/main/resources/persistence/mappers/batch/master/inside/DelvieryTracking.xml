@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.inside.DeliveryTrackingMapper">
+
+	<!-- 새벽배송권역 추가 또는 삭제 결과 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.batch.order.inside.dto.OrderDeliveryInfoDto" id="getOrderDeliveryInfoResultMap" >
+		<result column="OD_ORDER_DETL_ID" 		property="odOrderDetlId" />
+		<result column="PS_SHIPPING_COMP_ID" 	property="psShippingCompId" />
+		<result column="TRACKING_NO" 			property="trackingNo" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 새벽배송권역 삭제할 데이터 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDeliveryInfoList"  parameterType="kr.co.pulmuone.v1.batch.order.inside.dto.DeliveryTrackingDto" resultMap="getOrderDeliveryInfoResultMap">
+		/*	batch.inside.getOrderDeliveryInfoList  */
+		SELECT
+			OTN.OD_ORDER_DETL_ID		/* 주문상세 PK */
+			, OTN.PS_SHIPPING_COMP_ID	/* 택배사 설정 PK */
+			, OTN.TRACKING_NO			/* 개별송장번호 */
+		FROM
+			OD_TRACKING_NUMBER OTN
+			INNER JOIN OD_ORDER_DETL OOD ON OTN.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE
+			PS_SHIPPING_COMP_ID IN (#{psShippingCompId1}, #{psShippingCompId2})
+			AND ORDER_STATUS_CD = #{orderStatusCd}
+	</select>
+
+</mapper>
+
+

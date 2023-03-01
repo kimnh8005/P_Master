@@ -1,0 +1,1383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.email.OrderEmailMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 직접배송 미등록 송장 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.12.13 	정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getUnregistetedInvoiceList" resultType="kr.co.pulmuone.v1.order.email.dto.UnregistetedInvoiceDto">
+        /* orderEmail.getUnregistetedInvoiceList */
+        SELECT (@rownum := @rownum + 1) AS NO,
+            X.WAREHOUSE_NM,
+            X.ODID,
+            X.ITEM_BARCODE,
+            X.IL_ITEM_CD,
+            X.IL_GOODS_ID,
+            X.GOODS_NM,
+            X.ORDER_CNT,
+            DATE_FORMAT(X.DELIVERY_DT,'%Y-%m-%d') AS DELIVERY_DT
+        FROM
+        (
+            SELECT
+                   uw.WAREHOUSE_NM,
+                   oo.ODID,
+                   ood.ITEM_BARCODE,
+                   ood.IL_ITEM_CD,
+                   ood.IL_GOODS_ID,
+                   ood.GOODS_NM,
+                   (ood.ORDER_CNT - ood.CANCEL_CNT) ORDER_CNT,
+                   ood.DELIVERY_DT
+            FROM OD_ORDER oo
+                INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND ood.ORDER_STATUS_CD = 'DR'
+                INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID
+                    AND uw.WAREHOUSE_GRP_CD IN ('WAREHOUSE_GROUP.OWN','WAREHOUSE_GROUP.ACCOUNT_Orga','WAREHOUSE_GROUP.ACCOUNT','WAREHOUSE_GROUP.ACCOUNT_DS','WAREHOUSE_GROUP.ACCOUNT_FDD','WAREHOUSE_GROUP.ACCOUNT_PDM')
+                    AND uw.UR_WAREHOUSE_ID NOT IN (SELECT PS_VAL FROM PS_CONFIG WHERE ST_SHOP_ID = 1 AND PS_KEY IN ('WAREHOUSE_BAEKAM_ID','WAREHOUSE_YONGIN_ID', 'WAREHOUSE_STORE_ID') AND USE_YN = 'Y')
+                LEFT OUTER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID
+            WHERE oo.ORDER_YN = 'Y' /* 정상주문여부 */
+                AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+                AND ood.SHIPPING_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 출고일자 */
+                AND otn.TRACKING_NO IS NULL
+            ORDER BY uw.WAREHOUSE_NM, oo.ODID
+        ) X, (SELECT @ROWNUM := 0) R
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 자동메일 발송 위한 주문 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03 	천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderInfoForEmailResultMap" type="kr.co.pulmuone.v1.order.email.dto.vo.OrderInfoForEmailVo">
+		<result column="UR_USER_ID"       property="urUserId" />
+		<result column="BUYER_NM"	      property="buyerName" />
+		<result column="MAIL"             property="mail" />
+		<result column="MOBILE"           property="mobile" />
+		<result column="CREATE_DT"        property="createDate" />
+		<result column="CREATE_DT_TM"     property="createDateTime" />
+		<result column="IC_DT"            property="icDate" />
+		<result column="ODID"             property="odid" />
+		<result column="OD_ORDER_ID"      property="odOrderId" />
+		<result column="GOODS_NM"         property="goodsNm" />
+		<result column="PAY_TP"           property="payType" />
+		<result column="PAY_TP_NM"        property="payTypeName" />
+		<result column="PAY_INFO"         property="payInfo" />
+		<result column="BANK_NM"          property="bankName" />
+		<result column="VIRTUAL_ACCOUNT_NUMBER"         property="virtualAccountNumber" />
+		<result column="PAID_HOLDER"      property="paidHolder" />
+		<result column="INFO"             property="info" />
+		<result column="CARD_QUOTA"       property="cardQuota" />
+		<result column="PAID_DUE_DT"      property="paidDueDate" />
+		<result column="PAYMENT_PRICE"    property="paymentPrice"/>
+		<result column="SALE_PRICE"       property="salePrice"/>
+		<result column="DISCOUNT_PRICE"   property="discountPrice"/>
+		<result column="POINT_PRICE"      property="pointPrice"/>
+		<result column="RECV_NM"          property="recvNm"/>
+        <result column="RECV_ADDR"        property="recvAddr"/>
+        <result column="RECV_HP"          property="recvHp"/>
+        <result column="DELIVERY_MSG"     property="deliveryMsg"/>
+        <result column="TOTAL_SALE_PRICE" property="totalSalePrice"/>
+        <result column="RENTAL_COUNT"     property="rentalCount"/>
+        <result column="OG_GOODS_COUNT"   property="orgaGoodsCount"/>
+        <result column="COUPON_USE"       property="couponUse"/>
+        <result column="POINT_USE"        property="pointUse"/>
+        <result column="UR_STORE_ID"      property="urStoreId"/>
+        <result column="UR_STORE_NM"      property="urStoreNm"/>
+        <result column="STORE_START_TIME" property="storeStartTime"/>
+        <result column="STORE_END_TIME"   property="storeEndTime"/>
+	</resultMap>
+	<select id="getOrderInfoForEmail" resultMap="getOrderInfoForEmailResultMap">
+		/*	orderEmail.getOrderInfoForEmail  */
+		SELECT
+            IF(OO.UR_USER_ID = NULL,0,OO.UR_USER_ID) AS UR_USER_ID
+            ,FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+            ,FN_DECRYPT(OO.BUYER_MAIL) AS MAIL
+            ,FN_DECRYPT(OO.BUYER_HP) AS MOBILE
+            ,DATE_FORMAT(OOD.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+            ,DATE_FORMAT(OOD.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DT_TM
+            ,DATE_FORMAT(OOD.IC_DT, '%Y-%m-%d') AS IC_DT
+            ,OO.ODID
+            ,OO.OD_ORDER_ID
+            ,OO.GOODS_NM
+            ,OO.ORDER_PAYMENT_TYPE
+            ,FN_COMN_CODE_DIC(OO.ORDER_PAYMENT_TYPE) AS PAY_TP_NM
+            ,CASE OO.ORDER_PAYMENT_TYPE WHEN 'PAY_TP.CARD' THEN CONCAT('신용카드 ',OPM.INFO,' (',OPM.CARD_NUMBER,')',IF(OPM.CARD_QUOTA='00',' / 일시불',''))
+                             WHEN 'PAY_TP.VIRTUAL_BANK' THEN CONCAT(OPM.BANK_NM,' ', OPM.VIRTUAL_ACCOUNT_NUMBER)
+                             WHEN 'PAY_TP.BANK' THEN  CONCAT('실시간계좌이체 ',OPM.INFO)
+                             ELSE FN_COMN_CODE_DIC(OO.ORDER_PAYMENT_TYPE) END AS PAY_INFO
+            ,OPM.PAID_DUE_DT
+            ,OPM.BANK_NM
+            ,OPM.VIRTUAL_ACCOUNT_NUMBER
+            ,OPM.PAID_HOLDER
+            ,OPM.INFO
+            ,IF(OPM.CARD_QUOTA = '00','일시불', CONCAT(OPM.CARD_QUOTA,'개월') ) AS CARD_QUOTA
+            ,OPM.PAYMENT_PRICE
+            ,OPM.SALE_PRICE+OPM.SHIPPING_PRICE AS SALE_PRICE /* 주문금액(상품 판매가 + 배송비) */
+            ,(OPM.CART_COUPON_PRICE + OPM.GOODS_COUPON_PRICE + OPM.DIRECT_PRICE) AS DISCOUNT_PRICE /* 상품쿠폰 + 장바구니쿠폰 +상품,장바구니쿠폰 제외한 할인금액 */
+            ,OPM.POINT_PRICE
+            ,OSZ.RECV_NM
+			,CONCAT(OSZ.RECV_ADDR1,' ',OSZ.RECV_ADDR2) AS RECV_ADDR
+            ,OSZ.RECV_HP
+            ,OSZ.DELIVERY_MSG
+            ,OODETL.RECOMMENDED_PRICE + OPM.SHIPPING_PRICE AS TOTAL_SALE_PRICE  /* 주문금액(상품 정가 + 배송비 ) */
+            ,(SELECT COUNT(*) FROM OD_ORDER_DETL WHERE OD_ORDER_ID = OO.OD_ORDER_ID AND ORDER_STATUS_DELI_TP = 'ORDER_STATUS_DELI_TP.RENTAL') AS RENTAL_COUNT
+            ,(SELECT COUNT(*) FROM OD_ORDER_DETL WHERE OD_ORDER_ID = OO.OD_ORDER_ID AND UR_SUPPLIER_ID = 2) AS OG_GOODS_COUNT /* 올가 상품 주문 count */
+            ,IF((OPM.CART_COUPON_PRICE + OPM.GOODS_COUPON_PRICE + OSPRICE.SHIPPING_DISCOUNT_PRICE) > 0, '사용','미사용') AS COUPON_USE /* 쿠폰사용여부*/
+            ,IF(OPM.POINT_PRICE > 0 , '사용','미사용') AS POINT_USE /* 적립금사용여부 */
+		    ,IFNULL(OO.UR_STORE_ID, '0') AS UR_STORE_ID /*매장 ID*/
+		FROM
+		    OD_ORDER OO
+		    JOIN OD_ORDER_DT OOD ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+		    JOIN OD_PAYMENT OP ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+		    JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID AND OPM.TYPE = 'G'
+		    JOIN (SELECT
+		              FN_DECRYPT(OSZ.RECV_NM)               AS RECV_NM      /* 수령인명 */
+		             , FN_DECRYPT(OSZ.RECV_ADDR1)           AS RECV_ADDR1   /* 수령인주소1 */
+		             , FN_DECRYPT(OSZ.RECV_ADDR2)           AS RECV_ADDR2   /* 수령인주소2 */
+		             , FN_DECRYPT(OSZ.RECV_HP)              AS RECV_HP      /* 수령인핸드폰 */
+		             , IFNULL(OSZ.DELIVERY_MSG, '')         AS DELIVERY_MSG /* 배송요청사항 */
+		             , OD.OD_ORDER_ID
+		        FROM OD_ORDER OD
+		        INNER JOIN OD_SHIPPING_ZONE OSZ ON OD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		        WHERE 1 = 1
+		        AND OD.OD_ORDER_ID = #{odOrderId}
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsTpCd) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(goodsTpCd,'GOODS_TYPE.DAILY')">
+			         AND DELIVERY_TYPE != 'DELIVERY_TYPE.DAILY'
+			    </if>
+		        ORDER BY OSZ.OD_SHIPPING_ZONE_ID DESC
+		        LIMIT 1) OSZ ON OO.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		    JOIN (SELECT
+                    SUM(OOD.RECOMMENDED_PRICE * OOD.ORDER_CNT) AS RECOMMENDED_PRICE
+                    ,OOD.OD_ORDER_ID
+                  FROM
+                    OD_ORDER OO
+                    INNER JOIN OD_ORDER_DETL OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+                  WHERE OOD.OD_ORDER_ID = #{odOrderId} AND OOD.GOODS_TP_CD NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')) OODETL ON OO.OD_ORDER_ID = OODETL.OD_ORDER_ID
+            JOIN (SELECT
+                    SUM(SHIPPING_DISCOUNT_PRICE) AS SHIPPING_DISCOUNT_PRICE
+                    ,OOD.OD_ORDER_ID
+                    FROM OD_SHIPPING_PRICE OSP
+                    JOIN OD_ORDER_DETL OOD ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+                    WHERE OOD.OD_ORDER_ID = #{odOrderId}) OSPRICE ON OO.OD_ORDER_ID = OSPRICE.OD_ORDER_ID
+		WHERE
+		    OO.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문 상세 리스트
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.16     이명수          최초생성
+     * @ 2021.01.27     이명수          쿼리수정
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getOrderDetailGoodsListForEmailResultMap" type="kr.co.pulmuone.v1.order.email.dto.OrderDetailGoodsDto">
+        <result column="OD_ORDER_ID"                property="odOrderId"/>
+        <result column="OD_ORDER_DETL_ID"           property="odOrderDetlId"/>
+        <result column="OD_ORDER_DETL_STEP_ID"      property="odOrderDetlStepId"/>
+        <result column="OD_ORDER_DETL_DEPTH_ID"     property="odOrderDetlDepthId"/>
+        <result column="OD_ORDER_DETL_PARENT_ID"    property="odOrderDetlParentId"/>
+        <result column="OD_ORDER_DETL_SEQ"          property="odOrderDetlSeq"/>
+        <result column="IL_ITEM_CD"                 property="ilItemCd"/>
+        <result column="ORDER_STATUS_CD"            property="orderStatusCd"/>
+        <result column="ORDER_STATUS_NM"            property="orderStatusNm"/>
+        <result column="GOODS_TP_CD"                property="goodsTpCd"/>
+        <result column="ORDER_STATUS_DELI_TP"       property="orderStatusDeliTp"/>
+        <result column="GOODS_DELIVERY_TYPE"        property="goodsDeliveryType"/>
+        <result column="GOODS_DELIVERY_TYPE_NM"     property="goodsDeliveryTypeNm"/>
+        <result column="GRP_GOODS_DELIVERY_TYPE"    property="grpGoodsDeliveryType"/>
+        <result column="IL_GOODS_ID"                property="ilGoodsId"/>
+        <result column="GOODS_NM"                   property="goodsNm"/>
+        <result column="ORDER_CNT"                  property="orderCnt"/>
+        <result column="PAID_PRICE"                 property="paidPrice"/>
+        <result column="GOODS_IMG_NM"               property="goodsImgNm"/>
+        <result column="RECOMMENDED_PRICE"          property="recommendedPrice"/>
+        <result column="IL_SHIPPING_TMPL_ID"        property="ilShippingTmplId"/>
+        <result column="SHIPPING_PRICE"             property="shippingPrice"/>
+        <result column="GOODS_CYCLE_TERM_TP"        property="goodsDailyCycleTermType"/>
+        <result column="MON_CNT"                    property="monCnt"/>
+        <result column="TUE_CNT"                    property="tueCnt"/>
+        <result column="WED_CNT"                    property="wedCnt"/>
+        <result column="THU_CNT"                    property="thuCnt"/>
+        <result column="FRI_CNT"                    property="friCnt"/>
+        <result column="TRACKING_NO"                property="trackingNo"/>
+        <result column="SHIPPING_COMP_NM"           property="shippingCompName"/>
+        <result column="TRACKING_URL"               property="trackingUrl"/>
+        <result column="HTTP_REQUEST_TP"            property="httpRequestTp"/>
+        <result column="INVOICE_PARAM"              property="invoiceParam"/>
+        <result column="DI_DT"                      property="diDate"/>
+        <result column="AGENT_TYPE_CD"              property="agentTypeCd"/>
+    </resultMap>
+    <select id="getOrderDetailGoodsListForEmail" resultMap="getOrderDetailGoodsListForEmailResultMap">
+    /*  orderEmail.getOrderDetailGoodsListForEmail  */
+    SELECT
+        TBL.*
+    FROM (
+        SELECT
+              OOD.OD_ORDER_ID                                                   /* 주문 PK */
+            , OOD.OD_ORDER_DETL_ID                                              /* 주문상세PK */
+            , OOD.OD_ORDER_DETL_STEP_ID
+            , OOD.OD_ORDER_DETL_DEPTH_ID
+            , OOD.OD_ORDER_DETL_PARENT_ID
+            , OOD.OD_ORDER_DETL_SEQ                                             /* 주문상세순번 */
+            , OOD.IL_ITEM_CD                                                    /* 품목PK */
+            , OOD.ORDER_STATUS_CD                                               /* 정상주문상태 */
+            , FN_ORDER_DETAIL_STATUS_NM(OOD.ORDER_STATUS_CD) AS ORDER_STATUS_NM /* 정상주문상태명 */
+            , OOD.GOODS_TP_CD                                                   /* 상품유형 */
+            , IFNULL(OOD.ORDER_STATUS_DELI_TP, '') AS ORDER_STATUS_DELI_TP      /* 주문배송유형 */
+            , IFNULL(OOD.GOODS_DELIVERY_TYPE, '') AS GOODS_DELIVERY_TYPE        /* 배송유형 */
+            , FN_COMN_CODE_DIC(OOD.GOODS_DELIVERY_TYPE) AS GOODS_DELIVERY_TYPE_NM
+            , CASE WHEN OOD.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN'
+                    THEN 'GOODS_DELIVERY_TYPE.NORMAL'
+                    ELSE OOD.GOODS_DELIVERY_TYPE
+                    END AS GRP_GOODS_DELIVERY_TYPE                              /* 배송유형2 (배송유형 그룹(일반/새벽)) */                                                /* 배송유형명 */
+            , OOD.IL_GOODS_ID                                                   /* 상품 PK */
+            , OOD.GOODS_NM                                                      /* 상품명 */
+            , OOD.ORDER_CNT                                                     /* 주문수량 */
+            , OOD.PAID_PRICE                                                    /* 결제금액 */
+            , FN_GOODS_C_IMG(IFNULL(OOD.IL_GOODS_ID, 0)) AS GOODS_IMG_NM        /* 대표 상품 이미지 */
+		    , OOD.RECOMMENDED_PRICE * OOD.ORDER_CNT AS RECOMMENDED_PRICE
+		    , OSP.IL_SHIPPING_TMPL_ID
+		    , OSP.SHIPPING_PRICE
+		    , FN_COMN_CODE_DIC(OODD.GOODS_CYCLE_TERM_TP) AS GOODS_CYCLE_TERM_TP
+		    , OODD.MON_CNT
+            , OODD.TUE_CNT
+            , OODD.WED_CNT
+            , OODD.THU_CNT
+            , OODD.FRI_CNT
+            , IFNULL(OTN.TRACKING_NO, '') AS TRACKING_NO                        /* 송장번호 */
+            , IFNULL(SHIPPING_COMP_NM, '') AS SHIPPING_COMP_NM
+            , PSC.TRACKING_URL		  						AS TRACKING_URL		/* 송장추적 URL */
+			, IF(PSC.HTTP_REQUEST_TP = 'P', 'POST', 'GET')	AS HTTP_REQUEST_TP	/* HTTP 전송방법 */
+			, PSC.INVOICE_PARAM 							AS INVOICE_PARAM	/* 송장파라미터 */
+            , DATE_FORMAT(OOD.DI_DT, '%Y-%m-%d') AS DI_DT
+        FROM
+            OD_ORDER_DETL OOD                                               /* 주문상세 */
+            INNER JOIN OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD                                               /* 주문 상태 */
+            INNER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID /* 주문 배송비 */
+            LEFT OUTER JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID /* 주문상세 송장번호 */
+            LEFT OUTER JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+            LEFT OUTER JOIN OD_ORDER_DETL_DAILY OODD ON OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+        <where>
+            <if test="odOrderId != 0 and odOrderId != null">
+	            AND OOD.OD_ORDER_ID = #{odOrderId}
+            </if>
+            <if test="odOrderDetlIdList != null and odOrderDetlIdList.size() > 0">
+                AND OOD.OD_ORDER_DETL_ID IN
+                <foreach collection="odOrderDetlIdList" item="odOrderDetlId" separator="," open="(" close=")">
+                    #{odOrderDetlId}
+                </foreach>
+            </if>
+            AND ( OOD.OD_ORDER_DETL_DEPTH_ID = 1   /* 묶음상품일경우 대표상품만 뽑아오기 위해서 */
+                    OR
+                 (OOD.OD_ORDER_DETL_DEPTH_ID = 2 AND OOD.GOODS_TP_CD = 'GOODS_TYPE.ADDITIONAL')) /* 추가상품 */
+        </where>
+        UNION ALL
+        (
+        SELECT
+              OOD.OD_ORDER_ID                                                   /* 주문 PK */
+            , OODP.OD_ORDER_DETL_ID                                             /* 주문상세PK */
+            , OODP.OD_ORDER_DETL_STEP_ID
+            , 1 AS OD_ORDER_DETL_DEPTH_ID
+            , OODP.OD_ORDER_DETL_ID AS OD_ORDER_DETL_PARENT_ID
+            , 0 AS OD_ORDER_DETL_SEQ                                            /* 주문상세순번 */
+            , '' AS IL_ITEM_CD                                                  /* 품목PK */
+            , OOD.ORDER_STATUS_CD                                               /* 정상주문상태 */
+            , '' AS ORDER_STATUS_NM /* 정상주문상태명 */
+            , OOD.GOODS_TP_CD                                                   /* 상품유형 */
+            , IFNULL(OOD.ORDER_STATUS_DELI_TP, '') AS ORDER_STATUS_DELI_TP      /* 주문배송유형 */
+            , IFNULL(OODP.GOODS_DELIVERY_TYPE, '') AS GOODS_DELIVERY_TYPE       /* 배송유형 */
+            , FN_COMN_CODE_DIC(OODP.GOODS_DELIVERY_TYPE) AS GOODS_DELIVERY_TYPE_NM
+            , CASE WHEN OODP.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN'
+                    THEN 'GOODS_DELIVERY_TYPE.NORMAL'
+                    ELSE OOD.GOODS_DELIVERY_TYPE
+                    END AS GRP_GOODS_DELIVERY_TYPE                                  /* 배송유형2 (배송유형 그룹(일반/새벽)) */                                                /* 배송유형명 */
+            , OODP.IL_GOODS_ID                                                  /* 상품 PK */
+            , OODP.GOODS_NM                                                     /* 상품명 */
+            , OODP.ORDER_CNT                /* 주문수량 = (주문 수량 - 주문 취소 수량) */
+            , OODP.PAID_PRICE                                                   /* 결제금액 */
+            , FN_GOODS_C_IMG(IFNULL(OODP.IL_GOODS_ID, 0)) AS GOODS_IMG_NM       /* 대표 상품 이미지 */
+		    , OODP.RECOMMENDED_PRICE * OODP.ORDER_CNT AS RECOMMENDED_PRICE
+		    , OSP.IL_SHIPPING_TMPL_ID
+		    , OSP.SHIPPING_PRICE
+		    , '' AS GOODS_CYCLE_TERM_TP
+		    , '' AS MON_CNT
+            , '' AS TUE_CNT
+            , '' AS WED_CNT
+            , '' AS THU_CNT
+            , '' AS FRI_CNT
+            , '' AS TRACKING_NO                     /* 송장번호 */
+            , '' AS SHIPPING_COMP_NM
+            , '' AS TRACKING_URL		/* 송장추적 URL */
+			, '' AS HTTP_REQUEST_TP		/* HTTP 전송방법 */
+			, '' AS INVOICE_PARAM		/* 송장파라미터 */
+            , '' AS DI_DT
+        FROM
+            OD_ORDER_DETL OOD
+            INNER JOIN OD_ORDER_DETL_PACK OODP ON OOD.OD_ORDER_DETL_PARENT_ID = OODP.OD_ORDER_DETL_ID
+            INNER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+        <where>
+            <if test="odOrderId != 0 and odOrderId != null">
+                AND OOD.OD_ORDER_ID = #{odOrderId}
+            </if>
+             <if test="odOrderDetlIdList != null and odOrderDetlIdList.size() > 0">
+                AND OOD.OD_ORDER_DETL_ID IN
+                <foreach collection="odOrderDetlIdList" item="odOrderDetlId" separator="," open="(" close=")">
+                    #{odOrderDetlId}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY OODP.OD_ORDER_DETL_ID
+        ORDER BY OD_ORDER_DETL_STEP_ID DESC
+        ))TBL
+       ORDER BY TBL.OD_ORDER_DETL_SEQ
+    </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문상세 PK로 주문PK,송장번호 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderIdList" resultMap="getOrderDetailGoodsListForEmailResultMap">
+        /*  orderEmail.getOrderIdList  */
+        SELECT
+		    OOD.OD_ORDER_ID                                                   /* 주문 PK */
+            , OOD.OD_ORDER_DETL_ID                                              /* 주문상세PK */
+            , IFNULL(OTN.TRACKING_NO, '') AS TRACKING_NO                        /* 송장번호 */
+            , IFNULL(PSC.SHIPPING_COMP_NM, '') AS SHIPPING_COMP_NM
+            , PSC.TRACKING_URL		  						AS TRACKING_URL		/* 송장추적 URL */
+			, IF(PSC.HTTP_REQUEST_TP = 'P', 'POST', 'GET')	AS HTTP_REQUEST_TP	/* HTTP 전송방법 */
+			, PSC.INVOICE_PARAM 							AS INVOICE_PARAM	/* 송장파라미터 */
+            , DATE_FORMAT(OOD.DI_DT, '%Y-%m-%d') AS DI_DT
+            , OOD.GOODS_TP_CD
+            , OOD.ORDER_STATUS_DELI_TP
+            , OO.AGENT_TYPE_CD
+            , IFNULL(OODD.DAILY_BULK_YN,'' ) AS DAILY_BULK_YN                   /* 일일상품 베이비밀 일괄배송여부(Y:일괄배송) */
+		FROM
+		    OD_ORDER_DETL OOD
+            JOIN OD_ORDER OO ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID AND OO.ORDER_YN = 'Y'
+		    LEFT JOIN OD_TRACKING_NUMBER OTN ON OTN.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+            LEFT OUTER JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+            LEFT JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE
+		    OOD.OD_ORDER_DETL_ID IN
+		    <foreach collection="odOrderDetlIdList" item="odOrderDetlId" separator="," open="(" close=")">
+                #{odOrderDetlId}
+            </foreach>
+            AND OOD.ORDER_STATUS_DELI_TP != 'ORDER_STATUS_DELI_TP.DAWN'        /* 새벽배송 상품발송 자동메일 제외 */
+    </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 클레임PK로 클레임 주문상세PK 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getClaimDetlIdList" resultType="long">
+        /*  orderEmail.getClaimDetlIdList  */
+        SELECT
+		    OD_ORDER_DETL_ID
+		FROM
+            OD_CLAIM_DETL
+		WHERE
+            OD_CLAIM_ID = #{odClaimId}
+    </select>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문 취소,반품 자동메일 발송 위한 주문 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.09     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getOrderClaimInfoForEmailResultMap" type="kr.co.pulmuone.v1.order.email.dto.vo.OrderInfoForEmailVo">
+        <result column="UR_USER_ID"       property="urUserId" />
+        <result column="BUYER_NM"         property="buyerName" />
+        <result column="MAIL"             property="mail" />
+        <result column="MOBILE"           property="mobile" />
+        <result column="ODID"             property="odid" />
+        <result column="OD_ORDER_ID"      property="odOrderId" />
+        <result column="CREATE_DT"        property="createDate" />
+        <result column="REASON_MSG"       property="claimReasonMsg" />
+        <result column="PAY_TP"           property="payType" />
+        <result column="REFUND_TP"        property="refundType" />
+        <result column="REFUND_PRICE"     property="refundPrice" />
+        <result column="PAYMENT_PRICE"    property="paymentPrice"/>
+        <result column="DISCOUNT_PRICE"   property="discountPrice"/>
+        <result column="REFUND_POINT_PRICE" property="refundPointPrice"/>
+        <result column="PAYMENT_MINUS_DISCOUNT_PRICE" property="paymentMinusDiscountPrice" />
+        <result column="REFUND_PRICE_INFO" property="refundPriceInfo" />
+        <result column="OD_CLAIM_ID"       property="odClaimId" />
+        <result column="RENTAL_COUNT"      property="rentalCount"/>
+        <result column="AGENT_TYPE_CD"     property="agentTypeCd"/>
+    </resultMap>
+    <select id="getOrderClaimInfoForEmail" resultMap="getOrderClaimInfoForEmailResultMap">
+        /*  orderEmail.getOrderClaimInfoForEmail  */
+        SELECT
+		    IF(OO.UR_USER_ID = NULL,0,OO.UR_USER_ID) AS UR_USER_ID
+		    ,FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+		    ,FN_DECRYPT(OO.BUYER_MAIL) AS MAIL
+		    ,FN_DECRYPT(OO.BUYER_HP) AS MOBILE
+		    ,OO.ODID
+		    ,OO.OD_ORDER_ID
+		    ,OC.OD_CLAIM_ID
+		    ,DATE_FORMAT(OOD.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		    ,PCM.REASON_MSG
+		    ,FN_COMN_CODE_DIC(OPM.PAY_TP) AS PAY_TP
+		    ,CASE WHEN OPM.POINT_PRICE = 0 THEN (
+		                                    CASE OPM.PAY_TP WHEN 'PAY_TP.CARD' THEN '신용카드 취소'
+		                                                    WHEN 'PAY_TP.VIRTUAL_BANK' THEN '본인계좌환불'
+		                                                    WHEN 'PAY_TP.BANK' THEN '계좌이체 취소'
+		                                                    WHEN 'PAY_TP.FREE' THEN  '적립금 환불'
+		                                                    WHEN 'PAY_TP.COLLECTION' THEN  '외부몰 결제'
+		                                                    ELSE CONCAT(FN_COMN_CODE_DIC(OPM.PAY_TP),'취소') END
+		                                    )
+		                                   ELSE CONCAT(FN_COMN_CODE_DIC(OPM.PAY_TP),' / 적립금')
+		                                   END AS REFUND_TP
+		    ,OC.REFUND_PRICE                                                          /* 총 환불금액*/
+		    ,(OC.REFUND_PRICE + OC.REFUND_POINT_PRICE + OC.GOODS_COUPON_PRICE + OC.CART_COUPON_PRICE) AS PAYMENT_PRICE /* 주문금액(배송비 포함) */
+		    ,(OC.GOODS_COUPON_PRICE + OC.CART_COUPON_PRICE ) AS DISCOUNT_PRICE        /* 총 할인금액 */
+		    ,OC.REFUND_POINT_PRICE                                                    /* 적립금 사용 */
+		    ,(OC.REFUND_PRICE + OC.REFUND_POINT_PRICE) AS PAYMENT_MINUS_DISCOUNT_PRICE  /* 주문금액 - 총 할인금액 */
+            ,(SELECT COUNT(*) FROM OD_CLAIM_DETL OCD JOIN OD_ORDER_DETL OOD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+                WHERE OCD.OD_CLAIM_ID = OC.OD_CLAIM_ID AND OOD.ORDER_STATUS_DELI_TP = 'ORDER_STATUS_DELI_TP.RENTAL') AS RENTAL_COUNT
+            ,OO.AGENT_TYPE_CD
+<!-- 	        ,CASE WHEN OC.REFUND_POINT_PRICE = 0 THEN CONCAT(FN_COMN_CODE_DIC(OPM.PAY_TP),' ',FORMAT(OC.REFUND_PRICE,0),'원')
+                                                ELSE CONCAT(FN_COMN_CODE_DIC(OPM.PAY_TP),' ',FORMAT((OC.REFUND_PRICE - OC.REFUND_POINT_PRICE),0),'원 + 적립금 ',FORMAT(OC.REFUND_POINT_PRICE,0),'원')
+                                                END AS REFUND_PRICE_INFO -->
+		FROM
+		    OD_CLAIM OC
+		    JOIN OD_ORDER OO ON OO.OD_ORDER_ID = OC.OD_ORDER_ID
+		    JOIN OD_ORDER_DT OOD ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+		    JOIN OD_PAYMENT OP ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+		    JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID AND OPM.TYPE = 'G'
+		    LEFT JOIN PS_CLAIM_MALL PCM ON PCM.PS_CLAIM_MALL_ID = OC.PS_CLAIM_MALL_ID
+		WHERE
+		    OC.OD_CLAIM_ID = #{odClaimId}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 신청 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.10     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderRegularReqInfoForEmail" resultType="kr.co.pulmuone.v1.order.email.dto.vo.OrderRegularReqInfoVo">
+        /*  orderEmail.getOrderRegularReqInfoForEmail */
+        SELECT
+            ORR.OD_REGULAR_REQ_ID,                                               /* 정기배송주문신청PK */
+            ORR.TOT_CNT,                                                         /* 총회차 */
+            ORR.GOODS_CYCLE_TERM_TP,                                             /* 배송기간코드 */
+            FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TERM_TP) AS GOODS_CYCLE_TERM_TP_NM, /* 배송기간코드명 */
+            ORR.GOODS_CYCLE_TP,                                                  /* 배송주기코드 */
+            FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TP)      AS GOODS_CYCLE_TP_NM,      /* 배송주기코드명 */
+            ORR.WEEK_CD,                                                         /* 요일코드 */
+            FN_COMN_CODE_DIC(ORR.WEEK_CD)             AS WEEK_CD_NM,             /* 요일코드명 */
+            FN_DECRYPT(ORRSZ.RECV_NM)                 AS RECV_NM,                /* 수령인명 */
+            FN_DECRYPT(ORRSZ.RECV_ZIP_CD)             AS RECV_ZIP_CD,            /* 수령인우편번호 */
+            FN_DECRYPT(ORRSZ.RECV_ADDR1)              AS RECV_ADDR1,             /* 수령인주소1 */
+            FN_DECRYPT(ORRSZ.RECV_ADDR2)              AS RECV_ADDR2,             /* 수령인주소2 */
+            CONCAT(FN_DECRYPT(ORRSZ.RECV_ADDR1),' ',FN_DECRYPT(ORRSZ.RECV_ADDR2)) AS RECV_ADDR,
+            ORRSZ.RECV_BLD_NO,                                                   /* 수령인빌딩번호 */
+            FN_DECRYPT(ORRSZ.RECV_HP)                 AS RECV_HP,                /* 수령인핸드폰 */
+            ORRSZ.DELIVERY_MSG,                                                  /* 배송요청사항 */
+            ORRSZ.DOOR_MSG_CD,                                                   /* 출입타입코드 */
+            FN_COMN_CODE_DIC(ORRSZ.DOOR_MSG_CD)       AS DOOR_MSG_CD_NM,         /* 출입타입코드명 */
+            FN_DECRYPT(ORRSZ.DOOR_MSG)                AS DOOR_MSG,               /* 배송출입현관비밀번호 */
+            ORRT.START_ARRIVE_DT,                                                /* 배송시작일자 */
+            ORRT.END_ARRIVE_DT,                                                  /* 배송종료일자 */
+            ORRT2.OD_REGULAR_RESULT_ID,                                          /* 정기배송신청결과PK */
+            ORRT2.MAX_OD_REGULAR_RESULT_ID,                                      /* 마지막정기배송신청결과PK */
+            ORR.TERM_EXTENSION_CNT,                                              /* 기간연장횟수 */
+            ORRT2.REQ_ROUND,                                                     /* 현재회차 */
+            ORRT2.NEXT_ARRIVE_DT,                                                /* 다음배송일자 */
+            DATE_FORMAT(ORRT2.NEXT_ARRIVE_DT,'%m')  AS ARRIVE_DT_MONTH,
+            DATE_FORMAT(ORRT2.NEXT_ARRIVE_DT,'%d')  AS ARRIVE_DT_DAY,
+            FN_DECRYPT(ORR.BUYER_NM) AS BUYER_NAME,
+            FN_DECRYPT(ORR.BUYER_HP) AS MOBILE,
+            FN_DECRYPT(ORR.BUYER_MAIL) AS MAIL,
+            DATE_FORMAT(ORR.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE,
+            ORPK.CARD_NM AS CARD_NAME,
+            ORPK.CARD_MASK_NUMBER,
+            ORR.UR_USER_ID,
+            (SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'REGULAR_SHIPPING_BASIC_DISCOUNT_RATE') AS REGULAR_BASIC_DISCOUNT_RATE
+        FROM
+            OD_REGULAR_REQ ORR
+        INNER JOIN
+            OD_REGULAR_REQ_SHIPPING_ZONE ORRSZ ON ORR.OD_REGULAR_REQ_ID = ORRSZ.OD_REGULAR_REQ_ID
+        INNER JOIN
+            (SELECT
+                    ORRT.OD_REGULAR_REQ_ID,
+                    MIN(ORRT.ARRIVE_DT) AS START_ARRIVE_DT,
+                    MAX(ORRT.ARRIVE_DT) AS END_ARRIVE_DT
+                FROM
+                    OD_REGULAR_RESULT ORRT
+                GROUP BY ORRT.OD_REGULAR_REQ_ID
+            )  ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+        INNER JOIN
+            (SELECT
+                    ORRT.OD_REGULAR_REQ_ID,
+                    MIN(ORRT.OD_REGULAR_RESULT_ID) AS OD_REGULAR_RESULT_ID,
+                    MAX(ORRT.OD_REGULAR_RESULT_ID) AS MAX_OD_REGULAR_RESULT_ID,
+                    MIN(ORRT.REQ_ROUND) AS REQ_ROUND,
+                    MIN(ORRT.ARRIVE_DT) AS NEXT_ARRIVE_DT
+                FROM
+                    OD_REGULAR_RESULT ORRT
+                WHERE
+                    ORRT.REQ_ROUND_YN = 'N'
+                GROUP BY ORRT.OD_REGULAR_REQ_ID
+            )  ORRT2 ON ORR.OD_REGULAR_REQ_ID = ORRT2.OD_REGULAR_REQ_ID
+        INNER JOIN
+            (SELECT
+	                MAX(OD_REGULAR_PAYMENT_KEY_ID) AS OD_REGULAR_PAYMENT_KEY_ID
+	                ,UR_USER_ID
+	                ,CARD_NM
+	                ,CARD_MASK_NUMBER
+	            FROM
+	                OD_REGULAR_PAYMENT_KEY
+	            WHERE
+	                PAYMENT_YN  = 'Y'
+	            GROUP BY UR_USER_ID
+	        ) ORPK ON ORPK.UR_USER_ID = ORR.UR_USER_ID
+        WHERE
+            ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+    </select>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 주문상품 상세 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.10  천혜현
+     * @
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getOrderRegularGoodsListForEmailResultMap" type="kr.co.pulmuone.v1.order.email.dto.OrderDetailGoodsDto">
+        <result column="OD_REGULAR_REQ_ID"          property="odRegularReqId"/>
+        <result column="IL_ITEM_CD"                 property="ilItemCd"/>
+        <result column="GOODS_TP"                   property="goodsTpCd"/>
+        <result column="IL_GOODS_ID"                property="ilGoodsId"/>
+        <result column="GOODS_NM"                   property="goodsNm"/>
+        <result column="ORDER_CNT"                  property="orderCnt"/>
+        <result column="GOODS_IMG_NM"               property="goodsImgNm"/>
+        <result column="RECOMMENDED_PRICE"          property="recommendedPriceByRegular"/>
+        <result column="SALE_PRICE"                 property="salePriceByRegular"/>
+        <result column="IL_SHIPPING_TMPL_ID"        property="ilShippingTmplId"/>
+        <result column="SHIPPING_PRICE"             property="shippingPrice"/>
+    </resultMap>
+    <select id="getOrderRegularGoodsListForEmail" resultMap="getOrderRegularGoodsListForEmailResultMap">
+    /*  orderEmail.getOrderRegularGoodsListForEmail  */
+	    SELECT
+		    ORR.OD_REGULAR_REQ_ID
+		    ,ORROD.IL_ITEM_CD
+		    ,IG.GOODS_TP
+		    ,IG.IL_GOODS_ID
+		    ,IG.GOODS_NM
+		    ,ORROD.ORDER_CNT
+		    ,FN_GOODS_C_IMG(IFNULL(IG.IL_GOODS_ID, 0)) AS GOODS_IMG_NM
+		    ,IGP.RECOMMENDED_PRICE
+		    ,IGP.SALE_PRICE
+		    ,ST.IL_SHIPPING_TMPL_ID
+		    ,ST.SHIPPING_PRICE
+		FROM
+		    OD_REGULAR_REQ ORR
+		    JOIN OD_REGULAR_REQ_ORDER_DETL ORROD ON ORR.OD_REGULAR_REQ_ID = ORROD.OD_REGULAR_REQ_ID
+		    JOIN IL_GOODS IG ON ORROD.IL_GOODS_ID = IG.IL_GOODS_ID AND ORROD.IL_ITEM_CD = IG.IL_ITEM_CD
+		    JOIN IL_GOODS_PRICE IGP ON IG.IL_GOODS_ID = IGP.IL_GOODS_ID
+		                              AND IGP.USE_YN = 'Y'
+		                              AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+		    JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON IG.IL_GOODS_ID = GST.IL_GOODS_ID
+		                                    AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID
+		    LEFT OUTER JOIN IL_SHIPPING_TEMPLATE ST ON GST.ORIG_IL_SHIPPING_TMPL_ID = ST.ORIG_IL_SHIPPING_TMPL_ID
+		                                        AND ST.DEL_YN = 'N'
+		WHERE
+		    ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		ORDER BY ORROD.OD_REGULAR_REQ_ORDER_DETL_ID
+    </select>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 주문 결제 대상 목록 조회
+     * @ 수정일            수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRegularOrderResultCreateGoodsListForEmail" resultType="kr.co.pulmuone.v1.order.email.dto.OrderRegularResultDto">
+        /* orderEmail.getRegularOrderResultCreateGoodsListForEmail */
+        SELECT
+            ORR.OD_REGULAR_REQ_ID,
+            ORRT.OD_ORDER_ID,
+            ORRT.OD_REGULAR_RESULT_ID,
+            CONCAT(ORRD.GOODS_NM, CASE WHEN ORRD.GOODS_CNT > 1 THEN CONCAT(' 외 ', (ORRD.GOODS_CNT - 1), '건') ELSE '' END) AS GOODS_NM,
+            ORPK.BATCH_KEY,
+            ORPK.CARD_MASK_NUMBER,
+            ORPK.CARD_NM,
+            ORPK.UR_USER_ID,
+            OPM.OD_PAYMENT_MASTER_ID,
+            FN_DECRYPT(ORR.BUYER_NM) AS BUYER_NM,
+            FN_DECRYPT(ORR.BUYER_MAIL) AS BUYER_MAIL,
+            FN_DECRYPT(ORR.BUYER_HP) AS BUYER_HP,
+            OD.ODID,
+            OPM.PAYMENT_PRICE,
+            OPM.TAXABLE_PRICE,
+            OPM.NON_TAXABLE_PRICE,
+            ORRT.REQ_ROUND,
+            ORRT.PAYMENT_FAIL_CNT,
+            OPM.RESPONSE_DATA,
+            DATE_FORMAT(NOW(),'%Y-%m-%d')  AS CREATE_DATE,
+            ORRT.ARRIVE_DT,
+            DATE_FORMAT(ORRT.ARRIVE_DT,'%m')  AS ARRIVE_DT_MONTH,
+            DATE_FORMAT(ORRT.ARRIVE_DT,'%d')  AS ARRIVE_DT_DAY,
+            (SELECT COUNT(*) FROM OD_REGULAR_RESULT WHERE OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID) AS TOTAL_ROUND,
+            (SELECT SUM(OOD.RECOMMENDED_PRICE ) FROM OD_ORDER_DETL OOD WHERE OOD.OD_ORDER_ID = ORRT.OD_ORDER_ID)+OPM.SHIPPING_PRICE AS TOTAL_SALE_PRICE,  /* 주문금액(상품 정가 + 배송비 ) */
+            (OPM.CART_COUPON_PRICE + OPM.GOODS_COUPON_PRICE + OPM.DIRECT_PRICE) AS DISCOUNT_PRICE,                                                        /* 상품쿠폰 + 장바구니쿠폰 +상품,장바구니쿠폰 제외한 할인금액 */
+            OPM.POINT_PRICE,
+            OPM.INFO,
+            IF(OPM.CARD_QUOTA = '00','일시불', CONCAT(OPM.CARD_QUOTA,'개월') ) AS CARD_QUOTA,
+            OPM.PAY_TP AS PAY_TYPE,
+            FN_COMN_CODE_DIC(OPM.PAY_TP) AS PAY_TYPE_NAME,
+            CONCAT(FN_DECRYPT(ORRSZ.RECV_ADDR1),' ',FN_DECRYPT(ORRSZ.RECV_ADDR2)) AS RECV_ADDR
+        FROM
+            OD_REGULAR_REQ ORR
+        INNER JOIN
+            OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+        INNER JOIN
+            OD_REGULAR_REQ_SHIPPING_ZONE ORRSZ ON ORR.OD_REGULAR_REQ_ID = ORRSZ.OD_REGULAR_REQ_ID
+        INNER JOIN
+            (
+                SELECT
+                    ORRD.OD_REGULAR_RESULT_ID,
+                    MIN(GOODS_NM) AS GOODS_NM,
+                    COUNT(1) AS GOODS_CNT
+                FROM
+                    OD_REGULAR_RESULT_DETL ORRD
+                GROUP BY ORRD.OD_REGULAR_RESULT_ID
+            ) ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+        LEFT OUTER JOIN
+            OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+        LEFT OUTER JOIN
+            OD_PAYMENT OP ON OD.OD_ORDER_ID = OP.OD_ORDER_ID AND OP.OD_CLAIM_ID = 0
+        LEFT OUTER JOIN
+            OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID  AND OPM.TYPE = 'G'
+        INNER JOIN
+            OD_REGULAR_PAYMENT_KEY ORPK ON ORR.UR_USER_ID = ORPK.UR_USER_ID
+                                       AND ORPK.PAYMENT_YN = 'Y'
+        WHERE
+            ORRT.OD_REGULAR_RESULT_ID = #{odRegularResultId}
+            AND ORR.REGULAR_STATUS_CD != 'REGULAR_STATUS_CD.CANCEL'
+    </select>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 주문신청 결과 상세 목록 조회
+     * @ 수정일            수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRegularOrderResultDetlInfoForEmail" resultType="kr.co.pulmuone.v1.order.email.dto.OrderRegularResultDto">
+        /* orderEmail.getRegularOrderResultDetlInfoForEmail */
+        SELECT
+            ORR.OD_REGULAR_REQ_ID,
+            ORRT.OD_ORDER_ID,
+            ORRT.OD_REGULAR_RESULT_ID,
+            ORRD.OD_REGULAR_RESULT_DETL_ID,
+            ORRD.GOODS_NM,
+            ORRD.ORDER_CNT,
+            ORPK.BATCH_KEY,
+            ORPK.CARD_MASK_NUMBER,
+            ORPK.CARD_NM,
+            ORPK.UR_USER_ID,
+            FN_DECRYPT(ORR.BUYER_NM) AS BUYER_NM,
+            FN_DECRYPT(ORR.BUYER_MAIL) AS BUYER_MAIL,
+            FN_DECRYPT(ORR.BUYER_HP) AS BUYER_HP,
+            ORRT.REQ_ROUND,
+            ORRT.PAYMENT_FAIL_CNT,
+            DATE_FORMAT(NOW(),'%Y-%m-%d')  AS CREATE_DATE,
+            ORRT.ARRIVE_DT,
+            DATE_FORMAT(ORRT.ARRIVE_DT,'%m')  AS ARRIVE_DT_MONTH,
+            DATE_FORMAT(ORRT.ARRIVE_DT,'%d')  AS ARRIVE_DT_DAY,
+            (SELECT COUNT(*) FROM OD_REGULAR_RESULT WHERE OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID) AS TOTAL_ROUND                                                      /* 상품쿠폰 + 장바구니쿠폰 +상품,장바구니쿠폰 제외한 할인금액 */
+        FROM
+            OD_REGULAR_REQ ORR
+        INNER JOIN
+            OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+        INNER JOIN
+            OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+        INNER JOIN
+            OD_REGULAR_PAYMENT_KEY ORPK ON ORR.UR_USER_ID = ORPK.UR_USER_ID
+                                       AND ORPK.PAYMENT_YN = 'Y'
+        WHERE
+            ORRD.OD_REGULAR_RESULT_DETL_ID = #{odRegularResultDetlId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송주문신청PK로 정기배송 주문신청 결과 목록 조회
+     * @ 수정일            수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderRegularResultList" resultType="kr.co.pulmuone.v1.order.email.dto.OrderRegularResultDto">
+        /* orderEmail.getOrderRegularResultList */
+        SELECT
+            ORR.OD_REGULAR_REQ_ID,
+            ORRT.OD_ORDER_ID,
+            ORRT.OD_REGULAR_RESULT_ID,
+            ORRD.OD_REGULAR_RESULT_DETL_ID,
+            ORRD.GOODS_NM,
+            ORRD.ORDER_CNT,
+            ORPK.BATCH_KEY,
+            ORPK.CARD_MASK_NUMBER,
+            ORPK.CARD_NM,
+            ORPK.UR_USER_ID,
+            FN_DECRYPT(ORR.BUYER_NM) AS BUYER_NM,
+            FN_DECRYPT(ORR.BUYER_MAIL) AS BUYER_MAIL,
+            FN_DECRYPT(ORR.BUYER_HP) AS BUYER_HP,
+            ORRT.REQ_ROUND,
+            ORRT.PAYMENT_FAIL_CNT,
+            DATE_FORMAT(NOW(),'%Y-%m-%d')  AS CREATE_DATE,
+            ORRT.ARRIVE_DT,
+            DATE_FORMAT(ORRT.ARRIVE_DT,'%m')  AS ARRIVE_DT_MONTH,
+            DATE_FORMAT(ORRT.ARRIVE_DT,'%d')  AS ARRIVE_DT_DAY,
+            (SELECT COUNT(*) FROM OD_REGULAR_RESULT WHERE OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID) AS TOTAL_ROUND                                                      /* 상품쿠폰 + 장바구니쿠폰 +상품,장바구니쿠폰 제외한 할인금액 */
+        FROM
+            OD_REGULAR_REQ ORR
+        INNER JOIN
+            OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+        INNER JOIN
+            OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+        INNER JOIN
+            OD_REGULAR_PAYMENT_KEY ORPK ON ORR.UR_USER_ID = ORPK.UR_USER_ID
+                                       AND ORPK.PAYMENT_YN = 'Y'
+        WHERE
+            ORRT.OD_REGULAR_RESULT_ID = #{odRegularResultId}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 만료 SMS 대상 조회 -> 정기배송 마지막 회차 중 전날 9시 ~ 금일 9시 사이에  배송완료된 주문건
+     * @
+     * @ 수정일                   수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getTargetOrderRegularExpired" resultType="long">
+        /* orderEmail.getTargetOrderRegularExpired */
+        SELECT
+		    TBL.OD_REGULAR_RESULT_ID
+		FROM
+		    OD_ORDER_DETL OOD
+        INNER JOIN (
+                    SELECT
+                        ORR.OD_ORDER_ID
+                         , ORR.OD_REGULAR_RESULT_ID
+                    FROM
+                        OD_REGULAR_RESULT ORR
+                    WHERE
+                        ORR.REGULAR_STATUS_CD = 'REGULAR_STATUS_CD.END'
+                    AND ORR.SMS_SEND_YN = 'N'
+                    AND ORR.REQ_ROUND_YN = 'Y'
+                    AND ORR.OD_ORDER_ID <![CDATA[>]]> 0
+            )TBL ON OOD.OD_ORDER_ID = TBL.OD_ORDER_ID
+		WHERE
+		    OOD.ORDER_STATUS_CD = 'DC'
+        AND OOD.DC_DT BETWEEN DATE_FORMAT(DATE_ADD(CURDATE(),INTERVAL -1 DAY),'%Y-%m-%d 09:00:00') AND DATE_FORMAT(CURDATE(),'%Y-%m-%d 08:59:59')
+        GROUP BY TBL.OD_REGULAR_RESULT_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 만료 SMS 발송 상태 업데이트 (BATCH)
+     * @
+     * @ 수정일                   수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putSmsSendStatusByOrderRegularExpired">
+        /* orderEmail.putSmsSendStatusByOrderRegularExpired */
+       UPDATE
+	       OD_REGULAR_RESULT
+       SET
+	      SMS_SEND_YN = 'Y'
+	   WHERE
+	       OD_REGULAR_REQ_ID = (SELECT
+	                               TBL.OD_REGULAR_REQ_ID
+	                            FROM (SELECT OD_REGULAR_REQ_ID FROM OD_REGULAR_RESULT ORR WHERE ORR.OD_REGULAR_RESULT_ID = #{odRegularResultId}) AS TBL)
+    </update>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 녹즙 일일배송 종료 SMS 대상 조회 -> 마지막 도착예정일 D-4 09:00 발송
+     * @
+     * @ 수정일                   수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getTargetOrderDailyGreenJuiceEnd" resultType="long">
+        /* orderEmail.getTargetOrderDailyGreenJuiceEnd */
+        SELECT
+            OOD.OD_ORDER_DETL_ID AS OD_ORDER_DETL_ID
+        FROM
+            OD_ORDER_DETL_DAILY_SCH OODDS
+            JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+            JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+            JOIN(
+                SELECT OD_ORDER_DETL_DAILY_ID, MAX(DELIVERY_DT) AS LAST_DELIVERY_DT
+                FROM OD_ORDER_DETL_DAILY_SCH
+                WHERE USE_YN = 'Y'
+                GROUP BY OD_ORDER_DETL_DAILY_ID
+            ) OODDS2 ON OODDS.OD_ORDER_DETL_DAILY_ID = OODDS2.OD_ORDER_DETL_DAILY_ID AND OODDS.DELIVERY_DT = OODDS2.LAST_DELIVERY_DT
+        WHERE
+            DATE_ADD(OODDS.DELIVERY_DT,INTERVAL - 4 DAY) = CURDATE()
+            AND OOD.GOODS_DAILY_TP = 'GOODS_DAILY_TP.GREENJUICE'
+            AND OOD.BATCH_EXEC_FL = 'Y'
+            AND IFNULL(OOD.PROMOTION_TP,'') != 'CART_PROMOTION_TP.GREENJUICE_SELECT'
+        UNION ALL
+        SELECT
+            TBL2.OD_ORDER_DETL_PARENT_ID  AS OD_ORDER_DETL_ID
+        FROM(
+            SELECT
+                TBL.OD_ORDER_DETL_ID
+                ,TBL.OD_ORDER_DETL_PARENT_ID
+                ,MAX(TBL.LAST_DELIVERY_DT) AS LAST_DELIVERY_DT
+            FROM(
+                SELECT
+                    OOD.OD_ORDER_DETL_ID
+                    ,OOD.OD_ORDER_DETL_PARENT_ID
+                    ,OODD.OD_ORDER_DETL_DAILY_ID
+                    ,MAX(OODDS.DELIVERY_DT) AS LAST_DELIVERY_DT
+                FROM
+                    OD_ORDER_DETL OOD
+                    JOIN OD_ORDER_DETL_DAILY OODD ON OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+                    JOIN OD_ORDER_DETL_DAILY_SCH OODDS ON OODD.OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+                WHERE
+                    IFNULL(OOD.PROMOTION_TP,'') = 'CART_PROMOTION_TP.GREENJUICE_SELECT'
+                    AND OOD.BATCH_EXEC_FL = 'Y'
+                    AND OOD.GOODS_DAILY_TP = 'GOODS_DAILY_TP.GREENJUICE'
+                    AND OODDS.USE_YN = 'Y'
+                GROUP BY OODDS.OD_ORDER_DETL_DAILY_ID
+            ) TBL
+            GROUP BY TBL.OD_ORDER_DETL_PARENT_ID
+        )TBL2
+        WHERE
+            DATE_ADD(TBL2.LAST_DELIVERY_DT, INTERVAL - 4 DAY) = CURDATE()
+    </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 녹즙 일일배송 종료 주문 자동메일 발송 위한 주문 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.03     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getOrderDailyGreenJuiceEndInfoForEmailResultMap" type="kr.co.pulmuone.v1.order.email.dto.vo.OrderInfoForEmailVo">
+        <result column="UR_USER_ID"       property="urUserId" />
+        <result column="BUYER_NM"         property="buyerName" />
+        <result column="MAIL"             property="mail" />
+        <result column="MOBILE"           property="mobile" />
+        <result column="GOODS_NM"         property="goodsNm" />
+        <result column="RECV_ADDR"        property="recvAddr"/>
+    </resultMap>
+    <select id="getOrderDailyGreenJuiceEndInfoForEmail" resultMap="getOrderDailyGreenJuiceEndInfoForEmailResultMap">
+        /*  orderEmail.getOrderDailyGreenJuiceEndInfoForEmail  */
+        SELECT
+            IF(OO.UR_USER_ID = NULL,0,OO.UR_USER_ID) AS UR_USER_ID
+             ,IFNULL(TBL.GOODS_NM, OOD.GOODS_NM) AS GOODS_NM
+             ,FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+             ,FN_DECRYPT(OO.BUYER_MAIL) AS MAIL
+             ,FN_DECRYPT(OO.BUYER_HP) AS MOBILE
+             ,CONCAT(FN_DECRYPT(OSZ.RECV_ADDR1),' ',FN_DECRYPT(OSZ.RECV_ADDR2)) AS RECV_ADDR
+        FROM (
+            SELECT
+                OODD.OD_ORDER_DETL_ID
+                ,OODDS.OD_SHIPPING_ZONE_ID
+                ,OODP.GOODS_NM
+            FROM
+                OD_ORDER_DETL_DAILY OODD
+                JOIN OD_ORDER_DETL_DAILY_SCH OODDS ON OODD.OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+                JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+                LEFT JOIN OD_ORDER_DETL_PACK OODP ON OODP.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_PARENT_ID
+            WHERE
+                OOD.OD_ORDER_DETL_PARENT_ID = #{odOrderDetlId}
+                AND OODDS.USE_YN = 'Y'
+            ORDER BY OODDS.DELIVERY_DT DESC
+            LIMIT 1
+        )TBL
+        JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_DETL_ID = TBL.OD_ORDER_DETL_ID
+        JOIN OD_ORDER OO ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+        JOIN OD_SHIPPING_ZONE OSZ ON TBL.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+        LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 상품금액변동 자동메일 발송 위한 금액변동 상품목록 조회(BATCH)
+     * @
+     * @ 수정일                   수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getTargetOrderRegularGoodsPriceChangeList" resultType="hashMap">
+        /* orderEmail.getTargetOrderRegularGoodsPriceChangeList */
+        SELECT
+              T2.OD_REGULAR_REQ_ID
+            , T2.IL_GOODS_ID
+            , T2.SEND_TARGET_SALE_PRICE
+        FROM (
+            SELECT
+                  T.OD_REGULAR_REQ_ID
+                , T.IL_GOODS_ID
+                , CASE
+                    WHEN T.HIST_GOODS_SALE_PRICE <![CDATA[>]]> -1
+                    THEN
+                        CASE
+                            WHEN T.NOW_GOODS_SALE_PRICE != T.HIST_GOODS_SALE_PRICE THEN 'Y'	/* 현재금액과 최근변동금액이 다를경우 발송대상 */
+                            ELSE 'N'
+                        END
+                    ELSE
+                        CASE
+                            WHEN T.NOW_GOODS_SALE_PRICE != T.REQ_GOODS_SALE_PRICE THEN 'Y'	/* 현재금액과 신청시점상품금액이 다를경우 발송대상 */
+                            ELSE 'N'
+                        END
+                  END AS SEND_TARGET_YN
+                , CASE
+                    WHEN T.HIST_GOODS_SALE_PRICE <![CDATA[>]]> -1
+                    THEN
+                        CASE
+                            WHEN T.NOW_GOODS_SALE_PRICE != T.HIST_GOODS_SALE_PRICE THEN T.NOW_GOODS_SALE_PRICE	/* 현재금액과 최근변동금액이 다를경우 발송대상 */
+                            ELSE 0
+                        END
+                    ELSE
+                        CASE
+                            WHEN T.NOW_GOODS_SALE_PRICE != T.REQ_GOODS_SALE_PRICE THEN T.NOW_GOODS_SALE_PRICE	/* 현재금액과 신청시점상품금액이 다를경우 발송대상 */
+                            ELSE 0
+                        END
+                  END AS SEND_TARGET_SALE_PRICE
+            FROM (
+                SELECT
+                     ORROD.OD_REGULAR_REQ_ID
+                    , ORROD.IL_GOODS_ID
+                    , ORROD.SALE_PRICE AS REQ_GOODS_SALE_PRICE
+                    , IGP.SALE_PRICE AS NOW_GOODS_SALE_PRICE
+                    , IFNULL((
+                        SELECT
+                            SALE_PRICE
+                        FROM
+                            OD_REGULAR_INFO_SEND_HIST
+                        WHERE
+                            ORROD.OD_REGULAR_REQ_ID = OD_REGULAR_REQ_ID
+                        AND
+                            ORROD.IL_GOODS_ID = IL_GOODS_ID
+                        ORDER BY OD_REGULAR_INFO_SEND_HIST_ID DESC
+                        LIMIT 1
+                    ), -1) AS HIST_GOODS_SALE_PRICE
+                FROM
+                    OD_REGULAR_REQ_ORDER_DETL ORROD
+                INNER JOIN OD_REGULAR_RESULT ORR ON ORR.OD_REGULAR_REQ_ID = ORROD.OD_REGULAR_REQ_ID
+                INNER JOIN (
+                    SELECT
+                        IL_GOODS_ID, SALE_PRICE
+                    FROM
+                        IL_GOODS_PRICE
+                    WHERE
+                        NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+                    AND
+                        USE_YN = 'Y'
+                ) IGP ON IGP.IL_GOODS_ID = ORROD.IL_GOODS_ID
+                WHERE
+                    ORROD.REQ_DETAIL_STATUS_CD = 'REGULAR_DETL_STATUS_CD.APPLY'
+                AND
+                    ORR.ORDER_CREATE_DT <![CDATA[>]]> CURRENT_DATE()
+                AND
+                    ORR.REQ_ROUND_YN = 'N'
+                AND
+                    ORR.REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING')
+                GROUP BY ORR.OD_REGULAR_REQ_ID, ORROD.IL_GOODS_ID
+            ) T
+        ) T2
+        WHERE
+            T2.SEND_TARGET_YN = 'Y'
+    </select>
+
+
+     <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정기배송 상품금액변동 자동메일 발송 위한 상품 가격변동 내역 조회(BATCH)
+     * @
+     * @ 수정일                   수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     천혜현     최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderRegularGoodsPriceChangeInfo" resultType="kr.co.pulmuone.v1.order.email.dto.OrderRegularGoodsPriceChangeDto">
+        /* orderEmail.getOrderRegularGoodsPriceChangeInfo */
+        SELECT
+            ORR.OD_REGULAR_REQ_ID
+            ,IG.GOODS_TP
+            ,IG.IL_GOODS_ID
+            ,IG.GOODS_NM
+            ,ORROD.ORDER_CNT
+            ,FN_GOODS_C_IMG(IFNULL(IG.IL_GOODS_ID, 0)) AS GOODS_IMG_NM
+            ,IGP.BEFORE_SALE_PRICE
+            ,IGP.AFTER_SALE_PRICE
+            ,IGP.RECOMMENDED_PRICE
+        FROM
+            OD_REGULAR_REQ ORR
+            JOIN OD_REGULAR_REQ_ORDER_DETL ORROD ON ORR.OD_REGULAR_REQ_ID = ORROD.OD_REGULAR_REQ_ID
+            JOIN IL_GOODS IG ON ORROD.IL_GOODS_ID = IG.IL_GOODS_ID AND ORROD.IL_ITEM_CD = IG.IL_ITEM_CD
+            JOIN (
+                    SELECT
+                        TBL.*
+                    FROM(
+                        SELECT
+                            IL_GOODS_PRICE_ID
+                            ,LAG(SALE_PRICE, 1) OVER (PARTITION BY IL_GOODS_ID ORDER BY PRICE_START_DT) AS BEFORE_SALE_PRICE
+                            ,SALE_PRICE AS AFTER_SALE_PRICE
+                            ,PRICE_START_DT
+                            ,PRICE_END_DT
+                            ,IL_GOODS_ID
+                            ,RECOMMENDED_PRICE
+                        FROM
+                            IL_GOODS_PRICE
+                        WHERE
+                            IL_GOODS_ID = #{ilGoodsId}
+                            AND USE_YN = 'Y'
+                        ORDER BY PRICE_START_DT DESC
+                    )TBL
+                    WHERE
+                        NOW() BETWEEN TBL.PRICE_START_DT AND TBL.PRICE_END_DT
+                    ORDER BY TBL.IL_GOODS_PRICE_ID DESC
+                    LIMIT 1) IGP ON IG.IL_GOODS_ID = IGP.IL_GOODS_ID
+        WHERE
+            ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+        AND
+            ORR.REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING')
+        AND
+            ORROD.REQ_DETAIL_STATUS_CD = 'REGULAR_DETL_STATUS_CD.APPLY'
+        ORDER BY ORROD.OD_REGULAR_REQ_ORDER_DETL_ID
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description      : BOS 주문 상태 알림(BATCH) - 발송 대상 거래처 조회
+    * @
+    * @ 수정일          수정자       수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.05.10     천혜현     최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getTargetBosOrderStatusNotification" resultType="kr.co.pulmuone.v1.order.email.dto.BosOrderStatusNotiDto">
+        /* orderEmail.getTargetBosOrderStatusNotification */
+        SELECT
+            UC2.COMP_NM
+             ,UC2.COMP_MAIL
+             ,UC.UR_CLIENT_ID
+        FROM
+            UR_CLIENT UC
+                JOIN UR_COMPANY UC2 ON UC.UR_COMPANY_ID = UC2.UR_COMPANY_ID
+        WHERE
+            UC2.USE_YN = 'Y'
+            AND UC2.ORDER_ALARM_REV_YN = 'Y'
+            AND IFNULL(UC2.COMP_MAIL,'') != ''
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description      : BOS 주문 상태 알림(BATCH) - 거래처별 주문 건수 조회
+    * @
+    * @ 수정일          수정자       수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.05.10     천혜현     최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getOrderCountForOrderStatusNotificationResultMap" type="kr.co.pulmuone.v1.order.email.dto.vo.BosOrderInfoForEmailVo">
+        <result column="IC_COUNT"       property="ICCount" />
+        <result column="CA_COUNT"       property="CACount" />
+        <result column="DR_COUNT"       property="DRCount" />
+        <result column="UR_CLIENT_ID"   property="urClientId" />
+        <result column="SEND_DATE"      property="sendDate" />
+    </resultMap>
+    <select id="getOrderCountForOrderStatusNotification" resultMap="getOrderCountForOrderStatusNotificationResultMap">
+        /* orderEmail.getOrderCountForOrderStatusNotification */
+        SELECT
+            MAX(IF(TYPE = 'IC', TBL.COUNT, 0)) AS IC_COUNT
+             ,MAX(IF(TYPE = 'CA', TBL.COUNT, 0)) AS CA_COUNT
+             ,MAX(IF(TYPE = 'DR', TBL.COUNT, 0)) AS DR_COUNT
+             ,IFNULL(TBL.UR_CLIENT_ID, '') AS UR_CLIENT_ID
+             ,DATE_FORMAT(NOW(),'%Y-%m-%d') AS SEND_DATE
+        FROM(
+                SELECT
+                    'IC' AS TYPE  /* 결제완료 */
+                    ,COUNT(*) AS COUNT
+                    ,TBL1.UR_CLIENT_ID
+                FROM(
+                    SELECT
+                        OOD.OD_ORDER_ID
+                        ,UC.UR_CLIENT_ID
+                    FROM
+                        OD_ORDER_DETL OOD
+                        INNER JOIN OD_PAYMENT OP ON OP.OD_ORDER_ID = OOD.OD_ORDER_ID
+                        INNER JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID
+                        INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_ID = OOD.UR_SUPPLIER_ID AND USW.UR_WAREHOUSE_ID = OOD.UR_WAREHOUSE_ID
+                        INNER JOIN UR_CLIENT_SUPPLIER_WAREHOUSE UCSW ON UCSW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+                        INNER JOIN UR_CLIENT UC ON UC.UR_CLIENT_ID = UCSW.UR_CLIENT_ID
+                    WHERE
+                        UC.UR_CLIENT_ID = #{urClientId}
+                        AND OP.OD_CLAIM_ID = 0
+                        AND OPM.TYPE = 'G'  /* G:결제 */
+                        AND OPM.STATUS = 'IC' /* 결제완료 */
+                        AND OPM.CREATE_DT BETWEEN DATE_FORMAT(DATE_ADD(CURDATE(),INTERVAL - 1 DAY),'%Y-%m-%d 08:00:01') AND DATE_FORMAT(CURDATE(),'%Y-%m-%d 07:59:59')
+                    GROUP BY OOD.OD_ORDER_ID
+                )TBL1
+                UNION ALL
+                SELECT
+                    'CA' AS TYPE /* 주문 취소요청 */
+                    ,COUNT(*) AS COUNT
+                    ,TBL2.UR_CLIENT_ID
+                FROM(
+                    SELECT
+                        OOD.OD_ORDER_ID
+                        ,UC.UR_CLIENT_ID
+                    FROM
+                        OD_ORDER_DETL OOD
+                        INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_ID = OOD.UR_SUPPLIER_ID AND USW.UR_WAREHOUSE_ID = OOD.UR_WAREHOUSE_ID
+                        INNER JOIN UR_CLIENT_SUPPLIER_WAREHOUSE UCSW ON UCSW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+                        INNER JOIN UR_CLIENT UC ON UC.UR_CLIENT_ID = UCSW.UR_CLIENT_ID
+                        INNER JOIN OD_CLAIM_DETL OCD ON OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+                    WHERE
+                        UC.UR_CLIENT_ID = #{urClientId}
+                        AND OCD.CLAIM_STATUS_CD = 'CA' /* 취소완료 */
+                        AND OCD.CA_DT BETWEEN DATE_FORMAT(DATE_ADD(CURDATE(),INTERVAL - 1 DAY),'%Y-%m-%d 08:00:01') AND DATE_FORMAT(CURDATE(),'%Y-%m-%d 07:59:59')
+                    GROUP BY OOD.OD_ORDER_ID
+                )TBL2
+                UNION ALL
+                SELECT
+                    'DR' AS TYPE /* 배송준비중 */
+                    ,COUNT(*) AS COUNT
+                    ,TBL3.UR_CLIENT_ID
+                FROM(
+                    SELECT
+                        OOD.OD_ORDER_ID
+                        ,UC.UR_CLIENT_ID
+                    FROM
+                        OD_ORDER_DETL OOD
+                        INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_ID = OOD.UR_SUPPLIER_ID AND USW.UR_WAREHOUSE_ID = OOD.UR_WAREHOUSE_ID
+                        INNER JOIN UR_CLIENT_SUPPLIER_WAREHOUSE UCSW ON UCSW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+                        INNER JOIN UR_CLIENT UC ON UC.UR_CLIENT_ID = UCSW.UR_CLIENT_ID
+                    WHERE
+                        UC.UR_CLIENT_ID = #{urClientId}
+                        AND OOD.DR_DT BETWEEN DATE_FORMAT(DATE_ADD(CURDATE(),INTERVAL - 1 DAY),'%Y-%m-%d 08:00:01') AND DATE_FORMAT(CURDATE(),'%Y-%m-%d 07:59:59')
+                        AND OOD.ORDER_STATUS_CD = 'DR' /* 배송준비중 */
+                    GROUP BY OOD.OD_ORDER_ID
+                )TBL3
+            )TBL
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description      : 부분취소 배송비 추가결제 가상계좌 발급
+    * @
+    * @ 수정일          수정자       수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.06.21     천혜현     최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getPayAdditionalShippingPriceInfo" resultType="kr.co.pulmuone.v1.order.email.dto.vo.OrderInfoForEmailVo">
+        /* orderEmail.getPayAdditionalShippingPriceInfo */
+        SELECT
+            IF(OO.UR_USER_ID = NULL,0,OO.UR_USER_ID)        AS UR_USER_ID
+            ,FN_DECRYPT(OO.BUYER_NM)                        AS BUYER_NAME
+            ,FN_DECRYPT(OO.BUYER_MAIL)                      AS MAIL
+            ,FN_DECRYPT(OO.BUYER_HP)                        AS MOBILE
+            ,OPM.BANK_NM                                    AS BANK_NAME
+            ,OPM.VIRTUAL_ACCOUNT_NUMBER                     AS VIRTUAL_ACCOUNT_NUMBER
+            ,OPM.PAID_HOLDER                                AS PAID_HOLDER
+            ,OPM.PAYMENT_PRICE 						        AS PAYMENT_PRICE
+            ,CONCAT(DATE_FORMAT(NOW(),'%Y-%m-%d'),' 22:00') AS PAID_DUE_DATE
+        FROM
+            OD_PAYMENT_MASTER OPM
+            JOIN OD_PAYMENT OP ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID
+            JOIN OD_ORDER OO ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+        WHERE
+            OPM.OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description      : 매장픽업 상품 준비 조회
+    * @
+    * @ 수정일          수정자       수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.06.22     최윤지     최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderShopPickupInfoForEmail" resultMap="getOrderInfoForEmailResultMap">
+		/*	orderEmail.getOrderShopPickupInfoForEmail  */
+		SELECT
+            IF(OO.UR_USER_ID = NULL,0,OO.UR_USER_ID) AS UR_USER_ID
+            ,FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+            ,FN_DECRYPT(OO.BUYER_MAIL) AS MAIL
+            ,FN_DECRYPT(OO.BUYER_HP) AS MOBILE
+            ,DATE_FORMAT(OOD.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+            ,DATE_FORMAT(OOD.IC_DT, '%Y-%m-%d') AS IC_DT
+            ,OO.ODID
+            ,OO.OD_ORDER_ID
+            ,OO.GOODS_NM
+            ,OO.ORDER_PAYMENT_TYPE
+            ,FN_COMN_CODE_DIC(OO.ORDER_PAYMENT_TYPE) AS PAY_TP_NM
+            ,CASE OO.ORDER_PAYMENT_TYPE WHEN 'PAY_TP.CARD' THEN CONCAT('신용카드 ',OPM.INFO,' (',OPM.CARD_NUMBER,')',IF(OPM.CARD_QUOTA='00',' / 일시불',''))
+                             WHEN 'PAY_TP.VIRTUAL_BANK' THEN CONCAT(OPM.BANK_NM,' ', OPM.VIRTUAL_ACCOUNT_NUMBER)
+                             WHEN 'PAY_TP.BANK' THEN  CONCAT('실시간계좌이체 ',OPM.INFO)
+                             ELSE FN_COMN_CODE_DIC(OO.ORDER_PAYMENT_TYPE) END AS PAY_INFO
+            ,OPM.PAID_DUE_DT
+            ,OPM.BANK_NM
+            ,OPM.VIRTUAL_ACCOUNT_NUMBER
+            ,OPM.PAID_HOLDER
+            ,OPM.INFO
+            ,IF(OPM.CARD_QUOTA = '00','일시불', CONCAT(OPM.CARD_QUOTA,'개월') ) AS CARD_QUOTA
+            ,OPM.PAYMENT_PRICE
+            ,OPM.SALE_PRICE+OPM.SHIPPING_PRICE AS SALE_PRICE /* 주문금액(상품 판매가 + 배송비) */
+            ,(OPM.CART_COUPON_PRICE + OPM.GOODS_COUPON_PRICE + OPM.DIRECT_PRICE) AS DISCOUNT_PRICE /* 상품쿠폰 + 장바구니쿠폰 +상품,장바구니쿠폰 제외한 할인금액 */
+            ,OPM.POINT_PRICE
+            ,OSZ.RECV_NM
+			,CONCAT(OSZ.RECV_ADDR1,' ',OSZ.RECV_ADDR2) AS RECV_ADDR
+            ,OSZ.RECV_HP
+            ,OSZ.DELIVERY_MSG
+            ,OODETL.RECOMMENDED_PRICE + OPM.SHIPPING_PRICE AS TOTAL_SALE_PRICE  /* 주문금액(상품 정가 + 배송비 ) */
+            ,(SELECT COUNT(*) FROM OD_ORDER_DETL WHERE OD_ORDER_ID = OO.OD_ORDER_ID AND ORDER_STATUS_DELI_TP = 'ORDER_STATUS_DELI_TP.RENTAL') AS RENTAL_COUNT
+            ,(SELECT COUNT(*) FROM OD_ORDER_DETL WHERE OD_ORDER_ID = OO.OD_ORDER_ID AND UR_SUPPLIER_ID = 2) AS OG_GOODS_COUNT /* 올가 상품 주문 count */
+            ,IF((OPM.CART_COUPON_PRICE + OPM.GOODS_COUPON_PRICE + OSPRICE.SHIPPING_DISCOUNT_PRICE) > 0, '사용','미사용') AS COUPON_USE /* 쿠폰사용여부*/
+            ,IF(OPM.POINT_PRICE > 0 , '사용','미사용') AS POINT_USE /* 적립금사용여부 */
+		    ,IFNULL(OO.UR_STORE_ID, '0') AS UR_STORE_ID /*매장 ID*/
+		    ,US.UR_STORE_NM AS UR_STORE_NM /* 매장명 */
+		    ,DATE_FORMAT(OO.STORE_START_TIME, "%Y-%m-%d %H:%i") AS STORE_START_TIME /*주문배송시작시간*/
+		    ,DATE_FORMAT(OO.STORE_END_TIME, "%H:%i") AS STORE_END_TIME /*주문배송종료시간*/
+		FROM
+		    OD_ORDER OO
+		    JOIN OD_ORDER_DT OOD ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+		    JOIN OD_PAYMENT OP ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+		    JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID AND OPM.TYPE = 'G'
+		    JOIN (SELECT
+		              FN_DECRYPT(OSZ.RECV_NM)               AS RECV_NM      /* 수령인명 */
+		             , FN_DECRYPT(OSZ.RECV_ADDR1)           AS RECV_ADDR1   /* 수령인주소1 */
+		             , FN_DECRYPT(OSZ.RECV_ADDR2)           AS RECV_ADDR2   /* 수령인주소2 */
+		             , FN_DECRYPT(OSZ.RECV_HP)              AS RECV_HP      /* 수령인핸드폰 */
+		             , IFNULL(OSZ.DELIVERY_MSG, '')         AS DELIVERY_MSG /* 배송요청사항 */
+		             , OD.OD_ORDER_ID
+		        FROM OD_ORDER OD
+		        INNER JOIN OD_SHIPPING_ZONE OSZ ON OD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		        WHERE 1 = 1
+		        AND OD.OD_ORDER_ID = #{odOrderId}
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(goodsTpCd,'GOODS_TYPE.DAILY')">
+			         AND DELIVERY_TYPE != 'DELIVERY_TYPE.DAILY'
+			    </if>
+		        ORDER BY OSZ.OD_SHIPPING_ZONE_ID DESC
+		        LIMIT 1) OSZ ON OO.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		    JOIN (SELECT
+                    SUM(OOD.RECOMMENDED_PRICE * OOD.ORDER_CNT) AS RECOMMENDED_PRICE
+                    ,OOD.OD_ORDER_ID
+                  FROM
+                    OD_ORDER OO
+                    INNER JOIN OD_ORDER_DETL OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+                  WHERE OOD.OD_ORDER_ID = #{odOrderId} AND OOD.GOODS_TP_CD NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')) OODETL ON OO.OD_ORDER_ID = OODETL.OD_ORDER_ID
+            JOIN (SELECT
+                    SUM(SHIPPING_DISCOUNT_PRICE) AS SHIPPING_DISCOUNT_PRICE
+                    ,OOD.OD_ORDER_ID
+                    FROM OD_SHIPPING_PRICE OSP
+                    JOIN OD_ORDER_DETL OOD ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+                    WHERE OOD.OD_ORDER_ID = #{odOrderId}) OSPRICE ON OO.OD_ORDER_ID = OSPRICE.OD_ORDER_ID
+		    JOIN (
+					SELECT US.NM AS UR_STORE_NM
+						 , OO.OD_ORDER_ID
+					FROM UR_STORE US
+					INNER JOIN OD_ORDER OO ON OO.UR_STORE_ID = US.UR_STORE_ID
+					WHERE OO.OD_ORDER_ID = #{odOrderId}) US ON US.OD_ORDER_ID = OOD.OD_ORDER_ID
+		WHERE
+		    OO.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+  * description      : 정기배송 결제실패(4차) 정보 조회
+  * @ 수정일            수정자       수정내용
+  * @ ──────────────────────────────────────────────────────────────────────
+  * @ 2021.08.11     천혜현     최초생성
+ ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRegularOrderResultForPaymentFail" resultType="kr.co.pulmuone.v1.order.email.dto.OrderRegularResultDto">
+        /* orderEmail.getRegularOrderResultForPaymentFail */
+        SELECT
+            ORPK.UR_USER_ID,
+            FN_DECRYPT(ORR.BUYER_NM) AS BUYER_NM,
+            FN_DECRYPT(ORR.BUYER_MAIL) AS BUYER_MAIL,
+            FN_DECRYPT(ORR.BUYER_HP) AS BUYER_HP,
+            DATE_FORMAT(NOW(),'%Y-%m-%d')  AS CREATE_DATE
+        FROM
+            OD_REGULAR_REQ ORR
+                INNER JOIN
+            OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+                INNER JOIN
+            OD_REGULAR_REQ_SHIPPING_ZONE ORRSZ ON ORR.OD_REGULAR_REQ_ID = ORRSZ.OD_REGULAR_REQ_ID
+                INNER JOIN
+            (
+                SELECT
+                    ORRD.OD_REGULAR_RESULT_ID,
+                    MIN(GOODS_NM) AS GOODS_NM,
+                    COUNT(1) AS GOODS_CNT
+                FROM
+                    OD_REGULAR_RESULT_DETL ORRD
+                GROUP BY ORRD.OD_REGULAR_RESULT_ID
+            ) ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+                INNER JOIN
+            OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+                INNER JOIN
+            OD_PAYMENT OP ON OD.OD_ORDER_ID = OP.OD_ORDER_ID
+                INNER JOIN
+            OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID  AND OPM.TYPE = 'G'
+                INNER JOIN
+            OD_REGULAR_PAYMENT_KEY ORPK ON ORR.UR_USER_ID = ORPK.UR_USER_ID
+                AND ORPK.PAYMENT_YN = 'Y'
+        WHERE
+            ORRT.OD_REGULAR_RESULT_ID = #{odRegularResultId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description      : 정기배송 상품금액 변동 알림발송 이력 등록
+      * @ 수정일            수정자       수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.09.27     김명진     최초생성
+     ────────────────────────────────────────────────────────────────────────-->
+    <insert id="putOdRegularInfoSendHist" parameterType="kr.co.pulmuone.v1.order.email.dto.OrderRegularGoodsPriceChangeDto">
+        /* orderEmail.putOdRegularInfoSendHist */
+        INSERT INTO OD_REGULAR_INFO_SEND_HIST (
+            OD_REGULAR_REQ_ID
+            , IL_GOODS_ID
+            , SALE_PRICE
+            , CREATE_DT
+        )
+        VALUES (
+            #{odRegularReqId}
+            , #{ilGoodsId}
+            , #{afterSalePrice}
+            , NOW()
+        )
+    </insert>
+</mapper>

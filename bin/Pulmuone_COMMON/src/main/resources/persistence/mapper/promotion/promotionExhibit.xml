@@ -1,0 +1,734 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.exhibit.PromotionExhibitMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 기획전 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.ExhibitListByUserVo" id="getExhibitListByUserMap">
+        <result column="EV_EXHIBIT_ID" property="evExhibitId"/>
+        <result column="EXHIBIT_TP" property="exhibitType"/>
+        <result column="MALL_DIV" property="mallDiv"/>
+        <result column="BNR_IMG_PATH" property="bannerImagePath"/>
+        <result column="BNR_IMG_ORIGIN_NM" property="bannerImageOriginalName"/>
+        <result column="TITLE" property="title"/>
+        <result column="ALWAYS_YN" property="alwaysYn"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+
+    <select id="getExhibitListByUser" resultMap="getExhibitListByUserMap">
+        /* promotionExhibit.getExhibitListByUser */
+        SELECT *
+        FROM (
+            SELECT EE.EV_EXHIBIT_ID,
+                EE.EXHIBIT_TP,
+                EE.MALL_DIV,
+                EE.BNR_IMG_PATH,
+                EE.BNR_IMG_ORIGIN_NM,
+                EE.TITLE,
+                EE.ALWAYS_YN,
+                DATE(EE.START_DT) AS START_DT,
+                DATE(EE.END_DT) AS END_DT,
+                EE.DISP_WEB_PC_YN,
+                EE.DISP_WEB_MOBILE_YN,
+                EE.DISP_APP_YN,
+                EE.EV_EMPLOYEE_TP,
+                EE.DISP_NONMEMBER_YN,
+                EE.CREATE_DT,
+                (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 'Y' ELSE 'N' END) AS END_YN,
+                (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 1 ELSE 0 END) AS SORT_SEQ
+            FROM EV_EXHIBIT EE
+            WHERE EE.USE_YN = 'Y'
+                AND EE.DEL_YN = 'N'
+                AND EE.DISP_YN = 'Y'
+                AND ((NOW() <![CDATA[>]]> EE.START_DT AND EE.ALWAYS_YN = 'N')	OR EE.ALWAYS_YN = 'Y')
+                AND EE.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+            UNION ALL
+            SELECT EE.EV_EXHIBIT_ID,
+                EE.EXHIBIT_TP,
+                EE.MALL_DIV,
+                EE.BNR_IMG_PATH,
+                EE.BNR_IMG_ORIGIN_NM,
+                EE.TITLE,
+                EE.ALWAYS_YN,
+                DATE(EE.START_DT) AS START_DT,
+                DATE(EE.END_DT) AS END_DT,
+                EE.DISP_WEB_PC_YN,
+                EE.DISP_WEB_MOBILE_YN,
+                EE.DISP_APP_YN,
+                EE.EV_EMPLOYEE_TP,
+                EE.DISP_NONMEMBER_YN,
+                EE.CREATE_DT,
+                (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 'Y' ELSE 'N' END) AS END_YN,
+                (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 1 ELSE 0 END) AS SORT_SEQ
+            FROM EV_EXHIBIT EE
+                INNER JOIN EV_EXHIBIT_GIFT EEG ON EE.EV_EXHIBIT_ID = EEG.EV_EXHIBIT_ID
+            WHERE EE.USE_YN = 'Y'
+                AND EE.DEL_YN = 'N'
+                AND EE.DISP_YN = 'Y'
+                AND EEG.EXHIBIT_DISP_YN = 'Y'
+                AND ((NOW() <![CDATA[>]]> EE.START_DT AND EE.ALWAYS_YN = 'N')	OR EE.ALWAYS_YN = 'Y')
+                AND EE.EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+        ) G1
+        WHERE 1=1
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+                AND G1.MALL_DIV = #{mallDiv}
+            </if>
+
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    AND G1.DISP_WEB_PC_YN = 'Y'
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    AND G1.DISP_WEB_MOBILE_YN = 'Y'
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    AND G1.DISP_APP_YN = 'Y'
+                </when>
+            </choose>
+
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "MEMBER")'>
+                    AND G1.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_EXCEPT')
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "NONMEMBER")'>
+                    AND G1.EV_EMPLOYEE_TP != 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY'
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "EMPLOYEE")'>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(employeeOnlyYn,'Y')">
+                        AND G1.EV_EMPLOYEE_TP = 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY'
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(employeeOnlyYn,'N')">
+                        AND G1.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY')
+                    </if>
+                </when>
+            </choose>
+        ORDER BY G1.SORT_SEQ ASC, G1.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일반 기획전 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.NormalByUserVo" id="getNormalByUserMap">
+        <result column="TITLE" property="title"/>
+        <result column="DESCRIPTION" property="description"/>
+        <result column="ALWAYS_YN" property="alwaysYn"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="DISP_NONMEMBER_YN" property="displayNonmemberYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+
+    <select id="getNormalByUser" resultMap="getNormalByUserMap">
+        /* promotionExhibit.getNormalByUser */
+        SELECT TITLE,
+            DESCRIPTION,
+            ALWAYS_YN,
+            DATE(START_DT) AS START_DT,
+            DATE(END_DT) AS END_DT,
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    EE.DETL_HTML_PC    AS DETL_HTML,
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    EE.DETL_HTML_MO    AS DETL_HTML,
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    EE.DETL_HTML_MO    AS DETL_HTML,
+                </when>
+            </choose>
+            DISP_WEB_PC_YN,
+            DISP_WEB_MOBILE_YN,
+            DISP_APP_YN,
+            DISP_NONMEMBER_YN,
+            EV_EMPLOYEE_TP,
+            (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 'Y' ELSE 'N' END) AS END_YN
+        FROM EV_EXHIBIT EE
+        WHERE EE.EV_EXHIBIT_ID = #{evExhibitId}
+            AND EE.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 기획전 그룹 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.ExhibitGroupByUserVo" id="getGroupByUserMap">
+        <result column="EV_EXHIBIT_GROUP_ID" property="evExhibitGroupId"/>
+        <result column="GROUP_NM" property="groupName"/>
+        <result column="TEXT_COLOR" property="textColor"/>
+        <result column="EXHIBIT_IMG_TP" property="exhibitImageType"/>
+        <result column="BG_CD" property="backgroundCode"/>
+        <result column="DESCRIPTION" property="description"/>
+        <result column="DISP_CNT" property="displayCount"/>
+    </resultMap>
+
+    <select id="getGroupByUser" resultMap="getGroupByUserMap">
+        /* promotionExhibit.getGroupByUser */
+        SELECT EV_EXHIBIT_GROUP_ID
+            , GROUP_NM
+            , TEXT_COLOR
+            , EXHIBIT_IMG_TP
+            , BG_CD
+            , DESCRIPTION
+            , DISP_CNT
+        FROM EV_EXHIBIT_GROUP
+        WHERE EV_EXHIBIT_ID = #{evExhibitId}
+            AND USE_YN = 'Y'
+        ORDER BY GROUP_SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 기획전 그룹 상세 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGroupDetailByUser" resultType="long">
+        /* promotionExhibit.getGroupDetailByUser */
+        SELECT IL_GOODS_ID
+        FROM EV_EXHIBIT_GROUP_DETL
+        WHERE EV_EXHIBIT_GROUP_ID = #{evExhibitGroupId}
+        ORDER BY GOODS_SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 골라담기 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.23		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.SelectListByUserVo" id="getSelectListByUserMap">
+        <result column="EV_EXHIBIT_ID" property="evExhibitId"/>
+        <result column="BNR_IMG_PATH" property="bannerImagePath"/>
+        <result column="BNR_IMG_ORIGIN_NM" property="bannerImageOriginalName"/>
+        <result column="TITLE" property="title"/>
+        <result column="DESCRIPTION" property="description"/>
+        <result column="ALWAYS_YN" property="alwaysYn"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="DEFAULT_BUY_CNT" property="defaultBuyCount"/>
+        <result column="SELECT_PRICE" property="selectPrice"/>
+        <result column="MAX_DISCOUNT" property="maxDiscountRate"/>
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="GOODS_BUY_LIMIT_CNT" property="goodsBuyLimitCount"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+
+    <select id="getSelectListByUser" resultMap="getSelectListByUserMap">
+        /* promotionExhibit.getSelectListByUser */
+        SELECT
+            EE.EV_EXHIBIT_ID,
+            EE.BNR_IMG_PATH,
+            EE.BNR_IMG_ORIGIN_NM,
+            EE.TITLE,
+            EE.DESCRIPTION,
+            EE.ALWAYS_YN,
+            DATE(EE.START_DT) AS START_DT,
+            DATE(EE.END_DT) AS END_DT,
+            EES.DEFAULT_BUY_CNT,
+            EES.SELECT_PRICE,
+            EES.MAX_DISCOUNT,
+            EES.IL_GOODS_ID,
+            EES.GOODS_BUY_LIMIT_CNT,
+            (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 'Y' ELSE 'N' END) AS END_YN,
+            (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 1 ELSE 0 END) AS SORT_SEQ
+        FROM
+            EV_EXHIBIT EE
+            INNER JOIN EV_EXHIBIT_SELECT EES ON EE.EV_EXHIBIT_ID = EES.EV_EXHIBIT_ID
+        WHERE
+                EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+            AND EE.DISP_YN = 'Y'
+            AND ((NOW() <![CDATA[>]]> EE.START_DT AND EE.ALWAYS_YN = 'N') OR EE.ALWAYS_YN = 'Y')
+            AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                AND EE.DISP_WEB_PC_YN = 'Y'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                AND EE.DISP_WEB_MOBILE_YN = 'Y'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                AND EE.DISP_APP_YN = 'Y'
+            </when>
+        </choose>
+
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "MEMBER")'>
+                AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_EXCEPT')
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "NONMEMBER")'>
+                AND EE.EV_EMPLOYEE_TP != 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "EMPLOYEE")'>
+                AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY')
+            </when>
+        </choose>
+        ORDER BY SORT_SEQ ASC, EE.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 골라담기 상품 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.23		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSelectGoodsByUser" resultType="long">
+        /* promotionExhibit.getSelectGoodsByUser */
+        SELECT IL_GOODS_ID
+        FROM EV_EXHIBIT_SELECT_GOODS
+        WHERE EV_EXHIBIT_ID = #{evExhibitId}
+        ORDER BY GOODS_SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 골라담기 추가 상품 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.23		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.SelectAddGoodsVo" id="getSelectAddGoodsMap">
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="UR_BRAND_ID" property="urBrandId"/>
+        <result column="RECOMMENDED_PRICE" property="recommendedPrice"/>
+        <result column="SALE_PRICE" property="salePrice"/>
+    </resultMap>
+    <select id="getSelectAddGoods" resultMap="getSelectAddGoodsMap">
+        /* promotionExhibit.getSelectAddGoods */
+        SELECT EESAG.IL_GOODS_ID,
+            II.UR_BRAND_ID,
+            IGP.RECOMMENDED_PRICE,
+            EESAG.SALE_PRICE
+        FROM EV_EXHIBIT_SELECT_ADD_GOODS EESAG
+        JOIN IL_GOODS IG ON IG.IL_GOODS_ID = EESAG.IL_GOODS_ID
+        JOIN IL_GOODS_PRICE IGP ON IGP.IL_GOODS_ID = IG.IL_GOODS_ID AND IGP.USE_YN = 'Y' AND SYSDATE() BETWEEN IGP.PRICE_START_DT AND IGP.PRICE_END_DT
+        JOIN IL_ITEM II ON II.IL_ITEM_CD = IG.IL_ITEM_CD
+        WHERE EESAG.EV_EXHIBIT_ID = #{evExhibitId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 골라담기 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.23		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.SelectByUserVo" id="getSelectByUserMap">
+        <result column="EV_EXHIBIT_ID" property="evExhibitId"/>
+        <result column="TITLE" property="title"/>
+        <result column="DESCRIPTION" property="description"/>
+        <result column="ALWAYS_YN" property="alwaysYn"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="DISP_NONMEMBER_YN" property="displayNonmemberYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="GOODS_BUY_LIMIT_CNT" property="goodsBuyLimitCount"/>
+        <result column="DEFAULT_BUY_CNT" property="defaultBuyCount"/>
+        <result column="SELECT_PRICE" property="selectPrice"/>
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+
+    <select id="getSelectByUser" resultMap="getSelectByUserMap">
+        /* promotionExhibit.getSelectByUser */
+        SELECT EE.EV_EXHIBIT_ID,
+            EE.TITLE,
+            EE.DESCRIPTION,
+            EE.ALWAYS_YN,
+            DATE(EE.START_DT) AS START_DT,
+            DATE(EE.END_DT) AS END_DT,
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    EE.DETL_HTML_PC    AS DETL_HTML,
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    EE.DETL_HTML_MO    AS DETL_HTML,
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    EE.DETL_HTML_MO    AS DETL_HTML,
+                </when>
+            </choose>
+            EES.GOODS_BUY_LIMIT_CNT,
+            EES.DEFAULT_BUY_CNT,
+            EES.SELECT_PRICE,
+            EES.IL_GOODS_ID,
+            EE.DISP_WEB_PC_YN,
+            EE.DISP_WEB_MOBILE_YN,
+            EE.DISP_APP_YN,
+            EE.DISP_NONMEMBER_YN,
+            EE.EV_EMPLOYEE_TP,
+            (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 'Y' ELSE 'N' END) AS END_YN
+        FROM EV_EXHIBIT EE
+            INNER JOIN EV_EXHIBIT_SELECT EES ON EE.EV_EXHIBIT_ID = EES.EV_EXHIBIT_ID
+        WHERE EE.EV_EXHIBIT_ID = #{evExhibitId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+            AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 증정행사 조회 - 상품상세
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.07		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.GiftListVo" id="getGiftFromGoodsMap">
+        <result column="EV_EXHIBIT_ID" property="evExhibitId"/>
+        <result column="TITLE" property="title"/>
+        <result column="ALWAYS_YN" property="alwaysYn"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="GIFT_TP" property="giftType"/>
+        <result column="OVER_PRICE" property="overPrice"/>
+        <result column="GIFT_RANGE_TP" property="giftRangeType"/>
+        <result column="GIFT_GIVE_TP" property="giftGiveType"/>
+        <result column="GIFT_TARGET_TP" property="giftTargetType"/>
+        <result column="BNR_IMG_PATH" property="bannerImagePath"/>
+        <result column="GIFT_CNT" property="giftCount"/>
+    </resultMap>
+
+    <select id="getGiftList" resultMap="getGiftFromGoodsMap">
+        /* promotionExhibit.getGiftList */
+        SELECT *
+        FROM (
+            SELECT
+                EE.EV_EXHIBIT_ID,
+                EE.TITLE,
+                EE.ALWAYS_YN,
+                DATE(EE.START_DT) AS START_DT,
+                DATE(EE.END_DT) AS END_DT,
+                EEG.GIFT_TP,
+                EEG.OVER_PRICE,
+                EEG.GIFT_RANGE_TP,
+                EEG.GIFT_GIVE_TP,
+                EE.BNR_IMG_PATH,
+                EEG.GIFT_TARGET_TP,
+                EEG.GIFT_CNT,
+                (SELECT COUNT(*) FROM EV_EXHIBIT_USER_GROUP EUG WHERE EUG.EV_EXHIBIT_ID = EE.EV_EXHIBIT_ID) AS USER_GROUP_CNT,
+                (SELECT COUNT(*) FROM EV_EXHIBIT_USER_GROUP EUG WHERE EUG.EV_EXHIBIT_ID = EE.EV_EXHIBIT_ID AND EUG.UR_GROUP_ID = #{urGroupId}) AS USER_GROUP_ID_CNT
+            FROM
+                EV_EXHIBIT EE
+                INNER JOIN EV_EXHIBIT_GIFT EEG ON EE.EV_EXHIBIT_ID = EEG.EV_EXHIBIT_ID
+                INNER JOIN (
+                    SELECT EEGTG.EV_EXHIBIT_ID
+                    FROM EV_EXHIBIT_GIFT_TARGET_GOODS EEGTG
+                    WHERE EEGTG.IL_GOODS_ID = #{ilGoodsId}
+                UNION ALL
+                    SELECT EEGTB.EV_EXHIBIT_ID
+                    FROM EV_EXHIBIT_GIFT_TARGET_BRAND EEGTB
+                    WHERE EEGTB.BRAND_ID = #{dpBrandId}
+                ) G_EXHIBIT ON EE.EV_EXHIBIT_ID  = G_EXHIBIT.EV_EXHIBIT_ID
+            WHERE
+                EE.USE_YN = 'Y'
+                AND EE.DEL_YN = 'N'
+                AND ((NOW() BETWEEN EE.START_DT AND EE.END_DT	AND EE.ALWAYS_YN = 'N') OR EE.ALWAYS_YN = 'Y')
+                AND EE.EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(giftType)">
+                    AND EEG.GIFT_TP = #{giftType}
+                </if>
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    AND EE.DISP_WEB_PC_YN = 'Y'
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    AND EE.DISP_WEB_MOBILE_YN = 'Y'
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    AND EE.DISP_APP_YN = 'Y'
+                </when>
+            </choose>
+
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "MEMBER")'>
+                    AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_EXCEPT')
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "NONMEMBER")'>
+                    AND EE.EV_EMPLOYEE_TP != 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY'
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "EMPLOYEE")'>
+                    AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY')
+                </when>
+            </choose>
+            ORDER BY CREATE_DT DESC
+        ) G1
+        WHERE (G1.USER_GROUP_CNT = 0 OR G1.USER_GROUP_ID_CNT = 1)
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 증정행사 조회 - 유저
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.11		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.GiftByUserVo" id="getGiftByUserMap">
+        <result column="TITLE" property="title"/>
+        <result column="DESCRIPTION" property="description"/>
+        <result column="ALWAYS_YN" property="alwaysYn"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="DISP_NONMEMBER_YN" property="displayNonmemberYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="GIFT_CNT" property="giftCount"/>
+        <result column="GIFT_TP_NM" property="giftTypeName"/>
+        <result column="OVER_PRICE" property="overPrice"/>
+        <result column="GIFT_RANGE_TP_NM" property="giftRangeTypeName"/>
+        <result column="GIFT_GIVE_TP_NM" property="giftGiveTypeName"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+
+    <select id="getGiftByUser" resultMap="getGiftByUserMap">
+        /* promotionExhibit.getGiftByUser */
+        SELECT EE.TITLE,
+            EE.DESCRIPTION,
+            EE.ALWAYS_YN,
+            DATE(EE.START_DT) AS START_DT,
+            DATE(EE.END_DT) AS END_DT,
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    EE.DETL_HTML_PC    AS DETL_HTML,
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    EE.DETL_HTML_MO    AS DETL_HTML,
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    EE.DETL_HTML_MO    AS DETL_HTML,
+                </when>
+            </choose>
+            EE.DISP_WEB_PC_YN,
+            EE.DISP_WEB_MOBILE_YN,
+            EE.DISP_APP_YN,
+            EE.DISP_NONMEMBER_YN,
+            EE.EV_EMPLOYEE_TP,
+            EEG.GIFT_CNT,
+            FN_COMN_CODE_DIC(EEG.GIFT_TP) AS GIFT_TP_NM,
+            EEG.OVER_PRICE,
+            FN_COMN_CODE_DIC(EEG.GIFT_RANGE_TP) AS GIFT_RANGE_TP_NM,
+            FN_COMN_CODE_DIC(EEG.GIFT_GIVE_TP) AS GIFT_GIVE_TP_NM,
+            (CASE WHEN EE.ALWAYS_YN = 'N' AND NOW() <![CDATA[>]]> EE.END_DT THEN 'Y' ELSE 'N' END) AS END_YN
+        FROM
+            EV_EXHIBIT EE
+            INNER JOIN EV_EXHIBIT_GIFT EEG ON EE.EV_EXHIBIT_ID = EEG.EV_EXHIBIT_ID
+        WHERE EE.EV_EXHIBIT_ID = #{evExhibitId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+            AND EEG.EXHIBIT_DISP_YN = 'Y'
+            AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 증정 상품 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.07		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.GiftGoodsVo" id="getGiftGoodsMap">
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="GOODS_NM" property="goodsName"/>
+        <result column="THUMBNAIL_PATH" property="thumbnailPath"/>
+        <result column="GIFT_CNT" property="giftCount"/>
+        <result column="UR_WAREHOUSE_ID" property="urWareHouseId"/>
+        <result column="BUNDLE_YN" property="bundleYn"/>
+    </resultMap>
+
+    <select id="getGiftGoods" resultMap="getGiftGoodsMap">
+        /* promotionExhibit.getGiftGoods */
+        SELECT EEG.IL_GOODS_ID,
+            IG.GOODS_NM,
+            (CASE WHEN IG.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                (CASE WHEN IG.GOODS_PACKAGE_IMG_TP = 'GOODS_PACKAGE_IMG_TP.NORMAL_GOODS' THEN ITM_IMG.MS_IMG ELSE IMG.MS_IMG END)
+                ELSE ITM_IMG.MS_IMG
+                END) AS THUMBNAIL_PATH,
+            EEG.GIFT_CNT,
+            IG.UR_WAREHOUSE_ID,
+            ST.BUNDLE_YN
+        FROM EV_EXHIBIT_GIFT_GOODS EEG
+            INNER JOIN IL_GOODS IG ON EEG.IL_GOODS_ID = IG.IL_GOODS_ID
+            JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+			JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+            LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = IG.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+            LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = IG.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+        WHERE EEG.EV_EXHIBIT_ID = #{evExhibitId}
+        ORDER BY EEG.GOODS_SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 증정 대상 상품 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGiftTargetGoods" resultType="long">
+        /* promotionExhibit.getGiftTargetGoods */
+        SELECT IL_GOODS_ID
+        FROM EV_EXHIBIT_GIFT_TARGET_GOODS
+        WHERE EV_EXHIBIT_ID = #{evExhibitId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 증정 대상 브랜드 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGiftTargetBrand" resultType="long">
+        /* promotionExhibit.getGiftTargetBrand */
+        SELECT BRAND_ID
+        FROM EV_EXHIBIT_GIFT_TARGET_BRAND
+        WHERE EV_EXHIBIT_ID = #{evExhibitId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 골라담기 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.SelectExhibitVo" id="getSelectExhibitMap">
+        <result column="EV_EXHIBIT_ID" property="evExhibitId"/>
+        <result column="TITLE" property="title"/>
+        <result column="USE_YN" property="useYn"/>
+        <result column="DEL_YN" property="delYn"/>
+        <result column="ALWAYS_YN" property="alwaysYn"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="EXHIBIT_STATUS" property="exhibitStatus"/>
+        <result column="SELECT_PRICE" property="selectPrice"/>
+    </resultMap>
+
+    <select id="getSelectExhibit" resultMap="getSelectExhibitMap">
+        /* promotionExhibit.getSelectExhibit */
+        SELECT EE.EV_EXHIBIT_ID,
+            EE.TITLE,
+            EE.USE_YN,
+            EE.DEL_YN,
+            EE.ALWAYS_YN,
+            DATE(EE.START_DT) AS START_DT,
+            DATE(EE.END_DT) AS END_DT,
+            EE.EXHIBIT_STATUS,
+            EES.SELECT_PRICE
+        FROM EV_EXHIBIT EE
+            INNER JOIN EV_EXHIBIT_SELECT EES ON EE.EV_EXHIBIT_ID = EES.EV_EXHIBIT_ID
+        WHERE EE.EV_EXHIBIT_ID = #{evExhibitId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 녹즙내맘대로 담기 대상 상품 조회 - 브랜드 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.25		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGreenJuiceGoods" resultType="long">
+        /* promotionExhibit.getGreenJuiceGoods */
+        SELECT IG.IL_GOODS_ID
+        FROM IL_GOODS IG
+            INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+        WHERE IG.PICKABLE_YN = 'Y'
+            AND IG.GOODS_DAILY_TP = 'GOODS_DAILY_TP.GREENJUICE'
+            AND II.UR_SUPPLIER_ID = #{urSupplierId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 등급 접근 기준 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.26		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.ExhibitUserGroupByUserVo" id="exhibitUserGroupByUserMap">
+        <result column="UR_GROUP_ID" property="urGroupId"/>
+        <result column="GROUP_MASTER_NM" property="groupMasterName"/>
+        <result column="GROUP_NM" property="groupName"/>
+    </resultMap>
+    <select id="getUserGroup" resultMap="exhibitUserGroupByUserMap">
+        /* promotionExhibit.getUserGroup */
+        SELECT EUG.UR_GROUP_ID
+            , UGM.GROUP_MASTER_NM
+            , UG.GROUP_NM
+        FROM EV_EXHIBIT_USER_GROUP EUG
+            INNER JOIN UR_GROUP UG ON EUG.UR_GROUP_ID = UG.UR_GROUP_ID
+            INNER JOIN UR_GROUP_MASTER UGM ON UG.UR_GROUP_MASTER_ID = UGM.UR_GROUP_MASTER_ID
+        WHERE EV_EXHIBIT_ID = #{evExhibitId}
+        ORDER BY UGM.START_DT, UG.GROUP_LEVEL_TP
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 기획전 제목 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.09		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.exhibit.dto.vo.ExhibitInfoFromMetaVo" id="exhibitInfoFromMetaMap">
+        <result column="TITLE" property="title"/>
+        <result column="BNR_IMG_PATH" property="bannerImagePath"/>
+        <result column="DATE_INFO" property="dateInfo"/>
+    </resultMap>
+    <select id="getExhibitInfoFromMeta" resultMap="exhibitInfoFromMetaMap">
+        /* promotionExhibit.getExhibitInfoFromMeta */
+        SELECT TITLE
+            , BNR_IMG_PATH
+            , (CASE WHEN ALWAYS_YN = 'Y' THEN '상시' ELSE CONCAT(DATE(START_DT), '~', DATE(END_DT)) END) AS DATE_INFO
+        FROM EV_EXHIBIT
+        WHERE EV_EXHIBIT_ID = #{evExhibitId}
+    </select>
+
+</mapper>

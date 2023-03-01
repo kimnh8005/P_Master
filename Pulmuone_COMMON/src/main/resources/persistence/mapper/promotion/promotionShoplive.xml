@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.shoplive.ShopliveMapper">
+    <resultMap id="getShopliveInfoMap" type="kr.co.pulmuone.v1.promotion.shoplive.dto.vo.ShopliveInfoVo">
+        <result column="EV_SHOPLIVE_ID" property="evShopliveId"/>
+        <result column="CAMPAIGN_KEY" property="campaignKey"/>
+        <result column="TITLE" property="title"/>
+    </resultMap>
+    <select id="getShopliveInfo" resultMap="getShopliveInfoMap">
+      /* promotionShoplive.getShopliveInfo */
+      SELECT EV_SHOPLIVE_ID
+           , CAMPAIGN_KEY
+           , TITLE
+        FROM EV_SHOPLIVE
+       WHERE EV_SHOPLIVE_ID = #{evShopliveId}
+       LIMIT 1
+    </select>
+
+    <resultMap id="getShopliveGoodsResultMap" type="kr.co.pulmuone.v1.promotion.shoplive.dto.vo.ShopliveGoodsVo">
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="GOODS_NM" property="goodsNm"/>
+    </resultMap>
+    <select id="getShopliveGoodsList" resultMap="getShopliveGoodsResultMap">
+        /* promotionShoplive.getShopliveGoodsList */
+        SELECT ES.IL_GOODS_ID
+             , IG.GOODS_NM
+          FROM EV_SHOPLIVE ES
+            INNER JOIN EV_SHOPLIVE_GOODS ESG ON ES.EV_SHOPLIVE_ID = ESG.EV_SHOPLIVE_ID
+            INNER JOIN IL_GOODS IG ON ESG.IL_GOODS_ID = IG.IL_GOODS_ID
+         WHERE NOW() BETWEEN DATE_ADD(START_DT, INTERVAL -7 DAY) AND DATE_ADD(END_DT, INTERVAL 7 DAY)
+    </select>
+</mapper>

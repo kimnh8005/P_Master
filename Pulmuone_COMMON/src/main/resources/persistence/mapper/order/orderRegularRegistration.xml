@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.regular.OrderRegularRegistrationMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진	  	  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderRegularReq" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularReqVo">
+		/* orderRegularRegistration.addOrderRegularReq  */
+		INSERT INTO OD_REGULAR_REQ
+			(OD_REGULAR_REQ_ID, REQ_ID, UR_GROUP_ID, UR_GROUP_NM, UR_USER_ID, BUYER_NM,
+			BUYER_HP, BUYER_TEL, BUYER_MAIL, PAYMENT_TYPE_CD, BUYER_TYPE_CD, AGENT_TYPE_CD,
+			CREATE_DT, TOT_CNT, FIRST_GOODS_CYCLE_TERM_TP, FIRST_GOODS_CYCLE_TP, FIRST_WEEK_CD,
+			GOODS_CYCLE_TERM_TP, GOODS_CYCLE_TP, WEEK_CD, UR_PCID_CD,
+			DELIVERY_DT, REGULAR_STATUS_CD, CREATE_ROUND_YN, SALE_PRICE, DISCOUNT_PRICE, PAID_PRICE,
+			BASIC_DISCOUNT_RATE, ADD_DISCOUNT_ROUND, ADD_DISCOUNT_RATE)
+		VALUES
+			(#{odRegularReqId}, #{reqId}, #{urGroupId}, #{urGroupNm}, #{urUserId}, FN_ENCRYPT(#{buyerNm}),
+			FN_ENCRYPT(#{buyerHp}), FN_ENCRYPT(#{buyerTel}), FN_ENCRYPT(#{buyerMail}), #{paymentTypeCd}, #{buyerTypeCd}, #{agentTypeCd},
+			CURRENT_TIMESTAMP, #{totCnt}, #{firstGoodsCycleTermTp}, #{firstGoodsCycleTp}, #{firstWeekCd},
+			#{goodsCycleTermTp}, #{goodsCycleTp}, #{weekCd}, #{urPcidCd},
+			#{deliveryDt}, #{regularStatusCd}, #{createRoundYn}, #{salePrice}, #{discountPrice}, #{paidPrice},
+			#{basicDiscountRate}, #{addDiscountRound}, #{addDiscountRate})
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 주문 상세 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진	  	  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderRegularReqOrderDetl" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularReqOrderDetlVo">
+		/* orderRegularRegistration.addOrderRegularReqOrderDetl  */
+		INSERT INTO OD_REGULAR_REQ_ORDER_DETL
+			(OD_REGULAR_REQ_ORDER_DETL_ID, OD_REGULAR_REQ_ID, IL_ITEM_CD, IL_GOODS_ID, ORDER_CNT, SALE_PRICE, REQ_DETAIL_STATUS_CD)
+		VALUES
+			(#{odRegularReqOrderDetlId}, #{odRegularReqId}, #{ilItemCd}, #{ilGoodsId}, #{orderCnt}, #{salePrice}, #{reqDetailStatusCd})
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 주문 상세 중복 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOverlapOrderRegularReqOrderDetlMap" type="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularReqOrderDetlVo" >
+		<result column="OD_REGULAR_REQ_ORDER_DETL_ID"    property="odRegularReqOrderDetlId"  />
+		<result column="OD_REGULAR_REQ_ID"    property="odRegularReqId"  />
+		<result column="IL_GOODS_ID"        property="ilGoodsId" />
+		<result column="ORDER_CNT"      property="orderCnt" />
+		<result column="REQ_DETAIL_STATUS_CD"  property="reqDetailStatusCd" />
+	</resultMap>
+	<select id="getOverlapOrderRegularReqOrderDetl" resultMap="getOverlapOrderRegularReqOrderDetlMap">
+		/*	orderRegularRegistration.getOverlapOrderRegularReqOrderDetl	*/
+		SELECT
+			ORROD.OD_REGULAR_REQ_ORDER_DETL_ID
+			,ORROD.OD_REGULAR_REQ_ID
+			,ORROD.IL_GOODS_ID
+			,ORROD.ORDER_CNT
+			,ORROD.REQ_DETAIL_STATUS_CD
+		FROM
+			OD_REGULAR_REQ_ORDER_DETL ORROD
+		WHERE
+			ORROD.OD_REGULAR_REQ_ID = #{odRegularReqId}
+			AND ORROD.IL_GOODS_ID = #{ilGoodsId}
+			AND ORROD.REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 주문 상세 수량 수정
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		홍진영	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularReqOrderDetlOrderCnt" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularReqOrderDetlVo">
+		/* orderRegularRegistration.putOrderRegularReqOrderDetlOrderCnt */
+        UPDATE OD_REGULAR_REQ_ORDER_DETL SET ORDER_CNT = #{orderCnt}
+        WHERE
+        	OD_REGULAR_REQ_ORDER_DETL_ID = #{odRegularReqOrderDetlId}
+    </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 배송지 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진	  	  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderRegularReqShippingZone" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularReqShippingZoneVo">
+		/* orderRegularRegistration.addOrderRegularReqShippingZone  */
+		INSERT INTO OD_REGULAR_REQ_SHIPPING_ZONE
+			(OD_REGULAR_REQ_SHIPPING_ZONE_ID, OD_REGULAR_REQ_ID, DELIVERY_TYPE,
+			RECV_NM, RECV_HP, RECV_TEL, RECV_MAIL, RECV_ZIP_CD, RECV_ADDR1, RECV_ADDR2,
+			RECV_BLD_NO, DELIVERY_MSG, DELIVERY_MSG_CD, DOOR_ETC, DOOR_MSG_CD, DOOR_MSG, CREATE_DT)
+		VALUES
+			(#{odRegularReqShippingZoneId}, #{odRegularReqId}, #{deliveryType},
+			FN_ENCRYPT(#{recvNm}), FN_ENCRYPT(#{recvHp}), FN_ENCRYPT(#{recvTel}), FN_ENCRYPT(#{recvMail}), FN_ENCRYPT(#{recvZipCd}), FN_ENCRYPT(#{recvAddr1}), FN_ENCRYPT(#{recvAddr2}),
+			#{recvBldNo}, #{deliveryMsg}, #{deliveryMsgCd}, FN_ENCRYPT(#{doorEtc}), #{doorMsgCd}, FN_ENCRYPT(#{doorMsg}), NOW())
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 히스토리 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진	  	  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderRegularReqHistory" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularReqHistoryVo">
+		/* orderRegularRegistration.addOrderRegularReqHistory  */
+		INSERT INTO OD_REGULAR_REQ_HISTORY
+			(OD_REGULAR_REQ_HISTORY_ID, OD_REGULAR_REQ_ID, REGULAR_REQ_GBN_CD,
+			REGULAR_REQ_STATUS_CD, REGULAR_REQ_CONT, CREATE_ID, CREATE_DT)
+		VALUES
+			(#{odRegularReqHistoryId}, #{odRegularReqId}, #{regularReqGbnCd},
+			#{regularReqStatusCd}, #{regularReqCont}, #{createId}, CURRENT_TIMESTAMP)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 메모 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진	  	  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderRegularReqMemo" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularReqMemoVo">
+		/* orderRegularRegistration.addOrderRegularReqMemo  */
+		INSERT INTO OD_REGULAR_REQ_MEMO
+			(OD_REGULAR_REQ_MEMO_ID, OD_REGULAR_REQ_ID, MEMO, CREATE_ID, CREATE_DT)
+		VALUES
+			(#{odRegularReqMemoId}, #{odRegularReqId}, #{memo}, #{createId}, CURRENT_TIMESTAMP)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 결과 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진	  	  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderRegularResult" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularResultVo">
+		/* orderRegularRegistration.addOrderRegularResult  */
+		INSERT INTO OD_REGULAR_RESULT
+			(OD_REGULAR_RESULT_ID, OD_REGULAR_REQ_ID, OD_ORDER_ID, REQ_ROUND,
+			PAYMENT_FAIL_CNT, ORDER_CREATE_DT, PAYMENT_DT, ARRIVE_DT, ORDER_CREATE_YN, REGULAR_STATUS_CD, REQ_ROUND_YN)
+		VALUES
+			(#{odRegularResultId}, #{odRegularReqId}, #{odOrderId}, #{reqRound},
+			#{paymentFailCnt}, #{orderCreateDt}, #{paymentDt}, #{arriveDt}, #{orderCreateYn}, #{regularStatusCd}, #{reqRoundYn})
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 결과 상세 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진	  	  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderRegularResultDetl" parameterType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularResultDetlVo">
+		/* orderRegularRegistration.addOrderRegularResultDetl  */
+		INSERT INTO OD_REGULAR_RESULT_DETL
+			(OD_REGULAR_RESULT_DETL_ID, OD_REGULAR_RESULT_ID, IL_ITEM_CD, IL_GOODS_ID, GOODS_NM, ORDER_CNT, REQ_DETAIL_STATUS_CD, SALE_STATUS)
+		VALUES
+			(#{odRegularResultDetlId}, #{odRegularResultId}, #{ilItemCd}, #{ilGoodsId}, #{goodsNm}, #{orderCnt}, #{reqDetailStatusCd}, #{saleStatus})
+	</insert>
+</mapper>

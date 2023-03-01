@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.order.CalOrderMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부문 구문 전체 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOuIdAllList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.vo.SettleOuMngVo">
+		/*	employee.getOuIdAllList  */
+		SELECT
+			OU_ID,
+			OU_NM,
+			USE_YN,
+			CREATE_DT
+		FROM
+		CA_SETTLE_OU_MNG
+		ORDER BY OU_ID ASC
+	</select>
+
+	<sql id="searchDetailDate">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+					AND oo.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+					AND opm.APPROVAL_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="searchDetailSellersDetail">
+		AND oo.OM_SELLERS_ID IN
+		<foreach collection="omSellersIdList" item="sellersDetail" index="index" separator="," open="(" close=")">
+			#{sellersDetail}
+		</foreach>
+	</sql>
+
+	<sql id="searchTypeListDetail">
+		AND (
+		<foreach collection="salesOrderGubunList" item="sellersGroup" index="index" separator="OR" >
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sellersGroup, "G") or @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sellersGroup, "A")'>
+				(opm.TYPE = #{sellersGroup})
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sellersGroup, "F")'>
+				(opm.TYPE = 'F' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.RETURN')
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sellersGroup, "S")'>
+				(opm.TYPE = 'F' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CS_REFUND')
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sellersGroup, "C")'>
+				(opm.TYPE = 'F' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CANCEL')
+			</if>
+		</foreach>
+		)
+	</sql>
+
+	<sql id="searchCustomerListDetail">
+		AND oo.BUYER_TYPE_CD IN
+		<foreach collection="buyerTypeList" item="buyerTypeCode" index="index" separator="," open="(" close=")">
+			#{buyerTypeCode}
+		</foreach>
+	</sql>
+
+	<sql id="searchPayTypeListDetail">
+		AND opm.PAY_TP IN
+		<foreach collection="paymentMethodList" item="paymentMethodCode" index="index" separator="," open="(" close=")">
+			#{paymentMethodCode}
+		</foreach>
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문정산 카운트 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.30		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalOrderListRequestDto">
+		/* calOrder.getOrderListCount */
+		SELECT
+			COUNT(*) AS CNT
+		FROM OD_PAYMENT_MASTER opm
+		JOIN OD_PAYMENT op ON (op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID)
+		JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = op.OD_ORDER_ID AND oo.ORDER_YN ='Y')
+		LEFT JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = op.OD_CLAIM_ID)
+		WHERE
+		opm.STATUS = 'IC'
+		<include refid="searchDetailDate" />	<!-- 기간조회 -->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+			AND oo.SELLERS_GROUP_CD = #{sellersGroup} 	<!-- 판매처 그룹 코드 -->
+		</if>
+		<if test="omSellersIdList.size() > 0">
+			<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+		</if>
+		<if test="salesOrderGubunList.size() > 0">
+			<include refid="searchTypeListDetail" />			<!-- 구분 조회조건 -->
+		</if>
+		<if test="buyerTypeList.size() > 0">
+			<include refid="searchCustomerListDetail" />			<!-- 주문자 유형 조회조건 -->
+		</if>
+		<if test="paymentMethodList.size() > 0">
+			<include refid="searchPayTypeListDetail" />			<!-- 결제수단 조회조건 -->
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findOdid)"> <!-- 주문번호 -->
+			AND oo.ODID = #{findOdid}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+			AND oo.UR_STORE_ID = #{urStoreId}
+		</if>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문정산 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.30		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderList" resultType="kr.co.pulmuone.v1.calculate.order.dto.CalOrderListDto" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalOrderListRequestDto">
+		/* calOrder.getOrderList */
+		<!-- 주문 정산 내역 -->
+		WITH SUMMERY AS (
+			SELECT
+				s.OD_PAYMENT_MASTER_ID
+				,s.`TYPE`
+				,s.CLAIM_STATUS_TP
+				,s.GOODS_TAX_SETTLE_PRICE + s.GOODS_NON_TAX_SETTLE_PRICE + s.SHIPPING_PRICE AS SETTLE_PRICE
+				,s.GOODS_NON_TAX_SETTLE_PRICE AS NON_TAX_SETTLE_PRICE
+				,s.SHIPPING_DISCOUNT_PRICE
+			FROM (
+				SELECT
+					opm.OD_PAYMENT_MASTER_ID
+					,opm.`TYPE`
+					,oc.CLAIM_STATUS_TP
+					,SUM(
+						IF(opm.`TYPE` = 'F'
+						, IF(cood.TAX_YN = 'Y', IF(ocdd.OD_CLAIM_DETL_DISCOUNT_ID IS NULL, ocd.PAID_PRICE, cood.RECOMMENDED_PRICE * ocd.CLAIM_CNT), 0)
+						, IF(ood.TAX_YN = 'Y', IF(oodd.OD_ORDER_DETL_DISCOUNT_ID IS NULL, ood.PAID_PRICE, ood.RECOMMENDED_PRICE * ood.ORDER_CNT), 0))
+					) AS GOODS_TAX_SETTLE_PRICE
+					,SUM(
+						IF(opm.`TYPE` = 'F'
+						, IF(cood.TAX_YN = 'N', IF(ocdd.OD_CLAIM_DETL_DISCOUNT_ID IS NULL, ocd.PAID_PRICE, cood.RECOMMENDED_PRICE * ocd.CLAIM_CNT), 0)
+						, IF(ood.TAX_YN = 'N', IF(oodd.OD_ORDER_DETL_DISCOUNT_ID IS NULL, ood.PAID_PRICE, ood.RECOMMENDED_PRICE * ood.ORDER_CNT), 0))
+					) AS GOODS_NON_TAX_SETTLE_PRICE
+					,opm.SHIPPING_PRICE
+					,SUM(osp.SHIPPING_DISCOUNT_PRICE) OVER (PARTITION BY osp.OD_SHIPPING_PRICE_ID) AS SHIPPING_DISCOUNT_PRICE
+				FROM OD_PAYMENT_MASTER opm
+				JOIN OD_PAYMENT op ON (op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID)
+				JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = op.OD_ORDER_ID AND oo.ORDER_YN ='Y')
+				LEFT JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_ID = oo.OD_ORDER_ID AND opm.`TYPE` = 'G')
+				LEFT JOIN OD_SHIPPING_PRICE osp ON (osp.OD_SHIPPING_PRICE_ID = ood.OD_SHIPPING_PRICE_ID)
+				LEFT JOIN OD_ORDER_DETL_DISCOUNT oodd ON (oodd.OD_ORDER_ID= ood.OD_ORDER_ID AND oodd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID AND oodd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+				LEFT JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = op.OD_CLAIM_ID AND opm.`TYPE` = 'F')
+				LEFT JOIN OD_CLAIM_DETL ocd ON (ocd.OD_CLAIM_ID = oc.OD_CLAIM_ID)
+				LEFT JOIN OD_ORDER_DETL cood ON (cood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+				LEFT JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON (ocdd.OD_ORDER_ID = cood.OD_ORDER_ID AND ocdd.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ocdd.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+				WHERE
+				opm.STATUS = 'IC'
+				<include refid="searchDetailDate" />	<!-- 기간조회 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+					AND oo.SELLERS_GROUP_CD = #{sellersGroup} 	<!-- 판매처 그룹 코드 -->
+				</if>
+				<if test="omSellersIdList.size() > 0">
+					<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+				</if>
+				<if test="salesOrderGubunList.size() > 0">
+					<include refid="searchTypeListDetail" />			<!-- 구분 조회조건 -->
+				</if>
+				<if test="buyerTypeList.size() > 0">
+					<include refid="searchCustomerListDetail" />			<!-- 주문자 유형 조회조건 -->
+				</if>
+				<if test="paymentMethodList.size() > 0">
+					<include refid="searchPayTypeListDetail" />			<!-- 결제수단 조회조건 -->
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findOdid)"> <!-- 주문번호 -->
+					AND oo.ODID = #{findOdid}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+					AND oo.UR_STORE_ID = #{urStoreId}
+				</if>
+				GROUP BY opm.OD_PAYMENT_MASTER_ID
+			) s
+		)
+		SELECT
+			CASE o.`TYPE`
+				WHEN 'A' THEN '추가'
+				WHEN 'F' THEN FN_COMN_CODE_DIC(o.CLAIM_STATUS_TP)
+				ELSE '매출'
+			END AS TYPE_NM
+			,CASE
+				WHEN o.ORDER_COPY_YN = 'Y' THEN
+					CASE WHEN o.ORDER_COPY_SAL_IF_YN = 'Y' THEN CONCAT(FN_COMN_CODE_DIC(o.AGENT_TYPE_CD), ' (주문복사/매출만연동)')
+					ELSE CONCAT(FN_COMN_CODE_DIC(o.AGENT_TYPE_CD), ' (주문복사)') END
+				WHEN o.ORDER_CREATE_YN = 'Y' THEN
+					CONCAT(FN_COMN_CODE_DIC(o.AGENT_TYPE_CD), ' (주문생성)')
+				ELSE FN_COMN_CODE_DIC(o.AGENT_TYPE_CD)
+			END AS AGENT_TYPE_CD_NM
+			,o.ODID
+			,o.OUTMALL_ID
+			,o.COLLECTION_MALL_ID
+			,IFNULL(os.SELLERS_NM, '-') AS SELLERS_NM
+			,IFNULL(us.NM ,'') AS STORE_NAME
+			,FN_COMN_CODE_DIC(o.BUYER_TYPE_CD) AS BUYER_TYPE_CD_NM
+			,FN_COMN_CODE_DIC(o.PAY_TP) AS PAY_TP_NM
+			,CASE WHEN IFNULL(o.PG_SERVICE, '') = '' THEN '-' ELSE IF(o.PG_SERVICE LIKE 'PG_ACCOUNT_TYPE.INICIS%', '이니시스' ,'kcp') END AS PG_SERVICE_NM
+			,o.ORDER_DT
+			,o.APPROVAL_DT
+			,IF(o.`TYPE` = 'F' AND o.SALE_PRICE > 0, CONCAT('-',o.SALE_PRICE), o.SALE_PRICE) AS SALE_PRICE
+			,IF(o.`TYPE` = 'F', o.SHIPPING_PRICE * -1, o.SHIPPING_PRICE) AS SHIPPING_PRICE
+			,IF(o.`TYPE` = 'F', o.PAYMENT_PRICE * -1, o.PAYMENT_PRICE) AS PAYMENT_PRICE
+			,IF(o.`TYPE` = 'F', o.SETTLE_PRICE * -1, o.SETTLE_PRICE) AS SETTLE_PRICE
+			,IF(o.`TYPE` = 'F', o.POINT_PRICE * -1, o.POINT_PRICE) AS POINT_PRICE
+			,IF(o.`TYPE` = 'F' AND o.GOODS_COUPON_PRICE > 0, CONCAT('-',o.GOODS_COUPON_PRICE), o.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+			,IF(o.`TYPE` = 'F' AND o.CART_COUPON_PRICE > 0, CONCAT('-',o.CART_COUPON_PRICE), o.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+			,IF(o.`TYPE` = 'F', ROUND((o.SETTLE_PRICE -o.NON_TAX_SETTLE_PRICE) / 1.1) * -1, ROUND((o.SETTLE_PRICE -o.NON_TAX_SETTLE_PRICE) / 1.1)) AS VAT_REMOVE_SETTLE_PRICE
+			,IF(o.`TYPE` = 'F', (o.SETTLE_PRICE - o.NON_TAX_SETTLE_PRICE - ROUND((o.SETTLE_PRICE - o.NON_TAX_SETTLE_PRICE) / 1.1)) * -1, (o.SETTLE_PRICE - o.NON_TAX_SETTLE_PRICE - ROUND((o.SETTLE_PRICE - o.NON_TAX_SETTLE_PRICE) / 1.1))) AS VAT
+			,IFNULL(IF(o.`TYPE` = 'F', o.SHIPPING_DISCOUNT_PRICE * -1, o.SHIPPING_DISCOUNT_PRICE),'0') AS SHIPPING_DISCOUNT_PRICE
+			,CASE o.`TYPE`
+				WHEN 'F' THEN IFNULL((SELECT SUM(ppud.AMOUNT) FROM PM_POINT_USED_DETL ppud WHERE ppud.UR_USER_ID = o.UR_USER_ID AND ppud.REF_NO1 = o.ODID AND ppud.REF_NO2 = o.OD_CLAIM_ID AND ppud.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDVC'), 0) * -1
+				WHEN 'G' THEN IFNULL((SELECT SUM(ppud.AMOUNT) FROM PM_POINT_USED_DETL ppud WHERE ppud.UR_USER_ID = o.UR_USER_ID AND ppud.REF_NO1 = o.ODID AND ppud.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWVP'), 0) * -1
+				ELSE 0
+			END AS TICKET_POINT_PRICE
+			,CASE o.`TYPE`
+				WHEN 'F' THEN IFNULL((SELECT SUM(ppud.AMOUNT) FROM PM_POINT_USED_DETL ppud WHERE ppud.UR_USER_ID = o.UR_USER_ID AND ppud.REF_NO1 = o.ODID AND ppud.REF_NO2 = o.OD_CLAIM_ID AND ppud.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC'), 0) * -1
+				WHEN 'G' THEN IFNULL((SELECT SUM(ppud.AMOUNT) FROM PM_POINT_USED_DETL ppud WHERE ppud.UR_USER_ID = o.UR_USER_ID AND ppud.REF_NO1 = o.ODID AND ppud.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWNP'), 0) * -1
+				ELSE 0
+			END AS FREE_POINT_PRICE
+			,IFNULL((SELECT SUM(IF(s.`TYPE` = 'F', s.SETTLE_PRICE * -1, s.SETTLE_PRICE)) FROM SUMMERY s),'0') AS TOTAL_TAXABLE_PRICE
+		FROM (
+			SELECT
+				opm.`TYPE`
+				,s.CLAIM_STATUS_TP
+				,oo.ORDER_COPY_YN
+				,oo.ORDER_COPY_SAL_IF_YN
+				,oo.AGENT_TYPE_CD
+				,oo.ORDER_CREATE_YN
+				,oo.ODID
+				,oo.OUTMALL_ID
+				,oo.COLLECTION_MALL_ID
+				,oo.OM_SELLERS_ID
+				,oo.BUYER_TYPE_CD
+				,opm.PAY_TP
+				,opm.PG_SERVICE
+				,oo.CREATE_DT AS ORDER_DT
+				,opm.APPROVAL_DT
+				,opm.SALE_PRICE
+				,opm.SHIPPING_PRICE
+				,s.SHIPPING_DISCOUNT_PRICE
+				,opm.PAYMENT_PRICE
+				,s.SETTLE_PRICE
+				,s.NON_TAX_SETTLE_PRICE
+				,opm.POINT_PRICE
+				,opm.GOODS_COUPON_PRICE
+				,opm.CART_COUPON_PRICE
+				,oo.OD_ORDER_ID
+				,op.OD_CLAIM_ID
+				,oo.UR_USER_ID
+				,oo.UR_STORE_ID
+			FROM OD_PAYMENT_MASTER opm
+			JOIN OD_PAYMENT op ON (op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID)
+			JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = op.OD_ORDER_ID AND oo.ORDER_YN ='Y')
+			JOIN SUMMERY s ON opm.OD_PAYMENT_MASTER_ID = s.OD_PAYMENT_MASTER_ID
+			WHERE opm.STATUS = 'IC'
+			<include refid="searchDetailDate" />	<!-- 기간조회 -->
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+				AND oo.SELLERS_GROUP_CD = #{sellersGroup} 	<!-- 판매처 그룹 코드 -->
+			</if>
+			<if test="omSellersIdList.size() > 0">
+				<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+			</if>
+<!--			<if test="salesOrderGubunList.size() > 0">-->
+<!--				<include refid="searchTypeListDetail" />			&lt;!&ndash; 구분 조회조건 &ndash;&gt;-->
+<!--			</if>-->
+			<if test="buyerTypeList.size() > 0">
+				<include refid="searchCustomerListDetail" />			<!-- 주문자 유형 조회조건 -->
+			</if>
+			<if test="paymentMethodList.size() > 0">
+				<include refid="searchPayTypeListDetail" />			<!-- 결제수단 조회조건 -->
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findOdid)"> <!-- 주문번호 -->
+				AND oo.ODID = #{findOdid}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+				AND oo.UR_STORE_ID = #{urStoreId}
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+				<include refid="_common.pageLimit"/>
+			</if>
+		) o
+		LEFT JOIN OM_SELLERS os ON os.OM_SELLERS_ID = o.OM_SELLERS_ID
+		LEFT JOIN UR_STORE us ON us.UR_STORE_ID = o.UR_STORE_ID
+	</select>
+</mapper>

@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.faq.CustomerFaqMapper">
+
+    <resultMap id="getFaqListByUserMap" type="kr.co.pulmuone.v1.customer.faq.dto.vo.GetFaqListByUserResultVo">
+        <result column="CS_FAQ_ID"               property="csFaqId" />
+        <result column="TITLE" 		             property="title" />
+        <result column="CONTENT"       	         property="content" />
+        <result column="FAQ_TP" 	             property="faqType" />
+        <result column="FAQ_TP_NM"      	     property="faqTypeName" />
+        <result column="CREATE_DT"      	     property="createDate" />
+    </resultMap>
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 고객센터 FAQ 게시판 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 202.11.25		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getFaqListByUser" resultMap="getFaqListByUserMap">
+        /* customerFaq.getFaqListByUser */
+        SELECT
+		       CF.CS_FAQ_ID
+		      ,CF.TITLE
+		      ,CF.CONTENT
+		      ,CF.FAQ_TP
+		      ,IFNULL(CF.MODIFY_DT, CF.CREATE_DT) AS CREATE_DT
+		      ,FN_COMN_CODE_DIC(CF.FAQ_TP) AS FAQ_TP_NM
+          FROM
+               CS_FAQ CF
+        WHERE
+               CF.FAQ_VIEW_YN = 'Y'
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(faqType)">
+	      AND CF.FAQ_TP = #{faqType}
+ 		</if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchWord)">
+          AND (CF.TITLE LIKE CONCAT('%',#{searchWord},'%') OR CF.CONTENT LIKE CONCAT('%',#{searchWord},'%'))
+       	</if>
+        ORDER BY CF.VIEW_SORT ASC, CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: FAQ 게시글 조회수 증가
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.07		최윤지		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="addFaqViews">
+	/* customerFaq.addFaqViews */
+		UPDATE CS_FAQ
+		SET VIEWS = VIEWS + 1
+		WHERE CS_FAQ_ID = #{csFaqId}
+	</update>
+
+	  <!--───────────────────────────────────────────────────────────────────────
+     * description 		: FAQ 관리 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.01		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.faq.dto.vo.FaqBosListVo" id="getFaqListResultMap">
+        <result column="FAQ_TYPE_NAME" property="faqTypeName"/>
+        <result column="TITLE" property="faqTitle"/>
+        <result column="USER_NAME" property="userName"/>
+        <result column="CREATE_ID" property="userId"/>
+        <result column="CREATE_DT" property="createDate"/>
+        <result column="FAQ_VIEW_YN" property="displayYn"/>
+        <result column="VIEWS" property="viewCount"/>
+        <result column="VIEW_SORT" property="viewSort"/>
+        <result column="CONTENT" property="content"/>
+        <result column="CS_FAQ_ID" property="faqId"/>
+    </resultMap>
+    <select id="getFaqList" resultMap="getFaqListResultMap">
+        /* faq.getFaqList */
+        SELECT
+        		A.*
+        FROM
+        (
+	        SELECT
+				C.FAQ_TP
+				,FN_COMN_CODE_DIC(C.FAQ_TP) AS FAQ_TYPE_NAME
+				,C.TITLE
+				,FN_DECRYPT(U.USER_NM) AS USER_NAME
+				,U.LOGIN_ID AS CREATE_ID
+				,C.FAQ_VIEW_YN
+				,CASE WHEN C.MODIFY_DT IS NOT NULL THEN C.MODIFY_DT
+				      ELSE C.CREATE_DT
+				 END AS CREATE_DT
+				,C.VIEWS
+				,C.VIEW_SORT
+				,C.CONTENT
+				,C.CS_FAQ_ID
+			FROM CS_FAQ C
+			INNER JOIN UR_USER U ON C.CREATE_ID = U.UR_USER_ID
+		) AS A
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.CREATE_USER")'>
+					AND A.USER_NAME IN
+					<foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+						#{findKeyword}
+					</foreach>
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.CREATE_ID")'>
+					AND A.CREATE_ID IN
+					<foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+						#{findKeyword}
+					</foreach>
+				</when>
+			</choose>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findManyKeyword)">
+        	<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.TITLE")'>
+					AND A.TITLE LIKE CONCAT('%',#{findManyKeyword},'%')
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.CONTENT")'>
+					AND A.CONTENT LIKE CONCAT('%',#{findManyKeyword},'%')
+	            </when>
+	            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.TITLE_CONTENT")'>
+					AND (A.TITLE LIKE CONCAT('%',#{findManyKeyword},'%') OR A.CONTENT LIKE CONCAT('%',#{findManyKeyword},'%'))
+				</when>
+			</choose>
+        </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchFaqSelect)">
+            	AND A.FAQ_TP = #{searchFaqSelect}
+            </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+            	AND A.CREATE_DT between  #{createDateStart} AND (#{createDateEnd}+ INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            </if>
+        </if>
+		ORDER BY A.CREATE_DT DESC
+
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: FAQ 관리 상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.01		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getDetailFaqResultMap" type="kr.co.pulmuone.v1.customer.faq.dto.vo.FaqBosDetailVo">
+        <result column="CS_FAQ_ID"   	property="faqId" />
+        <result column="FAQ_TP"         property="faqType" />
+        <result column="FAQ_TYPE_NAME"  property="faqTypeName" />
+        <result column="FAQ_TITLE"      property="faqTitle" />
+        <result column="CONTENT"        property="content" />
+        <result column="VIEW_COUNT"     property="viewCount" />
+        <result column="VIEW_SORT"      property="viewSort" />
+        <result column="DISPLAY_YN"     property="displayYn" />
+    </resultMap>
+    <select id="getDetailFaq" resultMap="getDetailFaqResultMap">
+        /* faq.getDetailFaq */
+	        SELECT
+			       F.CS_FAQ_ID
+			     , F.FAQ_TP
+			     , FN_COMN_CODE_DIC(F.FAQ_TP) AS FAQ_TYPE_NAME
+			     , F.TITLE AS FAQ_TITLE
+	             , F.CONTENT
+	             , F.VIEWS AS VIEW_COUNT
+	             , F.VIEW_SORT
+	             , F.FAQ_VIEW_YN AS DISPLAY_YN
+	          FROM CS_FAQ F
+        WHERE F.CS_FAQ_ID = #{faqId}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: FAQ 신규 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.01		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addFaqInfo">
+	/* faq.addFaqInfo */
+		INSERT INTO CS_FAQ
+		(
+			FAQ_TP,
+			TITLE,
+			CONTENT,
+			FAQ_VIEW_YN,
+			VIEWS,
+			VIEW_SORT,
+			CREATE_DT,
+			CREATE_ID
+		)
+		VALUES
+		(
+			#{faqType},
+			#{faqTitle},
+			#{content},
+			#{displayYn},
+			0,
+			#{viewSort},
+			now(),
+			#{userVo.userId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: FAQ 관리정보 수정
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.02		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putFaqInfo">
+	/* faq.putFaqInfo */
+		UPDATE CS_FAQ
+		SET MODIFY_DT		= now()
+			, MODIFY_ID		= #{userVo.userId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(faqType)">
+			, FAQ_TP 			= #{faqType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(faqTitle)">
+			, TITLE			= #{faqTitle}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(content)">
+			, CONTENT		= #{content}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayYn)">
+			, FAQ_VIEW_YN	= #{displayYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(viewSort)">
+			, VIEW_SORT  	= #{viewSort}
+		</if>
+		WHERE CS_FAQ_ID = #{faqId}
+
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: FAQ 정보 삭제
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.02		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteFaqInfo">
+	/* faq.deleteFaqInfo */
+		DELETE
+		FROM CS_FAQ
+		WHERE CS_FAQ_ID = #{faqId}
+	</delete>
+
+</mapper>

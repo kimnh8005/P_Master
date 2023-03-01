@@ -1,0 +1,934 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.auth.SystemAuthMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS계정관리 - 역할관리 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getRoleTypeListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.AuthUserRoleTypeVo">
+        <result column="ROLE_TYPE_ID" property="roleTypeId" />
+        <result column="ROLE_TYPE_NAME" property="roleTypeName" />
+        <result column="ERP_ORGANIZATION_CODE" property="erpOrganizationCode" />
+        <result column="ERP_REGAL_CODE" property="erpRegalCode" />
+    </resultMap>
+
+    <select id="getRoleTypeList" resultMap="getRoleTypeListResultMap">
+        /* systemAuth.getRoleTypeList */
+        SELECT ST_ROLE_TP_ID AS ROLE_TYPE_ID /* 역할타입 ID */
+             , ROLE_NM AS ROLE_TYPE_NAME /* 역할타입명 */
+             , ERP_ORGANIZATION_CD AS ERP_ORGANIZATION_CODE /* ERP 조직코드 */
+             , ERP_REGAL_CD AS ERP_REGAL_CODE /* ERP 법인코드 */
+          FROM ST_ROLE_TYPE
+         WHERE USE_YN = 'Y'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS계정관리 - 회원 별 역할권한 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.14     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getAuthUserRoleTypeListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.AuthUserRoleTypeVo">
+        <result column="AUTH_USER_MAPPING_ID" property="authUserMappingId" />
+        <result column="ROLE_TYPE_ID" property="roleTypeId" />
+        <result column="USER_ID" property="userId" />
+        <result column="ROLE_TYPE_NAME" property="roleTypeName" />
+        <result column="CREATE_DATE" property="createDate" />
+    </resultMap>
+
+    <select id="getAuthUserRoleTypeList" resultMap="getAuthUserRoleTypeListResultMap">
+        /* systemAuth.getAuthUserRoleTypeList */
+        SELECT AUM.ST_AUTH_USER_MAPPING_ID AS AUTH_USER_MAPPING_ID /* 사용자권한매핑 ID */
+             , AUM.ST_ROLE_TP_ID AS ROLE_TYPE_ID /* 역할타입 ID */
+             , AUM.UR_USER_ID AS USER_ID /* 회원 ID */
+             , RT.ROLE_NM AS ROLE_TYPE_NAME /* 역할타입명 */
+             , DATE_FORMAT(AUM.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DATE /* 권한부여일자 */
+          FROM ST_AUTH_USER_MAPPING AUM
+          JOIN ST_ROLE_TYPE RT
+            ON AUM.ST_ROLE_TP_ID = RT.ST_ROLE_TP_ID
+         WHERE AUM.UR_USER_ID = #{userId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 사용자권한 변경이력 추가
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addAuthUserChangeHist">
+        /* systemAuth.addAuthUserChangeHist */
+        INSERT INTO ST_AUTH_USER_CHANGE_HIST
+        (
+          TARGET_UR_USER_ID
+        , ST_ROLE_TP_ID
+        , ACTION
+        , HANDLE_UR_USER_ID
+        , CREATE_DT
+        , CREATE_ID
+        )
+        VALUES
+        (
+          #{targetUserId}
+        , #{roleTypeId}
+        , #{action}
+        , #{handleUserId}
+        , NOW()
+        , #{createId}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 사용자권한 매핑 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addAuthUserMapping">
+        /* systemAuth.addAuthUserMapping */
+        INSERT INTO ST_AUTH_USER_MAPPING
+        (
+          ST_ROLE_TP_ID
+        , UR_USER_ID
+        , CREATE_DT
+        , CREATE_ID
+        )
+        VALUES
+        (
+          #{roleTypeId}
+        , #{userId}
+        , NOW()
+        , #{createId}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 사용자권한 매핑 삭제
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delAuthUserMapping">
+        /* systemAuth.delAuthUserMapping */
+        DELETE FROM ST_AUTH_USER_MAPPING
+         WHERE ST_ROLE_TP_ID = #{roleTypeId}
+           AND UR_USER_ID = #{userId}
+    </delete>
+
+
+    <resultMap id="getRoleListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.GetRoleListResultVo">
+        <result column="ST_ROLE_TYPE_ID"  property="stRoleTypeId"/>
+        <result column="ROLE_NAME"      property="roleName"/>
+        <result column="USE_YN"         property="useYn"/>
+        <result column="ERP_REGAL_NAME"      property="erpRegalName"/>
+        <result column="ERP_ORGANIZATION_NAME"         property="erpOrganizationName"/>
+    </resultMap>
+
+    <select id="getRoleList" resultMap="getRoleListResultMap">
+        /* systemAuth.getRoleList */
+        SELECT SRT.ST_ROLE_TP_ID AS ST_ROLE_TYPE_ID
+        , SRT.ROLE_NM AS ROLE_NAME
+        , SRT.USE_YN
+        , UER.ERP_REGAL_NM AS ERP_REGAL_NAME
+        , UEO.ERP_ORGANIZATION_NM AS ERP_ORGANIZATION_NAME
+        FROM ST_ROLE_TYPE SRT
+        LEFT OUTER JOIN UR_ERP_REGAL UER
+        ON UER.ERP_REGAL_CD = SRT.ERP_REGAL_CD
+        LEFT OUTER JOIN UR_ERP_ORGANIZATION UEO
+        ON UEO.ERP_ORGANIZATION_CD  = SRT.ERP_ORGANIZATION_CD
+        WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stRoleTypeId)">
+            AND SRT.ST_ROLE_TP_ID = #{stRoleTypeId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(roleName)">
+            AND UPPER(SRT.ROLE_NM) LIKE CONCAT(UPPER(#{roleName}),'%')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+            AND SRT.USE_YN = #{useYn}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalCode)">
+            AND UER.ERP_REGAL_CD = #{erpRegalCode}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpOrganizationCode)">
+            AND UEO.ERP_ORGANIZATION_CD = #{erpOrganizationCode}
+        </if>
+        ORDER BY SRT.CREATE_DT DESC
+    </select>
+
+    <select id="getRoleListCount" resultType="int">
+        /* systemAuth.getRoleListCount */
+        SELECT COUNT(*) AS TOTAL
+        FROM ST_ROLE_TYPE SRT
+        LEFT OUTER JOIN UR_ERP_REGAL UER
+        ON UER.ERP_REGAL_CD = SRT.ERP_REGAL_CD
+        LEFT OUTER JOIN UR_ERP_ORGANIZATION UEO
+        ON UEO.ERP_ORGANIZATION_CD  = SRT.ERP_ORGANIZATION_CD
+        WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stRoleTypeId)">
+            AND SRT.ST_ROLE_TP_ID = #{stRoleTypeId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(roleName)">
+            AND UPPER(SRT.ROLE_NM) LIKE CONCAT(UPPER(#{roleName}),'%')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+            AND SRT.USE_YN = #{useYn}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalCode)">
+            AND UER.ERP_REGAL_CD = #{erpRegalCode}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpOrganizationCode)">
+            AND UEO.ERP_ORGANIZATION_CD = #{erpOrganizationCode}
+        </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 역할그룹관리 -단일조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23	김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getRoleResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.GetRoleResultVo">
+        <result column="INPUT_ST_ROLE_TYPE_ID"  property="inputStRoleTypeId"/>
+        <result column="INPUT_ROLE_NAME"  property="inputRoleName"/>
+        <result column="INPUT_USE_YN"         property="inputUseYn"/>
+        <result column="ERP_REGAL_CODE"  property="inputErpRegalCode"/>
+        <result column="ERP_REGAL_NAME"         property="inputErpRegalName"/>
+        <result column="ERP_ORGANIZATION_CODE"  property="inputErpOrganizationCode"/>
+        <result column="ERP_ORGANIZATION_NAME"         property="inputErpOrganizationName"/>
+        <result column="SECTOR_ALL_VIEW_YN"         property="sectorAllViewYn"/>
+    </resultMap>
+    <select id="getRole" resultMap="getRoleResultMap" >
+	/* systemAuth.getRole */
+		SELECT
+		  	SRT.ST_ROLE_TP_ID as INPUT_ST_ROLE_TYPE_ID
+			,SRT.ROLE_NM AS INPUT_ROLE_NAME
+			,SRT.USE_YN AS  INPUT_USE_YN
+			,UER.ERP_REGAL_CD AS ERP_REGAL_CODE
+			,UER.ERP_REGAL_NM AS ERP_REGAL_NAME
+			,UEO.ERP_ORGANIZATION_CD AS ERP_ORGANIZATION_CODE
+			,UEO.ERP_ORGANIZATION_NM AS ERP_ORGANIZATION_NAME
+			,SRT.SECTOR_ALL_VIEW_YN
+		FROM ST_ROLE_TYPE SRT
+		LEFT OUTER JOIN UR_ERP_REGAL UER
+			ON UER.ERP_REGAL_CD = SRT.ERP_REGAL_CD
+		LEFT OUTER JOIN UR_ERP_ORGANIZATION UEO
+			ON UEO.ERP_ORGANIZATION_CD  = SRT.ERP_ORGANIZATION_CD
+		WHERE 1=1
+    		AND ST_ROLE_TP_ID = #{stRoleTypeId}
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 역할그룹관리 - 추가
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addRole">
+        /* systemAuth.addRole */
+        INSERT INTO ST_ROLE_TYPE(
+        ROLE_NM  			<!--역할명  -->
+        ,USE_YN  			<!--사용여부  -->
+        ,SECTOR_ALL_VIEW_YN	<!--부문 전체 조회 가능여부  -->
+        ,CREATE_ID
+        ,ERP_REGAL_CD
+        ,ERP_ORGANIZATION_CD
+        )
+        VALUES(
+        #{inputRoleName}			<!--역할명  -->
+        ,#{inputUseYn}				<!--사용여부  -->
+        ,#{inputSectorAllViewYn}	<!--부문 전체 조회 가능여부  -->
+        ,#{userVo.userId}
+        ,#{inputErpRegalCode}
+        ,#{inputErpOrganizationCode}
+        )
+        <selectKey resultType="String" keyProperty="inputStRoleTypeId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+         * description 		: 역할그룹관리 - 수정
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.06.23		김경민          최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+    <update id="putRole">
+		/* systemAuth.putRole */
+		UPDATE ST_ROLE_TYPE
+		SET
+			ROLE_NM     = #{inputRoleName}
+			,USE_YN     = #{inputUseYn}
+			,SECTOR_ALL_VIEW_YN     = #{inputSectorAllViewYn}
+			,MODIFY_ID  = #{userVo.userId}
+			,ERP_REGAL_CD = #{inputErpRegalCode}
+			,ERP_ORGANIZATION_CD = #{inputErpOrganizationCode}
+		WHERE  	ST_ROLE_TP_ID=#{inputStRoleTypeId}
+	</update>
+    <!--───────────────────────────────────────────────────────────────────────
+         * description 		: 역할그룹관리 - 삭제
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.06.23		김경민          최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delRole">
+		/* systemAuth.delRole */
+		DELETE FROM ST_ROLE_TYPE
+		WHERE  ST_ROLE_TP_ID = #{inputStRoleTypeId}
+	</delete>
+
+
+    <select id="duplicateRoleCount" resultType="int">
+		/* systemAuth.duplicateRoleCount */
+		SELECT	COUNT(*)
+		FROM ST_ROLE_TYPE
+		WHERE 1=1
+		AND ST_ROLE_TP_ID != #{inputStRoleTypeId}
+		AND USE_YN  = #{inputUseYn}
+		AND ROLE_NM = #{inputRoleName}
+	</select>
+
+    <select id="existforeignKeyCount" resultType="int">
+		/* systemAuth.existforeignKeyCount */
+		SELECT	COUNT(*)
+		FROM ST_AUTH_USER_MAPPING
+		WHERE 1=1
+		AND ST_ROLE_TP_ID = #{inputStRoleTypeId}
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 사용자권한관리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23	김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getRoleListWithoutPagingResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.getRoleListWithoutPagingResultVo">
+        <result column="ST_ROLE_TYPE_ID"  property="stRoleTypeId"/>
+        <result column="ROLE_NAME"      property="roleName"/>
+    </resultMap>
+
+    <select id="getRoleListWithoutPaging" resultMap="getRoleListWithoutPagingResultMap">
+			/* systemAuth.getRoleListWithoutPaging */
+			SELECT 	ST_ROLE_TP_ID as ST_ROLE_TYPE_ID
+							,ROLE_NM AS ROLE_NAME
+			FROM ST_ROLE_TYPE
+			WHERE 1=1
+			AND USE_YN = 'Y'
+			ORDER BY CREATE_DT DESC
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 관리자 권한 관리 - 권한 할당 안된 관리자 리스트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23	김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="GetAuthUserOutListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.GetAuthUserResultVo">
+        <result column="LOGIN_ID"     		property="loginId"/>
+        <result column="USER_NAME"    		property="userName"/>
+        <result column="REGAL_NAME"     	property="regalName"/>
+        <result column="ORGANIZATION_NAME"	property="organizationName"/>
+        <result column="EMAIL"				property="email"/>
+        <result column="UR_USER_ID"			property="urUserId"/>
+        <result column="COMP_TP"			property="compTp"/>
+        <result column="COMP_TP_NM"			property="compTpNm"/>
+        <result column="COMP_NM"			property="compNm"/>
+        <result column="CLIENT_TP_NM"		property="clientTpNm"/>
+    </resultMap>
+
+    <select id="GetAuthUserOutList" resultMap="GetAuthUserOutListResultMap">
+        /* systemAuth.GetAuthUserOutList */
+        SELECT
+        UU.LOGIN_ID AS LOGIN_ID
+        , FN_DECRYPT(UU.USER_NM) AS USER_NAME
+        , IFNULL(UE.REGAL_NM, '') AS REGAL_NAME
+        , IFNULL(UE.ORGANIZATION_NM, '') AS ORGANIZATION_NAME
+        , IFNULL(FN_DECRYPT(UE.EMAIL), '') AS EMAIL
+        , UU.UR_USER_ID AS UR_USER_ID
+		, UC.COMP_TP AS COMP_TP
+		, FN_COMN_CODE_DIC(UC.COMP_TP) AS COMP_TP_NM
+		, IFNULL(UC.COMP_NM, '') AS COMP_NM
+		, IFNULL((
+			SELECT
+				FN_COMN_CODE_DIC(CLI.CLIENT_TP)
+			FROM
+				UR_CLIENT CLI
+			WHERE
+				CLI.UR_COMPANY_ID = UC.UR_COMPANY_ID
+			LIMIT 1
+		), '') AS CLIENT_TP_NM
+        FROM
+        	UR_USER UU
+	        INNER JOIN UR_EMPLOYEE UE
+	        	ON UE.UR_USER_ID = UU.UR_USER_ID
+	        	AND UE.STATUS_TP != 'EMPLOYEE_STATUS.RESIGN'
+			INNER JOIN UR_COMPANY UC
+				ON UC.UR_COMPANY_ID = UE.UR_COMPANY_ID
+	        LEFT OUTER JOIN ST_AUTH_USER_MAPPING SAUM
+		        ON SAUM.UR_USER_ID = UU.UR_USER_ID
+		        AND SAUM.ST_ROLE_TP_ID = #{stRoleTypeId}
+	        LEFT OUTER JOIN UR_ERP_REGAL UER
+		        ON UER.ERP_REGAL_NM = UE.REGAL_NM
+	        LEFT OUTER JOIN UR_ERP_ORGANIZATION UEO
+		        ON UEO.ERP_ORGANIZATION_NM = UE.ORGANIZATION_NM
+        WHERE
+        	UU.USER_TP = ('USER_TYPE.EMPLOYEE')
+	        AND SAUM.UR_USER_ID IS NULL
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(loginId)">
+	            AND UU.LOGIN_ID LIKE CONCAT(#{loginId}, '%')
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userName)">
+	            AND UU.USER_NM = FN_ENCRYPT(#{userName})
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(regalName)">
+	            AND UER.ERP_REGAL_CD = #{regalName}
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(organizationName)">
+	            AND UEO.ERP_ORGANIZATION_NM = #{organizationName}
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(email)">
+	            AND UE.EMAIL = FN_ENCRYPT(#{email})
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(notUrUserIds)">
+	        	AND UU.UR_USER_ID NOT IN
+		        <foreach item="urUserId" index="index" collection="notUrUserIdList" open="(" separator="," close=")">
+		            #{urUserId}
+		        </foreach>
+	        </if>
+        ORDER BY
+        UE.CREATE_DT DESC
+    </select>
+
+    <select id="GetAuthUserOutListCount" resultType="int">
+        /* systemAuth.GetAuthUserOutListCount */
+        SELECT
+        COUNT(*)
+        FROM UR_USER UU
+        LEFT OUTER JOIN UR_EMPLOYEE UE
+        ON UE.UR_USER_ID = UU.UR_USER_ID
+        LEFT OUTER JOIN ST_AUTH_USER_MAPPING SAUM
+        ON SAUM.UR_USER_ID = UU.UR_USER_ID
+        AND SAUM.ST_ROLE_TP_ID = #{stRoleTypeId}
+        LEFT OUTER JOIN UR_ERP_REGAL UER
+        ON UER.ERP_REGAL_NM = UE.REGAL_NM
+        LEFT OUTER JOIN UR_ERP_ORGANIZATION UEO
+        ON UEO.ERP_ORGANIZATION_NM = UE.ORGANIZATION_NM
+        WHERE
+        1 = 1
+        AND UU.USER_TP = ('USER_TYPE.EMPLOYEE')
+        AND SAUM.UR_USER_ID IS NULL
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(loginId)">
+            AND UU.LOGIN_ID LIKE CONCAT(#{loginId}, '%')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userName)">
+            AND UU.USER_NM = FN_ENCRYPT(#{userName})
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(regalName)">
+            AND UER.ERP_REGAL_CD = #{regalName}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(organizationName)">
+            AND UEO.ERP_ORGANIZATION_NM = #{organizationName}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(email)">
+            AND UE.EMAIL = FN_ENCRYPT(#{email})
+        </if>
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 관리자 권한 관리 - 권한 할당된 관리자 리스트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getAuthUserInListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.GetAuthUserResultVo">
+        <result column="LOGIN_ID"     		property="loginId"/>
+        <result column="USER_NAME"    		property="userName"/>
+        <result column="REGAL_NAME"     	property="regalName"/>
+        <result column="ORGANIZATION_NAME"	property="organizationName"/>
+        <result column="EMAIL"				property="email"/>
+        <result column="UR_USER_ID"			property="urUserId"/>
+        <result column="ST_ROLE_TP_ID"			property="stRoleTypeId"/>
+        <result column="COMP_TP"			property="compTp"/>
+        <result column="COMP_TP_NM"			property="compTpNm"/>
+        <result column="COMP_NM"			property="compNm"/>
+        <result column="CLIENT_TP_NM"		property="clientTpNm"/>
+    </resultMap>
+
+    <select id="getAuthUserInList" resultMap="getAuthUserInListResultMap">
+        /* systemAuth.getAuthUserInList */
+        SELECT
+        UU.LOGIN_ID AS LOGIN_ID
+        , FN_DECRYPT(UU.USER_NM) AS USER_NAME
+        , IFNULL(UE.REGAL_NM, '') AS REGAL_NAME
+        , IFNULL(UE.ORGANIZATION_NM, '') AS ORGANIZATION_NAME
+        , IFNULL(FN_DECRYPT(UE.EMAIL), '') AS EMAIL
+        , UU.UR_USER_ID
+        , SAUM.ST_ROLE_TP_ID
+		, UC.COMP_TP AS COMP_TP
+		, FN_COMN_CODE_DIC(UC.COMP_TP) AS COMP_TP_NM
+		, IFNULL(UC.COMP_NM, '') AS COMP_NM
+		, IFNULL((
+			SELECT
+				FN_COMN_CODE_DIC(CLI.CLIENT_TP)
+			FROM
+				UR_CLIENT CLI
+			WHERE
+				CLI.UR_COMPANY_ID = UC.UR_COMPANY_ID
+			LIMIT 1
+		), '') AS CLIENT_TP_NM
+        FROM
+	        UR_USER UU
+	        INNER JOIN UR_EMPLOYEE UE
+	        	ON UE.UR_USER_ID = UU.UR_USER_ID
+			INNER JOIN UR_COMPANY UC
+				ON UC.UR_COMPANY_ID = UE.UR_COMPANY_ID
+	        LEFT OUTER JOIN ST_AUTH_USER_MAPPING SAUM
+		        ON SAUM.UR_USER_ID = UU.UR_USER_ID
+		        AND SAUM.ST_ROLE_TP_ID = #{stRoleTypeId}
+        WHERE
+	        UU.USER_TP = ('USER_TYPE.EMPLOYEE')
+	        AND SAUM.UR_USER_ID IS NOT NULL
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchData)">
+	            AND (
+	            UU.USER_NM = FN_ENCRYPT(#{searchData})
+	            OR UU.LOGIN_ID LIKE CONCAT(#{searchData}, '%')
+	            )
+	        </if>
+        ORDER BY
+        UE.CREATE_DT DESC
+    </select>
+
+    <select id="getAuthUserInListCount" resultType="int">
+		/* systemAuth.getAuthUserInListCount */
+		SELECT
+			COUNT(*)
+		FROM
+			UR_USER UU
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+			ON UE.UR_USER_ID = UU.UR_USER_ID
+		LEFT OUTER JOIN ST_AUTH_USER_MAPPING SAUM
+			ON SAUM.UR_USER_ID = UU.UR_USER_ID
+			AND SAUM.ST_ROLE_TP_ID = #{stRoleTypeId}
+		WHERE
+			1 = 1
+			AND UU.USER_TP = ('USER_TYPE.EMPLOYEE')
+			AND SAUM.UR_USER_ID IS NOT NULL
+	</select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 관리자 권한 관리 수정 History 생성
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addListcheckDelAuthUsers" >
+        /* systemAuth.addListcheckDelAuthUsers */
+        insert into ST_AUTH_USER_CHANGE_HIST
+        (
+        TARGET_UR_USER_ID
+        ,ST_ROLE_TP_ID
+        ,ACTION
+        ,HANDLE_UR_USER_ID
+        ,CREATE_DT
+        )
+        select
+        saum.UR_USER_ID
+        , saum.ST_ROLE_TP_ID
+        , 'D' AS ACTION
+        , #{userVo.userId} AS HANDLE_UR_USER_ID
+        , now()  CREATE_DT
+        from ST_AUTH_USER_MAPPING saum
+        where 1=1
+        and saum.ST_ROLE_TP_ID in
+        <foreach item="item" index="index" collection="insertSaveDataList" open="(" separator="," close=")">
+            #{item.stRoleTypeId}
+        </foreach>
+        and saum.UR_USER_ID not in
+        <foreach item="item" index="index" collection="insertSaveDataList" open="(" separator="," close=")">
+            #{item.urUserId}
+        </foreach>
+
+    </insert>
+
+    <insert id="addListcheckAddAuthUsers">
+		/* systemAuth.addListcheckAddAuthUsers */
+		INSERT INTO ST_AUTH_USER_CHANGE_HIST
+		(
+			TARGET_UR_USER_ID
+			, ST_ROLE_TP_ID
+			, `ACTION`
+			, HANDLE_UR_USER_ID
+		)
+		SELECT
+			SAUM.UR_USER_ID
+			, SAUM.ST_ROLE_TP_ID
+			, 'C'
+			, #{userVo.userId}
+		FROM ST_AUTH_USER_MAPPING SAUM
+		WHERE ST_ROLE_TP_ID = #{stRoleTypeId}
+			AND MODIFY_DT IS NULL
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 관리자 권한 관리 테이블 초기화
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addListDelAuthUsers">
+        /* systemAuth.addListDelAuthUsers */
+        DELETE FROM ST_AUTH_USER_MAPPING
+        WHERE  ST_ROLE_TP_ID in
+        <foreach item="item" index="index" collection="insertSaveDataList" open="(" separator="," close=")">
+            #{item.stRoleTypeId}
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 관리자 권한 관리 데이터 입력
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addListAddAuthUsers">
+        /* systemAuth.addListAddAuthUsers */
+        INSERT INTO ST_AUTH_USER_MAPPING
+        (
+        ST_ROLE_TP_ID
+        , UR_USER_ID
+        , CREATE_ID
+        )
+        VALUES
+        <foreach item="item" index="index" collection="insertSaveDataList" open="" separator="," close="">
+            (
+            #{item.stRoleTypeId}
+            , #{item.urUserId}
+            , #{userVo.userId}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        MODIFY_ID = #{userVo.userId}
+        , MODIFY_DT = NOW()
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 사용자권한관리 - 추가
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addAuthUser">
+        /* systemAuth.addAuthUser */
+        INSERT INTO ST_AUTH_USER_MAPPING(
+        ST_ROLE_TYPE_ID
+        ,UR_USER_ID
+        )
+        VALUES
+        <foreach item="item" index="index" collection="insertSaveDataList" open="" separator="," close="">
+            (
+
+            #{item.stRoleTypeId}
+            ,#{item.urUserId}
+            )
+        </foreach>
+
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 사용자권한관리 - 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.23		김경민          최초생성
+     * @ 2020.11.11     최성현          권한설정 된 관리자 저장 수정
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delAuthUser">
+        /* systemAuth.delAuthUser */
+        DELETE FROM ST_AUTH_USER_MAPPING
+        WHERE  ST_ROLE_TP_ID = #{stRoleTypeId}
+        <choose>
+           <when test="insertSaveDataList.size() gt 0">
+               AND UR_USER_ID NOT IN
+               <foreach item="item" index="index" collection="insertSaveDataList" open="(" separator="," close=")">
+                   #{item.urUserId}
+               </foreach>
+           </when>
+        <otherwise>
+        </otherwise>
+        </choose>
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 사용자권한관리 - 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.01		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getAuthUserResultMap" type="kr.co.pulmuone.v1.system.auth.dto.SaveAuthUserRequestSaveDto">
+        <result column="UR_USER_ID" property="urUserId"/>
+        <result column="USER_NAME" property="userName"/>
+    </resultMap>
+    <select id="getAuthUserList" resultMap="getAuthUserResultMap">
+        /* systemAuth.getAuthUserList */
+        SELECT SAUM.UR_USER_ID
+            , FN_DECRYPT(UU.USER_NM) AS USER_NAME
+        FROM ST_AUTH_USER_MAPPING SAUM
+            INNER JOIN UR_USER UU ON SAUM.UR_USER_ID = UU.UR_USER_ID
+        WHERE SAUM.ST_ROLE_TP_ID = #{stRoleTpId}
+    </select>
+
+
+    <resultMap id="getAuthMenuListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.GetAuthMenuListResultVo">
+        <result column="TREE_MENU_NAME"  property="treeMenuName"/>
+        <result column="ST_MENU_ID"      property="stMenuId"/>
+        <result column="ST_ROLE_TYPE_ID" property="stRoleTypeId"/>
+        <result column="LV"         	 property="level"/>
+        <result column="POP_YN"          property="popYn"/>
+        <result column="MENU_TYPE_NAME"  property="menuTypeName"/>
+        <result column="MENU_TP"         property="menuType"/>
+        <result column="MENU_NM"         property="menuName"/>
+        <result column="PROGRAM_AUTH_COUNT" property="programAuthCount"/>
+    </resultMap>
+
+    <select id="getAuthMenuList" resultMap="getAuthMenuListResultMap">
+		/* systemAuth.getAuthMenuList */
+		SELECT
+			CONCAT(REPEAT('    ', LV - 1), CAST(M.MENU_NM AS CHAR)) AS TREE_MENU_NAME
+			,M.ST_MENU_ID
+			,M.MENU_NM
+			,#{stRoleTypeId} AS ST_ROLE_TYPE_ID
+			,LV
+			,M.POP_YN
+			,M.MENU_TP
+			,FN_COMN_CODE_DIC(M.MENU_TP) AS MENU_TYPE_NAME
+			,(SELECT COUNT(*) FROM
+				ST_ROLE_MENU_AUTH_MAPPING SRMAM
+				JOIN ST_PROGRAM_AUTH SPA ON (SPA.ST_PROGRAM_AUTH_ID = SRMAM.ST_PROGRAM_AUTH_ID AND SPA.USE_YN = 'Y')
+				JOIN ST_PROGRAM SP ON (SP.ST_PROGRAM_ID = SPA.ST_PROGRAM_ID AND SP.USE_YN = 'Y')
+				WHERE SRMAM.ST_MENU_ID = M.ST_MENU_ID AND SP.ST_PROGRAM_ID = M.ST_PROGRAM_ID AND SRMAM.ST_ROLE_TP_ID = #{stRoleTypeId}) AS PROGRAM_AUTH_COUNT
+		FROM(
+			SELECT
+				FN_MENU_CONNECT_BY() AS id
+				, @level AS LV
+			FROM    (
+			SELECT  @start_with := 0,
+			        @id := @start_with,
+			        @level := 0	) vars,
+			        (
+						SELECT
+							A.ST_MENU_ID
+							, FN_DIC(A.GB_DIC_MST_ID, NULL) AS MENU_NAME
+						FROM ST_MENU  A
+					) menu
+			WHERE   @id IS NOT NULL
+			)INNER_T
+					JOIN    ST_MENU M	ON	M.ST_MENU_ID = INNER_T.id
+					JOIN	ST_MENU_GRP GRP
+					ON	M.ST_MENU_GRP_ID = GRP.ST_MENU_GRP_ID
+			WHERE M.ST_MENU_GRP_ID =#{stMenuGroupId}
+      ORDER BY  GRP.SORT
+              , CASE  WHEN LV = 1 THEN M.SORT
+                      WHEN LV = 2 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                      WHEN LV = 3 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))
+                      WHEN LV = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)))
+                      WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))))
+                      ELSE 0
+                END
+              , CASE  WHEN LV = 2 THEN M.SORT
+                      WHEN LV = 3 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                      WHEN LV = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))
+                      WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)))
+                      ELSE 0
+                END
+              , CASE  WHEN LV = 3 THEN M.SORT
+                      WHEN LV = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                      WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID))
+                      ELSE 0
+                END
+              , CASE  WHEN LV = 4 THEN M.SORT
+                      WHEN LV = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PRNTS_ST_MENU_ID)
+                      ELSE 0
+                END
+              , CASE  WHEN LV = 5 THEN M.SORT
+                      ELSE 0
+                END
+	</select>
+
+
+
+    <resultMap id="getAuthMenuSystemUrlListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.vo.GetRoleMenuAuthListResultVo">
+        <result column="ST_ROLE_MENU_AUTH_MAPPING_ID"  	 property="stRoleMenuAuthMappingId"/>
+        <result column="ST_PROGRAM_AUTH_ID" property="stProgramAuthId"/>
+        <result column="PG_AUTH_CD" property="programAuthCode"/>
+        <result column="PG_AUTH_CD_NM" property="programAuthCodeName"/>
+    </resultMap>
+
+    <select id="getRoleMenuAuthList" resultMap="getAuthMenuSystemUrlListResultMap">
+		/* systemAuth.getAuthMenuSystemUrlList */
+		SELECT C.ST_ROLE_MENU_AUTH_MAPPING_ID
+			   ,A.ST_PROGRAM_AUTH_ID
+			   ,A.PG_AUTH_CD
+			   ,A.PG_AUTH_CD_NM
+		FROM ST_PROGRAM_AUTH A
+		INNER JOIN ST_MENU B
+		ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		AND B.ST_MENU_ID = #{stMenuId} AND A.USE_YN = 'Y'
+		LEFT OUTER JOIN ST_ROLE_MENU_AUTH_MAPPING C
+		ON A.ST_PROGRAM_AUTH_ID = C.ST_PROGRAM_AUTH_ID
+		AND C.ST_MENU_ID = #{stMenuId}
+		AND C.ST_ROLE_TP_ID = #{stRoleTypeId}
+	</select>
+
+    <delete id="delAuthMenu"  >
+        /* systemAuth.delAuthMenu */
+        <foreach item="deleteData" collection="list" separator=";">
+            DELETE FROM ST_ROLE_MENU_AUTH_MAPPING	WHERE ST_ROLE_MENU_AUTH_MAPPING_ID=#{deleteData.stRoleMenuAuthMappingId}
+        </foreach>
+        ;
+    </delete>
+
+
+    <insert id="saveAuthMenu">
+        /* systemAuth.saveAuthMenu */
+        INSERT INTO ST_ROLE_MENU_AUTH_MAPPING(
+        ST_ROLE_TP_ID
+        ,ST_MENU_ID
+        ,ST_PROGRAM_AUTH_ID
+        ,CREATE_ID
+        )
+        SELECT
+            T1.ST_ROLE_TP_ID,
+            T1.ST_MENU_ID,
+            T1.ST_PROGRAM_AUTH_ID,
+            T1.CREATE_ID
+        FROM
+            (
+            <foreach item="insertData" collection="voList" open="" separator="UNION ALL" close="">
+                SELECT #{stRoleTypeId} AS ST_ROLE_TP_ID, #{stMenuId} AS ST_MENU_ID, #{insertData.stProgramAuthId} AS ST_PROGRAM_AUTH_ID, #{insertData.userVo.userId} AS CREATE_ID FROM DUAL
+            </foreach>
+            ) T1
+            LEFT OUTER JOIN ST_ROLE_MENU_AUTH_MAPPING T2 ON
+                                                                T1.ST_ROLE_TP_ID = T2.ST_ROLE_TP_ID
+                                                            AND T1.ST_MENU_ID = T2.ST_MENU_ID
+                                                            AND T1.ST_PROGRAM_AUTH_ID = T2.ST_PROGRAM_AUTH_ID
+        WHERE T2.ST_MENU_ID IS NULL
+    </insert>
+
+    <insert id="saveAuthMenu_bak">
+        /* systemAuth.saveAuthMenu */
+        INSERT INTO ST_ROLE_MENU_AUTH_MAPPING(
+        ST_ROLE_TP_ID
+        ,ST_MENU_ID
+        ,ST_PROGRAM_AUTH_ID
+        ,CREATE_ID
+        )
+        VALUES
+        <foreach item="insertData" collection="voList" open="" separator="," close="">
+            (
+            #{stRoleTypeId}
+            ,#{stMenuId}
+            ,#{insertData.stProgramAuthId}
+            ,#{insertData.userVo.userId}
+            )
+        </foreach>
+
+    </insert>
+
+     <!--───────────────────────────────────────────────────────────────────────
+      * description      : 역할그룹관리 복사 시 역할별 매뉴별 권한 관리 복사
+      * @
+      * @ 수정일                   수정자          수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.03.26     천혜현          최초생성
+      * @
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+     <insert id="addRoleMenuAuthMapping">
+        /* systemAuth.addRoleMenuAuthMapping */
+        INSERT INTO ST_ROLE_MENU_AUTH_MAPPING (
+			ST_ROLE_TP_ID
+			,ST_MENU_ID
+			,ST_PROGRAM_AUTH_ID
+			,CREATE_DT
+			,CREATE_ID
+	   )
+			SELECT
+			    #{inputStRoleTypeId}
+			    ,ST_MENU_ID
+			    ,ST_PROGRAM_AUTH_ID
+			    ,NOW()
+			    ,1
+			FROM
+			    ST_ROLE_MENU_AUTH_MAPPING
+			WHERE
+			    ST_ROLE_TP_ID = #{originStRoleTypeId}
+    </insert>
+
+    <resultMap id="getRoleMenuAuthExcelListResultMap" type="kr.co.pulmuone.v1.system.auth.dto.RoleMenuAuthListExcelDto">
+        <result column="MENU_GRP_NM" property="menuGroupName"/>
+        <result column="PRNTS_MENU_NM" property="parentsMenuName"/>
+        <result column="MENU_NM" property="menuName"/>
+        <result column="PG_AUTH_CD" property="programAuthCode"/>
+        <result column="PG_AUTH_CD_NM" property="programAuthCodeName"/>
+    </resultMap>
+
+    <select id="getRoleMenuAuthExcelList" resultMap="getRoleMenuAuthExcelListResultMap">
+		/* systemAuth.getRoleMenuAuthExcelList */
+		SELECT
+			SMG.MENU_GRP_NM
+			,IFNULL(PSM.MENU_NM, SM.MENU_NM) AS PRNTS_MENU_NM
+			,IF(PSM.MENU_NM IS NULL, '', SM.MENU_NM) AS MENU_NM
+			,SPA.PG_AUTH_CD
+			,SPA.PG_AUTH_CD_NM
+		FROM
+		ST_ROLE_MENU_AUTH_MAPPING SRMAM
+		JOIN ST_PROGRAM_AUTH SPA ON (SPA.ST_PROGRAM_AUTH_ID = SRMAM.ST_PROGRAM_AUTH_ID AND SPA.USE_YN = 'Y')
+		JOIN ST_PROGRAM SP ON (SP.ST_PROGRAM_ID = SPA.ST_PROGRAM_ID AND SP.USE_YN = 'Y')
+		JOIN ST_MENU SM ON (SM.ST_MENU_ID = SRMAM.ST_MENU_ID AND SP.ST_PROGRAM_ID = SM.ST_PROGRAM_ID AND SM.USE_YN = 'Y')
+		JOIN ST_MENU PSM ON (PSM.ST_MENU_ID = SM.PRNTS_ST_MENU_ID AND PSM.USE_YN = 'Y')
+		JOIN ST_MENU_GRP SMG ON (SMG.ST_MENU_GRP_ID = SM.ST_MENU_GRP_ID AND SMG.USE_YN = 'Y')
+		WHERE SRMAM.ST_ROLE_TP_ID = #{stRoleTypeId}
+		ORDER BY SMG.SORT, SM.SORT
+	</select>
+</mapper>

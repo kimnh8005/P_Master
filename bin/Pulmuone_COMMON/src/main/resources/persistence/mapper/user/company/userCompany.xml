@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.company.UserCompanyMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 본사 회사정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		손진구          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getHeadquartersCompanyResultMap" type="kr.co.pulmuone.v1.user.company.dto.vo.CommmonHeadQuartersCompanyVo">
+		<result column="COMPANY_ID" property="companyId" />
+		<result column="COMPANY_TYPE_NAME" property="companyTypeName" />
+		<result column="COMPANY_TYPE" property="companyType" />
+		<result column="COMPANY_NAME" property="companyName" />
+		<result column="COMPANY_CEO_NAME" property="companyCeoName" />
+		<result column="BUSINESS_NUMBER" property="businessNumber" />
+		<result column="COMPANY_TELEPHONE" property="companyTelephone" />
+		<result column="COMPANY_MAIL" property="companyMail" />
+		<result column="ZIP_CODE" property="zipCode" />
+		<result column="ADDRESS" property="address" />
+		<result column="DETAIL_ADDRESS" property="detailAddress" />
+		<result column="MEMO" property="memo" />
+		<result column="HEADQUARTERS_ID" property="headquartersId" />
+		<result column="CORPORATION_NUMBER" property="corporationNumber" />
+		<result column="MAIL_ORDER_NUMBER" property="mailOrderNumber" />
+		<result column="HOSTING_PROVIDER" property="hostingProvider" />
+		<result column="HEALTH_FUNCT_FOOD_REPORT" property="healthFunctFoodReport" />
+		<result column="SERVICE_CENTER_PHONE_NUMBER" property="serviceCenterPhoneNumber" />
+		<result column="SECURITY_DIRECTOR" property="securityDirector" />
+		<result column="SERVICE_CENTER_OPERATOR_OPEN_TIME" property="serviceCenterOperatorOpenTime" />
+		<result column="SERVICE_CENTER_OPERATOR_CLOSE_TIME" property="serviceCenterOperatorCloseTime" />
+		<result column="SERVICE_CENTER_LUNCH_TIME_START" property="serviceCenterLunchTimeStart" />
+		<result column="SERVICE_CENTER_LUNCH_TIME_END" property="serviceCenterLunchTimeEnd" />
+		<result column="LUNCH_TIME_YN" property="lunchTimeYn" />
+		<result column="ESCROW_ORIGIN_FILE_NAME" property="escrowOriginFileName" />
+		<result column="ESCROW_FILE_NAME" property="escrowFileName" />
+		<result column="ESCROW_FILE_PATH" property="escrowFilePath" />
+		<result column="ESCROW_DESCRIPTION" property="escrowDescription" />
+		<result column="ESCROW_SUBSCRIPTION_URL" property="escrowSubscriptionUrl" />
+	</resultMap>
+
+	<!-- 본사 회사정보 조회 -->
+    <select id="getHeadquartersCompany" resultMap="getHeadquartersCompanyResultMap">
+        /* userCompany.getHeadquartersCompany */
+        SELECT UC.UR_COMPANY_ID AS COMPANY_ID /* 회사정보 ID */
+             , FN_COMN_CODE_DIC(UC.COMP_TP) AS COMPANY_TYPE_NAME /* 회사구분명 */
+             , UC.COMP_TP AS COMPANY_TYPE /* 회사구분 */
+             , UC.COMP_NM AS COMPANY_NAME /* 회사명 */
+             , UC.COMP_CEO_NM AS COMPANY_CEO_NAME /* 대표자명 */
+             , UC.BIZ_REG_NUM AS BUSINESS_NUMBER /* 사업자등록번호 */
+             , UC.COMP_TEL AS COMPANY_TELEPHONE /* 연락처 */
+             , UC.COMP_MAIL AS COMPANY_MAIL /* 메일주소 */
+             , UC.ZIP_CD AS ZIP_CODE /* 우편번호 */
+             , UC.ADDRESS1 AS ADDRESS /* 주소 */
+             , UC.ADDRESS2 AS DETAIL_ADDRESS /* 상세주소 */
+             , UC.MEMO /* 메모 */
+             , UH.UR_HEADQUARTERS_ID AS HEADQUARTERS_ID /* 본사 ID */
+             , UH.CORP_NUM AS CORPORATION_NUMBER /* 법인번호 */
+             , UH.MAIL_ORDER_NUM AS MAIL_ORDER_NUMBER /* 통신판매업 번호 */
+             , UH.HOSTING_COMPANY AS HOSTING_PROVIDER /* 호스팅 제공자 */
+             , UH.HLTH_FNCTN_FOOD_NUM AS HEALTH_FUNCT_FOOD_REPORT /* 건강기능식품 신고 */
+             , UH.CSTMR_SRVC_TEL AS SERVICE_CENTER_PHONE_NUMBER /* 고객센터 전화번호 */
+             , UH.SECURITY_DIRECTOR /* 개인정보보호책임자 */
+             , DATE_FORMAT(UH.CSTMR_SRVC_OPEN_TIME, '%H:%i') AS SERVICE_CENTER_OPERATOR_OPEN_TIME /* 고객센터 운영 시작시간 */
+             , DATE_FORMAT(UH.CSTMR_SRVC_CLOSE_TIME, '%H:%i') AS SERVICE_CENTER_OPERATOR_CLOSE_TIME /* 고객센터 운영 종료시간 */
+             , DATE_FORMAT(UH.CSTMR_SRVC_LUNCHTIME_START, '%H:%i') AS SERVICE_CENTER_LUNCH_TIME_START /* 고객센터 점심 시작시간 */
+             , DATE_FORMAT(UH.CSTMR_SRVC_LUNCHTIME_END, '%H:%i') AS SERVICE_CENTER_LUNCH_TIME_END /* 고객센터 점심 종료시간 */
+             , UH.CSTMR_SRVC_LUNCHTIME_YN AS LUNCH_TIME_YN /* 고객센터 점심시간 사용YN */
+             , UH.ESCROW_ORIGIN_FILE_NM AS ESCROW_ORIGIN_FILE_NAME /* 에스크로 인증정보 원본파일명 */
+             , UH.ESCROW_FILE_NM AS ESCROW_FILE_NAME /* 에스크로 인증정보 파일명 */
+             , UH.ESCROW_FILE_PATH AS ESCROW_FILE_PATH /* 에스크로 인증정보 파일경로 */
+             , UH.ESCROW_EXPLN AS ESCROW_DESCRIPTION /* 에스크로 설명 */
+             , UH.ESCROW_URL AS ESCROW_SUBSCRIPTION_URL /* 에스크로 가입 URL */
+          FROM UR_COMPANY UC
+          JOIN UR_HEADQUARTERS UH
+            ON UH.UR_COMPANY_ID = UC.UR_COMPANY_ID
+         WHERE UC.USE_YN = 'Y'
+         LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 사업자정보관리 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.13     손진구          최초생성
+     * @ 2020.10.26     손진구          NEW구조변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getBizInfoResultMap" type="kr.co.pulmuone.v1.user.company.dto.vo.BusinessInformationVo">
+        <result column="HEADQUARTERS_ID"  property="headquartersId"/>
+        <result column="COMPANY_ID"  property="companyId"/>
+        <result column="COMPANY_TYPE"  property="companyType"/>
+        <result column="BUSINESS_NAME"  property="businessName"/>
+        <result column="COMPANY_CEO_NAME"  property="companyCeoName"/>
+        <result column="BUSINESS_NUMBER"  property="businessNumber"/>
+        <result column="REPRESENTATIVE_EMAIL_INFORMATION"  property="representativeEmailInformation"/>
+        <result column="ZIP_CODE"  property="zipCode"/>
+        <result column="ADDRESS"  property="address"/>
+        <result column="DETAIL_ADDRESS"  property="detailAddress"/>
+        <result column="CORPORATION_NUMBER"  property="corporationNumber"/>
+        <result column="MAIL_ORDER_NUMBER"  property="mailOrderNumber"/>
+        <result column="HOSTING_PROVIDER"  property="hostingProvider"/>
+        <result column="HEALTH_FUNCT_FOOD_REPORT"  property="healthFunctFoodReport"/>
+        <result column="SERVICE_CENTER_PHONE_NUMBER"  property="serviceCenterPhoneNumber"/>
+        <result column="SERVICE_CENTER_OPERATOR_OPEN_TIME"  property="serviceCenterOperatorOpenTime"/>
+        <result column="SERVICE_CENTER_OPERATOR_CLOSE_TIME"  property="serviceCenterOperatorCloseTime"/>
+        <result column="SERVICE_CENTER_LUNCH_TIME_START"  property="serviceCenterLunchTimeStart"/>
+        <result column="SERVICE_CENTER_LUNCH_TIME_END"  property="serviceCenterLunchTimeEnd"/>
+        <result column="LUNCH_TIME_YN"  property="lunchTimeYn"/>
+        <result column="ESCROW_CERTIFICATION_INFORMATION"  property="escrowCertificationInformation"/>
+        <result column="ESCROW_DESCRIPTION"  property="escrowDescription"/>
+        <result column="ESCROW_SUBSCRIPTION_URL"  property="escrowSubscriptionUrl"/>
+    </resultMap>
+
+    <select id="getBizInfo" resultMap="getBizInfoResultMap">
+        /* userCompany.getBizInfo */
+        SELECT H.UR_HEADQUARTERS_ID AS HEADQUARTERS_ID /* 본사ID */
+             , H.UR_COMPANY_ID AS COMPANY_ID /* 회사ID */
+             , C.COMP_TP AS COMPANY_TYPE /* 회사구분 */
+             , C.COMP_NM AS BUSINESS_NAME /* 회사명 */
+             , C.COMP_CEO_NM AS COMPANY_CEO_NAME /* 대표자명 */
+             , C.BIZ_REG_NUM AS BUSINESS_NUMBER /* 사업자등록번호 */
+             , C.COMP_MAIL AS REPRESENTATIVE_EMAIL_INFORMATION /* 메일주소 */
+             , C.ZIP_CD AS ZIP_CODE /* 우편번호 */
+             , C.ADDRESS1 AS ADDRESS /* 주소 */
+             , C.ADDRESS2 AS DETAIL_ADDRESS /* 상세주소 */
+             , H.CORP_NUM AS CORPORATION_NUMBER /* 법인번호 */
+             , H.MAIL_ORDER_NUM AS MAIL_ORDER_NUMBER /* 통신판매업 번호 */
+             , H.HOSTING_COMPANY AS HOSTING_PROVIDER /* 호스팅 제공자 */
+             , H.HLTH_FNCTN_FOOD_NUM AS HEALTH_FUNCT_FOOD_REPORT /* 건강기능식품 신고 */
+             , H.CSTMR_SRVC_TEL AS SERVICE_CENTER_PHONE_NUMBER /* 고객센터 전화번호 */
+             , H.SECURITY_DIRECTOR /* 개인정보보호책임자 */
+             , DATE_FORMAT(H.CSTMR_SRVC_OPEN_TIME, '%H:%i') AS SERVICE_CENTER_OPERATOR_OPEN_TIME /* 고객센터 운영 시작시간 */
+             , DATE_FORMAT(H.CSTMR_SRVC_CLOSE_TIME, '%H:%i') AS SERVICE_CENTER_OPERATOR_CLOSE_TIME /* 고객센터 운영 종료시간 */
+             , DATE_FORMAT(H.CSTMR_SRVC_LUNCHTIME_START, '%H:%i') AS SERVICE_CENTER_LUNCH_TIME_START /* 고객센터 점심 시작시간 */
+             , DATE_FORMAT(H.CSTMR_SRVC_LUNCHTIME_END, '%H:%i') AS SERVICE_CENTER_LUNCH_TIME_END /* 고객센터 점심 종료시간 */
+             , H.CSTMR_SRVC_LUNCHTIME_YN AS LUNCH_TIME_YN /* 고객센터 점심시간 사용YN */
+             , H.ESCROW_ORIGIN_FILE_NM AS ESCROW_CERTIFICATION_INFORMATION /* 에스크로 인증정보 원본파일명 */
+             , H.ESCROW_EXPLN AS ESCROW_DESCRIPTION /* 에스크로 설명 */
+             , H.ESCROW_URL AS ESCROW_SUBSCRIPTION_URL /* 에스크로 가입 URL */
+          FROM UR_HEADQUARTERS H
+          JOIN UR_COMPANY C
+            ON C.UR_COMPANY_ID = H.UR_COMPANY_ID
+           AND C.USE_YN = 'Y'
+         LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회사정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.21     손진구          최초생성
+     * @ 2020.10.26     손진구          NEW구조변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addCompany" useGeneratedKeys="true" keyProperty="companyId">
+        /* userCompany.addCompany */
+        INSERT INTO UR_COMPANY
+        (
+          COMP_TP
+        , COMP_NM
+        , COMP_CEO_NM
+        , BIZ_REG_NUM
+        , COMP_TEL
+        , COMP_MAIL
+        , ZIP_CD
+        , ADDRESS1
+        , ADDRESS2
+        , MEMO
+        , USE_YN
+        , CREATE_DT
+        , CREATE_ID
+        ) VALUES (
+          #{companyType}
+        , #{companyName}
+        , #{companyCeoName}
+        , #{businessNumber}
+        , #{companyTelephone}
+        , #{companyMail}
+        , #{zipCode}
+        , #{address}
+        , #{detailAddress}
+        , #{memo}
+        , 'Y'
+        , NOW()
+        , #{createId}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회사정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.21     손진구          최초생성
+     * @ 2020.08.13     손진구          QA 수정사항 적용
+     * @ 2020.10.26     손진구          NEW구조변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putCompany">
+        /* userCompany.putCompany */
+        UPDATE UR_COMPANY
+           SET MODIFY_DT = NOW()
+             , MODIFY_ID = #{createId}
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyName)">
+             , COMP_NM = #{companyName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyCeoName)">
+             , COMP_CEO_NM = #{companyCeoName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(businessNumber)">
+             , BIZ_REG_NUM = #{businessNumber}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyTelephone)">
+             , COMP_TEL = #{companyTelephone}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyMail)">
+             , COMP_MAIL = #{companyMail}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(zipCode)">
+             , ZIP_CD = #{zipCode}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(address)">
+             , ADDRESS1 = #{address}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(detailAddress)">
+             , ADDRESS2 = #{detailAddress}
+         </if>
+         WHERE UR_COMPANY_ID = #{companyId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 본사정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.21     손진구          최초생성
+     * @ 2020.10.26     손진구          NEW구조변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addHeadQuarters" useGeneratedKeys="true" keyProperty="headquartersId">
+        /* userCompany.addHeadQuarters */
+        INSERT INTO UR_HEADQUARTERS
+        (
+          UR_COMPANY_ID
+        , CORP_NUM
+        , MAIL_ORDER_NUM
+        , HOSTING_COMPANY
+        , HLTH_FNCTN_FOOD_NUM
+        , SECURITY_DIRECTOR
+        , CSTMR_SRVC_TEL
+        , CSTMR_SRVC_OPEN_TIME
+        , CSTMR_SRVC_CLOSE_TIME
+        , CSTMR_SRVC_LUNCHTIME_START
+        , CSTMR_SRVC_LUNCHTIME_END
+        , CSTMR_SRVC_LUNCHTIME_YN
+        , ESCROW_ORIGIN_FILE_NM
+        , ESCROW_FILE_NM
+        , ESCROW_FILE_PATH
+        , ESCROW_EXPLN
+        , ESCROW_URL
+        , CREATE_DT
+        , CREATE_ID
+        ) VALUES (
+          #{companyId}
+        , #{corporationNumber}
+        , #{mailOrderNumber}
+        , #{hostingProvider}
+        , #{healthFunctFoodReport}
+        , #{serviceCenterPhoneNumber}
+        , #{securityDirector}
+        , #{serviceCenterOperatorOpenTime}
+        , #{serviceCenterOperatorCloseTime}
+        , #{serviceCenterLunchTimeStart}
+        , #{serviceCenterLunchTimeEnd}
+        , #{lunchTimeYn}
+        , #{escrowOriginFileName}
+        , #{escrowFileName}
+        , #{escrowFilePath}
+        , #{escrowDescription}
+        , #{escrowSubscriptionUrl}
+        , NOW()
+        , #{createId}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 본사정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.21     손진구          최초생성
+     * @ 2020.08.13     손진구          QA 수정사항 적용
+     * @ 2020.10.26     손진구          NEW구조변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putHeadQuarters">
+        /* userCompany.putHeadQuarters */
+        UPDATE UR_HEADQUARTERS
+           SET MODIFY_DT = NOW()
+             , MODIFY_ID = #{createId}
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(corporationNumber)">
+             , CORP_NUM = #{corporationNumber}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mailOrderNumber)">
+             , MAIL_ORDER_NUM = #{mailOrderNumber}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(hostingProvider)">
+             , HOSTING_COMPANY = #{hostingProvider}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(healthFunctFoodReport)">
+             , HLTH_FNCTN_FOOD_NUM = #{healthFunctFoodReport}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serviceCenterPhoneNumber)">
+             , CSTMR_SRVC_TEL = #{serviceCenterPhoneNumber}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(securityDirector)">
+             , SECURITY_DIRECTOR = #{securityDirector}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serviceCenterOperatorOpenTime)">
+             , CSTMR_SRVC_OPEN_TIME = #{serviceCenterOperatorOpenTime}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serviceCenterOperatorCloseTime)">
+             , CSTMR_SRVC_CLOSE_TIME = #{serviceCenterOperatorCloseTime}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serviceCenterLunchTimeStart)">
+             , CSTMR_SRVC_LUNCHTIME_START = #{serviceCenterLunchTimeStart}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serviceCenterLunchTimeEnd)">
+             , CSTMR_SRVC_LUNCHTIME_END = #{serviceCenterLunchTimeEnd}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(lunchTimeYn)">
+             , CSTMR_SRVC_LUNCHTIME_YN = #{lunchTimeYn}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(escrowOriginFileName)">
+             , ESCROW_ORIGIN_FILE_NM = #{escrowOriginFileName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(escrowFileName)">
+             , ESCROW_FILE_NM = #{escrowFileName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(escrowFilePath)">
+             , ESCROW_FILE_PATH = #{escrowFilePath}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(escrowDescription)">
+             , ESCROW_EXPLN = #{escrowDescription}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(escrowSubscriptionUrl)">
+             , ESCROW_URL = #{escrowSubscriptionUrl}
+         </if>
+         WHERE UR_HEADQUARTERS_ID = #{headquartersId}
+    </update>
+
+</mapper>

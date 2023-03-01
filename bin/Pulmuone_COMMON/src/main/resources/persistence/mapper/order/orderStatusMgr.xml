@@ -1,0 +1,883 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.status.OrderStatusMgrMapper">
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 검색 조건
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.14 	이명수          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSearchCodeResultMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusVo">
+		<result column="STATUS_CD" property="statusCd" />
+		<result column="STATUS_NM" property="statusNm" />
+	</resultMap>
+	<select id="getSearchCode" resultMap="getSearchCodeResultMap" parameterType="kr.co.pulmuone.v1.order.status.dto.OrderStatusSearchRequestDto">
+		/*	order.statusMgr.getSearchCode  */
+
+		SELECT
+			STATUS_CD,
+			STATUS_NM
+		FROM
+			OD_STATUS
+		WHERE 1 = 1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchGrp)">
+				AND SEARCH_GRP LIKE CONCAT('%', #{searchGrp}, '%')
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				AND USE_YN = #{useYn}
+			</if>
+		ORDER BY STATUS_SORT ASC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 리스트 조회 (OD_STATUS)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.16 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderStatusListMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusVo">
+		<result column="STATUS_CD" property="statusCd" />
+		<result column="STATUS_NM" property="statusNm" />
+		<result column="SEARCH_GRP" property="searchGrp" />
+		<result column="STATUS_SORT" property="statusSort" />
+		<result column="IF_DAY_CHANGE_YN" property="ifDayChangeYn" />
+		<result column="DELIVERY_SEARCH_YN" property="deliverySearchYn" />
+		<result column="ORDER_STATUS_SORT" property="orderStatusSort" />
+		<result column="CLAIM_STATUS_SORT" property="claimStatusSort" />
+		<result column="USE_YN" property="useYn" />
+		<result column="FRONT_JSON" property="frontJson" />
+		<result column="BOS_JSON" property="bosJson" />
+		<result column="ACTION_JSON" property="actionJson" />
+	</resultMap>
+	<select id="getOrderStatusList" resultMap="getOrderStatusListMap">
+		/*	order.statusMgr.getOrderStatusList  */
+
+		SELECT
+			  STATUS_CD
+			 ,STATUS_NM
+			 ,SEARCH_GRP
+			 ,STATUS_SORT
+			 ,IF_DAY_CHANGE_YN
+			 ,DELIVERY_SEARCH_YN
+	     	 ,ORDER_STATUS_SORT
+			 ,CLAIM_STATUS_SORT
+			 ,USE_YN
+			 ,FRONT_JSON
+			 ,BOS_JSON
+			 ,ACTION_JSON
+		FROM
+			 OD_STATUS
+		ORDER BY STATUS_SORT ASC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 등록 (OD_STATUS)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.16 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderStatus">
+	/*	order.statusMgr.addOrderStatus  */
+	INSERT INTO OD_STATUS
+		(
+		 STATUS_CD
+		,STATUS_NM
+		,SEARCH_GRP
+		,STATUS_SORT
+		,IF_DAY_CHANGE_YN
+		,DELIVERY_SEARCH_YN
+		,FRONT_JSON
+		,BOS_JSON
+		,ACTION_JSON
+		,ORDER_STATUS_SORT
+		,CLAIM_STATUS_SORT
+		,USE_YN
+		)
+		VALUES
+		(
+          #{statusCd}
+        , #{statusNm}
+        , <foreach collection="searchGrpList" item="searchGrp" index="index" open="(" close=")">
+              #{searchGrp}
+          </foreach>
+        , #{statusSort}
+        , #{ifDayChangeYn}
+        , #{deliverySearchYn}
+        , ''
+        , ''
+        , ''
+        , IFNULL(#{orderStatusSort}, -1)
+        , IFNULL(#{claimStatusSort}, -1)
+        , #{useYn}
+		)
+	</insert>
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 유형별 상태항목 업데이트 (OD_STATUS_DISPLAY-OD_STATUS 등록시)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.22 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderStatusDisplayOdStatus">
+	/*	order.statusMgr.addOrderStatusDisplayOdStatus */
+	INSERT INTO OD_STATUS_DISPLAY
+	(
+	 STATUS_CD
+	,USE_TYPE
+	,TYPE_CD
+	,STATUS_NM
+	)
+	SELECT
+	 	   TT.STATUS_CD
+	 	  ,TT.USE_TYPE
+	 	  ,TT.TYPE_CD
+	 	  ,TT.STATUS_NM
+	  FROM
+          (
+	       SELECT
+		          T1.STATUS_CD
+		         ,T1.USE_TYPE
+		         ,T1.TYPE_CD
+		         ,IFNULL(T2.STATUS_NM, '') AS STATUS_NM
+			FROM
+	            (
+		          SELECT
+			             T1.STATUS_CD
+			            ,T1.STATUS_NM
+			            ,T2.USE_TYPE
+			            ,T2.TYPE_CD
+					FROM OD_STATUS T1
+			        LEFT OUTER JOIN OD_STATUS_GOODS_TYPE T2 ON 1=1
+	            ) T1
+			LEFT OUTER JOIN OD_STATUS_DISPLAY T2 ON T1.STATUS_CD = T2.STATUS_CD AND T1.USE_TYPE = T2.USE_TYPE AND T1.TYPE_CD = T2.TYPE_CD AND T2.USE_TYPE IS NOT NULL
+		  ) TT
+    ORDER BY USE_TYPE, TYPE_CD, STATUS_CD
+    ON DUPLICATE KEY UPDATE STATUS_CD = TT.STATUS_CD
+	</insert>
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 수정 (OD_STATUS)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.17 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderStatus">
+	/*	order.statusMgr.putOrderStatus  */
+	UPDATE
+	       OD_STATUS
+	   SET
+		   STATUS_NM = #{statusNm}
+	       <choose>
+			  <when test="searchGrpList.size() > 0">
+				  ,SEARCH_GRP =
+				  <foreach collection="searchGrpList" item="searchGrp" index="index" open="(" close=")">
+					  #{searchGrp}
+				  </foreach>
+			  </when>
+			  <otherwise>
+				  ,SEARCH_GRP = ''
+			  </otherwise>
+		   </choose>
+		  ,STATUS_SORT = #{statusSort}
+		  ,IF_DAY_CHANGE_YN = #{ifDayChangeYn}
+		  ,DELIVERY_SEARCH_YN = #{deliverySearchYn}
+		  ,ORDER_STATUS_SORT = #{orderStatusSort}
+		  ,CLAIM_STATUS_SORT = #{claimStatusSort}
+		  ,USE_YN = #{useYn}
+	 WHERE
+	       STATUS_CD = #{statusCd}
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 중복 검사
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.18 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="hasOrderStatusDuplicate" resultType="int">
+		/*	order.statusMgr.hasOrderStatusDuplicate	*/
+		SELECT
+		       COUNT(*)
+		  FROM
+		       OD_STATUS
+		 WHERE
+               STATUS_CD = #{statusCd}
+
+	</select>
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 상세조회 (OD_STATUS)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.17 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderStatusMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusVo">
+		<result column="STATUS_CD" property="statusCd" />
+		<result column="STATUS_NM" property="statusNm" />
+		<result column="SEARCH_GRP" property="searchGrp" />
+		<result column="STATUS_SORT" property="statusSort" />
+		<result column="IF_DAY_CHANGE_YN" property="ifDayChangeYn" />
+		<result column="DELIVERY_SEARCH_YN" property="deliverySearchYn" />
+		<result column="BOS_JSON" property="bosJson" />
+		<result column="ACTION_JSON" property="actionJson" />
+		<result column="ORDER_STATUS_SORT" property="orderStatusSort" />
+		<result column="CLAIM_STATUS_SORT" property="claimStatusSort" />
+		<result column="USE_YN" property="useYn" />
+	</resultMap>
+	<select id="getOrderStatus" resultMap="getOrderStatusMap">
+		/*	order.statusMgr.getOrderStatus  */
+		SELECT
+			  STATUS_CD
+			 ,STATUS_NM
+			 ,SEARCH_GRP
+			 ,STATUS_SORT
+			 ,IF_DAY_CHANGE_YN
+			 ,DELIVERY_SEARCH_YN
+			 ,BOS_JSON
+			 ,ACTION_JSON
+			 ,ORDER_STATUS_SORT
+			 ,CLAIM_STATUS_SORT
+			 ,USE_YN
+		FROM
+			 OD_STATUS
+	   WHERE
+	   		 STATUS_CD = #{statusCd}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 유형 리스트 조회 (OD_STATUS_GOODS_TYPE)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.17 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderStatusGoodsTypeListMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusGoodsTypeVo">
+		<result column="USE_TYPE" property="useType" />
+		<result column="TYPE_CD" property="typeCd" />
+		<result column="TYPE_NM" property="typeNm" />
+	</resultMap>
+	<select id="getOrderStatusGoodsTypeList" resultMap="getOrderStatusGoodsTypeListMap">
+		/*	order.statusMgr.getOrderStatusGoodsTypeList  */
+
+		SELECT
+			  USE_TYPE
+			 ,TYPE_CD
+			 ,TYPE_NM
+		FROM
+			 OD_STATUS_GOODS_TYPE
+		ORDER BY USE_TYPE
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 유형 상세조회 (OD_STATUS_GOODS_TYPE)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.17 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderStatusGoodsTypeMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusGoodsTypeVo">
+		<result column="USE_TYPE" property="useType" />
+		<result column="TYPE_CD" property="typeCd" />
+		<result column="TYPE_NM" property="typeNm" />
+	</resultMap>
+	<select id="getOrderStatusGoodsType" resultMap="getOrderStatusGoodsTypeMap">
+		/*	order.statusMgr.getOrderStatusGoodsType  */
+		SELECT
+			  USE_TYPE
+			 ,TYPE_CD
+			 ,TYPE_NM
+		FROM
+			 OD_STATUS_GOODS_TYPE
+	   WHERE TYPE_CD = #{typeCd}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 유형 등록(OD_STATUS_GOODS_TYPE)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.17 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderStatusGoodsType">
+	/*	order.statusMgr.addOrderStatusGoodsType  */
+	INSERT INTO OD_STATUS_GOODS_TYPE
+		(
+		 USE_TYPE
+		,TYPE_CD
+		,TYPE_NM
+		)
+		VALUES
+		(
+          #{useType}
+        , #{typeCd}
+        , #{typeNm}
+		)
+	</insert>
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 유형별 상태항목 업데이트 (OD_STATUS_DISPLAY-OD_STATUS_GOODS_TYPE 등록시)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.22 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderStatusDisplayOdStatusGoodsType">
+	/*	order.statusMgr.addOrderStatusDisplayOdStatusGoodsType*/
+	INSERT INTO OD_STATUS_DISPLAY
+	(
+	 STATUS_CD
+	,USE_TYPE
+	,TYPE_CD
+	,STATUS_NM
+	)
+	SELECT
+	 	   TT.STATUS_CD
+	 	  ,TT.USE_TYPE
+	 	  ,TT.TYPE_CD
+	 	  ,TT.STATUS_NM
+	  FROM
+          (
+	       SELECT
+		          T1.STATUS_CD
+		         ,T1.USE_TYPE
+		         ,T1.TYPE_CD
+		         ,IFNULL(T2.STATUS_NM, '') AS STATUS_NM
+			FROM
+	            (
+		          SELECT
+			             T1.STATUS_CD
+			            ,T1.STATUS_NM
+			            ,T2.USE_TYPE
+			            ,T2.TYPE_CD
+					FROM OD_STATUS T1
+			        LEFT OUTER JOIN OD_STATUS_GOODS_TYPE T2 ON 1=1
+	            ) T1
+			LEFT OUTER JOIN OD_STATUS_DISPLAY T2 ON T1.STATUS_CD = T2.STATUS_CD AND T1.USE_TYPE = T2.USE_TYPE AND T1.TYPE_CD = T2.TYPE_CD AND T2.STATUS_CD IS NOT NULL
+		  ) TT
+    ORDER BY USE_TYPE, TYPE_CD, STATUS_CD
+    ON DUPLICATE KEY UPDATE STATUS_CD = TT.STATUS_CD
+	</insert>
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 유형 수정 (OD_STATUS_GOODS_TYPE)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.17 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderStatusGoodsType">
+	/*	order.statusMgr.putOrderStatusGoodsType  */
+	UPDATE
+	       OD_STATUS_GOODS_TYPE
+	   SET
+		   TYPE_NM = #{typeNm}
+	 WHERE
+	       TYPE_CD = #{typeCd}
+	   AND USE_TYPE = #{useType}
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 유형 중복 검사
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.18 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="hasOrderStatusGoodsTypeDuplicate" resultType="int">
+		/*	order.statusMgr.hasOrderStatusGoodsTypeDuplicate	*/
+		SELECT
+		       COUNT(*)
+		  FROM
+		       OD_STATUS_GOODS_TYPE
+		 WHERE
+               TYPE_CD = #{typeCd}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 실행 리스트 조회 (OD_STATUS_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.18 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderStatusActionListMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusActionVo">
+		<result column="ACTION_ID" property="actionId" />
+		<result column="ACTION_TYPE" property="actionType" />
+		<result column="ACTION_EXEC_ID" property="actionExecId" />
+		<result column="ACTION_EXEC_NM" property="actionExecNm" />
+		<result column="ACTION_TARGET" property="actionTarget" />
+		<result column="ACTION_TARGET_URL" property="actionTargetUrl" />
+		<result column="ACTION_CONFIRM" property="actionConfirm" />
+		<result column="ACTION_ATTR1" property="actionAttr1" />
+		<result column="ACTION_ATTR2" property="actionAttr2" />
+		<result column="ACTION_ATTR3" property="actionAttr3" />
+	</resultMap>
+	<select id="getOrderStatusActionList" resultMap="getOrderStatusActionListMap">
+		/*	order.statusMgr.getOrderStatusActionList  */
+
+		SELECT
+			  ACTION_ID
+			 ,ACTION_TYPE
+			 ,ACTION_EXEC_ID
+			 ,ACTION_EXEC_NM
+			 ,ACTION_TARGET
+			 ,ACTION_TARGET_URL
+			 ,ACTION_CONFIRM
+			 ,ACTION_ATTR1
+			 ,ACTION_ATTR2
+			 ,ACTION_ATTR3
+		FROM
+			  OD_STATUS_ACTION
+		ORDER BY ACTION_ID ASC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 실행 상세 조회 (OD_STATUS_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.18 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderStatusActionMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusActionVo">
+		<result column="ACTION_ID" property="actionId" />
+		<result column="ACTION_TYPE" property="actionType" />
+		<result column="ACTION_EXEC_ID" property="actionExecId" />
+		<result column="ACTION_EXEC_NM" property="actionExecNm" />
+		<result column="ACTION_TARGET" property="actionTarget" />
+		<result column="ACTION_TARGET_URL" property="actionTargetUrl" />
+		<result column="ACTION_CONFIRM" property="actionConfirm" />
+		<result column="ACTION_ATTR1" property="actionAttr1" />
+		<result column="ACTION_ATTR2" property="actionAttr2" />
+		<result column="ACTION_ATTR3" property="actionAttr3" />
+	</resultMap>
+	<select id="getOrderStatusAction" resultMap="getOrderStatusActionMap">
+		/*	order.statusMgr.getOrderStatusAction  */
+		SELECT
+			  ACTION_ID
+			 ,ACTION_TYPE
+			 ,ACTION_EXEC_ID
+			 ,ACTION_EXEC_NM
+			 ,ACTION_TARGET
+			 ,ACTION_TARGET_URL
+			 ,ACTION_CONFIRM
+			 ,ACTION_ATTR1
+			 ,ACTION_ATTR2
+			 ,ACTION_ATTR3
+		FROM
+			  OD_STATUS_ACTION
+		WHERE ACTION_ID = #{actionId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 실행 등록 (OD_STATUS_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.18 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderStatusAction">
+	/*	order.statusMgr.addOrderStatusAction  */
+	INSERT INTO OD_STATUS_ACTION
+		(
+		 ACTION_TYPE
+		,ACTION_EXEC_ID
+		,ACTION_EXEC_NM
+	    ,ACTION_TARGET
+	    ,ACTION_TARGET_URL
+		,ACTION_CONFIRM
+		,ACTION_ATTR1
+		,ACTION_ATTR2
+		,ACTION_ATTR3
+		)
+		VALUES
+		(
+          #{actionType}
+        , #{actionExecId}
+        , #{actionExecNm}
+        , #{actionTarget}
+        , #{actionTargetUrl}
+        , #{actionConfirm}
+        , #{actionAttr1}
+        , #{actionAttr2}
+        , #{actionAttr3}
+		)
+	</insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 실행 수정 (OD_STATUS_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.18 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderStatusAction">
+	/*	order.statusMgr.putOrderStatusAction  */
+	UPDATE
+	       OD_STATUS_ACTION
+	   SET
+	        ACTION_TYPE = #{actionType}
+		   ,ACTION_EXEC_ID = #{actionExecId}
+		   ,ACTION_EXEC_NM = #{actionExecNm}
+		   ,ACTION_TARGET = #{actionTarget}
+		   ,ACTION_TARGET_URL = #{actionTargetUrl}
+		   ,ACTION_CONFIRM = #{actionConfirm}
+		   ,ACTION_ATTR1 = #{actionAttr1}
+		   ,ACTION_ATTR2 = #{actionAttr2}
+		   ,ACTION_ATTR3 = #{actionAttr3}
+	 WHERE
+	       ACTION_ID = #{actionId}
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문 상태 실행 중복 검사 (OD_STATUS_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.18 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="hasOrderStatusActionDuplicate" resultType="int">
+		/*	order.statusMgr.hasOrderStatusActionDuplicate	*/
+		SELECT
+		       COUNT(*)
+		  FROM
+		       OD_STATUS_ACTION
+		 WHERE
+               ACTION_EXEC_ID = #{actionExecId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문유형별 상태실행 리스트 조회 (OD_STATUS_ITEM_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.21 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderStatusTypeActionListMap" type="kr.co.pulmuone.v1.order.status.dto.vo.OrderStatusTypeActionVo">
+		<result column="STATUS_CD" property="statusCd" />
+		<result column="STATUS_NM" property="statusNm" />
+		<result column="STATUS_EXPLAIN" property="statusExplain" />
+		<result column="USE_TYPE" property="useType" />
+		<result column="TYPE_CD" property="typeCd" />
+		<result column="ACTION_STATUS_NM" property="actionStatusNm" />
+		<result column="ACTION_NM" property="actionNm" />
+		<result column="ACTION_ID" property="actionId" />
+		<result column="ACTION_SEQ" property="actionSeq" />
+	</resultMap>
+	<select id="getOrderStatusTypeActionList" resultMap="getOrderStatusTypeActionListMap">
+		/*	order.statusMgr.getOrderStatusTypeActionList  */
+		SELECT
+				 T2.STATUS_CD AS STATUS_CD
+				,T3.STATUS_NM AS STATUS_NM
+				,CONCAT(T2.STATUS_CD,"(",T3.STATUS_NM,")") AS STATUS_EXPLAIN
+				,T2.USE_TYPE AS USE_TYPE
+				,T2.TYPE_CD AS TYPE_CD
+				,T2.STATUS_NM AS ACTION_STATUS_NM
+				,T1.ACTION_NM AS ACTION_NM
+				,T1.ACTION_ID AS ACTION_ID
+				,T1.ACTION_SEQ AS ACTION_SEQ
+		FROM 	OD_STATUS_DISPLAY T2
+		LEFT  JOIN	OD_STATUS_ITEM_ACTION T1 ON T2.STATUS_CD = T1.STATUS_CD AND T2.USE_TYPE = T1.USE_TYPE AND T2.TYPE_CD = T1.TYPE_CD
+		JOIN 		OD_STATUS T3 ON T3.STATUS_CD = T2.STATUS_CD
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusCdSelect)">
+			AND CONCAT(T2.STATUS_CD,"(",T3.STATUS_NM,")") = #{statusCdSelect}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useTypeSelect)">
+			AND T2.USE_TYPE = #{useTypeSelect}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(typeCdSelect)">
+			AND T2.TYPE_CD = #{typeCdSelect}
+		</if>
+		ORDER BY T2.USE_TYPE, T2.TYPE_CD, T2.STATUS_CD
+	</select>
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문유형별 상태실행 삭제 (OD_STATUS_ITEM_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.22 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<delete id="delOrderStatusTypeAction">
+	/*	order.statusMgr.delOrderStatusTypeAction  */
+	DELETE
+	      FROM OD_STATUS_ITEM_ACTION
+	   	  WHERE ACTION_SEQ = #{actionSeq}
+	   	    AND USE_TYPE = #{useType}
+	</delete>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 주문유형별 상태실행 시퀀스 업데이트 (OD_STATUS_ITEM_ACTION)
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.12.23 	최윤지          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putActionSeqOrderStatusTypeAction">
+	/*	order.statusMgr.putActionSeqOrderStatusTypeAction  */
+	UPDATE
+	      FROM OD_STATUS_ITEM_ACTION
+	   	  WHERE ACTION_SEQ = #{actionSeq}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상태실행 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.22		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCodeListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetCodeListResultVo">
+		<result column="CODE" property="code" />
+		<result column="NAME" property="name" />
+	</resultMap>
+	<select id="getOrderStatusActionIdList" resultMap="getCodeListResultMap">
+	 /* order.statusMgr.getOrderStatusActionIdList */
+		SELECT
+			   ACTION_ID AS CODE
+			  ,CONCAT(ACTION_ID, "_", ACTION_TYPE, "_", ACTION_EXEC_ID, "_", ACTION_EXEC_NM) AS NAME
+		  FROM
+			   OD_STATUS_ACTION
+	  ORDER BY CODE
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문유형별 상태실행항목 주문상태ID 정보조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.07		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderStatusStatusCdList" resultMap="getCodeListResultMap">
+	 /* order.statusMgr.getOrderStatusStatusCdList */
+		SELECT
+			   CONCAT(STATUS_CD,"(",STATUS_NM,")") AS CODE
+			  ,CONCAT(STATUS_CD,"(",STATUS_NM,")") AS NAME
+		  FROM
+			   OD_STATUS
+	  ORDER BY CODE
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상태유형 노출영역 정보조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.07		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderStatusGoodsTypeUseTypeList" resultMap="getCodeListResultMap">
+	 /* order.statusMgr.getOrderStatusGoodsTypeUseTypeList */
+		SELECT
+			   USE_TYPE AS CODE
+			  ,USE_TYPE AS NAME
+		  FROM
+			   OD_STATUS_GOODS_TYPE
+	  GROUP BY CODE
+	  ORDER BY CODE
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상태유형 상품유형ID 정보조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.07		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderStatusGoodsTypeTypeCdList" resultMap="getCodeListResultMap">
+	 /* order.statusMgr.getOrderStatusGoodsTypeTypeCdList */
+		SELECT
+			   TYPE_CD AS CODE
+			  ,TYPE_CD AS NAME
+		  FROM
+			   OD_STATUS_GOODS_TYPE
+	  ORDER BY CODE
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문유형별 상태실행 추가 (OD_STATUS_ITEM_ACTION)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.23		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderStatusTypeAction">
+	/*	order.statusMgr.addOrderStatusTypeAction  */
+	INSERT INTO OD_STATUS_ITEM_ACTION
+		(
+		 STATUS_CD
+		,USE_TYPE
+		,TYPE_CD
+		,ACTION_SEQ
+		,ACTION_NM
+		,ACTION_ID
+		)
+		VALUES
+		(
+          #{statusCd}
+        , #{useType}
+        , #{typeCd}
+        , (SELECT IFNULL(MAX(ACTION_SEQ +1),1) FROM OD_STATUS_ITEM_ACTION T1)
+        , #{actionNm}
+        , IFNULL(#{actionId}, 0)
+		)
+		 <selectKey resultType="Long" keyProperty="actionSeq" keyColumn="ACTION_SEQ" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문유형별 상태실행 중복검사 (OD_STATUS_ITEM_ACTION)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.23		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="hasOrderStatusTypeActionDuplicate" resultType="int">
+		/*	order.statusMgr.hasOrderStatusTypeActionDuplicate	*/
+		SELECT
+		       COUNT(*)
+		  FROM
+		       OD_STATUS_ITEM_ACTION
+		 WHERE
+			   STATUS_CD = #{statusCd}
+		   AND USE_TYPE = #{useType}
+		   AND TYPE_CD = #{typeCd}
+           AND ACTION_ID = #{actionId}
+           AND ACTION_NM = #{actionNm}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문유형별 상태실행 노출상태명 수정 (OD_STATUS_DISPLAY)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.23		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putStatusNmOrderStatusDisplay">
+	/*	order.statusMgr.putStatusNmOrderStatusDisplay */
+	UPDATE OD_STATUS_DISPLAY
+	   SET STATUS_NM = #{actionStatusNm}
+	 WHERE STATUS_CD = #{statusCd}
+	   AND USE_TYPE = #{useType}
+	   AND TYPE_CD = #{typeCd}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상태 FRONT-BOS-ACTION_JSON 업데이트 (OD_STATUS)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12		최윤지          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id= "putJsonOrderStatus">
+	/*	order.statusMgr.putJsonOrderStatus */
+	UPDATE OD_STATUS TT
+	   SET
+	   <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'FRONT') or @kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useType)">
+	   TT.FRONT_JSON =
+		   JSON_ARRAY(
+		   			  'info',
+						JSON_OBJECT(
+									'statusCd', STATUS_CD,
+									'statusNm', STATUS_NM,
+									'rows',
+										(
+										 SELECT
+											JSON_ARRAYAGG(
+												JSON_OBJECT(
+															'typeCd', T1.TYPE_CD, 'typeNm', T1.TYPE_NM, 'typeStatusNm', T2.STATUS_NM,
+															'actionRows',
+															(
+															 SELECT
+															 JSON_ARRAYAGG(
+																	JSON_OBJECT(
+																				'actionNm', S1.ACTION_NM, 'actionType', S2.ACTION_TYPE, 'actionExecId', S2.ACTION_EXEC_ID, 'actionExecNm', S2.ACTION_EXEC_NM,
+																				'actionTarget', S2.ACTION_TARGET ,
+																				'actionTargetUrl', S2.ACTION_TARGET_URL ,
+																				'actionConfirm', S2.ACTION_CONFIRM ,
+																				'actionAttr1', S2.ACTION_ATTR1,
+																				'actionAttr2', S2.ACTION_ATTR2,
+																				'actionAttr3', S2.ACTION_ATTR3
+																				)
+																	       )
+																FROM OD_STATUS_ITEM_ACTION S1
+																INNER JOIN OD_STATUS_ACTION S2 ON S1.ACTION_ID = S2.ACTION_ID
+																WHERE S1.STATUS_CD = TT.STATUS_CD AND S1.USE_TYPE = T1.USE_TYPE AND S1.TYPE_CD = T1.TYPE_CD
+															)
+										 				   )
+									                     )
+										 FROM OD_STATUS_GOODS_TYPE T1
+											  INNER JOIN OD_STATUS_DISPLAY T2 ON T1.USE_TYPE = T2.USE_TYPE AND T1.TYPE_CD = T2.TYPE_CD
+										 WHERE T2.STATUS_CD = TT.STATUS_CD AND T1.USE_TYPE = 'FRONT' <!-- USE_TYPE = 'FRONT'  :  STATUS_CD, STATUS_NM, TYPE_CD, TYPE_NM, STATUS_NM, ACTION... -> JSON 변환 -->
+										)
+									)
+					)
+
+	   ,</if>
+	   <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'BOS') or @kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useType)">
+	    TT.BOS_JSON =
+		   JSON_ARRAY(
+		   			  'info',
+						JSON_OBJECT(
+									'statusCd', STATUS_CD,
+									'statusNm', STATUS_NM,
+									'rows',
+										(
+										 SELECT
+											JSON_ARRAYAGG(
+												JSON_OBJECT(
+															'typeCd', T1.TYPE_CD, 'typeNm', T1.TYPE_NM, 'typeStatusNm', T2.STATUS_NM,
+															'actionRows',
+															(
+															 SELECT
+															 JSON_ARRAYAGG(
+																	JSON_OBJECT(
+																				'actionNm', S1.ACTION_NM, 'actionType', S2.ACTION_TYPE, 'actionExecId', S2.ACTION_EXEC_ID, 'actionExecNm', S2.ACTION_EXEC_NM,
+																				'actionTarget', S2.ACTION_TARGET ,
+																				'actionTargetUrl', S2.ACTION_TARGET_URL ,
+																				'actionConfirm', S2.ACTION_CONFIRM ,
+																				'actionAttr1', S2.ACTION_ATTR1,
+																				'actionAttr2', S2.ACTION_ATTR2,
+																				'actionAttr3', S2.ACTION_ATTR3
+																				)
+																	       )
+																FROM OD_STATUS_ITEM_ACTION S1
+																INNER JOIN OD_STATUS_ACTION S2 ON S1.ACTION_ID = S2.ACTION_ID
+																WHERE S1.STATUS_CD = TT.STATUS_CD AND S1.USE_TYPE = T1.USE_TYPE AND S1.TYPE_CD = T1.TYPE_CD
+															)
+										 				   )
+									                     )
+										 FROM OD_STATUS_GOODS_TYPE T1
+											  INNER JOIN OD_STATUS_DISPLAY T2 ON T1.USE_TYPE = T2.USE_TYPE AND T1.TYPE_CD = T2.TYPE_CD
+										 WHERE T2.STATUS_CD = TT.STATUS_CD AND T1.USE_TYPE = 'BOS' <!-- USE_TYPE = 'BOS'  :  STATUS_CD, STATUS_NM, TYPE_CD, TYPE_NM, STATUS_NM, ACTION... -> JSON 변환 -->
+										)
+									)
+					)
+		,</if>
+		TT.ACTION_JSON = JSON_OBJECT('ifDayChangeYn', IF_DAY_CHANGE_YN, 'deliverySearchYn', DELIVERY_SEARCH_YN) <!-- IF_DAY_CHANGE_YN, DELIVERY_SEARCH_YN -> JSON 변환  --> <!-- useType = null -->
+	</update>
+</mapper>

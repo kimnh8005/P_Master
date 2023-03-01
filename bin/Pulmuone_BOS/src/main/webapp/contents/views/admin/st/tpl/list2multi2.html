@@ -1,0 +1,506 @@
+<section class="fb__section">
+	<section id="view" class="fb__discountGroup">
+		<h2 class="hidden-title">임직원 할인율 그룹 관리</h2>
+		<h2 class="font--bold">임직원 할인율 그룹 관리</h2>
+		<div class="fb__discountGroup__header">
+			<p class="fb__discountGroup__updated-wrapper">
+				최근 업데이트 일자 : <span class="font--bold"></span>
+			</p>
+			<button id="button-create" class="btn-point btn-l">
+				&plus; 할인그룹 추가
+			</button>
+		</div>
+		<div class="fb__discountGroup__tableWrapper">
+			<div id="grid"></div>
+			<div class="btn-area">
+				<button id="button-save" class="btn-point btn-l">저장</button>
+			</div>
+		</div>
+	</section>
+</section>
+
+<script type="text/javascript">
+	"use strict";
+	var grid = null;
+	var gridDs = null;
+	var gridOpt = null;
+
+
+	$(document).ready(function () {
+		var $document = $(document);
+		var todayDate = new Date();
+
+		function init() {
+			initGrid();
+			bindEvents();
+		}
+
+		init();
+
+		/************************** functions **************************/
+		function bindEvents() {
+			var $create = $("#button-create");
+			var $save = $("#button-save");
+			var $document = $(document);
+
+
+			$create.on("click", onAddRow);
+			$save.on("click", onSave);
+			$document.on("click", ".brandList__removeItem", onRemoveBrand);
+		}
+
+		function getData() {
+			var apiData = [
+				{
+					groupName: "먹거리 그룹",
+					brandList: [{
+						brandName: "풀무원로하스",
+						urBrandId: 100,
+					}],
+					discountRate: 68,
+					updateDate: "2020-10-06 14:03:20",
+				}
+			]
+
+			// 서버 통신 테스트
+			return (apiData)
+		}
+
+		function getDataSource() {
+			var strQuery = { "page": 1, "pageSize": 20, "filterLength": 6, "filter": { "filters": [{ "field": "rtnValid", "value": true }, { "field": "rootPath", "value": "http://localhost:8280/pulmuone/public/" }, { "field": "brandSearchType", "value": "BRAND_NAME" }, { "field": "brandSearchValue", "value": "" }, { "field": "searchUseYn", "value": "" }, { "field": "searchUrSupplierId", "value": "" }] } }
+
+			// 브랜드 데이터소스
+			var brandDs = new kendo.data.DataSource({
+				transport: {
+					read: {
+						url: "http://localhost:8280/admin/ur/brand/getBrandList",
+						type: "POST",
+						dataType: "json",
+						data: strQuery,
+					}
+				},
+				schema: {
+					data: function (response) {
+						return response.data.rows;
+					}
+				}
+			})
+			return brandDs;
+		}
+
+		function initGrid() {
+			// ajax 통신으로 변경
+			// then의 콜백함수를 ajax의 success에 위치
+			var apiData = getData();
+			var ds = getDataSource();
+
+			var gridDs = {
+				data: apiData,
+				schema: {
+					model: {
+						id: "groupName",
+						fields: {
+							groupName: {
+								type: "string",
+								nullable: false,
+								validation: {
+									required: true,
+									validateGroupName: function (input) {
+										if (!input.is("[name='groupName']")) {
+											return true;
+										}
+
+										var kor_check = /([^가-힣ㄱ-ㅎㅏ-ㅣ\x20])/i;
+
+										var _value = input.val().trim();
+
+										if (!_value.length) {
+											input.attr("data-validateGroupName-msg", "required");
+											return false;
+										}
+
+										if (_value.length > 15) {
+											input.attr("data-validateGroupName-msg", "15자 이하로 입력해주세요");
+											return false;
+										}
+
+										if (kor_check.test(_value)) {
+											input.attr("data-validateGroupName-msg", "한글만 입력가능합니다.");
+											return false;
+										}
+
+										return true;
+									}
+								},
+								editable: true,
+							},
+							brandList: {
+								nullable: true,
+							},
+							discountRate: {
+								type: "number",
+								nullable: false,
+								defaultValue: 10,
+								validation: {
+									required: true,
+									validateDiscount: function (input) {
+										if (!input.is("[name='discountRate']")) {
+											return true;
+										}
+
+										var _value = input.val().trim();
+
+										if (!_value.length) {
+											input.attr("data-validateDiscount-msg", "required");
+											return false;
+										} else if (Number(_value) > 70) {
+											input.attr("data-validateDiscount-msg", "70 이하 입력");
+											return false;
+										}
+										return true;
+									}
+								},
+								editable: true,
+							},
+							updateDate: {
+								nullable: false,
+								type: "string",
+								defaultValue: todayDate.oFormat("yyyy-MM-dd hh:mm:ss")
+							}
+						}
+					}
+				}
+			}
+
+			var gridOpt = {
+				dataSource: gridDs,
+				editable: true,
+				navigatable: false,
+				scrollable: false,
+				selectable: true,
+				columns: [{
+					field: "groupName",
+					title: "임직원 할인율 브랜드 그룹명",
+					editor: function (container, options) {
+						var $input = $("<input type='text' class='comm-input'>");
+						$input.attr("name", options.field);
+						$input.appendTo(container);
+					},
+					width: "15%",
+					attributes: {
+						style: "text-align : center;"
+					},
+					headerAttributes: {
+						style: "text-align: center;"
+					}
+				}, {
+					field: "brandList",
+					title: "그룹별 브랜드",
+					template: brandListTemplate,
+					editable: function () {
+						return false;
+					},
+					width: "*",
+					attributes: {
+						style: "text-align : center;"
+					},
+					headerAttributes: {
+						style: "text-align: center;"
+					}
+				}, {
+					field: "discountRate",
+					title: "할인율",
+					template: "<span class='marginR5'>#= discountRate #</span>%",
+					editor: function (container, options) {
+						var $input = $("<input type='text' class='comm-input'>");
+						$input.attr("name", options.field);
+						$input.appendTo(container);
+					},
+					width: 150,
+					attributes: {
+						style: "text-align : center;"
+					},
+					headerAttributes: {
+						style: "text-align: center;"
+					}
+				}, {
+					field: "updateDate",
+					title: "최근 업데이트일",
+					width: "15%",
+					editable: function () {
+						return false;
+					},
+					attributes: {
+						style: "text-align : center;"
+					},
+					headerAttributes: {
+						style: "text-align: center;"
+					}
+				},
+				{
+					title: '관리',
+					width: "10%",
+					attributes: { style: 'text-align:center', class: 'forbiz-cell-readonly' },
+					headerAttributes: {
+						style: "text-align: center;"
+					},
+					command: [{
+						name: 'remove', text: fnGetLangData({ key: "5664", nullMsg: '삭제' }),
+						imageClass: "k-i-custom",
+						className: "btn-red btn-s",
+						iconClass: "k-icon",
+						click: onRemoveRow
+					}]
+				}
+
+				],
+				dataBound: onDataBound
+			}
+
+			$("#grid").kendoGrid(gridOpt);
+			grid = $("#grid").data("kendoGrid");
+			console.log(grid);
+		}
+
+		// 브랜드 목록 템플릿
+		function brandListTemplate(dataItem) {
+			var brandList = [];
+
+			if (dataItem && dataItem.brandList) {
+				brandList = dataItem.brandList.toJSON().slice();
+			}
+
+			var $container = $("<div class='complex-condition'></div>")
+			var $ul = $("<ul class='brandList'></ul>")
+
+			var $input = $("<div class='brandList__item'><input class='dropDownTemplate'>"
+				+ "<button class='btn-white btn-s addBrand-btn'>추가</button></div>");
+
+			$input.appendTo($container);
+			$ul.appendTo($container);
+
+			var template = "<li class='brandList__item'>"
+				+ "<input type='text' class='comm-input disabled' name='brandName' data-brandName='#= brandName #' data-brandId='#= urBrandId#' value='#= brandName #' >"
+				+ "<button type='button' class='btn-s btn-red brandList__removeItem'>&times;</button>"
+				+ "</li>"
+
+			template = kendo.template(template);
+
+			var templateString = "";
+
+			if (Array.isArray(brandList) && brandList.length) {
+				for (var i = 0; i < brandList.length; i++) {
+					templateString += template(brandList[i]);
+				}
+				$ul.html(templateString);
+			}
+
+			return $container.html();
+		}
+
+		// 브랜드 목록 변경 이벤트
+		/*function onDDLChange(e) {
+			var element = e.sender.element;
+			var row = element.closest("tr");
+			var grid = $("#grid").data("kendoGrid");
+			var dataItem = grid.dataItem(row);
+
+			dataItem.set("value", e.sender.value());
+		};*/
+
+		// 그리드 dataBound 이벤트 핸들러
+		function onDataBound(e) {
+			var grid = e.sender;
+			var items = e.sender.items();
+
+			items.each(function (e) {
+				var dataItem = grid.dataItem(this);
+				var ddt = $(this).find('.dropDownTemplate');
+
+				var ds = getDataSource();
+
+				$(ddt).kendoDropDownList({
+					optionLabel: "선택해주세요",
+					dataSource: ds,
+					dataTextField: "brandName",
+					dataValueField: "urBrandId",
+				});
+
+				var $addBrand = $(this).find(".addBrand-btn");
+
+				$addBrand.on("click", function (event) {
+					onAddBrand(event, ddt, dataItem);
+				})
+			});
+		}
+
+
+		// 그룹 데이터 중복 체크
+		// data : 추가한 데이터, arr : 검사할 배열, prop : 검사할 프로퍼티
+		function checkRedupliacte(data, arr, prop) {
+			var result = true;
+
+			if (arr && arr.length) {
+				arr.forEach(function (item) {
+
+					if (item.brandList) {
+						var list = item.brandList;
+						for (var i = 0; i < list.length; i++) {
+							if (list[i][prop] == data) {
+								result = false;
+								break;
+							}
+						}
+					}
+				})
+			} else {
+				result = false;
+			}
+
+			return result;
+		}
+
+		// 변경사항 저장
+		function onSave(e) {
+			var selector = "grid";
+			var inserted = fnEGridDsExtract(selector, "insert");
+			var updated = fnEGridDsExtract(selector, "update");
+			var deleted = fnEGridDsExtract(selector, "delete");
+
+			console.log("inserted : " + JSON.stringify(inserted));
+			console.log("updated : " + JSON.stringify(updated));
+			console.log("deleted : " + JSON.stringify(deleted));
+
+			// ajax 요청 보내기 또는 sync
+			if (inserted.length || updated.length || deleted.length) {
+				$("#grid").data("kendoGrid").dataSource.sync();
+				fnKendoMessage({
+					message: "저장되었습니다.",
+				})
+			} else {
+				fnKendoMessage({
+					message: "변경사항이 없습니다.",
+				})
+			}
+			return false;
+		}
+
+		// 행 추가
+		function onAddRow(e) {
+			var grid = $("#grid").data("kendoGrid");
+			grid.addRow();
+		}
+
+		// 행 삭제 이벤트
+		function onRemoveRow(event) {
+			event.preventDefault();
+			fnKendoMessage({
+				message: "삭제하시겠습니까?",
+				type: "confirm",
+				ok: function (e) {
+					removeRow(event);
+					return true;
+				},
+				cancel: function (e) {
+					return false;
+				}
+			})
+		}
+
+		// 브랜드 목록 추가 이벤트
+		function onAddBrand(ev, ddt, dataItem) {
+
+			var selectedVal = $(ddt).data("kendoDropDownList").value();
+			var selectedText = $(ddt).data("kendoDropDownList").text();
+
+			var brandList = [];
+
+			if (dataItem.brandList && Array.isArray(dataItem.brandList.toJSON())) {
+				brandList = dataItem.brandList.toJSON().slice();
+			}
+
+			if (!selectedVal || !selectedText) {
+				fnKendoMessage({
+					message: "브랜드를 선택해주세요",
+				})
+				return;
+			}
+
+			var _gridData = $("#grid").data("kendoGrid").dataSource.data().toJSON();
+
+			var _check = checkRedupliacte(selectedVal, _gridData, "urBrandId");
+
+			if (!_check) {
+				fnKendoMessage({
+					message: "브랜드가 중복되었습니다.",
+				})
+				return;
+			}
+
+			brandList.push({
+				brandName: selectedText,
+				urBrandId: selectedVal
+			})
+
+			dataItem.set("brandList", brandList);
+			// dataItem.dirty = true;
+		}
+
+		// 브랜드 목록 삭제 이벤트
+		function onRemoveBrand(event) {
+			event.preventDefault();
+			fnKendoMessage({
+				message: "삭제하시겠습니까?",
+				type: "confirm",
+				ok: function (e) {
+					removeBrand(event);
+					return true;
+				},
+				cancel: function (e) {
+					return false;
+				}
+			})
+		}
+
+		// 행 삭제
+		function removeRow(e) {
+			var $target = $(e.target);
+			var $row = $target.closest("tr");
+
+			$("#grid").data("kendoGrid").removeRow($row);
+		}
+
+		// 브랜드 목록 삭제
+		function removeBrand(e) {
+			var $target = $(e.target);
+			var $row = $target.closest("tr");
+			var grid = $("#grid").data("kendoGrid");
+
+			var dataItem = grid.dataItem($row);
+
+			var brandList = dataItem ? dataItem.brandList.toJSON() : null;
+
+			if (!Array.isArray(brandList)) return;
+
+
+			var $brandItem = $target.parent().find("input[name='brandName']");
+
+			if ($brandItem.length <= 0) {
+				console.error("onRemoveBrand");
+				return;
+			}
+
+			var _text = $brandItem.data("brandname");
+			var _value = $brandItem.data("brandid");
+
+			var idx = brandList.findIndex(function (item) {
+				return item.urBrandId == _value;
+			})
+
+			var newBrandList = [].concat(brandList.slice(0, idx), brandList.slice(idx + 1));
+
+			dataItem.set("brandList", newBrandList);
+			console.log(dataItem);
+		}
+	});
+</script>

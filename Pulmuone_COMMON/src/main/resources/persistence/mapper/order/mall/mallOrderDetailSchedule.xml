@@ -1,0 +1,936 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.schedule.MallOrderDetailScheduleMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 스케줄 리스트 Request 정보 조회(주문번호, 주문상세  상품 PK, 일일상품 유형)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.19 	석세동          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderScheduleRequestInfoResultMap" type="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleListRequestDto">
+		<result column="OD_ORDER_DETL_ID"			property="odOrderDetlId"/>
+		<result column="OD_ORDER_ID"	property="odOrderId"/>
+		<result column="ODID"			property="odid"/>
+		<result column="IL_GOODS_ID"			property="ilGoodsId"/>
+		<result column="ORG_IL_GOODS_ID"			property="orgIlGoodsId"/>
+		<result column="GOODS_DAILY_TP"			property="goodsDailyTp"/>
+		<result column="RECV_ZIP_CD"			property="recvZipCd"/>
+		<result column="RECV_BLD_NO"			property="recvBldNo"/>
+		<result column="UR_WAREHOUSE_ID"			property="urWarehouseId"/>
+		<result column="PROMOTION_YN"			property="promotionYn"/>
+		<result column="OD_ORDER_DETL_SEQ"			property="odOrderDetlSeq"/>
+		<result column="LAST_DELIVERY_DT"			property="lastDeliveryDt"/>
+		<result column="GOODS_CYCLE_TERM_TP"		property="goodsCycleTermTp"/>
+		<result column="CUTOFF_TIME_YN"				property="cutoffTimeYn"/>
+	</resultMap>
+
+	<select id="getOrderScheduleRequestInfo" resultMap="getOrderScheduleRequestInfoResultMap">
+		/* mallOrderDetailSchedule.getOrderScheduleRequestInfo */
+		SELECT OOD.OD_ORDER_DETL_ID 	/* 주문상세 PK */
+		     , OOD.OD_ORDER_ID 			/* 주문 PK */
+		     , OO.ODID					/* 주문번호 */
+			   /* UDMD I/F 하는 상품인 경우, PDM_GROUP_CD로 상품정보 조회, 그외 상품ID로 조회 */
+     		 , CASE WHEN OOD.GOODS_DAILY_TP = 'GOODS_DAILY_TP.BABYMEAL' OR OOD.GOODS_DAILY_TP = 'GOODS_DAILY_TP.EATSSLIM'
+            		THEN (SELECT IFNULL(II.PDM_GROUP_CD, II.IL_ITEM_CD)
+                    		FROM IL_ITEM II
+                   		   WHERE OOD.IL_ITEM_CD = II.IL_ITEM_CD
+                  		 )
+            		ELSE OOD.IL_GOODS_ID
+            		END AS IL_GOODS_ID	/* I/F 상품ID */
+             , OOD.IL_GOODS_ID 	 		AS ORG_IL_GOODS_ID	/* 주문상세 상품ID */
+		     , OOD.GOODS_DAILY_TP		/* 일일상품 유형(GOODS_DAILY_TP : GREENJUICE/BABYMEAL/EATSSLIM ) */
+		     , FN_DECRYPT(OSZ.RECV_ZIP_CD) 	AS RECV_ZIP_CD	/* 수령인 우편번호 */
+		     , OSZ.RECV_BLD_NO 			/* 건물번호 */
+		     , OOD.UR_WAREHOUSE_ID
+		     , (CASE WHEN OOD.PROMOTION_TP = 'CART_PROMOTION_TP.GREENJUICE_SELECT' THEN 'Y' ELSE 'N' END) AS PROMOTION_YN
+		     , OOD.OD_ORDER_DETL_SEQ
+			 , CASE
+				   WHEN NOW() <![CDATA[ < ]]> CONCAT(DATE_FORMAT(NOW(),'%Y-%m-%d'), ' ', UW.CUTOFF_TIME) THEN 'N'
+				   ELSE 'Y'
+				   END AS CUTOFF_TIME_YN
+			 , (SELECT DATE_ADD(MAX(DELIVERY_DT),INTERVAL +1 DAY) FROM OD_ORDER_DETL_DAILY_SCH WHERE OD_ORDER_DETL_DAILY_ID = OODD.OD_ORDER_DETL_DAILY_ID AND ORDER_SCH_STATUS = 1 AND USE_YN ='Y') AS LAST_DELIVERY_DT /* 마지막 배송일자(ORDER_SCH_STATUS = 1(주문))  */
+			 , OODD.GOODS_CYCLE_TERM_TP
+		FROM OD_ORDER_DETL OOD
+		 INNER JOIN OD_ORDER OO
+		         ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+		 INNER JOIN OD_SHIPPING_ZONE OSZ
+		         ON OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+		 INNER JOIN UR_WAREHOUSE UW
+					ON OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+		 INNER JOIN OD_ORDER_DETL_DAILY OODD
+		     	 ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		 WHERE OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+	<!-- 주문상세 스캐줄 상단정보 resultMap -->
+	<resultMap id="getOrderScheduleGoodsInfoResultMap" type="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleGoodsDto">
+		<result column="GOODS_NM"			property="goodsNm"/>
+		<result column="IL_GOODS_ID"			property="ilGoodsId"/>
+		<result column="FIRST_DELIVERY_DATE"	property="firstDeliveryDate"/>
+		<result column="LAST_DELIVERY_DATE"	property="lastDeliveryDate"/>
+		<result column="SALE_SEQ"			property="saleSeq"/>
+		<result column="MON_CNT"			property="monCnt"/>
+		<result column="TUE_CNT"			property="tueCnt"/>
+		<result column="WED_CNT"			property="wedCnt"/>
+		<result column="THU_CNT"			property="thuCnt"/>
+		<result column="FRI_CNT"			property="friCnt"/>
+		<result column="ALLERGY_YN"			property="allergyYn"/>
+		<result column="OD_ORDER_DETL_ID"	property="odOrderDetlId"/>
+		<result column="GOODS_DAILY_TP"		property="goodsDailyTp"/>
+		<result column="GOODS_IMG_NM"		property="goodsImgNm"/>
+		<result column="PROMOTION_YN"		property="promotionYn"/>
+		<result column="RECV_ZIP_CD"		property="recvZipCd"/>
+		<result column="RECV_BLD_NO"		property="recvBldNo"/>
+		<result column="GOODS_DAILY_TP"		property="goodsDailyTp"/>
+		<result column="UR_WAREHOUSE_ID"	property="urWarehouseId"/>
+		<result column="ORDER_CNT"			property="orderCnt"/>
+		<result column="OD_ORDER_ID"		property="odOrderId"/>
+		<result column="ODID"				property="odid"/>
+		<result column="DAILY_PATTERN"		property="dailyPattern"/>
+	</resultMap>
+
+	<select id="getOrderScheduleGoodsInfo" resultMap="getOrderScheduleGoodsInfoResultMap">
+		/*	mallOrderDetailSchedule.getOrderScheduleGoodsInfo  */
+		SELECT OOD.GOODS_NM
+			, OOD.IL_GOODS_ID
+			, MIN(DATE_FORMAT(OODDS.DELIVERY_DT,'%Y-%m-%d')) AS FIRST_DELIVERY_DATE
+			, MAX(DATE_FORMAT(OODDS.DELIVERY_DT,'%Y-%m-%d')) AS LAST_DELIVERY_DATE
+			, SUM(CASE WHEN OODDS.DELIVERY_YN='N' THEN OODDS.ORDER_CNT END) AS SALE_SEQ
+			, OODD.MON_CNT
+			, OODD.TUE_CNT
+			, OODD.WED_CNT
+			, OODD.THU_CNT
+			, OODD.FRI_CNT
+			, IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN
+			, OOD.OD_ORDER_DETL_ID
+			, OOD.GOODS_DAILY_TP
+			, FN_GOODS_S_IMG(OOD.IL_GOODS_ID) AS GOODS_IMG_NM
+			, (CASE WHEN OOD.PROMOTION_TP = 'CART_PROMOTION_TP.GREENJUICE_SELECT' THEN 'Y' ELSE 'N' END) AS PROMOTION_YN
+			, FN_DECRYPT(OSZ.RECV_ZIP_CD) 	AS RECV_ZIP_CD	/* 수령인 우편번호 */
+		    , OSZ.RECV_BLD_NO 			/* 건물번호 */
+		    , OOD.GOODS_DAILY_TP
+		    , OOD.UR_WAREHOUSE_ID
+		    , OODD.ORDER_CNT
+		    , OOD.OD_ORDER_ID
+		    , OOD.ODID
+		    , OODD.DAILY_PATTERN
+		FROM
+		(
+			SELECT
+				*
+			FROM
+				OD_ORDER_DETL_DAILY_SCH OODDS
+			WHERE
+				EXISTS ( SELECT 'X'
+	 		   					FROM
+	 		   						OD_ORDER_DETL_DAILY
+								WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+				)
+		) OODDS
+		INNER JOIN OD_ORDER_DETL_DAILY OODD ON OODDS.OD_ORDER_DETL_DAILY_ID = OODD.OD_ORDER_DETL_DAILY_ID
+		INNER JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		INNER JOIN OD_SHIPPING_ZONE OSZ ON OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+		WHERE OODDS.USE_YN = 'Y'
+		GROUP BY OODDS.OD_ORDER_DETL_DAILY_ID
+	</select>
+
+	<select id="getOrderScheduleSelectGoodsInfo" resultMap="getOrderScheduleGoodsInfoResultMap">
+		/*	mallOrderDetailSchedule.getOrderScheduleSelectGoodsInfo  */
+		SELECT OODP.GOODS_NM
+			, FN_GOODS_S_IMG(OODP.IL_GOODS_ID) AS GOODS_IMG_NM
+			, MIN(DATE_FORMAT(OODDS.DELIVERY_DT,'%Y-%m-%d')) AS FIRST_DELIVERY_DATE
+			, MAX(DATE_FORMAT(OODDS.DELIVERY_DT,'%Y-%m-%d')) AS LAST_DELIVERY_DATE
+			, SUM(CASE WHEN OODDS.DELIVERY_YN='N' THEN OODDS.ORDER_CNT END) AS SALE_SEQ
+			, SUM(OODD.MON_CNT) AS MON_CNT
+			, SUM(OODD.TUE_CNT) AS TUE_CNT
+			, SUM(OODD.WED_CNT) AS WED_CNT
+			, SUM(OODD.THU_CNT) AS THU_CNT
+			, SUM(OODD.FRI_CNT) AS FRI_CNT
+			, (CASE WHEN OODP.PROMOTION_TP = 'CART_PROMOTION_TP.GREENJUICE_SELECT' THEN 'Y' ELSE 'N' END) AS PROMOTION_YN
+			, OODP.GOODS_TP_CD
+		FROM
+			OD_ORDER_DETL_DAILY_SCH OODDS
+		INNER JOIN OD_ORDER_DETL_DAILY OODD ON OODDS.OD_ORDER_DETL_DAILY_ID = OODD.OD_ORDER_DETL_DAILY_ID AND OODD.OD_ORDER_ID = #{odOrderId}
+		INNER JOIN OD_ORDER_DETL_PACK OODP ON OODD.OD_ORDER_ID = OODP.OD_ORDER_ID
+		WHERE OODDS.USE_YN = 'Y'
+	</select>
+
+	<select id="getOrderScheduleGoodsBaseInfo" resultMap="getOrderScheduleGoodsInfoResultMap">
+		/*	mallOrderDetailSchedule.getOrderScheduleGoodsBaseInfo  */
+		SELECT OOD.GOODS_NM
+			 , OODD.MON_CNT
+			 , OODD.TUE_CNT
+			 , OODD.WED_CNT
+			 , OODD.THU_CNT
+			 , OODD.FRI_CNT
+			 , IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN
+			 , OOD.IL_GOODS_ID
+			 , OOD.GOODS_DAILY_TP
+			 , FN_GOODS_S_IMG(OOD.IL_GOODS_ID) AS GOODS_IMG_NM
+			 , FN_DECRYPT(OSZ.RECV_ZIP_CD) 	AS RECV_ZIP_CD	/* 수령인 우편번호 */
+		     , OSZ.RECV_BLD_NO 			/* 건물번호 */
+		  FROM OD_ORDER_DETL_DAILY OODD
+		 INNER JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		 INNER JOIN OD_SHIPPING_ZONE OSZ ON OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+		 WHERE OODD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+	<!-- 주문상세 스캐줄 리스트 resultMap -->
+	<resultMap id="getOrderDetailScheduleListResultMap" type="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleListDto">
+		<result column="OD_ORDER_DETL_DAILY_SCH_ID"			property="odOrderDetlDailySchId"/>
+		<result column="OD_ORDER_DETL_DAILY_SCH_SEQ"			property="odOrderDetlDailySchSeq"/>
+		<result column="OD_ORDER_DETL_DAILY_ID"			property="odOrderDetlDailyId"/>
+		<result column="DELV_DATE"			property="delvDate"/>
+		<result column="ORG_DELV_DATE"			property="orgDelvDate"/>
+		<result column="DELV_DATE_WEEK_DAY"			property="delvDateWeekDay"/>
+		<result column="DELIVERY_YN"			property="deliveryYn"/>
+		<result column="GOODS_IMG_NM"			property="goodsImgNm"/>
+		<result column="GOODS_NM"			property="goodsNm"/>
+		<result column="ORDER_CNT"			property="orderCnt"/>
+		<result column="OD_SHIPPING_ZONE_ID"			property="odShippingZoneId"/>
+		<result column="OD_ORDER_DETL_ID"				property="odOrderDetlId"/>
+	</resultMap>
+	<select id="getOrderDetailScheduleList" resultMap="getOrderDetailScheduleListResultMap">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleList  */
+		SELECT OODDS.OD_ORDER_DETL_DAILY_SCH_ID
+			, OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ
+			, OODDS.OD_ORDER_DETL_DAILY_ID
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(listType, "Y")'>
+					, OODDS.DELIVERY_DT AS DELV_DATE
+					, DAYOFWEEK(OODDS.DELIVERY_DT) AS DELV_DATE_WEEK_DAY
+				</when>
+				<otherwise>
+					, OODDS.DELIVERY_DT AS DELV_DATE
+					, OODDS.DELIVERY_DT AS ORG_DELV_DATE
+					, SUBSTR('일월화수목금토', DAYOFWEEK(OODDS.DELIVERY_DT), 1) AS DELV_DATE_WEEK_DAY
+				</otherwise>
+			</choose>
+
+			, OODDS.DELIVERY_YN
+			, FN_GOODS_S_IMG(OOD.IL_GOODS_ID) AS GOODS_IMG_NM
+			, OOD.GOODS_NM
+			, OODDS.ORDER_CNT
+			, OOD.OD_ORDER_DETL_ID
+		FROM
+		(
+			SELECT
+				*
+			FROM
+				OD_ORDER_DETL_DAILY_SCH OODDS
+			WHERE
+				EXISTS ( SELECT 'X'
+	 		   					FROM
+	 		   						OD_ORDER_DETL_DAILY
+								WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+								<choose>
+									<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(promotionYn, "Y")'>
+										AND DAILY_PACK_YN = 'N'
+										AND OD_ORDER_ID = #{odOrderId}
+									</when>
+									<otherwise>
+										AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+									</otherwise>
+								</choose>
+				)
+		) OODDS
+		INNER JOIN OD_ORDER_DETL_DAILY OODD ON OODDS.OD_ORDER_DETL_DAILY_ID = OODD.OD_ORDER_DETL_DAILY_ID
+		INNER JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE OODDS.USE_YN = 'Y'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(changeDate)">
+			AND OODDS.DELIVERY_DT <![CDATA[ >= ]]> #{changeDate}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(codeSearchList)">
+			AND OODDS.OD_ORDER_DETL_DAILY_SCH_ID IN
+			<foreach item="data" index="index" collection="codeSearchList" open="(" separator="," close=")">
+				#{data}
+			</foreach>
+		</if>
+		ORDER BY OODDS.DELIVERY_DT ASC
+	</select>
+
+	<select id="getOrderDetailScheduleArrivalInfo" resultMap="getOrderDetailScheduleListResultMap">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleArrivalInfo  */
+		SELECT OODDS.OD_ORDER_DETL_DAILY_SCH_ID
+			, OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ
+			, OODDS.OD_ORDER_DETL_DAILY_ID
+			, OODDS.DELIVERY_DT AS DELV_DATE
+			, DAYOFWEEK(OODDS.DELIVERY_DT) AS DELV_DATE_WEEK_DAY
+			, OODDS.DELIVERY_YN
+			, FN_GOODS_S_IMG(OOD.IL_GOODS_ID) AS GOODS_IMG_NM
+			, OOD.GOODS_NM
+			, OODDS.ORDER_CNT
+			, OODDS.OD_SHIPPING_ZONE_ID
+		FROM
+		(
+			SELECT
+				*
+			FROM
+				OD_ORDER_DETL_DAILY_SCH OODDS
+			WHERE
+				EXISTS ( SELECT 'X'
+	 		   					FROM
+	 		   						OD_ORDER_DETL_DAILY
+								WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+				)
+		) OODDS
+		INNER JOIN OD_ORDER_DETL_DAILY OODD ON OODDS.OD_ORDER_DETL_DAILY_ID = OODD.OD_ORDER_DETL_DAILY_ID
+		INNER JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE OODDS.USE_YN = 'Y'
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(changeDate)">
+				AND OODDS.DELIVERY_DT = #{changeDate}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(odOrderDetlDailySchId)">
+				AND OODDS.OD_ORDER_DETL_DAILY_SCH_ID = #{odOrderDetlDailySchId}
+			</if>
+	</select>
+
+	<insert id="addOrderDetailSchedule">
+		/*	mallOrderDetailSchedule.addOrderDetailSchedule  */
+		INSERT INTO OD_ORDER_DETL_DAILY_SCH(
+			OD_ORDER_DETL_DAILY_SCH_SEQ
+			, OD_ORDER_DETL_DAILY_ID
+			, DELIVERY_DT
+			, ORDER_CNT
+			, ORDER_SCH_STATUS
+			, PS_SHIPPING_COMP_ID
+			, TRACKING_NO
+			, OD_SHIPPING_ZONE_ID
+		)
+		VALUES
+		<foreach item="item" index="index" collection="list" open="" separator="," close="">
+			(
+				#{item.odOrderDetlDailySchSeq}
+				, (
+					SELECT OODD.OD_ORDER_DETL_DAILY_ID FROM OD_ORDER_DETL_DAILY OODD
+				  	WHERE
+					EXISTS ( SELECT 'X'
+		   					FROM
+		   						OD_ORDER_DETL OOD
+							WHERE OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+							AND OOD.ODID = #{item.odid}
+							AND OOD.OD_ORDER_DETL_SEQ = #{item.odOrderDetlSeq}
+					)
+				)
+				, #{item.deliveryDt}
+				, #{item.orderCnt}
+				, #{item.orderSchStatus}
+				, 0
+				, ''
+				,	(
+						SELECT
+							MIN(OD_SHIPPING_ZONE_ID)
+						FROM
+							OD_ORDER_DETL_DAILY_ZONE
+						WHERE
+							USE_YN='Y'
+						AND OD_ORDER_DETL_ID = #{item.odOrderDetlId}
+						AND START_DT = (
+							IFNULL((
+								SELECT
+									MIN(START_DT)
+								FROM
+									OD_ORDER_DETL_DAILY_ZONE
+								WHERE
+									USE_YN='Y'
+								AND OD_ORDER_DETL_ID = #{item.odOrderDetlId}
+								AND <![CDATA[((START_DT <= #{item.deliveryDt} AND END_DT >= #{item.deliveryDt}) OR START_DT >= #{item.deliveryDt})]]>
+							),
+							(
+								SELECT
+									MAX(START_DT)
+								FROM
+									OD_ORDER_DETL_DAILY_ZONE
+								WHERE
+									USE_YN='Y'
+								AND OD_ORDER_DETL_ID = #{item.odOrderDetlId}
+								AND <![CDATA[END_DT <= #{item.deliveryDt}]]>
+							))
+						)
+					)
+			)
+		</foreach>
+	</insert>
+
+	<update id="putOrderDetlSchedule">
+		/*	mallOrderDetailSchedule.putOrderDetailSchedule  */
+		<foreach collection="list" item="item" separator=";">
+			UPDATE OD_ORDER_DETL_DAILY_SCH OODDS
+			SET OODDS.USE_YN = 'N'
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(item.orderSchStatus)'>
+				, OODDS.ORDER_SCH_STATUS = #{item.orderSchStatus}
+			</if>
+			WHERE
+				EXISTS ( SELECT 'X'
+			   					FROM
+			   						OD_ORDER_DETL_DAILY
+								WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+								AND OD_ORDER_DETL_ID = #{item.odOrderDetlId}
+				)
+				AND OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ = #{item.odOrderDetlDailySchSeq}
+		</foreach>
+		;
+	</update>
+
+	<update id="putErpOrderDetlSchedule">
+		/*	mallOrderDetailSchedule.putErpOrderDetlSchedule  */
+		<foreach collection="list" item="item" separator=";">
+			UPDATE  OD_ORDER_DETL_DAILY_SCH OODDS
+			SET USE_YN = 'N'
+			WHERE OODDS.OD_ORDER_DETL_DAILY_ID = (
+				SELECT OODD.OD_ORDER_DETL_DAILY_ID
+				FROM OD_ORDER_DETL_DAILY OODD
+			 	WHERE (OODD.OD_ORDER_ID, OODD.OD_ORDER_DETL_ID, OODD.OD_ORDER_DETL_SEQ)
+			 	IN (SELECT OOD.OD_ORDER_ID
+			 		, OOD.OD_ORDER_DETL_ID
+			 		, OOD.OD_ORDER_DETL_SEQ
+			 		FROM OD_ORDER_DETL OOD
+			 		WHERE OOD.ODID = #{item.odid}
+			   		AND OOD.OD_ORDER_DETL_SEQ = #{item.odOrderDetlSeq}
+			 		)
+				)
+			AND OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ = #{item.odOrderDetlDailySchSeq}
+		</foreach>
+		;
+	</update>
+
+	<select id="getOrderDetlScheduleHolidayYn" resultType="java.lang.String">
+		/*	mallOrderDetailSchedule.getHolidayYn	*/
+		SELECT (CASE WHEN COUNT(*) > 0 THEN 'Y' ELSE 'N' END) AS HOLIDAY_YN
+		FROM PS_HOLIDAY
+		WHERE HOLIDAY_DT = #{nowDate}
+	</select>
+
+	<!-- 주문상세 스캐줄 요일 리스트 resultMap -->
+	<resultMap id="getOrderDetailScheduleDayOfWeekListResultMap" type="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleDayOfWeekListDto">
+		<result column="DELV_DATE"			property="delvDate"/>
+		<result column="DELV_DATE_WEEK_DAY"			property="delvDateWeekDay"/>
+	</resultMap>
+
+	<select id="getOrderDetailScheduleDayOfWeekList" resultMap="getOrderDetailScheduleDayOfWeekListResultMap">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleDayOfWeekList  */
+		SELECT DATE_FORMAT(DELV_DATE, '%Y-%m-%d') AS DELV_DATE
+			, DAYOFWEEK(DELV_DATE) AS DELV_DATE_WEEK_DAY
+		FROM
+		(
+			SELECT *
+				FROM
+			(SELECT ADDDATE(NOW() ,T4*10000 + T3*1000 + T2*100 + T1*10 + T0) DELV_DATE FROM
+			(SELECT 0 T0 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T0,
+			(SELECT 0 T1 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T1,
+			(SELECT 0 T2 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T2,
+			(SELECT 0 T3 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T3,
+			(SELECT 0 T4 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T4) DAY_OF_WEEK_INFO
+			WHERE
+				NOT EXISTS ( SELECT 'X'
+	 		   					FROM
+	 		   						PS_HOLIDAY
+								WHERE HOLIDAY_DT = DATE_FORMAT(DAY_OF_WEEK_INFO.DELV_DATE, '%Y-%m-%d')
+
+				)
+				AND	NOT EXISTS ( SELECT 'X'
+   					FROM
+   						UR_WAREHOUSE_HLDY
+				WHERE UR_WAREHOUSE_ID = #{urWarehouseId}
+					AND DATE_FORMAT(HOLIDAY_DT, '%Y-%m-%d') = DATE_FORMAT(DAY_OF_WEEK_INFO.DELV_DATE, '%Y-%m-%d')
+
+				)
+		) DAY_OF_WEEK_INFO
+		WHERE DAYOFWEEK(DELV_DATE) IN
+			<foreach collection="deliveryDayOfWeekList" item="dayOfWeekCode" index="index" separator="," open="(" close=")">
+				#{dayOfWeekCode}
+			</foreach>
+			<choose>
+				<when test='scheduleLimit != null and scheduleLimit != 0'>
+						AND DATE_FORMAT(DELV_DATE, '%Y-%m-%d') <![CDATA[ > ]]> (
+											SELECT
+												MAX(DELIVERY_DT)
+											FROM
+												OD_ORDER_DETL_DAILY_SCH OODDS
+											WHERE
+												EXISTS ( SELECT 'X'
+									 		   					FROM
+									 		   						OD_ORDER_DETL_DAILY
+																WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+																AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+												)
+										)
+					ORDER BY DELV_DATE ASC
+					LIMIT #{scheduleLimit}
+				</when>
+				<otherwise>
+					AND DATE_FORMAT(DELV_DATE, '%Y-%m-%d') BETWEEN #{changeDate}  AND #{changeDate} + INTERVAL 6 MONTH
+					ORDER BY DELV_DATE ASC
+				</otherwise>
+			</choose>
+	</select>
+
+	<select id="getOrderDetailScheduleOrderCnt" resultType="int">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleOrderCnt  */
+		SELECT IFNULL(SUM(OODDS.ORDER_CNT), 0) AS SCHEDULE_ORDER_CNT
+		FROM
+		(
+			SELECT
+				*
+			FROM
+				OD_ORDER_DETL_DAILY_SCH OODDS
+			WHERE
+				EXISTS ( SELECT 'X'
+	 		   					FROM
+	 		   						OD_ORDER_DETL_DAILY
+								WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+				)
+		) OODDS
+		WHERE OODDS.USE_YN = 'Y'
+			AND DELIVERY_DT <![CDATA[ >= ]]> #{changeDate}
+		ORDER BY OODDS.DELIVERY_DT ASC
+	</select>
+
+	<insert id="addChangeOrderDetailSchedule">
+		/*	mallOrderDetailSchedule.addChangeOrderDetailSchedule  */
+		INSERT INTO OD_ORDER_DETL_DAILY_SCH(
+			OD_ORDER_DETL_DAILY_SCH_SEQ
+			, OD_ORDER_DETL_DAILY_ID
+			, DELIVERY_DT
+			, ORDER_CNT
+			, ORDER_SCH_STATUS
+			, USE_YN
+			, PS_SHIPPING_COMP_ID
+			, TRACKING_NO
+			, OD_SHIPPING_ZONE_ID
+		)
+		VALUES
+		(
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(orderSchStatus, "1")'>
+					(SELECT IFNULL(MAX(OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ)+1, 1) FROM OD_ORDER_DETL_DAILY_SCH OODDS WHERE OODDS.OD_ORDER_DETL_DAILY_ID = #{odOrderDetlDailyId})
+				</when>
+				<otherwise>
+					#{odOrderDetlDailySchSeq}
+				</otherwise>
+			</choose>
+			, #{odOrderDetlDailyId}
+			, #{deliveryDt}
+			, #{orderCnt}
+			, #{orderSchStatus}
+			, #{useYn}
+			, 0
+			, ''
+			, <choose>
+				<when test="odShippingZoneId != null and odShippingZoneId != 0">
+					#{odShippingZoneId}
+				</when>
+				<otherwise>
+					(
+						SELECT
+							MIN(OD_SHIPPING_ZONE_ID)
+						FROM
+							OD_ORDER_DETL_DAILY_ZONE
+						WHERE
+							USE_YN='Y'
+						AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+						AND START_DT = (
+							IFNULL((
+								SELECT
+									MIN(START_DT)
+								FROM
+									OD_ORDER_DETL_DAILY_ZONE
+								WHERE
+									USE_YN='Y'
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+								AND <![CDATA[((START_DT <= #{deliveryDt} AND END_DT >= #{deliveryDt}) OR START_DT >= #{deliveryDt})]]>
+							),
+							(
+								SELECT
+									MAX(START_DT)
+								FROM
+									OD_ORDER_DETL_DAILY_ZONE
+								WHERE
+									USE_YN='Y'
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+								AND <![CDATA[END_DT <= #{deliveryDt}]]>
+							))
+						)
+					)
+				</otherwise>
+			</choose>
+		)
+		<selectKey resultType="int" keyProperty="odOrderDetlDailySchSeq" keyColumn="OD_ORDER_DETL_DAILY_SCH_SEQ" order="AFTER">
+			SELECT IFNULL(MAX(OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ), 0) FROM OD_ORDER_DETL_DAILY_SCH OODDS WHERE OODDS.OD_ORDER_DETL_DAILY_ID = #{odOrderDetlDailyId}
+		</selectKey>
+	</insert>
+
+	<update id="putSkipOrderDetailSchedule">
+		/*	mallOrderDetailSchedule.putSkipOrderDetlSchedule  */
+		<foreach collection="list" item="item" separator=";">
+			UPDATE OD_ORDER_DETL_DAILY_SCH OODDS
+			SET OODDS.USE_YN = 'N'
+			WHERE
+				OD_ORDER_DETL_DAILY_SCH_ID = #{item.odOrderDetlDailySchId}
+		</foreach>
+		;
+	</update>
+
+	<insert id="addSkipOrderDetailSchedule">
+		/*	mallOrderDetailSchedule.addSkipOrderDetailSchedule  */
+		INSERT INTO OD_ORDER_DETL_DAILY_SCH(
+			OD_ORDER_DETL_DAILY_SCH_SEQ
+			, OD_ORDER_DETL_DAILY_ID
+			, DELIVERY_DT
+			, ORDER_CNT
+			, ORDER_SCH_STATUS
+			, USE_YN
+			, PS_SHIPPING_COMP_ID
+			, TRACKING_NO
+			, OD_SHIPPING_ZONE_ID
+		)
+		SELECT
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(orderSchStatus, "1")'>
+					(
+						SELECT IFNULL(MAX(OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ)+1, 1) AS OD_ORDER_DETL_DAILY_SCH_SEQ
+						FROM OD_ORDER_DETL_DAILY_SCH OODDS
+						WHERE
+							EXISTS
+							(
+								SELECT 'X'
+			 		   			FROM
+			 		   			OD_ORDER_DETL_DAILY
+								WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+							)
+					)
+				</when>
+				<otherwise>
+					(
+						SELECT OD_ORDER_DETL_DAILY_SCH_SEQ
+						FROM OD_ORDER_DETL_DAILY_SCH
+						WHERE
+							OD_ORDER_DETL_DAILY_SCH_ID = #{odOrderDetlDailySchId}
+					)
+				</otherwise>
+			</choose>
+			, OD_ORDER_DETL_DAILY_ID
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryDt) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderCnt)">
+					, #{deliveryDt}
+					, #{orderCnt}
+				</when>
+				<otherwise>
+					, DELIVERY_DT
+					, ORDER_CNT
+				</otherwise>
+			</choose>
+			, #{orderSchStatus}
+			, #{useYn}
+			, 0
+			, ''
+			, <choose>
+				<when test="odShippingZoneId != null and odShippingZoneId != 0">
+					#{odShippingZoneId}
+				</when>
+				<otherwise>
+					(
+						SELECT
+							OD_SHIPPING_ZONE_ID
+							FROM
+							OD_ORDER_DETL_DAILY_ZONE
+							WHERE
+								USE_YN='Y'
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+								AND START_DT <![CDATA[ <= ]]> #{deliveryDt}
+								AND END_DT <![CDATA[ >= ]]> #{deliveryDt}
+					)
+				</otherwise>
+			</choose>
+		FROM OD_ORDER_DETL_DAILY_SCH
+		WHERE OD_ORDER_DETL_DAILY_SCH_ID = #{odOrderDetlDailySchId}
+	</insert>
+
+	<select id="getOrderDetailBatchInfo" resultType="String">
+		/*	mallOrderDetailSchedule.getOrderDetailBatchInfo  */
+		SELECT BATCH_EXEC_FL
+		FROM
+			OD_ORDER_DETL
+		WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+	<select id="getOrderDetailDailySchSeq" resultType="int">
+		/*	mallOrderDetailSchedule.getOrderDetailDailySchSeq  */
+		SELECT
+			MAX(OODDS.OD_ORDER_DETL_DAILY_SCH_ID) AS orderDetailDailySchSeq
+		FROM
+			OD_ORDER_DETL_DAILY_SCH OODDS
+		WHERE
+			EXISTS ( SELECT 'X'
+		   					FROM
+		   						OD_ORDER_DETL_DAILY
+							WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+							AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+			)
+	</select>
+
+	<delete id="delOdOrderDetlDailySch">
+		/*	mallOrderDetailSchedule.delOdOrderDetlDailySch  */
+		DELETE
+		FROM OD_ORDER_DETL_DAILY_SCH OODDS
+		WHERE
+			EXISTS ( SELECT 'X'
+		   					FROM
+		   						OD_ORDER_DETL_DAILY
+							WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+							AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+			)
+			<if test="odOrderDetlDailySchSeq != null and odOrderDetlDailySchSeq != 0">
+				AND OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ = #{odOrderDetlDailySchSeq}
+			</if>
+			<if test="odOrderDetlDailySchId != null and odOrderDetlDailySchId != 0">
+				AND OODDS.OD_ORDER_DETL_DAILY_SCH_ID = #{odOrderDetlDailySchId}
+			</if>
+	</delete>
+
+	<select id="getErpOrderDetailScheduleList" resultType="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailGreenJuiceListDto">
+		/*	mallOrderDetailSchedule.getErpOrderDetailScheduleList  */
+        SELECT
+            X.OD_ORDER_ID AS odOrderId
+            , X.ODID AS odid
+            , X.OD_ORDER_DETL_ID AS odOrderDetlId
+            , X.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , X.ORDER_HPN_CD AS orderHpnCd
+            , X.CREATE_DT AS createDt
+            , X.BUYER_NM AS buyerNm
+            , X.BUYER_TEL AS buyerTel
+            , X.BUYER_HP AS buyerHp
+            , X.BUYER_MAIL AS buyerMail
+            , X.RECV_NM AS recvNm
+            , X.RECV_TEL AS recvTel
+            , X.RECV_HP AS recvHp
+            , CONCAT(X.RECV_ADDR1, ' ', X.RECV_ADDR2) AS recvAddr
+            , X.RECV_ADDR1 AS recvAddr1
+            , X.RECV_ADDR2 AS recvAddr2
+            , X.RECV_BLD_NO AS recvBldNo
+            , X.RECV_ZIP_CD AS recvZipCd
+            , X.DELIVERY_MSG AS deliveryMsg
+            , X.DOOR_MSG_NM AS doorMsgNm
+            , X.DOOR_MSG AS doorMsg
+            , X.IL_ITEM_CD AS ilItemCd
+            , X.ORDER_CANCEL_CNT AS orderCancelCnt
+            , X.DELIVERY_DT AS deliveryDt
+            , IFNULL(X.SALE_PRICE, 0) AS salePrice
+            , X.GOODS_TP_CD AS goodsTpCd
+            , X.SEQ_NO AS seqNo
+            , X.OD_ORDER_DETL_DAILY_ID AS odOrderDetlDailyId
+            , X.OD_ORDER_DETL_DAILY_SCH_ID AS odOrderDetlDailySchId
+            , X.OD_ORDER_DETL_DAILY_SCH_SEQ AS odOrderDetlDailySchSeq
+            , X.ORDER_SCH_STATUS AS orderSchStatus
+            , X.ORDER_CNT AS orderCnt
+            , X.UR_STORE_ID AS urStoreId
+            , X.MON_CNT AS monCnt
+            , X.TUE_CNT AS tueCnt
+            , X.WED_CNT AS wedCnt
+            , X.THU_CNT AS thuCnt
+            , X.FRI_CNT AS friCnt
+            , X.GOODS_CYCLE_TERM_TP_NM AS goodsCycleTermTpNm
+            , X.OD_SHIPPING_ZONE_ID AS odShippingZoneId
+        FROM
+        (
+            SELECT
+                OO.OD_ORDER_ID
+                , OO.ODID
+                , OOD.OD_ORDER_DETL_ID
+                , OOD.OD_ORDER_DETL_SEQ
+                , OO.ORDER_HPN_CD
+                , DATE_FORMAT(OO.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+                , FN_DECRYPT(OO.BUYER_TEL) AS BUYER_TEL
+                , FN_DECRYPT(OO.BUYER_HP) AS BUYER_HP
+                , FN_DECRYPT(OO.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(OSZ.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(OSZ.RECV_TEL) AS RECV_TEL
+                , FN_DECRYPT(OSZ.RECV_HP) AS RECV_HP
+                , FN_DECRYPT(OSZ.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(OSZ.RECV_ADDR2) AS RECV_ADDR2
+                , OSZ.RECV_BLD_NO
+                , FN_DECRYPT(OSZ.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , OSZ.DELIVERY_MSG
+                , FN_COMN_CODE_DIC(OSZ.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , FN_DECRYPT(OSZ.DOOR_MSG) AS DOOR_MSG
+                , OOD.IL_ITEM_CD
+                , (OOD.ORDER_CNT - OOD.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT(OODDS.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , CASE
+                    WHEN OO.ORDER_HPN_CD IN ('0003', '0024') THEN (OOD.RECOMMENDED_PRICE * (OOD.ORDER_CNT - OOD.CANCEL_CNT))
+                    WHEN OO.ORDER_HPN_CD NOT IN ('0003', '0024') THEN (OOD.SALE_PRICE * (OOD.ORDER_CNT - OOD.CANCEL_CNT))
+                  END AS SALE_PRICE
+                , OOD.GOODS_TP_CD
+                , DATE_FORMAT(now(), '%H%i%s') AS SEQ_NO
+                , OODD.OD_ORDER_DETL_DAILY_ID
+                , OODDS.OD_ORDER_DETL_DAILY_SCH_ID
+                , OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ
+                , OODDS.ORDER_SCH_STATUS
+                , OODDS.ORDER_CNT
+                , OODDS.OD_SHIPPING_ZONE_ID
+                , OODD.UR_STORE_ID
+                , OODD.MON_CNT
+                , OODD.TUE_CNT
+                , OODD.WED_CNT
+                , OODD.THU_CNT
+                , OODD.FRI_CNT
+                , FN_COMN_CODE_DIC(OODD.GOODS_CYCLE_TERM_TP) AS GOODS_CYCLE_TERM_TP_NM
+            FROM OD_ORDER OO
+            INNER JOIN OD_ORDER_DETL OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+            INNER JOIN OD_ORDER_DETL_DAILY OODD ON OO.OD_ORDER_ID = OODD.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+            INNER JOIN OD_ORDER_DETL_DAILY_SCH OODDS ON OODD.OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+            	<if test="odOrderDetlDailySchSeq != null and odOrderDetlDailySchSeq != 0">
+            		AND OODDS.OD_ORDER_DETL_DAILY_SCH_ID <![CDATA[ > ]]> #{odOrderDetlDailySchSeq}
+            	</if>
+            	<if test="odOrderDetlDailySchId != null and odOrderDetlDailySchId != 0">
+					AND OODDS.OD_ORDER_DETL_DAILY_SCH_ID = #{odOrderDetlDailySchId}
+				</if>
+            LEFT JOIN OD_SHIPPING_ZONE OSZ ON OOD.OD_ORDER_ID = OSZ.OD_ORDER_ID AND OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+            WHERE OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+        ) X
+        ORDER BY X.OD_ORDER_DETL_DAILY_SCH_ID ASC
+	</select>
+
+	<select id="getOrderDetailScheduleInfo" resultType="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleInfoDto">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleInfo  */
+		SELECT OODDS.DELIVERY_DT AS DELV_DATE
+			, FN_DECRYPT(OSZ.RECV_ZIP_CD) 	AS RECV_ZIP_CD	/* 수령인 우편번호 */
+		    , OSZ.RECV_BLD_NO
+		    , OOD.IL_GOODS_ID
+		    , OOD.UR_WAREHOUSE_ID
+		FROM
+		(
+			SELECT
+				*
+			FROM
+				OD_ORDER_DETL_DAILY_SCH OODDS
+			WHERE
+				EXISTS ( SELECT 'X'
+	 		   					FROM
+	 		   						OD_ORDER_DETL_DAILY
+								WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+								AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+				)
+		) OODDS
+		INNER JOIN OD_ORDER_DETL_DAILY OODD ON OODDS.OD_ORDER_DETL_DAILY_ID = OODD.OD_ORDER_DETL_DAILY_ID
+		INNER JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		INNER JOIN OD_SHIPPING_ZONE OSZ ON OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+		WHERE OODDS.USE_YN = 'Y'
+			AND OODDS.OD_ORDER_DETL_DAILY_SCH_ID = #{odOrderDetlDailySchId}
+	</select>
+
+	<select id="getOdOrderDetlId" resultType="long">
+		/*	mallOrderDetailSchedule.getOdOrderDetlId  */
+		SELECT
+			OD_ORDER_DETL_ID
+		FROM
+			OD_ORDER_DETL_DAILY OODD
+		WHERE
+			EXISTS ( SELECT 'X'
+ 		   					FROM
+ 		   						OD_ORDER_DETL_DAILY_SCH
+							WHERE OD_ORDER_DETL_DAILY_ID = OODD.OD_ORDER_DETL_DAILY_ID
+							AND OD_ORDER_DETL_DAILY_SCH_ID = #{odOrderDetlDailySchId}
+			)
+	</select>
+
+	<select id="getOrderDetailScheduleDayOfWeekInfo" resultType="String">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleDayOfWeekInfo  */
+		SELECT
+			DISTINCT DAYOFWEEK(OODDS.DELIVERY_DT) AS DELV_DATE_WEEK_DAY
+		FROM
+			OD_ORDER_DETL_DAILY_SCH OODDS
+		WHERE
+			EXISTS ( SELECT 'X'
+ 		   					FROM
+ 		   						OD_ORDER_DETL_DAILY
+							WHERE OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+							AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+			)
+		AND OODDS.USE_YN = 'Y'
+		GROUP BY OODDS.DELIVERY_DT
+	</select>
+
+	<update id="putOrderDetlSchedulePattern">
+	/*	mallOrderDetailSchedule.putOrderDetlSchedulePattern  */
+		UPDATE OD_ORDER_DETL_DAILY
+		SET DAILY_PATTERN = #{deliveryDayOfWeekList}
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+	<update id="putOrderDetlScheduleOdShippingZoneId">
+		/*	mallOrderDetailSchedule.putOrderDetlScheduleOdShippingZoneId  */
+		UPDATE OD_ORDER_DETL_DAILY_SCH
+		SET
+			OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+		WHERE
+			OD_ORDER_DETL_DAILY_ID = #{odOrderDetlDailyId}
+			AND DELIVERY_DT <![CDATA[ >= ]]> #{changeDate}
+	</update>
+
+	<select id="getOrderDetailScheduleDeliveryDt" resultType="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleDateInfoDto">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleDeliveryDt  */
+		SELECT
+			OD_SHIPPING_ZONE_ID, START_DT AS STARTDATE, END_DT AS ENDDATE
+		FROM
+			OD_ORDER_DETL_DAILY_ZONE
+		WHERE
+			USE_YN='Y'
+			AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+			ORDER BY START_DT ASC
+	</select>
+
+	<select id="getOrderDetailScheduleShippingInfo" resultType="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleShippingInfoDto">
+		/*	mallOrderDetailSchedule.getOrderDetailScheduleShippingInfo  */
+		SELECT
+			OOD.OD_ORDER_ID
+			, OOD.ODID
+			, OO.ORDER_HPN_CD
+			, DATE_FORMAT(OO.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+	        , FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+	        , FN_DECRYPT(OO.BUYER_TEL) AS BUYER_TEL
+	        , FN_DECRYPT(OO.BUYER_HP) AS BUYER_HP
+	        , FN_DECRYPT(OO.BUYER_MAIL) AS BUYER_MAIL
+	        , FN_DECRYPT(OSZ.RECV_NM) AS RECV_NM
+	        , FN_DECRYPT(OSZ.RECV_TEL) AS RECV_TEL
+	        , FN_DECRYPT(OSZ.RECV_HP) AS RECV_HP
+	        , CONCAT(FN_DECRYPT(OSZ.RECV_ADDR1), ' ', FN_DECRYPT(OSZ.RECV_ADDR2)) AS RECV_ADDR
+	        , FN_DECRYPT(OSZ.RECV_ADDR1) AS RECV_ADDR1
+	        , FN_DECRYPT(OSZ.RECV_ADDR2) AS RECV_ADDR2
+	        , OSZ.RECV_BLD_NO
+	        , FN_DECRYPT(OSZ.RECV_ZIP_CD) AS RECV_ZIP_CD
+	        , OSZ.DELIVERY_MSG
+	        , FN_COMN_CODE_DIC(OSZ.DOOR_MSG_CD) AS DOOR_MSG_NM
+	        , FN_DECRYPT(OSZ.DOOR_MSG) AS DOOR_MSG
+	        , DATE_FORMAT(now(6), '%H%i%s%f') AS SEQ_NO
+		FROM OD_SHIPPING_ZONE OSZ
+		INNER JOIN OD_ORDER_DETL OOD ON OSZ.OD_ORDER_ID = OOD.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+		INNER JOIN OD_ORDER OO ON OSZ.OD_ORDER_ID = OO.OD_ORDER_ID
+		WHERE OSZ.OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 녹즙 API 취소 전송 여부 수정
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.27		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetlScheduleApiCancelSendYn">
+		/*	mallOrderDetailSchedule.putOrderDetlScheduleApiCancelSendYn  */
+		UPDATE	OD_ORDER_DETL_DAILY_SCH
+		SET		API_CANCEL_SEND_YN = 'Y'
+		WHERE	OD_ORDER_DETL_DAILY_SCH_ID IN
+		<foreach item="data" index="index" collection="cancelGreenJuiceList" open="(" separator="," close=")">
+			#{data.odOrderDetlDailySchId}
+		</foreach>
+	</update>
+</mapper>

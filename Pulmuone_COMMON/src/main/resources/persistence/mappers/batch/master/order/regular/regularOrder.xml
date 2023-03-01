@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.regular.RegularOrderMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문결제마스터 정보 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderPaymentMasterInfo">
+        /* regularOrderMapper.putOrderPaymentMasterInfo */
+		UPDATE
+			OD_PAYMENT_MASTER
+		SET
+			STATUS = #{status},
+			PAY_TP = #{payTp},
+			PG_SERVICE = #{pgService},
+			TID = #{tid},
+			AUTH_CD = #{authCd},
+			CARD_NUMBER = #{cardNumber},
+			CARD_QUOTA = #{cardQuota},
+			INFO = #{info},
+			RESPONSE_DATA = #{responseData},
+			APPROVAL_DT = NOW()
+		WHERE
+			OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문서 생성 시 모든 상품이 건너뛰기 일 경우 해당 회차 완료 처리
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.12		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularResultReqRoundYn">
+        /* regularOrderMapper.putOrderRegularResultReqRoundYn */
+		UPDATE
+			OD_REGULAR_RESULT ORRT
+		SET
+			ORRT.REQ_ROUND_YN = 'Y'
+		WHERE
+			ORRT.ORDER_CREATE_DT = CURRENT_DATE()
+		AND
+			1 <![CDATA[>]]> IFNULL((
+									SELECT
+										COUNT(1)
+									FROM
+										OD_REGULAR_RESULT_DETL B
+									WHERE
+										B.OD_REGULAR_RESULT_ID = ORRT.OD_REGULAR_RESULT_ID
+									AND
+										B.REQ_DETAIL_STATUS_CD  = #{reqDetailStatusCd}
+									GROUP BY B.OD_REGULAR_RESULT_ID
+									), 0)
+	</update>
+
+</mapper>

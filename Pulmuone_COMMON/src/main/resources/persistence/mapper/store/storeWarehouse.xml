@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.store.warehouse.StoreWarehouseMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.14		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCheckWarehouseHolidayList" resultType="java.time.LocalDate">
+		/*	storeWarehouse.getCheckWarehouseHolidayList	*/
+		SELECT
+			HOLIDAY_DT
+		FROM
+			UR_WAREHOUSE_HLDY
+		WHERE
+			UR_WAREHOUSE_ID = #{urWarehouseId}
+			<choose>
+				<when test="isDawnDelivery">
+				AND DAWN_DLVRY_YN = 'Y'
+				</when>
+				<otherwise>
+				AND DAWN_DLVRY_YN = 'N'
+				</otherwise>
+			</choose>
+			AND HOLIDAY_DT IN
+			<foreach collection="scheduledDateList" item="scheduledDate" separator="," open="(" close=")">
+				#{scheduledDate.forwardingScheduledDate}
+			</foreach>
+		UNION
+		SELECT
+			HOLIDAY_DT
+		FROM
+			PS_HOLIDAY
+		WHERE
+			HOLIDAY_DT IN
+			<foreach collection="scheduledDateList" item="scheduledDate" separator="," open="(" close=")">
+				#{scheduledDate.forwardingScheduledDate}
+			</foreach>
+	</select>
+
+	<resultMap type="kr.co.pulmuone.v1.store.warehouse.service.dto.vo.UrWarehouseVo" id="getWarehouseMap">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"  />
+		<result column="LIMIT_CNT"  property="limitCnt" />
+		<result column="DAWN_LIMIT_CNT"  property="dawnLimitCnt" />
+		<result column="CUTOFF_TIME"  property="cutoffTime" />
+		<result column="PS_SHIPPING_PATTERN_ID"  property="psShippingPatternId" />
+		<result column="DAWN_DLVRY_YN"  property="dawnDeliveryYn" />
+		<result column="DAWN_DLVRY_HLDY_CUTOFF_TIME"  property="dawnDeliveryCutoffTime" />
+		<result column="DAWN_DLVRY_PS_SHIPPING_PATTERN_ID"  property="dawnDeliveryPsShippingPatternId" />
+		<result column="STORE_YN"  property="storeYn" />
+		<result column="STORE_LIMIT_CNT"  property="storeLimitCnt" />
+		<result column="STORE_SHIPPING_PATTERN_ID"  property="storeShippingPatternId" />
+		<result column="STORE_CUTOFF_TIME"  property="storeCutoffTime" />
+		<result column="STLMN_YN"  property="stlmnYn" />
+		<result column="UNDELIVERABLE_AREA_TP"  property="undeliverableAreaTp" />
+		<result column="UNDELIVERABLE_AREA_TP_GRP"  property="undeliverableAreaTpGrp"/>
+		<result column="DAWN_UNDELIVERABLE_AREA_TP"  property="dawnUndeliverableAreaTp" />
+		<result column="DAWN_UNDELIVERABLE_AREA_TP_GRP"  property="dawnUndeliverableAreaTpGrp"/>
+		<result column="WAREHOUSE_GRP_CD"  property="warehouseGroupCode" />
+	</resultMap>
+	<select id="getWarehouse" resultMap="getWarehouseMap">
+		/*	storeWarehouse.getWarehouse	*/
+		SELECT
+			UR_WAREHOUSE_ID
+			, LIMIT_CNT
+			, DAWN_LIMIT_CNT
+			, CUTOFF_TIME
+			, PS_SHIPPING_PATTERN_ID
+			, DAWN_DLVRY_YN
+			, DAWN_DLVRY_HLDY_CUTOFF_TIME
+			, DAWN_DLVRY_PS_SHIPPING_PATTERN_ID
+			, STORE_YN
+			, STORE_LIMIT_CNT
+			, STORE_SHIPPING_PATTERN_ID
+			, STORE_CUTOFF_TIME
+			, STLMN_YN
+			, UNDELIVERABLE_AREA_TP
+			, UNDELIVERABLE_AREA_TP_GRP
+			, DAWN_UNDELIVERABLE_AREA_TP
+			, DAWN_UNDELIVERABLE_AREA_TP_GRP
+			, WAREHOUSE_GRP_CD
+		FROM
+			UR_WAREHOUSE
+		WHERE
+			UR_WAREHOUSE_ID = #{urWarehouseId}
+	</select>
+
+
+</mapper>

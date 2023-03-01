@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.monitoring.SystemMonitoringMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 모니터링 - 주문
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrder" resultType="boolean">
+        /* systemMonitoring.getOrder */
+        SELECT IF(COUNT(*) <![CDATA[<]]> #{count}, TRUE, FALSE) AS IS_NOTI
+        FROM OD_ORDER oo
+        WHERE oo.ORDER_YN = 'Y'
+            AND oo.CREATE_DT BETWEEN NOW() - INTERVAL #{minute} MINUTE AND NOW()
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 모니터링 - 일일배송 주문
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getDailyOrder" resultType="boolean">
+        /* systemMonitoring.getDailyOrder */
+        SELECT IF(COUNT(*) <![CDATA[<]]> #{count}, TRUE, FALSE) AS IS_NOTI
+        FROM (
+            SELECT oo.ODID
+            FROM OD_ORDER oo
+                JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_ID = oo.OD_ORDER_ID)
+            WHERE oo.ORDER_YN = 'Y'
+                AND oo.CREATE_DT BETWEEN NOW() - INTERVAL #{minute} MINUTE AND NOW()
+                AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAILY'
+            GROUP BY oo.ODID
+        ) o
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 모니터링 - 매장배송 주문
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStoreOrder" resultType="boolean">
+        /* systemMonitoring.getStoreOrder */
+        SELECT IF(COUNT(*) <![CDATA[<]]> #{count}, TRUE, FALSE) AS IS_NOTI
+        FROM (
+            SELECT oo.ODID
+            FROM OD_ORDER oo
+                JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_ID = oo.OD_ORDER_ID)
+            WHERE oo.ORDER_YN = 'Y'
+                AND oo.CREATE_DT BETWEEN NOW() - INTERVAL #{minute} MINUTE AND NOW()
+                AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+            GROUP BY oo.ODID
+        ) o
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 모니터링 - 가입
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getUserJoin" resultType="boolean">
+        /* systemMonitoring.getUserJoin */
+        SELECT IF(COUNT(*) <![CDATA[<]]> #{count}, TRUE, FALSE) AS IS_NOTI
+        FROM UR_USER uu
+            JOIN UR_BUYER ub ON (uu.UR_USER_ID = ub.UR_USER_ID)
+        WHERE uu.USER_TP = 'USER_TYPE.BUYER'
+            AND uu.CREATE_DT BETWEEN NOW() - INTERVAL #{minute} MINUTE AND NOW()
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 모니터링 - 로그인
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMallLogin" resultType="boolean">
+        /* systemMonitoring.getMallLogin */
+        SELECT IF(COUNT(*) <![CDATA[<]]> #{count}, TRUE, FALSE) AS IS_NOTI
+        FROM UR_CONNECT_LOG ucl
+        WHERE ucl.SERVICE ='SERVICE_TYPE.MALL'
+            AND ucl.SUCCESS_YN = 'Y'
+            AND ucl.LOGIN_DT BETWEEN NOW() - INTERVAL #{minute} MINUTE AND NOW()
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 모니터링 - BOS 로그인
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getBosLogin" resultType="boolean">
+        /* systemMonitoring.getBosLogin */
+        SELECT IF(COUNT(*) <![CDATA[<]]> #{count}, TRUE, FALSE) AS IS_NOTI
+        FROM UR_CONNECT_LOG ucl
+        WHERE ucl.SERVICE ='SERVICE_TYPE.BOS'
+            AND ucl.SUCCESS_YN = 'Y'
+            AND ucl.LOGIN_DT BETWEEN NOW() - INTERVAL #{minute} MINUTE AND NOW()
+    </select>
+
+</mapper>

@@ -1,0 +1,426 @@
+<div class="wrap-location">
+	 <h1 class="title"></h1>
+	 <span class="location"></span>
+</div>
+<div class="fb__sect">
+    <form id="searchForm" name="searchForm">
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width:20%">
+                <col style="width:30%">
+                <col style="width:20%">
+                <col style="width:30%">
+            </colgroup>
+            <tbody>
+            <tr>
+                <th scope="row"><label for="warehouseName">출고처 명</label></th>
+                <td colspan="3">
+                    <div class="complex-condition">
+                        <input id="warehouseName" name="warehouseName" class="comm-input" type="text"
+                               onKeyUp="javascript:fnChkByte(this)" maxlength="100" style="width: 100%;">
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="supplier">공급업체</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <!-- <div id="supplier" class="fb__custom__select fb__space--divide" style="width: 100%"></div> -->
+                        <div class="complex-condition fb__custom__select left">
+                            <input id="urSupplierId" type="hidden" name="urSupplierId"/>
+                            <input id="supplier" class="fb__custom__select left-input" name="supplier" type="text"
+                                   style="width:200px;">
+                        </div>
+                    </div>
+                </td>
+                <th scope="row"><label for="warehouseGroup">출고처 그룹</label></th>
+                <td>
+                    <!-- <div class="complex-condition">
+                        <div class="checkbox-wrapper">
+                            체크 박스 영역
+                            <label>
+                                <input type="checkbox" id="warehouseGroupAll" name="warehouseGroupAll">&nbsp;&nbsp;&nbsp;전체&nbsp;&nbsp;&nbsp;
+                            </label>
+                            <label>
+                                <span id="warehouseGroup"> </span>
+                            </label>
+                        </div>
+                    </div> -->
+                    <div class="complex-condition">
+                        <!-- <input type="checkbox" id="warehouseGroupAll" name="warehouseGroupAll">&nbsp;&nbsp;&nbsp;전체&nbsp;&nbsp;&nbsp; -->
+                        <!-- <div id="warehouseGroup" class="checkbox-wrapper fb__custom__checkbox"></div> -->
+                        <div class="complex-condition fb__custom__select left">
+                            <input id="warehouseGroup" class="fb__custom__select left-input" name="warehouseGroup"
+                                   type="text" style="width:200px;">
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <span class="btn-area">
+		<button id="fnSearch" class="btn-point btn-l" type="button" onclick="$scope.fnSearch()">조회</button>
+		<button id="fnClear" class="btn-white btn-l formClear-btn" type="button" onclick="$scope.fnClear()">초기화</button>
+	</span>
+    </form>
+</div>
+<div class="fb__sect grid-sect new">
+    <div class="wrap-tit">
+        <div class="ea-title">
+            <h3>목록</h3>
+        </div>
+        <div class="ea-title">
+            <span>총 <em id="totalCnt">0</em> 건 검색</span>
+        </div>
+        <div class="btn-area">
+            <button type="button" class="fb__btn-excel ml--default" onclick="$scope.fnExcelDownload()">엑셀 다운로드</button>
+            <button id="fnNew" class="fb-btn btn-m btn-point" type="button" onclick="$scope.fnNew()" auth-remove="SAVE">신규</button>
+        </div>
+    </div>
+
+    <div id="aGrid"></div>
+</div>
+
+<div id="kendoPopup">
+    <div id="contents" class="pop-contents" >
+        <form id="inputForm" name="sBrandForm" >
+
+            <input type="hidden" id="urWarehouseId" name="urWarehouseId">
+            <table class="datatable v-type">
+                <colgroup>
+                    <col style="width:30%">
+                    <col style="width:70%">
+                </colgroup>
+                <tbody>
+                <tr>
+                    <th scope="row"><label for="inputWarehouseName" class="req-star-front">출고처명</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="inputWarehouseName" class="comm-input" name="inputWarehouseName" type="text"
+                                   value="/" maxlength="50" required>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="inputCompanyName">업체명(약관)</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="inputCompanyName" class="comm-input" name="inputCompanyName" type="text"
+                                   value="" maxlength="15">
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="warehouseGroupCode" class="req-star-front">출고처그룹</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="warehouseGroupCode" class="comm-input" name="warehouseGroupCode" type="text"
+                                   value="/" required>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="clientCompanyDiv">
+                    <th scope="row"><label for="input3" class="req-star-front">공급업체</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="deleteSupplierCompany" type="hidden" name="deleteSupplierCompany"/>
+                            <input id="urSupplierId" type="hidden" name="urSupplierId"/>
+                            <input id="supplierCompany" class="comm-input" name="supplierCompany" type="text" required>
+                        </div>
+                        <div class="complex-condition">
+                            <div class="supplierCompany-box">
+                                <ul class="supplierCompany-box__list">
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- <div class="complex-condition" id="list-puntate">
+                        </div> -->
+                    </td>
+                </tr>
+                <tr id="telBaseView">
+					<th scope="row"><label for="warehouseTelephone" >연락처</label></th>
+					<td>
+						<div class="complex-condition">
+							<input id="warehouseTelephone1" class="comm-input" name="warehouseTelephone1"  type="text" maxlength="4" style="width: 50px;">&nbsp;-&nbsp;
+							<input id="warehouseTelephone2" class="comm-input" name="warehouseTelephone2"  type="text" maxlength="4" style="width: 50px;">&nbsp;-&nbsp;
+							<input id="warehouseTelephone3" class="comm-input" name="warehouseTelephone3"  type="text" maxlength="4" style="width: 50px;">
+						</div>
+					</td>
+				</tr>
+                <tr>
+                    <th scope="row"><label for="warehouseMemo">출고처 메모</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <textarea id="warehouseMemo" name="warehouseMemo" class="comm-textarea" style="height:105px" maxlength="255"> </textarea>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="stockOrderYn" class="req-star-front">재고발주여부</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <span id="stockOrderYn" class="radios-wrapper fb__custom__radio" required></span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="stlmnYn" class="req-star-front">물류비 정산 여부</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <span id="stlmnYn" class="radios-wrapper fb__custom__radio" required> </span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+					<th scope="row"><label for="orderChangeType" class="req-star-front">주문 변경여부</label></th>
+					<td>
+						<div class="complex-condition">
+							<span id="orderChangeType" class="radios-wrapper fb__custom__radio"required> </span>
+						</div>
+					</td>
+				</tr>
+				<!-- <tr>
+					<th scope="row"><label for="orderStatusAlamYn" class="req-star-front">주문상태 알림 수신여부</label></th>
+					<td>
+						<div class="complex-condition">
+							<span id="orderStatusAlamYn" class="radios-wrapper fb__custom__radio"required> </span>&nbsp;
+
+							<div class="inlineBlock marginL20" id="warehouseMailDiv">
+			                  <span>Email : </span>
+			                  <input type="text" id="warehouseMail" class="" name="warehouseMail" value="" style="width : 150px;">
+			                </div>
+						</div>
+					</td>
+				</tr> -->
+                <tr>
+                    <th scope="row"><label for="input3">일별출고한도</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="limitCount" class="comm-input" name="limitCount" style="width:200px" type="text"
+                                   value="/" maxlength="20">&nbsp;건
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="deliveryPattern" class="req-star-front">배송패턴</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="deliveryPatternId" class="comm-input" name="deliveryPatternId" type="hidden">
+                            <input id="deliveryPatternName" class="comm-input disabled fb__input__btn-with"
+                                   name="deliveryPatternName" type="text" readonly disabled required>
+                            <button id='deliveryPatternPopup' class="table-btn" type="button"
+                                    onClick="$scope.fnDeliveryPatternPopupButton('delivery')"><img
+                                    src="/contents/images/ic/btn_search.gif"></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="input3" class="req-star-front">주문마감시간</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <select id="hour" name="hour"
+                                    style="width: 80px; outline: 0;border: 1px solid #ddd;padding: 0 5px;height: 30px;line-height: 24px;"
+                                    type="select" required></select>&nbsp;:&nbsp;
+                            <select id="minute" name="minute"
+                                    style="width: 80px; outline: 0;border: 1px solid #ddd;padding: 0 5px;height: 30px;line-height: 24px;"
+                                    type="select" required></select>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="input3">배송불가지역</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <div id="undeliverableAreaTpGrp" class="checkbox-wrapper fb__custom__checkbox"></div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="dawnDlvryYn" class="req-star-front">새벽배송 가능여부</label></th>
+                    <td>
+                        <span id="dawnDlvryYn" class="radios-wrapper fb__custom__radio" required> </span>
+                    </td>
+                </tr>
+                <tr id="dawnLimitCntDiv">
+                    <th scope="row"><label for="input3">새벽 일별출고한도</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="dawnLimitCnt" class="comm-input" name="dawnLimitCnt" style="width:200px" type="text"
+                                   value="/" maxlength="20">&nbsp;건
+                        </div>
+                    </td>
+                </tr>
+                <tr id="dawnDeliveryPatternDiv">
+                    <th scope="row"><label for="dawnDeliveryPattern" class="req-star-front">새벽 배송패턴</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="dawnDeliveryPatternId" class="comm-input" name="dawnDeliveryPatternId"
+                                   type="hidden">
+                            <input id="dawnDeliveryPatternName" class="comm-input disabled fb__input__btn-with"
+                                   name="dawnDeliveryPatternName" type="text" readonly disabled>
+                            <button id='dawnDeliveryPatternPopup' class="table-btn" type="button"
+                                    onClick="$scope.fnDeliveryPatternPopupButton('dawn')"><img
+                                    src="/contents/images/ic/btn_search.gif"></button>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr id="dawnUndeliverableAreaDiv">
+                    <th scope="row"><label for="input3">새벽 배송불가지역</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <div id="dawnUndeliverableAreaTpGrp" class="checkbox-wrapper fb__custom__checkbox"></div>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="dawnDlvryHolidayCutoffTime">
+                    <th scope="row"><label for="input3" class="req-star-front">새벽배송 주문마감시간</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <select id="dawnHour" name="dawnHour"
+                                    style="width: 80px; outline: 0;border: 1px solid #ddd;padding: 0 5px;height: 30px;line-height: 24px;"
+                                    type="select" required></select>&nbsp;:&nbsp;
+                            <select id="dawnMinute" name="dawnMinute"
+                                    style="width: 80px; outline: 0;border: 1px solid #ddd;padding: 0 5px;height: 30px;line-height: 24px;"
+                                    type="select" required></select>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row" name="addressCode"><label for="receiverAddress" class="req-star-front">주소</label>
+                        <br>
+                        <p style="font-size:10px; font-weight:normal;">매장(가맹점)&nbsp;<input type="checkbox" id="storeYn"
+                                                                                           name="storeYn"></p>
+                    </th>
+                    <td>
+                        <div class="complex-condition" id="addressView">
+                            <div class="marginB5">
+                                <input id="receiverZipCode" class="comm-input disabled" name="receiverZipCode"
+                                       style="width: 150px;" type="text" required readonly="readonly"
+                                       disabled="disabled">
+                                <button type="button" id="btnReceiverZipCodeSearch" class='fb-btn btn-s btn-point'
+                                        onclick="fnDaumPostcode('receiverZipCode', 'receiverAddress1', 'receiverAddress2','')">
+                                    주소찾기
+                                </button>
+                            </div>
+                            <div class="marginB5">
+                                <input id="receiverAddress1" class="comm-input disabled" name="receiverAddress1"
+                                       type="text" required readonly="readonly" disabled="disabled">
+                            </div>
+                            <div class="marginB5">
+                                <input id="receiverAddress2" class="comm-input" name="receiverAddress2" type="text"
+                                       required>
+                            </div>
+                        </div>
+
+                    </td>
+                </tr>
+                <tr id="storeLimitCntDiv">
+                    <th scope="row"><label for="storeLimitCount">매장(가맹점) 택배<br>출고한도</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="storeLimitCnt" class="comm-input" name="storeLimitCnt" style="width:200px" type="text"
+                                   value="/" maxlength="20">&nbsp;건
+                        </div>
+                    </td>
+                </tr>
+                <tr id="storePatternDiv">
+                    <th scope="row"><label for="storePattern">매장(가맹점) 택배<br>배송패턴</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="storeShippingPatternId" class="comm-input" name="storeShippingPatternId" type="hidden">
+                            <input id="storePatternName" class="comm-input disabled fb__input__btn-with"
+                                   name="storePatternName" type="text" readonly disabled >
+                            <button id='storePatternPopup' class="table-btn" type="button"
+                                    onClick="$scope.fnDeliveryPatternPopupButton('store')"><img
+                                    src="/contents/images/ic/btn_search.gif"></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="storeCutOffDiv">
+                    <th scope="row"><label for="storeCutOff">매장(가맹점) 택배<br>주문마감시간  </label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <select id="storeHour" name="storeHour"
+                                    style="width: 80px; outline: 0;border: 1px solid #ddd;padding: 0 5px;height: 30px;line-height: 24px;"
+                                    type="select" ></select>&nbsp;:&nbsp;
+                            <select id="storeMinute" name="storeMinute"
+                                    style="width: 80px; outline: 0;border: 1px solid #ddd;padding: 0 5px;height: 30px;line-height: 24px;"
+                                    type="select" ></select>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="createInfoDiv">
+                    <th scope="row"><label for="craeteInfo">등록정보</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="createInfo" style="border:none; background-color:#FFFFFF;" class="comm-input"
+                                   name="createInfo" type="text" data-key="true">
+                            <input id="modifyInfo" style="border:none; background-color:#FFFFFF;" class="comm-input"
+                                   name="modifyInfo" type="text" data-key="true">
+                        </div>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </form>
+        <span class="btn-area align-center">
+			<button id="fnSave" class="fb-btn btn-l btn-point" type="button" onclick="$scope.fnSave()" auth-remove="SAVE">저장</button>
+		</span>
+    </div>
+</div>
+
+<script>
+    var h = document.getElementsByName('hour')[0], m = document.getElementsByName('minute')[0];
+    for (var i = 0; i < 24; i++) h.options[i] = new Option(f(i), f(i));
+    for (i = 0; i < 60; i++) m.options[i] = new Option(f(i), f(i));
+
+    //h.value = '--'; m.value = '--';
+    function f(n) {
+        return n < 10 ? '0' + i : i;
+    }
+
+    var dh = document.getElementsByName('dawnHour')[0], dm = document.getElementsByName('dawnMinute')[0];
+    for (var i = 0; i < 24; i++) dh.options[i] = new Option(f(i), f(i));
+    for (i = 0; i < 60; i++) dm.options[i] = new Option(f(i), f(i));
+
+    var sh = document.getElementsByName('storeHour')[0], sm = document.getElementsByName('storeMinute')[0];
+    for (var i = 0; i < 24; i++) sh.options[i] = new Option(f(i), f(i));
+    for (i = 0; i < 60; i++) sm.options[i] = new Option(f(i), f(i));
+
+
+
+    function fnChkByte(obj) {
+        var str = obj.value;
+        var str_len = str.length;
+
+        var rbyte = 0;
+        var rlen = 0;
+        var one_char = "";
+        var str2 = "";
+
+        for (var i = 0; i < str_len; i++) {
+            one_char = str.charAt(i);
+            if (escape(one_char).length > 4) {
+                rbyte += 2;                                         //한글2Byte
+            } else {
+                rbyte++;                                            //영문 등 나머지 1Byte
+            }
+
+            if (rbyte <= 100) {
+                rlen = i + 1;                                          //return할 문자열 갯수
+            }
+        }
+
+        if (rbyte > 100) {
+            alert("한글 " + (100 / 2) + "자 / 영문 " + 100 + "자를 초과 입력할 수 없습니다.");
+            str2 = str.substr(0, rlen);                                  //문자열 자르기
+            obj.value = str2;
+            fnChkByte(obj, 100);
+        } else {
+            //document.getElementById('byteInfo').innerText = rbyte;
+        }
+    }
+
+</script>

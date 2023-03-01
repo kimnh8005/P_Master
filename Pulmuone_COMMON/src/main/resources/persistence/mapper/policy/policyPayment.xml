@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.payment.PolicyPaymentMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 결제방법 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPayUseList" resultType="HashMap">
+		/*	policyPayment.getPayUseList	*/
+		SELECT
+			PS_PAY_CD AS psPayCd
+			,FN_COMN_CODE_DIC(PS_PAY_CD) AS psPayCdName
+		FROM
+			PS_PAY
+		WHERE
+			USE_YN = 'Y'
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 카드정보 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPayCardUseList" resultType="HashMap">
+		/*	policyPayment.getPayCardUseList	*/
+		SELECT
+			PPM.BANK_NM_CD AS cardCode
+			,FN_COMN_CODE_DIC(PPM.BANK_NM_CD) AS cardCodeName
+		FROM
+			PS_PAYMENT_METHOD PPM
+			JOIN PS_PG_PAY PPP ON PPM.PS_PG_PAY_ID = PPP.PS_PG_PAY_ID
+			JOIN ST_COMN_CODE SCC ON (SCC.ST_COMN_CODE_ID = PPM.BANK_NM_CD)
+		WHERE
+			PPM.USE_YN = 'Y'
+			AND SCC.USE_YN = 'Y'
+			AND PPP.PS_PAY_CD = 'PAY_TP.CARD'
+		GROUP BY PPM.BANK_NM_CD
+		ORDER BY SCC.SORT
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 신용카드 혜택 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.26		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCartBenefitList" resultType="HashMap">
+		/*	policyPayment.getCartBenefitList	*/
+		SELECT
+			PS_PG_CD AS psPgCode
+			,FN_COMN_CODE_DIC(PS_PG_CD) AS psPgCodeName
+			,CARD_BENEFIT_TP AS cardBenefitType
+			,FN_COMN_CODE_DIC(CARD_BENEFIT_TP) AS cardBenefitTypeName
+			,TITLE AS title
+			,INFORMATION AS information
+		FROM
+			PS_CARD_BENEFIT
+		WHERE
+			NOW() BETWEEN START_DT AND END_DT + INTERVAL 1 DAY - INTERVAL 1 SECOND
+	</select>
+
+
+		<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 구분
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.04		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPaymentListMap" type="kr.co.pulmuone.v1.policy.payment.dto.vo.PolicyPaymentPromotionVo">
+		<result column="PS_PG_NAME" property="psPayCodeName" />
+		<result column="PS_PG_CD" property="psPayCode" />
+	</resultMap>
+	<select id="getPaymentList" resultMap="getPaymentListMap">
+		/*	policyPayment.getPaymentList	*/
+		SELECT FN_COMN_CODE_DIC(PS_PG_CD) AS PS_PG_NAME
+   		       , PS_PG_CD
+		FROM PS_PG
+		WHERE
+			USE_YN = 'Y'
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 결제수단 구분
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.04		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPaymentUseListMap" type="kr.co.pulmuone.v1.policy.payment.dto.vo.PolicyPaymentPromotionVo">
+		<result column="PS_PAY_CD_NAME" property="psPayCodeName" />
+		<result column="PS_PAY_CD" property="psPayCode" />
+	</resultMap>
+	<select id="getPaymentUseList" resultMap="getPaymentUseListMap">
+		/*	policyPayment.getPaymentUseList	*/
+		SELECT
+			FN_COMN_CODE_DIC(A.PS_PAY_CD) AS PS_PAY_CD_NAME
+			, A.PS_PAY_CD
+		FROM PS_PAY A
+		JOIN PS_PG_PAY B ON B.PS_PG_CD = #{psPayCode}
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(psPayCode, "PG_SERVICE.INICIS")'>
+				AND A.PS_PAY_CD IN ('PAY_TP.BANK', 'PAY_TP.CARD', 'PAY_TP.VIRTUAL_BANK')
+			</if>
+		AND A.PS_PAY_CD = B.PS_PAY_CD
+		WHERE A.USE_YN = 'Y'
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 결제수단 상세 구분 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ─────────────────────────────`─────────────────────────────────────────
+	 * @ 2020.11.04		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPayCardListMap" type="kr.co.pulmuone.v1.policy.payment.dto.vo.PolicyPaymentPromotionVo">
+		<result column="PS_PAY_CD_NAME" property="psPayCodeName" />
+		<result column="PS_PAY_CD" property="psPayCode" />
+	</resultMap>
+	<select id="getPayCardList" resultMap="getPayCardListMap">
+	    /* policyPayment.getPayCardList */
+        SELECT FN_COMN_CODE_DIC(BANK_NM_CD) AS PS_PAY_CD_NAME
+              , BANK_NM_CD AS PS_PAY_CD
+        FROM PS_PAYMENT_METHOD
+		WHERE PS_PG_PAY_ID =(
+							 SELECT PS_PG_PAY_ID
+							 FROM PS_PG_PAY
+							 WHERE PS_PG_CD = #{psCode}
+							 AND PS_PAY_CD = #{psPgCode}
+							 )
+		AND USE_YN = 'Y'
+	</select>
+
+</mapper>
+
+

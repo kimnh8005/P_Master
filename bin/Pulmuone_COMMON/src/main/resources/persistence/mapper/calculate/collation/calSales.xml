@@ -1,0 +1,688 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.collation.CalSalesMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 통합몰 매출 대사 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.28		이원호			최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSalesList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalSalesListDto">
+		/* calSales.getSalesList */
+		SELECT
+			o.ERP_SETTLE_TYPE_NM -- ERP 구분
+			,o.ERP_ODID -- ERP 주문번호
+			,o.ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+			,o.ERP_SETTLE_DT -- ERP 정산처리일자
+			,o.SETTLE_ITEM_CNT -- ERP 수량
+			,IF(o.TAX_YN = 'Y', ROUND(o.SETTLE_PRICE * 1.1), o.SETTLE_PRICE) AS SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+			,o.SETTLE_PRICE AS VAT_REMOVE_SETTLE_PRICE -- 매출금액 (VAT제외)
+			,IF(o.TAX_YN = 'Y', ROUND(o.SETTLE_PRICE * 1.1), o.SETTLE_PRICE) - o.SETTLE_PRICE AS VAT -- VAT
+			,o.ODID -- 주문번호
+			,o.OD_ORDER_DETL_SEQ -- 주문 상세번호
+			,IFNULL(os.SELLERS_NM, '-') AS SELLERS_NM -- 판매처명
+			,o.WAREHOUSE_NM -- 출고처명
+			,IFNULL(o.SETTLE_DT,'') AS SETTLE_DT -- 정산처리일자
+			,o.IL_ITEM_CD -- 품목코드
+			,o.ITEM_BARCODE -- 품목바코드
+			,o.GOODS_NM -- 상품명
+			,o.CNT -- 수량
+			,ost.STATUS_NM AS ORDER_STATUS_CD_NM -- 주문상태
+			,o.RECOMMENDED_PRICE -- 정상가
+			,o.DIRECT_PRICE -- 즉시 할인금액
+			, CASE o.DISCOUNT_TP WHEN 'GOODS_DISCOUNT_TP.PRIORITY' THEN '우선'
+				WHEN 'GOODS_DISCOUNT_TP.ERP_EVENT' THEN 'ERP행사'
+				WHEN 'GOODS_DISCOUNT_TP.IMMEDIATE' THEN '즉시'
+				WHEN 'GOODS_DISCOUNT_TP.PACKAGE' THEN '기본'
+				WHEN 'GOODS_DISCOUNT_TP.EMPLOYEE' THEN '임직원'
+				WHEN 'GOODS_DISCOUNT_TP.EXHIBIT_SELECT' THEN '균일가골라담기'
+				WHEN 'GOODS_DISCOUNT_TP.O2O_SHOP' THEN 'O2O매장특가'
+				ELSE '' END AS DIRECT_DISCOUNT_INFO -- 즉시할인유형
+			,o.SALE_PRICE -- 판매가
+			,o.PAID_PRICE  -- 매출금액
+		FROM (
+			-- 정상 매출 및 매출 ERP 데이터 없는 리스트
+			SELECT
+				IF(issi.SETTLE_TYPE IS NULL, NULL, '매출') AS ERP_SETTLE_TYPE_NM -- ERP 구분
+				,issi.ODID AS ERP_ODID -- ERP 주문번호
+				,issi.OD_ORDER_DETL_SEQ AS ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+				,issi.SETTLE_DT AS ERP_SETTLE_DT -- ERP 정산처리일자
+				,issi.SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+				,issi.SETTLE_ITEM_CNT -- ERP 수량
+				,issi.TAX_YN -- 과세여부
+				,oo.ODID -- 주문번호
+				,ood.OD_ORDER_DETL_SEQ -- 주문 상세번호
+				,oo.OM_SELLERS_ID -- 판매처ID
+				,uw.WAREHOUSE_NM -- 출고처
+				,ood.DI_DT AS SETTLE_DT -- 정산처리일자
+				,ood.IL_ITEM_CD -- 품목코드
+				,ood.ITEM_BARCODE -- 품목바코드
+				,ood.GOODS_NM -- 상품명
+				,ood.ORDER_CNT AS CNT -- 수량
+				,ood.ORDER_STATUS_CD AS STATUS_CD -- 주문상태
+				,ood.RECOMMENDED_PRICE -- 정상가
+				,ood.DIRECT_PRICE -- 즉시 할인금액
+				,ood.SALE_PRICE -- 판매가
+				, ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+				  WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+				  ELSE ood.SALE_PRICE * ood.ORDER_CNT
+				  END, 0) AS PAID_PRICE     -- 매출금액
+				, oodd.DISCOUNT_TP
+			FROM OD_ORDER_DETL ood
+				JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+				JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+				LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE='ORDER' AND issi.OD_CLAIM_DETL_ID = 0)
+				LEFT JOIN OD_ORDER_DETL_DISCOUNT oodd ON oodd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID AND oodd.DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.GOODS_COUPON','GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.REGULAR_DEFAULT','GOODS_DISCOUNT_TP.REGULAR_ADD')
+		WHERE
+            <include refid="case1where" />
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'CAL_NOT') ">
+					AND IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1,0), ROUND(issi.SETTLE_PRICE,0))  <![CDATA[<>]]> ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+																														WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+																														ELSE ood.SALE_PRICE * ood.ORDER_CNT
+																														END, 0)     -- 대사내역 상이
+				</if>
+			</if>
+
+				-- 반품 매출 및 반품 ERP 데이터 없는 리스트
+			UNION ALL
+			SELECT
+				IF(issi.SETTLE_TYPE IS NULL, NULL, '반품') AS ERP_SETTLE_TYPE_NM -- ERP 구분
+				,issi.ODID AS ERP_ODID -- ERP 주문번호
+				,issi.OD_ORDER_DETL_SEQ AS ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+				,issi.SETTLE_DT AS ERP_SETTLE_DT -- ERP 정산처리일자
+				,issi.SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+				,issi.SETTLE_ITEM_CNT -- ERP 수량
+				,issi.TAX_YN -- 과세여부
+				,oo.ODID -- 주문번호
+				,ood.OD_ORDER_DETL_SEQ -- 주문 상세번호
+				,oo.OM_SELLERS_ID -- 판매처ID
+				,uw.WAREHOUSE_NM -- 출고처
+				,IFNULL(ocd.RC_DT, ocd.EC_DT) AS SETTLE_DT -- 정산처리일자
+				,ood.IL_ITEM_CD -- 품목코드
+				,ood.ITEM_BARCODE -- 품목바코드
+				,ood.GOODS_NM -- 상품명
+				,ocd.CLAIM_CNT AS CNT -- 수량
+				,ocd.CLAIM_STATUS_CD AS STATUS_CD -- 주문상태
+				,ood.RECOMMENDED_PRICE -- 정상가
+				,ocd.DIRECT_PRICE -- 즉시 할인금액
+				,ocd.SALE_PRICE -- 판매가
+				, ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+				  WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+				  ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+				  END, 0) AS PAID_PRICE     -- 매출금액
+				,ocdd.DISCOUNT_TP
+			FROM OD_CLAIM_DETL ocd
+				JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+				JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oc.CLAIM_YN = 'Y')
+				JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = oc.OD_ORDER_ID)
+				JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ocd.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+				LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND issi.SETTLE_TYPE='RETURN')
+				LEFT JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON ocdd.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.GOODS_COUPON','GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.REGULAR_DEFAULT','GOODS_DISCOUNT_TP.REGULAR_ADD')
+		WHERE
+            <include refid="case2where" />
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'CAL_NOT') ">
+					AND IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1,0), ROUND(issi.SETTLE_PRICE,0))  <![CDATA[<>]]> ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+																														WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+																														ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+																														END, 0)     -- 대사내역 상이
+				</if>
+			</if>
+
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'ERP_NOT') ">
+					<include refid="case4Union" />
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'BOS_NOT') ">
+					<include refid="case3Union" />
+				</if>
+			</when>
+			<otherwise>
+				<include refid="case3Union" />
+				<include refid="case4Union" />
+			</otherwise>
+		</choose>
+
+			) o
+		LEFT JOIN OM_SELLERS os ON (os.OM_SELLERS_ID = o.OM_SELLERS_ID)
+		LEFT JOIN OD_STATUS ost ON (ost.STATUS_CD = o.STATUS_CD)
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn,'Y') ">
+			<include refid="_common.pageLimit"/>
+		</if>
+
+	</select>
+
+
+
+	<select id="getSalesExcelList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalSalesListDto">
+		/* calSales.getSalesExcelList */
+		SELECT
+			o.ERP_SETTLE_TYPE_NM -- ERP 구분
+			,o.ERP_ODID -- ERP 주문번호
+			,o.ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+			,o.ERP_SETTLE_DT -- ERP 정산처리일자
+			,o.SETTLE_ITEM_CNT -- ERP 수량
+			,IF(o.TAX_YN = 'Y', ROUND(o.SETTLE_PRICE * 1.1), o.SETTLE_PRICE) AS SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+			,o.SETTLE_PRICE AS VAT_REMOVE_SETTLE_PRICE -- 매출금액 (VAT제외)
+			,IF(o.TAX_YN = 'Y', ROUND(o.SETTLE_PRICE * 1.1), o.SETTLE_PRICE) - o.SETTLE_PRICE AS VAT -- VAT
+			,o.ODID -- 주문번호
+			,o.OD_ORDER_DETL_SEQ -- 주문 상세번호
+			,IFNULL(os.SELLERS_NM, '-') AS SELLERS_NM -- 판매처명
+			,o.WAREHOUSE_NM -- 출고처명
+			,IFNULL(o.SETTLE_DT,'') AS SETTLE_DT -- 정산처리일자
+			,o.IL_ITEM_CD -- 품목코드
+			,o.ITEM_BARCODE -- 품목바코드
+			,o.GOODS_NM -- 상품명
+			,o.CNT -- 수량
+			,ost.STATUS_NM AS ORDER_STATUS_CD_NM -- 주문상태
+			,o.RECOMMENDED_PRICE -- 정상가
+			,o.DIRECT_PRICE -- 즉시 할인금액
+			, CASE o.DISCOUNT_TP WHEN 'GOODS_DISCOUNT_TP.PRIORITY' THEN '우선'
+			WHEN 'GOODS_DISCOUNT_TP.ERP_EVENT' THEN 'ERP행사'
+			WHEN 'GOODS_DISCOUNT_TP.IMMEDIATE' THEN '즉시'
+			WHEN 'GOODS_DISCOUNT_TP.PACKAGE' THEN '기본'
+			WHEN 'GOODS_DISCOUNT_TP.EMPLOYEE' THEN '임직원'
+			WHEN 'GOODS_DISCOUNT_TP.EXHIBIT_SELECT' THEN '균일가골라담기'
+			WHEN 'GOODS_DISCOUNT_TP.O2O_SHOP' THEN 'O2O매장특가'
+			ELSE '' END AS DIRECT_DISCOUNT_INFO -- 즉시할인유형
+			,o.SALE_PRICE -- 판매가
+			,o.PAID_PRICE  -- 매출금액
+		FROM (
+		-- 정상 매출 및 매출 ERP 데이터 없는 리스트
+		SELECT
+			IF(issi.SETTLE_TYPE IS NULL, NULL, '매출') AS ERP_SETTLE_TYPE_NM -- ERP 구분
+			,issi.ODID AS ERP_ODID -- ERP 주문번호
+			,issi.OD_ORDER_DETL_SEQ AS ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+			,issi.SETTLE_DT AS ERP_SETTLE_DT -- ERP 정산처리일자
+			,issi.SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+			,issi.SETTLE_ITEM_CNT -- ERP 수량
+			,issi.TAX_YN -- 과세여부
+			,oo.ODID -- 주문번호
+			,ood.OD_ORDER_DETL_SEQ -- 주문 상세번호
+			,oo.OM_SELLERS_ID -- 판매처ID
+			,uw.WAREHOUSE_NM -- 출고처
+			,ood.DI_DT AS SETTLE_DT -- 정산처리일자
+			,ood.IL_ITEM_CD -- 품목코드
+			,ood.ITEM_BARCODE -- 품목바코드
+			,ood.GOODS_NM -- 상품명
+			,ood.ORDER_CNT AS CNT -- 수량
+			,ood.ORDER_STATUS_CD AS STATUS_CD -- 주문상태
+			,ood.RECOMMENDED_PRICE -- 정상가
+			,ood.DIRECT_PRICE -- 즉시 할인금액
+			,ood.SALE_PRICE -- 판매가
+			, ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+			WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+			ELSE ood.SALE_PRICE * ood.ORDER_CNT
+			END, 0) AS PAID_PRICE     -- 매출금액
+			, oodd.DISCOUNT_TP
+		FROM OD_ORDER_DETL ood
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+			LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE='ORDER' AND issi.OD_CLAIM_DETL_ID = 0)
+			LEFT JOIN OD_ORDER_DETL_DISCOUNT oodd ON oodd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID AND oodd.DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.GOODS_COUPON','GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.REGULAR_DEFAULT','GOODS_DISCOUNT_TP.REGULAR_ADD')
+		WHERE
+		<include refid="case1where" />
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'CAL_NOT') ">
+				AND IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1,0), ROUND(issi.SETTLE_PRICE,0))  <![CDATA[<>]]> ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+																													WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+																													ELSE ood.SALE_PRICE * ood.ORDER_CNT
+																													END, 0)     -- 대사내역 상이
+			</if>
+		</if>
+
+		-- 반품 매출 및 반품 ERP 데이터 없는 리스트
+		UNION ALL
+		SELECT
+			IF(issi.SETTLE_TYPE IS NULL, NULL, '반품') AS ERP_SETTLE_TYPE_NM -- ERP 구분
+			,issi.ODID AS ERP_ODID -- ERP 주문번호
+			,issi.OD_ORDER_DETL_SEQ AS ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+			,issi.SETTLE_DT AS ERP_SETTLE_DT -- ERP 정산처리일자
+			,issi.SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+			,issi.SETTLE_ITEM_CNT -- ERP 수량
+			,issi.TAX_YN -- 과세여부
+			,oo.ODID -- 주문번호
+			,ood.OD_ORDER_DETL_SEQ -- 주문 상세번호
+			,oo.OM_SELLERS_ID -- 판매처ID
+			,uw.WAREHOUSE_NM -- 출고처
+			,IFNULL(ocd.RC_DT, ocd.EC_DT) AS SETTLE_DT -- 정산처리일자
+			,ood.IL_ITEM_CD -- 품목코드
+			,ood.ITEM_BARCODE -- 품목바코드
+			,ood.GOODS_NM -- 상품명
+			,ocd.CLAIM_CNT AS CNT -- 수량
+			,ocd.CLAIM_STATUS_CD AS STATUS_CD -- 주문상태
+			,ood.RECOMMENDED_PRICE -- 정상가
+			,ocd.DIRECT_PRICE -- 즉시 할인금액
+			,ocd.SALE_PRICE -- 판매가
+			, ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+			WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+			ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+			END, 0) AS PAID_PRICE     -- 매출금액
+			,ocdd.DISCOUNT_TP
+		FROM OD_CLAIM_DETL ocd
+			JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+			JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oc.CLAIM_YN = 'Y')
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = oc.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ocd.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+			LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND issi.SETTLE_TYPE='RETURN')
+			LEFT JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON ocdd.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.GOODS_COUPON','GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.REGULAR_DEFAULT','GOODS_DISCOUNT_TP.REGULAR_ADD')
+		WHERE
+		<include refid="case2where" />
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'CAL_NOT') ">
+				AND IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1,0), ROUND(issi.SETTLE_PRICE,0))  <![CDATA[<>]]> ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+																													WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+																													ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+																													END, 0)     -- 대사내역 상이
+			</if>
+		</if>
+
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'ERP_NOT') ">
+					<include refid="case4Union" />
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'BOS_NOT') ">
+					<include refid="case3Union" />
+				</if>
+			</when>
+			<otherwise>
+				<include refid="case3Union" />
+				<include refid="case4Union" />
+			</otherwise>
+		</choose>
+
+		) o
+		LEFT JOIN OM_SELLERS os ON (os.OM_SELLERS_ID = o.OM_SELLERS_ID)
+		LEFT JOIN OD_STATUS ost ON (ost.STATUS_CD = o.STATUS_CD)
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 통합몰 매출 대사 총 Count
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.25		안치열			최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSalesListCount" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalSalesListDto">
+		/* calSales.getSalesListCount */
+		SELECT
+			SUM(o.CNT) AS TOTAL_CNT, IFNULL(SUM(o.SETTLE_PRICE),0) AS SETTLE_PRICE, IFNULL(SUM(o.PAID_PRICE),0) AS PAID_PRICE
+		FROM (
+		-- 정상 매출 및 매출 ERP 데이터 없는 리스트
+		SELECT
+			COUNT(*) CNT
+			, SUM(
+				IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1), issi.SETTLE_PRICE)
+			  ) AS SETTLE_PRICE
+			, SUM(
+				ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+				  WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+				  ELSE ood.SALE_PRICE * ood.ORDER_CNT
+				  END, 0)
+			  ) AS PAID_PRICE
+		FROM OD_ORDER_DETL ood
+		JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+		JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+		JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+		LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE='ORDER' AND issi.OD_CLAIM_DETL_ID = 0)
+		LEFT JOIN OD_ORDER_DETL_DISCOUNT oodd ON oodd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID AND oodd.DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.GOODS_COUPON','GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.REGULAR_DEFAULT','GOODS_DISCOUNT_TP.REGULAR_ADD')
+		WHERE
+
+		<include refid="case1where" />
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'CAL_NOT') ">
+				AND IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1,0), ROUND(issi.SETTLE_PRICE,0))  <![CDATA[<>]]> ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+																													WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+																													ELSE ood.SALE_PRICE * ood.ORDER_CNT
+																													END, 0)     -- 대사내역 상이
+			</if>
+		</if>
+
+		-- 반품 매출 및 반품 ERP 데이터 없는 리스트
+		UNION ALL
+		SELECT
+			COUNT(*) CNT
+			, SUM(
+				IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1), issi.SETTLE_PRICE)
+			  ) AS SETTLE_PRICE
+			, SUM(
+				ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+				  WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+				  ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+				  END, 0)
+			  ) AS PAID_PRICE
+		FROM OD_CLAIM_DETL ocd
+		JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+		JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oc.CLAIM_YN = 'Y')
+		JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = oc.OD_ORDER_ID)
+		JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+		JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ocd.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+		LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND issi.SETTLE_TYPE='RETURN')
+		LEFT JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON ocdd.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.GOODS_COUPON','GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.REGULAR_DEFAULT','GOODS_DISCOUNT_TP.REGULAR_ADD')
+		WHERE
+
+		<include refid="case2where" />
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'CAL_NOT') ">
+				AND IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1,0), ROUND(issi.SETTLE_PRICE,0))  <![CDATA[<>]]> ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+																													WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+																													ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+																													END, 0)     -- 대사내역 상이
+			</if>
+		</if>
+
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findMatchingType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'ERP_NOT') ">
+					<include refid="case4CountUnion" />
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findMatchingType,'BOS_NOT') ">
+					<include refid="case3CountUnion" />
+				</if>
+			</when>
+			<otherwise>
+				<include refid="case3CountUnion" />
+				<include refid="case4CountUnion" />
+			</otherwise>
+		</choose>
+
+		) o
+	</select>
+
+
+
+<!--───────────────────────────────────────────────────────────────────────
+* description    : 통합몰 매출 대사 공통 조회 조건
+* @
+* @ 수정일       수정자    수정내용
+* @ ──────────────────────────────────────────────────────────────────────
+* @ 2021.08.20   안치열    최초생성
+* @
+────────────────────────────────────────────────────────────────────────-->
+	<sql id="case3Union">
+		-- 정상 ERP 데이터만 있는 경우
+		UNION ALL
+		SELECT
+			'매출' AS ERP_SETTLE_TYPE_NM -- ERP 구분
+			,issi.ODID AS ERP_ODID -- ERP 주문번호
+			,issi.OD_ORDER_DETL_SEQ AS ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+			,issi.SETTLE_DT AS ERP_SETTLE_DT -- ERP 정산처리일자
+			,issi.SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+			,issi.SETTLE_ITEM_CNT -- ERP 수량
+			,issi.TAX_YN -- 과세여부
+			,NULL AS ODID -- 주문번호
+			,NULL AS OD_ORDER_DETL_SEQ -- 주문 상세번호
+			,NULL AS OM_SELLERS_ID -- 판매처ID
+			,NULL AS WAREHOUSE_NM -- 출고처
+			,NULL AS SETTLE_DT -- 정산처리일자
+			,NULL AS IL_ITEM_CD -- 품목코드
+			,NULL AS ITEM_BARCODE -- 품목바코드
+			,NULL AS GOODS_NM -- 상품명
+			,NULL AS CNT -- 수량
+			,NULL AS STATUS_CD -- 주문상태
+			,NULL AS RECOMMENDED_PRICE -- 정상가
+			,NULL AS DIRECT_PRICE -- 즉시 할인금액
+			,NULL AS SALE_PRICE -- 판매가
+			,NULL AS PAID_PRICE -- 매출금액
+			,NULL AS DISCOUNT_TP
+		FROM IF_SALES_SETTLE_INFO issi
+			LEFT JOIN OD_ORDER_DETL ood ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE='ORDER' AND issi.OD_CLAIM_DETL_ID = 0)
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+		WHERE
+		<include refid="case3where" />
+	</sql>
+
+	<sql id="case4Union">
+		-- 반품 ERP 데이터만 있는 경우
+		UNION ALL
+		SELECT
+			'반품' AS ERP_SETTLE_TYPE_NM -- ERP 구분
+			,issi.ODID AS ERP_ODID -- ERP 주문번호
+			,issi.OD_ORDER_DETL_SEQ AS ERP_OD_ORDER_DETL_SEQ -- ERP 주문 상세번호
+			,issi.SETTLE_DT AS ERP_SETTLE_DT -- ERP 정산처리일자
+			,issi.SETTLE_PRICE -- ERP 매출금액 (VAT 포함)
+			,issi.SETTLE_ITEM_CNT -- ERP 수량
+			,issi.TAX_YN -- 과세여부
+			,NULL AS ODID -- 주문번호
+			,NULL AS OD_ORDER_DETL_SEQ -- 주문 상세번호
+			,NULL AS OM_SELLERS_ID -- 판매처ID
+			,NULL AS WAREHOUSE_NM -- 출고처
+			,NULL AS SETTLE_DT -- 정산처리일자
+			,NULL AS IL_ITEM_CD -- 품목코드
+			,NULL AS ITEM_BARCODE -- 품목바코드
+			,NULL AS GOODS_NM -- 상품명
+			,NULL AS CNT -- 수량
+			,NULL AS STATUS_CD -- 주문상태
+			,NULL AS RECOMMENDED_PRICE -- 정상가
+			,NULL AS DIRECT_PRICE -- 즉시 할인금액
+			,NULL AS SALE_PRICE -- 판매가
+			,NULL AS PAID_PRICE -- 매출금액
+			,NULL AS DISCOUNT_TP
+		FROM IF_SALES_SETTLE_INFO issi
+			LEFT JOIN OD_CLAIM_DETL ocd  ON (issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND issi.SETTLE_TYPE='RETURN')
+			JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+			JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oc.CLAIM_YN = 'Y')
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = oc.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ocd.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+		WHERE
+		<include refid="case4where" />
+	</sql>
+
+	<sql id="case3CountUnion">
+		-- 정상 ERP 데이터만 있는 경우
+		UNION ALL
+		SELECT
+		COUNT(*) CNT
+		, SUM(
+		IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1), issi.SETTLE_PRICE)
+		) AS SETTLE_PRICE
+		, 0 AS PAID_PRICE
+		FROM IF_SALES_SETTLE_INFO issi
+		LEFT JOIN OD_ORDER_DETL ood ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE='ORDER' AND issi.OD_CLAIM_DETL_ID = 0)
+		JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+		JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+		JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+		WHERE
+
+		<include refid="case3where" />
+	</sql>
+
+	<sql id="case4CountUnion">
+		-- 반품 ERP 데이터만 있는 경우
+		UNION ALL
+		SELECT
+		COUNT(*) CNT
+		, SUM(
+		IF(issi.TAX_YN = 'Y', ROUND(issi.SETTLE_PRICE * 1.1), issi.SETTLE_PRICE)
+		) AS SETTLE_PRICE
+		, 0 AS PAID_PRICE
+		FROM IF_SALES_SETTLE_INFO issi
+		LEFT JOIN OD_CLAIM_DETL ocd  ON (issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID AND issi.SETTLE_TYPE='RETURN')
+		JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+		JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oc.CLAIM_YN = 'Y')
+		JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = oc.OD_ORDER_ID)
+		JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+		JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ocd.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_IF','ORDER_CHANGE_TP.ORDER_CHANGE'))
+		WHERE
+
+		<include refid="case4where" />
+
+	</sql>
+
+	<sql id="case1where">
+		-- ERP 정산 처리일자
+		issi.SETTLE_DT BETWEEN CONCAT(#{erpDateSearchStart}, ' 00:00:00')  AND CONCAT(#{erpDateSearchEnd}, ' 23:59:59')
+
+		-- 구분
+		<if test="salesGubunList !=null and salesGubunList.size != 0">
+			<if test='!salesGubunList.contains("S")'>
+				AND 1=2
+			</if>
+		</if>
+
+		-- BOS 주문 상태
+		<if test="orderStateList !=null and orderStateList.size != 0">
+			AND ood.ORDER_STATUS_CD IN
+			<foreach collection="orderStateList" item="orderState" index="index" separator="," open="(" close=")">
+				#{orderState}
+			</foreach>
+		</if>
+
+		-- BOS 클레임 상태
+		<if test="claimStateList !=null and claimStateList.size != 0">
+
+		</if>
+
+		<include refid="salesListConst" />
+	</sql>
+
+	<sql id="case2where">
+		-- ERP 정산 처리일자
+		issi.SETTLE_DT BETWEEN CONCAT(#{erpDateSearchStart}, ' 00:00:00')  AND CONCAT(#{erpDateSearchEnd}, ' 23:59:59')
+
+		-- 구분
+		<if test="salesGubunList !=null and salesGubunList.size != 0">
+			<if test='!salesGubunList.contains("R")'>
+				AND 1=2
+			</if>
+		</if>
+
+		-- BOS 주문 상태
+		<if test="orderStateList !=null and orderStateList.size != 0">
+
+		</if>
+
+		-- BOS 클레임 상태
+		<if test="claimStateList !=null and claimStateList.size != 0">
+			AND ocd.CLAIM_STATUS_CD IN
+			<foreach collection="claimStateList" item="state" index="index" separator="," open="(" close=")">
+				#{state}
+			</foreach>
+		</if>
+
+		<include refid="salesListConst" />
+	</sql>
+
+	<sql id="case3where">
+		ood.OD_ORDER_DETL_ID IS NULL
+
+		-- ERP 정산 처리일자
+		AND issi.SETTLE_DT BETWEEN CONCAT(#{erpDateSearchStart}, ' 00:00:00')  AND CONCAT(#{erpDateSearchEnd}, ' 23:59:59')
+
+		-- 구분
+		<if test="salesGubunList !=null and salesGubunList.size != 0">
+			<if test='!salesGubunList.contains("S")'>
+				AND 1=2
+			</if>
+		</if>
+
+		-- BOS 주문 상태
+		<if test="orderStateList !=null and orderStateList.size != 0">
+			AND ood.ORDER_STATUS_CD IN
+			<foreach collection="orderStateList" item="orderState" index="index" separator="," open="(" close=")">
+				#{orderState}
+			</foreach>
+		</if>
+
+		-- BOS 클레임 상태
+		<if test="claimStateList !=null and claimStateList.size != 0">
+
+		</if>
+
+		<include refid="salesListConst" />
+	</sql>
+
+	<sql id="case4where">
+		ocd.OD_ORDER_DETL_ID IS NULL
+		-- ERP 정산 처리일자
+		AND issi.SETTLE_DT BETWEEN CONCAT(#{erpDateSearchStart}, ' 00:00:00')  AND CONCAT(#{erpDateSearchEnd}, ' 23:59:59')
+
+		-- 구분
+		<if test="salesGubunList !=null and salesGubunList.size != 0">
+			<if test='!salesGubunList.contains("R")'>
+				AND 1=2
+			</if>
+		</if>
+
+		-- BOS 주문 상태
+		<if test="orderStateList !=null and orderStateList.size != 0">
+
+		</if>
+
+		-- BOS 클레임 상태
+		<if test="claimStateList !=null and claimStateList.size != 0">
+			AND ocd.CLAIM_STATUS_CD IN
+			<foreach collection="claimStateList" item="state" index="index" separator="," open="(" close=")">
+				#{state}
+			</foreach>
+		</if>
+
+		<include refid="salesListConst" />
+	</sql>
+
+	<sql id="salesListConst">
+
+		-- BOS 주문 기간 조회 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'ORDER_DT') ">
+			AND ood2.CREATE_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType,'IC_DT') ">
+			AND ood2.IC_DT BETWEEN CONCAT(#{dateSearchStart}, ' 00:00:00')  AND CONCAT(#{dateSearchEnd}, ' 23:59:59')
+		</if>
+
+		-- 공급업체
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId) ">
+			AND ood.UR_SUPPLIER_ID = #{supplierId}
+		</if>
+
+		-- 출고처 그룹 코드
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup) ">
+			AND ood.UR_WAREHOUSE_GRP_CD = #{warehouseGroup}
+		</if>
+		-- 출고처
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId) ">
+			AND ood.UR_WAREHOUSE_ID = #{warehouseId}
+		</if>
+
+
+		-- 검색어 조회
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword) ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'OD_ORDER_ID') ">
+				AND oo.ODID = #{findKeyword}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'ERP_ORDER_ID') ">
+				AND issi.ODID = #{findKeyword}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'OUTMALL_ID') ">
+				AND oo.OUTMALL_ID = #{findKeyword}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'COLLECTION_MALL_ID') ">
+				AND oo.COLLECTION_MALL_ID = #{findKeyword}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'GOODS_NM') ">
+				AND ood.GOODS_NM = #{findKeyword}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'IL_GOODS_ID') ">
+				AND ood.IL_GOODS_ID = #{findKeyword}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'IL_ITEM_CD') ">
+				AND ood.IL_ITEM_CD = #{findKeyword}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType,'ITEM_BARCODE') ">
+				AND ood.ITEM_BARCODE = #{findKeyword}
+			</if>
+		</if>
+
+	</sql>
+</mapper>

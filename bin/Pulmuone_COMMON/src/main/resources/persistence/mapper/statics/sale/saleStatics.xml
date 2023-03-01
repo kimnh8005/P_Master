@@ -1,0 +1,725 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.statics.sale.SaleStaticsMapper">
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 판매현황통계
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.19   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectSaleStaticsList" resultType="kr.co.pulmuone.v1.statics.sale.dto.vo.SaleStaticsVo">
+      /*saleStatics.selectSaleStaticsList*/
+      SELECT  T.UR_SUPPLIER_ID                                                                                    <!-- 공급업체ID -->
+            , IFNULL(uc.COMP_NM, '')            AS SUPPLIER_NM                                                    <!-- 공급업체명 -->
+            , T.SELLERS_GROUP_CD                                                                                  <!-- 판매처그룹코드 -->
+            , IFNULL(FN_COMN_CODE_DIC(T.SELLERS_GROUP_CD), '') AS SELLERS_GROUP_CD_NM                             <!-- 판매처그룹명 -->
+            , T.OM_SELLERS_ID                                                                                     <!-- 판매처ID -->
+            , IFNULL(os.SELLERS_NM, '-')        AS SELLERS_NM                                                     <!-- 판매처명 -->
+            , T.STANDARD_PAID_PRICE                                                                               <!-- 기준 매출금액(VAT포함) -->
+            , FORMAT(T.STANDARD_PAID_PRICE, 0)  AS STANDARD_PAID_PRICE_FM                                         <!-- 기준 매출금액(VAT포함)(금액포맷,엑셀용) -->
+            , T.STANDARD_PAID_PRICE_NON_TAX                                                                       <!-- 기준 매출금액(VAT별도) -->
+            , FORMAT(T.STANDARD_PAID_PRICE_NON_TAX, 0)  AS STANDARD_PAID_PRICE_NON_TAX_FM                         <!-- 기준 매출금액(VAT별도)(금액포맷,엑셀용) -->
+            , T.STANDARD_ORDER_CNT                                                                                <!-- 기준 주문건수 -->
+            , FORMAT(T.STANDARD_ORDER_CNT, 0)   AS STANDARD_ORDER_CNT_FM                                          <!-- 기준 주문건수(금액포맷,엑셀용) -->
+            , T.STANDARD_GOODS_CNT                                                                                <!-- 기준 주문상품수량 -->
+            , FORMAT(T.STANDARD_GOODS_CNT, 0)   AS STANDARD_GOODS_CNT_FM                                          <!-- 기준 주문상품수량(금액포맷,엑셀용) -->
+            , T.CONTRAST_PAID_PRICE                                                                               <!-- 대비 매출금액(VAT포함) -->
+            , FORMAT(T.CONTRAST_PAID_PRICE, 0)  AS CONTRAST_PAID_PRICE_FM                                         <!-- 대비 매출금액(VAT포함)(금액포맷,엑셀용) -->
+            , T.CONTRAST_PAID_PRICE_NON_TAX                                                                       <!-- 대비 매출금액(VAT별도) -->
+            , FORMAT(T.CONTRAST_PAID_PRICE_NON_TAX, 0)  AS CONTRAST_PAID_PRICE_NON_TAX_FM                         <!-- 대비 매출금액(VAT별도)(금액포맷,엑셀용) -->
+            , T.CONTRAST_ORDER_CNT                                                                                <!-- 대비 주문건수 -->
+            , FORMAT(T.CONTRAST_ORDER_CNT, 0)   AS CONTRAST_ORDER_CNT_FM                                          <!-- 대비 주문건수(금액포맷,엑셀용) -->
+            , T.CONTRAST_GOODS_CNT                                                                                <!-- 대비 주문상품수량 -->
+            , FORMAT(T.CONTRAST_GOODS_CNT, 0)   AS CONTRAST_GOODS_CNT_FM                                          <!-- 대비 주문상품수량(금액포맷,엑셀용) -->
+            , (ROUND((T.STANDARD_PAID_PRICE / T.CONTRAST_PAID_PRICE) * 100) - 100)            AS STRETCH_RATE     <!-- 신장율 -->
+            , IFNULL(FORMAT((ROUND((T.STANDARD_PAID_PRICE / T.CONTRAST_PAID_PRICE) * 100) - 100), 0), '0') AS STRETCH_RATE_FM  <!-- 신장율(금액포맷,엑셀용) -->
+      FROM    (
+              SELECT  o.UR_SUPPLIER_ID                                                              <!-- 공급업체ID -->
+                    , o.SELLERS_GROUP_CD                                                            <!-- 판매처그룹코드 -->
+                    , o.OM_SELLERS_ID                                                               <!-- 판매처ID -->
+                    , SUM(IF(IS_STANDARD, o.PAID_PRICE, 0))                 AS STANDARD_PAID_PRICE  <!-- 기준 매출금액(VAT포함) -->
+                    , SUM(IF(IS_STANDARD, o.PAID_PRICE_NON_TAX, 0))                 AS STANDARD_PAID_PRICE_NON_TAX  <!-- 기준 매출금액(VAT별도) -->
+                    , COUNT(DISTINCT IF(IS_STANDARD, o.OD_ORDER_ID, NULL))  AS STANDARD_ORDER_CNT   <!-- 기준 주문건수 -->
+                    , SUM(IF(IS_STANDARD, o.GOODS_CNT, 0))                  AS STANDARD_GOODS_CNT   <!-- 기준 주문상품수량 -->
+                    , SUM(IF(IS_CONTRAST, o.PAID_PRICE, 0))                 AS CONTRAST_PAID_PRICE  <!-- 대비 매출금액(VAT포함) -->
+                    , SUM(IF(IS_CONTRAST, o.PAID_PRICE_NON_TAX, 0))                 AS CONTRAST_PAID_PRICE_NON_TAX  <!-- 대비 매출금액(VAT별도) -->
+                    , COUNT(DISTINCT IF(IS_CONTRAST, o.OD_ORDER_ID, NULL))  AS CONTRAST_ORDER_CNT   <!-- 대비 주문건수 -->
+                    , SUM(IF(IS_CONTRAST, o.GOODS_CNT, 0))                  AS CONTRAST_GOODS_CNT   <!-- 대비 주문상품수량 -->
+              FROM    (
+                      SELECT  ood.UR_SUPPLIER_ID              <!-- 공급업체ID -->
+                            , oo.SELLERS_GROUP_CD             <!-- 판매처그룹코드 -->
+                            , oo.OM_SELLERS_ID                <!-- 판매처ID -->
+                            , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                         WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                                         WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                                         WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                                         ELSE ood.SALE_PRICE * ood.ORDER_CNT
+                                    END, 0) AS PAID_PRICE     <!-- 매출금액(VAT포함) -->
+                            , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                         WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                                         WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT / 1.1
+                                         WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                                         WHEN ood.TAX_YN = 'Y' THEN ood.SALE_PRICE * ood.ORDER_CNT / 1.1
+                                         ELSE ood.SALE_PRICE * ood.ORDER_CNT
+                                    END, 0) AS PAID_PRICE_NON_TAX    <!-- 매출금액(VAT별도) -->
+                            , oo.OD_ORDER_ID                  <!-- 주문ID -->
+                            , ood.ORDER_CNT AS GOODS_CNT      <!-- 주문상품수량 -->
+                            <choose>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "ODR")'>
+                              	, IF(ood2.CREATE_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')        , true, false) AS IS_STANDARD <!-- 기준 여부 -->
+                            	, IF(ood2.CREATE_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s'), true, false) AS IS_CONTRAST <!-- 대비 여부 -->
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "PAY")'>
+                              	, IF(ood2.IC_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')        , true, false) AS IS_STANDARD <!-- 기준 여부 -->
+                            	, IF(ood2.IC_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s'), true, false) AS IS_CONTRAST <!-- 대비 여부 -->
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "SAL")'>
+	                            , IF(otn.CREATE_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')        , true, false) AS IS_STANDARD <!-- 기준 여부 -->
+                            	, IF(otn.CREATE_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s'), true, false) AS IS_CONTRAST <!-- 대비 여부 -->
+                            </when>
+                          </choose>
+                      FROM    OD_ORDER_DETL ood
+                                        JOIN OD_ORDER oo            ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                                        JOIN OD_ORDER_DT ood2       ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                                  LEFT  JOIN OD_TRACKING_NUMBER otn ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                                  LEFT  JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER')
+                      WHERE   <!-- 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 -->
+                              (
+                          <choose>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "ODR")'>
+                              ood2.CREATE_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s')         AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+                              OR
+                              ood2.CREATE_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s')
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "PAY")'>
+                              ood2.IC_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s')         AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+                              OR
+                              ood2.IC_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s')
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "SAL")'>
+                              otn.CREATE_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s')         AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+                              OR
+                              otn.CREATE_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s')
+                            </when>
+                          </choose>
+                              )
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)'>
+                        AND   ood.UR_SUPPLIER_ID  = #{urSupplierId}                              <!-- 공급업체 -->
+                      </if>
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd)'>
+                        AND   oo.SELLERS_GROUP_CD = #{sellersGroupCd}                              <!-- 판매처그룹 -->
+                      </if>
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)'>
+                        AND   oo.OM_SELLERS_ID    = #{omSellersId}                              <!-- 판매처 -->
+                      </if>
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                        AND   oo.AGENT_TYPE_CD IN <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                                                    #{agentTypeCd}
+                                                  </foreach>                      <!-- 판매채널 유형 -->
+                      </if>
+                      UNION ALL
+                      SELECT  ood.UR_SUPPLIER_ID                                    <!-- 공급업체ID -->
+                            , oo.SELLERS_GROUP_CD                                   <!-- 판매처그룹코드 -->
+                            , oo.OM_SELLERS_ID                                      <!-- 판매처ID -->
+                            , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                              WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                                              WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                                              WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                                              ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+                                         END, 0) AS SIGNED) * -1  AS PAID_PRICE     <!-- 매출금액(VAT포함) -->
+                            , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                              WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                                              WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT / 1.1
+                                              WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                                              WHEN ood.TAX_YN = 'Y' THEN ocd.SALE_PRICE * ocd.CLAIM_CNT / 1.1
+                                              ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+                                         END, 0) AS SIGNED) * -1 AS PAID_PRICE_NON_TAX       <!-- 매출금액(VAT별도) -->
+                            , oo.OD_ORDER_ID                                        <!-- 주문ID -->
+                            , CAST(ocd.CLAIM_CNT AS SIGNED) * -1 AS GOODS_CNT       <!-- 주문상품수량 -->
+                            , IF( ocd.CC_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+                                  OR
+                                  ocd.RC_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s'), true, false) AS IS_STANDARD <!-- 기준 여부 -->
+                            , IF( ocd.CC_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s')
+                                  OR
+                                  ocd.RC_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s'), true, false) AS IS_CONTRAST <!-- 대비 여부 -->
+                      FROM    OD_CLAIM_DETL ocd
+                                        JOIN OD_ORDER_DETL ood      ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+                                        JOIN OD_ORDER oo            ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                                        JOIN OD_ORDER_DT ood2       ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                                  LEFT  JOIN OD_TRACKING_NUMBER otn ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                                  LEFT  JOIN IF_SALES_SETTLE_INFO issi ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ
+                                  											AND issi.SETTLE_TYPE = 'RETURN' AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID)
+                      WHERE   (
+                              ocd.CC_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+                              OR
+                              ocd.RC_DT BETWEEN STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+                              OR
+                              ocd.CC_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s')
+                              OR
+                              ocd.RC_DT BETWEEN STR_TO_DATE(#{contrastStartDt}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{contrastEndDt}, '%Y%m%d%H%i%s')
+                              )
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId) '>
+                        AND   ood.UR_SUPPLIER_ID  = #{urSupplierId}                              <!-- 공급업체 -->
+                      </if>
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd)'>
+                        AND   oo.SELLERS_GROUP_CD = #{sellersGroupCd}                              <!-- 판매처그룹 -->
+                      </if>
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)'>
+                        AND   oo.OM_SELLERS_ID    = #{omSellersId}                              <!-- 판매처 -->
+                      </if>
+                      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                        AND   oo.AGENT_TYPE_CD IN <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                                                    #{agentTypeCd}
+                                                  </foreach>                      <!-- 판매채널 유형 -->
+                      </if>
+                      ) o
+              GROUP BY UR_SUPPLIER_ID, SELLERS_GROUP_CD, OM_SELLERS_ID
+              ) T
+                  LEFT JOIN UR_SUPPLIER us  ON (us.UR_SUPPLIER_ID = T.UR_SUPPLIER_ID)
+                  LEFT JOIN UR_COMPANY uc   ON (uc.UR_COMPANY_ID = us.UR_COMPANY_ID)
+                  LEFT JOIN OM_SELLERS os   ON (os.OM_SELLERS_ID = T.OM_SELLERS_ID)
+      ORDER BY T.UR_SUPPLIER_ID, SELLERS_GROUP_CD_NM DESC, SELLERS_NM ASC
+  </select>
+
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 상품별판매현황통계
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.19   dgyoun    최초생성
+   * @ 2021.08.12   배민영     SPMO-609 클레임 처리 건 중 재배송과 입금전 취소 추가
+   * @ 2021.09.01   안치열     HGRM-9965 상품유형 조회 처리 수정(묶음상품 코드값 조회수정)
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectSaleGoodsStaticsList" resultType="kr.co.pulmuone.v1.statics.sale.dto.vo.SaleStaticsVo">
+      /*saleStatics.selectSaleGoodsStaticsList*/
+      SELECT  T.UR_SUPPLIER_ID                                          <!-- 공급업체ID -->
+            , CASE WHEN UR_SUPPLIER_CNT = 1 THEN IFNULL(uc.COMP_NM, '') ELSE '전체' END    AS SUPPLIER_NM            <!-- 공급업체명 -->
+            , T.SELLERS_GROUP_CD                                        <!-- 판매처그룹코드 -->
+            , CASE WHEN SELLERS_GROUP_CNT = 1 THEN IFNULL(FN_COMN_CODE_DIC(T.SELLERS_GROUP_CD), '') ELSE '전체' END AS SELLERS_GROUP_CD_NM <!-- 판매처그룹명 -->
+            , T.OM_SELLERS_ID                                           <!-- 판매처ID -->
+            , CASE WHEN OM_SELLERS_CNT = 1 THEN IFNULL(os.SELLERS_NM, '-') ELSE '전체' END      AS SELLERS_NM             <!-- 판매처명 -->
+            , CASE WHEN BUYER_TYPE_CNT = 1 THEN IFNULL(FN_COMN_CODE_DIC(T.BUYER_TYPE_CD), '') ELSE '전체' END AS BUYER_TYPE_NM        <!-- 회원 유형 -->
+            , IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))      AS CTGRY_STD_NM     <!-- 표준카테고리명 -->
+      <choose>
+          <when  test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "E")'>
+              , CASE WHEN T.ERP_CTGRY_LV4_ID IS NULL AND T.ERP_CTGRY_LV3_ID IS NULL AND T.ERP_CTGRY_LV2_ID IS NULL AND T.ERP_CTGRY_LV1_ID IS NULL THEN ''
+                     WHEN T.ERP_CTGRY_LV4_ID = '' AND T.ERP_CTGRY_LV3_ID = '' AND T.ERP_CTGRY_LV2_ID  = '' AND T.ERP_CTGRY_LV1_ID  = '' THEN ''
+                     WHEN T.ERP_CTGRY_LV4_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID,'>', T.ERP_CTGRY_LV3_ID,'>',T.ERP_CTGRY_LV4_ID)
+                     WHEN T.ERP_CTGRY_LV3_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID,'>', T.ERP_CTGRY_LV3_ID)
+                     WHEN T.ERP_CTGRY_LV2_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID)
+                     WHEN T.ERP_CTGRY_LV1_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID)
+                 END AS CTGRY_NM
+          </when>
+          <otherwise>
+              , CASE WHEN IL_CTGRY_DISPLAY_CNT = 1 THEN IF(T.IL_CTGRY_DISPLAY_ID IS NULL, '', IFNULL(FN_CTGRY_FULL_NAME(T.IL_CTGRY_DISPLAY_ID), '')) ELSE '전체' END  AS CTGRY_NM         <!-- 전시카테고리명 -->
+          </otherwise>
+      </choose>
+      <choose>
+        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, "singleSection")'>                    <!-- 카테고리명:표준:엑셀용 -->
+            , IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))      AS CTGRY_NM_EX
+            , SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 1) AS CTGRY_NM_EX1
+            , SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 2),'>',-1) AS CTGRY_NM_EX2
+            , SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 3),'>',-1) AS CTGRY_NM_EX3
+            , SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 4),'>',-1) AS CTGRY_NM_EX4
+        </when>
+        <otherwise>
+          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "S")'>                                            <!-- 카테고리명:표준:엑셀용 -->
+            , IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))      AS CTGRY_NM_EX
+            , SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 1) AS CTGRY_NM_EX1
+            , SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 2),'>',-1) AS CTGRY_NM_EX2
+            , SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 3),'>',-1) AS CTGRY_NM_EX3
+            , SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_STD_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_STD_ID), ''))  , '>', 4),'>',-1) AS CTGRY_NM_EX4
+          </if>
+          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "D")'>                                            <!-- 카테고리명:전시:엑셀용 -->
+            , CASE WHEN IL_CTGRY_DISPLAY_CNT = 1 THEN IF(T.IL_CTGRY_DISPLAY_ID IS NULL, '', IFNULL(FN_CTGRY_FULL_NAME(T.IL_CTGRY_DISPLAY_ID), '')) ELSE '전체' END AS CTGRY_NM_EX
+            ,  CASE WHEN IL_CTGRY_DISPLAY_CNT = 1 THEN SUBSTRING_INDEX(IF(T.IL_CTGRY_DISPLAY_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_DISPLAY_ID), ''))  , '>', 1) ELSE '전체' END AS CTGRY_NM_EX1
+            ,  CASE WHEN IL_CTGRY_DISPLAY_CNT = 1 THEN SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_DISPLAY_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_DISPLAY_ID), ''))  , '>', 2),'>',-1) ELSE '전체' END AS CTGRY_NM_EX2
+            ,  CASE WHEN IL_CTGRY_DISPLAY_CNT = 1 THEN SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_DISPLAY_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_DISPLAY_ID), ''))  , '>', 3),'>',-1) ELSE '전체' END AS CTGRY_NM_EX3
+            ,  CASE WHEN IL_CTGRY_DISPLAY_CNT = 1 THEN SUBSTRING_INDEX(SUBSTRING_INDEX(IF(T.IL_CTGRY_DISPLAY_ID IS NULL, '', IFNULL(FN_CTGRY_STD_FULL_NAME(T.IL_CTGRY_DISPLAY_ID), ''))  , '>', 4),'>',-1) ELSE '전체' END AS CTGRY_NM_EX4
+          </if>
+          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "E")'>                                            <!-- 카테고리명:전시:엑셀용 -->
+            , CASE WHEN T.ERP_CTGRY_LV4_ID IS NULL AND T.ERP_CTGRY_LV3_ID IS NULL AND T.ERP_CTGRY_LV2_ID IS NULL AND T.ERP_CTGRY_LV1_ID IS NULL THEN ''
+                   WHEN T.ERP_CTGRY_LV4_ID = '' AND T.ERP_CTGRY_LV3_ID = '' AND T.ERP_CTGRY_LV2_ID  = '' AND T.ERP_CTGRY_LV1_ID  = '' THEN ''
+                   WHEN T.ERP_CTGRY_LV4_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID,'>', T.ERP_CTGRY_LV3_ID,'>',T.ERP_CTGRY_LV4_ID)
+                   WHEN T.ERP_CTGRY_LV3_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID,'>', T.ERP_CTGRY_LV3_ID)
+                   WHEN T.ERP_CTGRY_LV2_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID)
+                   WHEN T.ERP_CTGRY_LV1_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID)
+              END AS CTGRY_NM_EX
+          </if>
+        </otherwise>
+      </choose>
+            , IFNULL(T.GOODS_NM, '')          AS GOODS_NM               <!-- 상품명 -->
+            , CASE WHEN T.TAX_YN = 'Y' THEN '과세'
+                   ELSE '면세'
+              END AS TAX_TYPE_NM                                        <!-- 과세 구분 -->
+            , T.RECOMMENDED_PRICE                                       <!-- 정상가 -->
+            , FORMAT(T.RECOMMENDED_PRICE, 0)  AS RECOMMENDED_PRICE_FM   <!-- 정상가(금액포맷,엑셀용) -->
+            , T.SALE_PRICE                                              <!-- 판매가 -->
+            , FORMAT(T.SALE_PRICE, 0)         AS SALE_PRICE_FM          <!-- 판매가(금액포맷,엑셀용) -->
+            , T.GOODS_CNT                                               <!-- 주문상품수량 -->
+            , FORMAT(T.GOODS_CNT, 0)          AS GOODS_CNT_FM           <!-- 주문상품수량(금액포맷,엑셀용) -->
+            , T.TAX_PAID_PRICE                                          <!-- 매출금액(VAT포함) -->
+            , FORMAT(T.TAX_PAID_PRICE, 0)     AS TAX_PAID_PRICE_FM      <!-- 매출금액(VAT포함)(금액포맷,엑셀용) -->
+            , T.NON_TAX_PAID_PRICE                                      <!-- 매출금액(VAT제외) -->
+            , FORMAT(T.NON_TAX_PAID_PRICE, 0) AS NON_TAX_PAID_PRICE_FM  <!-- 매출금액(VAT제외)(금액포맷,엑셀용) -->
+            , IFNULL(T.IL_GOODS_ID, '')       AS IL_GOODS_ID            <!-- 상품코드 -->
+            , IFNULL(T.IL_ITEM_CD, '')        AS IL_ITEM_CD             <!-- 품목코드 -->
+            , IFNULL(T.ITEM_BARCODE, '')      AS ITEM_BARCODE           <!-- 품목바코드 -->
+            , CASE WHEN T.ERP_CTGRY_LV4_ID IS NULL AND T.ERP_CTGRY_LV3_ID IS NULL AND T.ERP_CTGRY_LV2_ID IS NULL AND T.ERP_CTGRY_LV1_ID IS NULL THEN ''
+                   WHEN T.ERP_CTGRY_LV4_ID = '' AND T.ERP_CTGRY_LV3_ID = '' AND T.ERP_CTGRY_LV2_ID  = '' AND T.ERP_CTGRY_LV1_ID  = '' THEN ''
+                   WHEN T.ERP_CTGRY_LV4_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID,'>', T.ERP_CTGRY_LV3_ID,'>',T.ERP_CTGRY_LV4_ID)
+                   WHEN T.ERP_CTGRY_LV3_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID,'>', T.ERP_CTGRY_LV3_ID)
+                   WHEN T.ERP_CTGRY_LV2_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID, '>',T.ERP_CTGRY_LV2_ID)
+                   WHEN T.ERP_CTGRY_LV1_ID IS NOT NULL THEN CONCAT(T.ERP_CTGRY_LV1_ID)
+              END ERP_CTGRY_NM
+            , T.GOODS_TP_CD
+      FROM (
+            SELECT  o.UR_SUPPLIER_ID      <!-- 공급업체ID -->
+                  , o.SELLERS_GROUP_CD    <!-- 판매처그룹코드 -->
+                  , o.OM_SELLERS_ID       <!-- 판매처ID -->
+                  , o.IL_GOODS_ID         <!-- 상품ID -->
+                  , o.IL_CTGRY_STD_ID     <!-- 표준카테고리ID -->
+                  , o.IL_CTGRY_DISPLAY_ID <!-- 전시카테고리ID -->
+                  , o.GOODS_NM            <!-- 상품명 -->
+                  , o.RECOMMENDED_PRICE   <!-- 정상가 -->
+                  , o.SALE_PRICE          <!-- 판매가 -->
+                    <!-- 상품코드별 합산 -->
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSumYn, "Y")'>
+                  , SUM(IF(o.IS_REFUND, CAST(o.GOODS_CNT AS SIGNED) * -1, o.GOODS_CNT))                   AS GOODS_CNT            <!-- 주문상품수량 -->
+                  , SUM(IF(o.IS_REFUND, CAST(o.TAX_PAID_PRICE AS SIGNED) * -1, o.TAX_PAID_PRICE))         AS TAX_PAID_PRICE       <!-- 매출금액 (VAT포함) -->
+                  , SUM(IF(o.IS_REFUND, CAST(o.NON_TAX_PAID_PRICE * -1 AS SIGNED), o.NON_TAX_PAID_PRICE)) AS NON_TAX_PAID_PRICE   <!-- 매출금액 (VAT제외) -->
+                  , COUNT(DISTINCT o.UR_SUPPLIER_ID) AS UR_SUPPLIER_CNT
+                  , COUNT(DISTINCT o.SELLERS_GROUP_CD) AS SELLERS_GROUP_CNT
+                  , COUNT(DISTINCT o.OM_SELLERS_ID) AS OM_SELLERS_CNT
+                  , COUNT(DISTINCT o.BUYER_TYPE_CD) AS BUYER_TYPE_CNT
+                  , COUNT(DISTINCT o.IL_CTGRY_DISPLAY_ID) AS IL_CTGRY_DISPLAY_CNT
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(goodsSumYn, "Y")'>
+                  , IF(o.IS_REFUND, CAST(o.GOODS_CNT AS SIGNED) * -1, o.GOODS_CNT)                        AS GOODS_CNT            <!-- 주문상품수량 -->
+                  , IF(o.IS_REFUND, CAST(o.TAX_PAID_PRICE AS SIGNED) * -1, o.TAX_PAID_PRICE)              AS TAX_PAID_PRICE       <!-- 매출금액 (VAT포함) -->
+                  , IF(o.IS_REFUND, CAST(o.NON_TAX_PAID_PRICE * -1 AS SIGNED), o.NON_TAX_PAID_PRICE)      AS NON_TAX_PAID_PRICE   <!-- 매출금액 (VAT제외) -->
+                  , 1 AS UR_SUPPLIER_CNT
+                  , 1 AS SELLERS_GROUP_CNT
+                  , 1 AS OM_SELLERS_CNT
+                  , 1 AS BUYER_TYPE_CNT
+                  , 1 AS IL_CTGRY_DISPLAY_CNT
+                </if>
+                  , o.IL_ITEM_CD          <!-- 품목코드 -->
+                  , o.ITEM_BARCODE        <!-- 품목바코드 -->
+                  , o.ERP_IF_YN
+                  , o.ERP_CTGRY_LV1_ID
+                  , o.ERP_CTGRY_LV2_ID
+                  , o.ERP_CTGRY_LV3_ID
+                  , o.ERP_CTGRY_LV4_ID
+                  , o.BUYER_TYPE_CD       <!-- 회원 유형 코드 -->
+                  , o.TAX_YN              <!-- 과세 구분 -->
+                  , CASE WHEN o.GOODS_TP_CD_PACK IS NULL THEN o.GOODS_TP_CD
+                         ELSE o.GOODS_TP_CD_PACK
+                         END AS GOODS_TP_CD
+            FROM    (
+                    SELECT  false AS IS_REFUND                  <!-- 환불데이터 -->
+                          , ood.UR_SUPPLIER_ID                  <!-- 공급업체ID -->
+                          , oo.SELLERS_GROUP_CD                 <!-- 판매처그룹코드 -->
+                          , oo.OM_SELLERS_ID                    <!-- 판매처ID -->
+                          , ood.IL_GOODS_ID                     <!-- 상품ID -->
+                          , ood.IL_CTGRY_STD_ID                 <!-- 표준카테고리ID -->
+                          , ood.IL_CTGRY_DISPLAY_ID             <!-- 전시카테고리ID -->
+                          , ood.GOODS_NM                        <!-- 상품명 -->
+                          , ood.RECOMMENDED_PRICE               <!-- 정상가 -->
+                          , ood.SALE_PRICE                      <!-- 판매가 -->
+                          , ood.ORDER_CNT   AS GOODS_CNT        <!-- 주문상품수량 -->
+                          , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                       WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                                       WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                                       WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                                       ELSE ood.SALE_PRICE * ood.ORDER_CNT
+                                  END, 0)   AS TAX_PAID_PRICE   <!-- 매출금액 (VAT포함) -->
+                          <!-- , ood.PAID_PRICE  AS TAX_PAID_PRICE   매출금액 (VAT포함) -->
+                          , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                       WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                                       WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT / 1.1
+                                       WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                                       WHEN ood.TAX_YN = 'Y' THEN ood.SALE_PRICE * ood.ORDER_CNT / 1.1
+                                       ELSE ood.SALE_PRICE * ood.ORDER_CNT
+                                  END, 0) AS NON_TAX_PAID_PRICE <!-- 매출금액 (VAT제외) -->
+                          <!-- , IF(ood.TAX_YN = 'Y', ROUND(ood.PAID_PRICE / 1.1), ood.PAID_PRICE) AS NON_TAX_PAID_PRICE 매출금액 (VAT제외) -->
+                          , ood.IL_ITEM_CD                      <!-- 품목코드 -->
+                          , ood.ITEM_BARCODE                    <!-- 품목바코드 -->
+                          , ii.ERP_IF_YN
+                          , ii.ERP_CTGRY_LV1_ID
+                          , ii.ERP_CTGRY_LV2_ID
+                          , ii.ERP_CTGRY_LV3_ID
+                          , ii.ERP_CTGRY_LV4_ID
+                          , oo.BUYER_TYPE_CD                    <!-- 회원 유형 코드 -->
+                          , ood.TAX_YN                          <!-- 과세 구분 -->
+                          , ood.GOODS_TP_CD
+                          , op.GOODS_TP_CD as GOODS_TP_CD_PACK
+                    FROM    OD_ORDER_DETL ood
+                                      JOIN OD_ORDER oo                    ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                                      JOIN OD_ORDER_DT ood2               ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                                LEFT  JOIN IL_ITEM ii                     ON (ii.IL_ITEM_CD = ood.IL_ITEM_CD)
+                                LEFT  JOIN OD_TRACKING_NUMBER otn         ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                                LEFT  JOIN IL_CTGRY_STD_PRNTS_INFO icspi  ON (icspi.IL_CTGRY_STD_ID = ood.IL_CTGRY_STD_ID)
+                                LEFT  JOIN IL_CTGRY_PRNTS_INFO icpi       ON (icpi.IL_CTGRY_ID = ood.IL_CTGRY_DISPLAY_ID)
+                                LEFT  JOIN IF_SALES_SETTLE_INFO issi      ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER')
+                                LEFT JOIN OD_ORDER_DETL_PACK op on op.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_PARENT_ID AND op.GOODS_TP_CD =  'GOODS_TYPE.PACKAGE'
+              <where>   <!-- 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 -->
+                <choose>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "ODR")'>
+                    <!-- 시간 조건 추가  00시 ~ 23시 -->
+                    <!-- 시작시간 조건 -->
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStHour)'>
+                      AND   ood2.CREATE_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(#{startDe}, CONCAT(#{searchStHour},'0000')), '%Y%m%d%H%i%s')
+                    </if>
+                    <!-- 종료시간 조건 -->
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchEdHour , "23")'>
+                      AND   ood2.CREATE_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'0000')), '%Y%m%d%H%i%s')
+                    </if>
+                    <!-- 종료시간 조건(2) 23시일경우  235959 -->
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchEdHour , "23")'>
+                      AND   ood2.CREATE_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'5959')), '%Y%m%d%H%i%s')
+                    </if>
+
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "PAY")'>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStHour)'>
+                      AND   ood2.IC_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(#{startDe},CONCAT(#{searchStHour},'0000')), '%Y%m%d%H%i%s')
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchEdHour , "23")'>
+                      AND   ood2.IC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe},CONCAT(#{searchEdHour},'0000')), '%Y%m%d%H%i%s')
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchEdHour , "23")'>
+                      AND   ood2.IC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe},CONCAT(#{searchEdHour},'5959')), '%Y%m%d%H%i%s')
+                    </if>
+
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "SAL")'>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStHour)'>
+                      AND   otn.CREATE_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(#{startDe},CONCAT(#{searchStHour},'0000')), '%Y%m%d%H%i%s')
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchEdHour , "23")'>
+                      AND   otn.CREATE_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe},CONCAT(#{searchEdHour},'0000')), '%Y%m%d%H%i%s')
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchEdHour , "23")'>
+                      AND   otn.CREATE_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe},CONCAT(#{searchEdHour},'5959')), '%Y%m%d%H%i%s')
+                    </if>
+
+                  </when>
+                  <otherwise>
+                  </otherwise>
+                </choose>
+                <include refid="goodsSaleStaticsCond" />
+              </where>
+                    UNION ALL
+                    SELECT  true AS IS_REFUND                   <!-- 환불데이터 -->
+                          , ood.UR_SUPPLIER_ID                  <!-- 공급업체ID -->
+                          , oo.SELLERS_GROUP_CD                 <!-- 판매처그룹코드 -->
+                          , oo.OM_SELLERS_ID                    <!-- 판매처ID -->
+                          , ood.IL_GOODS_ID                     <!-- 상품ID -->
+                          , ood.IL_CTGRY_STD_ID                 <!-- 표준카테고리ID -->
+                          , ood.IL_CTGRY_DISPLAY_ID             <!-- 전시카테고리ID -->
+                          , ood.GOODS_NM                        <!-- 상품명 -->
+                          , ood.RECOMMENDED_PRICE               <!-- 정상가 -->
+                          , ood.SALE_PRICE                      <!-- 판매가 -->
+                          , ocd.CLAIM_CNT   AS GOODS_CNT        <!-- 주문상품수량 -->
+                          , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                       WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                                       WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                                       WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                                       ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+                                  END, 0)  AS TAX_PAID_PRICE   <!-- 판매금액 (VAT포함) -->
+                          <!-- , ocd.PAID_PRICE  AS TAX_PAID_PRICE   판매금액 (VAT포함) -->
+                          , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                                       WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                                       WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT / 1.1
+                                       WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                                       WHEN ood.TAX_YN = 'Y' THEN ocd.SALE_PRICE * ocd.CLAIM_CNT / 1.1
+                                       ELSE ocd.SALE_PRICE * ocd.CLAIM_CNT
+                                  END, 0)  AS NON_TAX_PAID_PRICE <!-- 판매금액 (VAT제외) -->
+                          <!-- , IF(ood.TAX_YN = 'Y', ROUND(ocd.PAID_PRICE / 1.1), ocd.PAID_PRICE) AS NON_TAX_PAID_PRICE 판매금액 (VAT제외) -->
+                          , ood.IL_ITEM_CD                      <!-- 품목코드 -->
+                          , ood.ITEM_BARCODE                    <!-- 품목바코드 -->
+                          , ii.ERP_IF_YN
+                          , ii.ERP_CTGRY_LV1_ID
+                          , ii.ERP_CTGRY_LV2_ID
+                          , ii.ERP_CTGRY_LV3_ID
+                          , ii.ERP_CTGRY_LV4_ID
+                          , oo.BUYER_TYPE_CD                    <!-- 회원 유형 코드 -->
+                          , ood.TAX_YN                          <!-- 과세 구분 -->
+                          , ood.GOODS_TP_CD
+                          , op.GOODS_TP_CD as GOODS_TP_CD_PACK
+                    FROM    OD_CLAIM_DETL ocd
+                                      JOIN OD_ORDER_DETL ood              ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+                                      JOIN OD_ORDER oo                    ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                                      JOIN OD_ORDER_DT ood2               ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                                LEFT  JOIN IL_ITEM ii                     ON (ii.IL_ITEM_CD = ood.IL_ITEM_CD)
+                                LEFT  JOIN OD_TRACKING_NUMBER otn         ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                                LEFT  JOIN IL_CTGRY_STD_PRNTS_INFO icspi  ON (icspi.IL_CTGRY_STD_ID = ood.IL_CTGRY_STD_ID)
+                                LEFT  JOIN IL_CTGRY_PRNTS_INFO icpi       ON (icpi.IL_CTGRY_ID = ood.IL_CTGRY_DISPLAY_ID)
+                                LEFT  JOIN IF_SALES_SETTLE_INFO issi      ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ
+                                  											AND issi.SETTLE_TYPE = 'RETURN' AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID)
+                                LEFT JOIN OD_ORDER_DETL_PACK op           ON op.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_PARENT_ID AND op.GOODS_TP_CD =  'GOODS_TYPE.PACKAGE'
+      <where>
+                      AND   (
+                              (1 = 1
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStHour)'>
+                                AND   ocd.CC_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(#{startDe}, CONCAT(#{searchStHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchEdHour , "23")'>
+                                AND   ocd.CC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchEdHour , "23")'>
+                                AND   ocd.CC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'5959')), '%Y%m%d%H%i%s')
+                              </if>
+                              )
+                              OR
+                              (1 = 1
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStHour)'>
+                                AND   ocd.RC_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(#{startDe}, CONCAT(#{searchStHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchEdHour , "23")'>
+                                AND   ocd.RC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchEdHour , "23")'>
+                                  AND   ocd.RC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'5959')), '%Y%m%d%H%i%s')
+                              </if>
+                              )
+                              OR <!-- 재배송 -->
+                              (1 = 1
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStHour)'>
+                                AND   ocd.EC_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(#{startDe}, CONCAT(#{searchStHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchEdHour , "23")'>
+                                AND   ocd.EC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchEdHour , "23")'>
+                                  AND   ocd.EC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe}, CONCAT(#{searchEdHour},'5959')), '%Y%m%d%H%i%s')
+                              </if>
+                              )
+                              OR <!-- 입금전취소(입금전 취소건은 요청일자만 존재) -->
+                              (ocd.CLAIM_STATUS_CD = 'IB'
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStHour)'>
+                                AND   ocd.CR_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(#{startDe}, CONCAT(#{searchStHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchEdHour , "23")'>
+                                AND   ocd.CR_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe},  CONCAT(#{searchEdHour},'0000')), '%Y%m%d%H%i%s')
+                              </if>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDe) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEdHour)  and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchEdHour , "23")'>
+                                  AND   ocd.CR_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(#{endDe},  CONCAT(#{searchEdHour},'5959')), '%Y%m%d%H%i%s')
+                              </if>
+                              )
+                            )
+                    <include refid="goodsSaleStaticsCond" />
+                  </where>
+
+                    ) o
+            <!-- 상품코드별 합산 -->
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSumYn, "Y")'>
+              GROUP BY IL_GOODS_ID
+            </if>
+            ORDER BY IL_GOODS_ID, IS_REFUND
+            ) T
+                LEFT JOIN UR_SUPPLIER us  ON (us.UR_SUPPLIER_ID = T.UR_SUPPLIER_ID)
+                LEFT JOIN UR_COMPANY uc   ON (uc.UR_COMPANY_ID = us.UR_COMPANY_ID)
+                LEFT JOIN OM_SELLERS os   ON (os.OM_SELLERS_ID = T.OM_SELLERS_ID)
+        <where>
+           <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsTpCdList) and goodsTpCdList.size() > 0'>
+                AND T.GOODS_TP_CD IN  <foreach collection="goodsTpCdList" item="goodsTpCd" index="index" separator="," open="(" close=")">
+                                          #{goodsTpCd}
+                                        </foreach>                      <!-- 상품유형 -->
+            </if>
+        </where>
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+   * description    : 상품별판매현황통계 조건
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.19   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <sql id="goodsSaleStaticsCond">
+          <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, "singleSection")'>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(keywordList) and keywordList.size() > 0'>
+                  <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSearchTp, "GOODS_CODE")'>
+                      AND   ood.IL_GOODS_ID IN  <foreach collection="keywordList" item="keyword" index="index" separator="," open="(" close=")">
+                                                  #{keyword}
+                                                </foreach>
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSearchTp, "ITEM_CODE")'>
+                      AND   ood.IL_ITEM_CD  IN  <foreach collection="keywordList" item="keyword" index="index" separator="," open="(" close=")">
+                                                  #{keyword}
+                                                </foreach>
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSearchTp, "ITEM_BARCODE")'>
+                      AND   ood.ITEM_BARCODE IN <foreach collection="keywordList" item="keyword" index="index" separator="," open="(" close=")">
+                                                  #{keyword}
+                                                </foreach>
+                    </when>
+                    <otherwise>
+                      AND   1 = 2
+                    </otherwise>
+                  </choose>
+                </if>
+            </when>
+            <otherwise>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)'>
+                      AND   ood.UR_SUPPLIER_ID        = #{urSupplierId}         <!-- 공급업체 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseGrpCd)'>
+                      AND   ood.UR_WAREHOUSE_GRP_CD   = #{urWarehouseGrpCd}     <!-- 출고처 그룹 코드 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)'>
+                      AND   ood.UR_WAREHOUSE_ID       = #{urWarehouseId}        <!-- 출고처 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsNm)'>
+                      AND   ood.GOODS_NM              LIKE CONCAT('%', #{goodsNm}, '%')
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd)'>
+                      AND   oo.SELLERS_GROUP_CD       = #{sellersGroupCd}       <!-- 판매처그룹 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)'>
+                      AND   oo.OM_SELLERS_ID          = #{omSellersId}          <!-- 판매처 -->
+                    </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(brandTp)'>
+                <choose>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandTp, "GIFT_TARGET_BRAND_TP.STANDARD")'>
+                      <choose>
+                          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(urFoodmusYn, "Y")'>
+                              AND ii.UR_BRAND_ID      IN (SELECT  B.PS_VAL
+                                                            FROM ST_SHOP A INNER JOIN PS_CONFIG B ON A.ST_SHOP_ID = B.ST_SHOP_ID
+                                                           WHERE 1=1
+                                                             AND PS_KEY IN ('SALE_GOODS_UR_BRAND')  )
+                          </when>
+                          <otherwise>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBrandId)'>
+                                  AND   ii.UR_BRAND_ID            = #{urBrandId}            <!-- 표준 브랜드 -->
+                              </if>
+                          </otherwise>
+                      </choose>
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandTp, "GIFT_TARGET_BRAND_TP.DISPLAY")'>
+                      <choose>
+                          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dpFoodmusYn, "Y")'>
+                              AND ii.DP_BRAND_ID      IN (SELECT  B.PS_VAL
+                                                            FROM ST_SHOP A INNER JOIN PS_CONFIG B ON A.ST_SHOP_ID = B.ST_SHOP_ID
+                                                           WHERE 1=1
+                                                             AND PS_KEY IN ('SALE_GOODS_DP_BRAND')  )
+                          </when>
+                          <otherwise>
+                              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)'>
+                                  AND   ii.DP_BRAND_ID            = #{dpBrandId}            <!-- 전시 브랜드 -->
+                              </if>
+                          </otherwise>
+                      </choose>
+
+                  </when>
+                </choose>
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(foodmusYn, "Y")'>
+                  AND (ii.UR_BRAND_ID      IN (SELECT  B.PS_VAL
+                                              FROM ST_SHOP A INNER JOIN PS_CONFIG B ON A.ST_SHOP_ID = B.ST_SHOP_ID
+                                              WHERE 1=1
+                                              AND PS_KEY IN ('SALE_GOODS_UR_BRAND')  )
+                    OR ii.DP_BRAND_ID      IN (SELECT  B.PS_VAL
+                                              FROM ST_SHOP A INNER JOIN PS_CONFIG B ON A.ST_SHOP_ID = B.ST_SHOP_ID
+                                              WHERE 1=1
+                                              AND PS_KEY IN ('SALE_GOODS_DP_BRAND')  ))
+              </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                      AND   oo.AGENT_TYPE_CD IN <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                                                  #{agentTypeCd}
+                                                </foreach>                      <!-- 판매채널 유형 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(buyerTypeCdList) and buyerTypeCdList.size() > 0'>
+                        AND   oo.BUYER_TYPE_CD IN <foreach collection="buyerTypeCdList" item="buyerTypeCd" index="index" separator="," open="(" close=")">
+                                                     #{buyerTypeCd}
+                                                  </foreach>                      <!-- 회원유형 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storageMethodTp)'>
+                      AND   ii.STORAGE_METHOD_TP      = #{storageMethodTp}      <!-- 보관방법 -->
+                    </if>
+                <choose>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "S")'>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryStdIdDepth1)'>
+                      AND   icspi.CTGRY_STD_ID_DEPTH1   = #{ctgryStdIdDepth1}   <!-- 표준카테고리 1댑스 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryStdIdDepth2)'>
+                      AND   icspi.CTGRY_STD_ID_DEPTH2   = #{ctgryStdIdDepth2}   <!-- 표준카테고리 2댑스 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryStdIdDepth3)'>
+                      AND   icspi.CTGRY_STD_ID_DEPTH3   = #{ctgryStdIdDepth3}   <!-- 표준카테고리 3댑스 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryStdIdDepth4)'>
+                      AND   icspi.CTGRY_STD_ID_DEPTH4   = #{ctgryStdIdDepth4}   <!-- 표준카테고리 4댑스 -->
+                    </if>
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "D")'>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryIdDepth1)'>
+                      AND   icpi.CTGRY_ID_DEPTH1        = #{ctgryIdDepth1}      <!-- 전시카테고리 1댑스 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryIdDepth2)'>
+                      AND   icpi.CTGRY_ID_DEPTH2        = #{ctgryIdDepth2}      <!-- 전시카테고리 2댑스 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryIdDepth3)'>
+                      AND   icpi.CTGRY_ID_DEPTH3        = #{ctgryIdDepth3}      <!-- 전시카테고리 3댑스 -->
+                    </if>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryIdDepth4)'>
+                      AND   icpi.CTGRY_ID_DEPTH4        = #{ctgryIdDepth4}      <!-- 전시카테고리 4댑스 -->
+                    </if>
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "E")'>
+                      AND ii.ERP_IF_YN = 'Y'
+                  </when>
+                </choose>
+            </otherwise>
+          </choose>
+
+  </sql>
+
+
+
+  <!-- #################################################################### -->
+  <!-- 전체건수 -->
+  <!-- #################################################################### -->
+  <select id="selectTotalCount" resultType="int">
+    /* saleStatics.selectTotalCount */
+    SELECT FOUND_ROWS()
+  </select>
+
+  <!-- #################################################################### -->
+  <!-- 묶음상품 확인 -->
+  <!-- #################################################################### -->
+  <select id="confirmPackage" resultType="int">
+      /* saleStatics.confirmPackage */
+      SELECT COUNT(*)
+      FROM IL_GOODS
+      WHERE GOODS_TP = 'GOODS_TYPE.PACKAGE'
+      AND IL_GOODS_ID = #{packageId}
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 개별 묶음상품 확인
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.04   안치열    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getPakageGoodsInfo" resultType="kr.co.pulmuone.v1.statics.sale.dto.vo.SaleStaticsVo">
+        /* saleStatics.getPakageGoodsInfo */
+        SELECT TARGET_GOODS_ID AS IL_GOODS_ID
+        FROM IL_GOODS_PACKAGE_GOODS_MAPPING
+        WHERE IL_GOODS_ID = #{packageId}
+    </select>
+
+
+</mapper>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.shopping.favorites.ShoppingFavoritesMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 찜 상품 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.05		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsFavorites" resultType="Long">
+		/*	shoppingFavorites.getGoodsFavorites	*/
+		SELECT
+			SP_FAVORITES_GOODS_ID
+		FROM
+			SP_FAVORITES_GOODS
+		WHERE
+			IL_GOODS_ID = #{ilGoodsId}
+			AND UR_USER_ID = #{urUserId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 찜 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.05		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addGoodsFavorites">
+		/*	shoppingFavorites.addGoodsFavorites	*/
+		INSERT INTO SP_FAVORITES_GOODS
+		(
+			IL_GOODS_ID
+			,UR_USER_ID
+		)
+		VALUES
+		(
+			#{ilGoodsId}
+			,#{urUserId}
+		)
+		<selectKey resultType="Long" keyProperty="spFavoritesGoodsId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 찜 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.05		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delGoodsFavorites">
+		/*	shoppingFavorites.delGoodsFavorites	*/
+		DELETE FROM
+			SP_FAVORITES_GOODS
+		WHERE
+			SP_FAVORITES_GOODS_ID = #{spFavoritesGoodsId}
+			AND UR_USER_ID = #{urUserId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 찜 상품 유저 기준 조회 List
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		이원호          최초생성 - searchIndex.xml 조건문과 동일 해야함
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getFavoritesGoodsListByUser" resultType="Long">
+		/*	shoppingFavorites.getFavoritesGoodsListByUser	*/
+		SELECT T.IL_GOODS_ID
+		FROM  SP_FAVORITES_GOODS T
+			JOIN IL_GOODS A ON T.IL_GOODS_ID = A.IL_GOODS_ID
+			INNER JOIN IL_ITEM B ON A.IL_ITEM_CD = B.IL_ITEM_CD
+			JOIN IL_GOODS_PRICE P ON P.IL_GOODS_ID = A.IL_GOODS_ID AND P.USE_YN = 'Y' AND NOW() BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+			LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = A.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+			LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = A.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+			JOIN IL_GOODS_CTGRY C ON C.IL_GOODS_ID = A.IL_GOODS_ID
+			JOIN IL_CTGRY CC ON CC.IL_CTGRY_ID = C.IL_CTGRY_ID AND CC.USE_YN = 'Y' AND CC.DISP_YN = 'Y'
+			JOIN IL_CTGRY_PRNTS_INFO PC ON PC.IL_CTGRY_ID = C.IL_CTGRY_ID
+			JOIN (select A.IL_GOODS_ID, B.CTGRY_ID_DEPTH1, C.CTGRY_NM
+			from IL_GOODS_CTGRY A, IL_CTGRY_PRNTS_INFO B, IL_CTGRY C
+			where  A.IL_CTGRY_ID = B.IL_CTGRY_ID
+			AND B.CTGRY_ID_DEPTH1 = C.IL_CTGRY_ID
+			and A.BASIC_YN = 'Y'
+			and A.MALL_DIV = 'MALL_DIV.PULMUONE') MAIN_CTGRY ON MAIN_CTGRY.IL_GOODS_ID = A.IL_GOODS_ID
+			LEFT OUTER JOIN IL_ITEM_CERTIFICATION D ON D.IL_ITEM_CD = A.IL_ITEM_CD
+			LEFT OUTER JOIN IL_CERTIFICATION DD ON DD.IL_CERTIFICATION_ID = D.IL_CERTIFICATION_ID AND DD.USE_YN = 'Y'
+			LEFT OUTER JOIN UR_BRAND G ON G.UR_BRAND_ID = B.UR_BRAND_ID AND G.USE_YN = 'Y'
+			JOIN IL_GOODS_SHIPPING_TEMPLATE H ON H.IL_GOODS_ID = A.IL_GOODS_ID AND H.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID
+			JOIN IL_SHIPPING_TEMPLATE HH ON HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND HH.DEL_YN = 'N'
+		WHERE A.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+			AND A.DISP_YN = 'Y'
+			AND A.DEL_YN = 'N'
+			AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+			AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING','GOODS_TYPE.ADDITIONAL')
+			AND T.UR_USER_ID = #{urUserId}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceInfo)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'pc')">
+						AND A.DISP_WEB_PC_YN = 'Y'
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'mobile')">
+						AND A.DISP_WEB_MOBILE_YN = 'Y'
+					</when>
+				</choose>
+			</if>
+			<if test="isApp">
+				AND A.DISP_APP_YN = 'Y'
+			</if>
+		GROUP BY T.IL_GOODS_ID
+		ORDER BY T.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 찜 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delFavoritesGoodsByGoodsId">
+		/*	shoppingFavorites.delFavoritesGoodsByGoodsId	*/
+		DELETE FROM SP_FAVORITES_GOODS
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+			AND UR_USER_ID = #{urUserId}
+	</delete>
+</mapper>

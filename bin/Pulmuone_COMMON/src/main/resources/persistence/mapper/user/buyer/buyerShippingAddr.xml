@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.buyer.UserBuyerShippingAddrMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문시 최근배송지 존재 유무
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.15		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderLatelyShippingAddressCount" resultType="Long">
+        /* buyerShippingAddr.getOrderLatelyShippingAddressCount */
+		SELECT
+			T1.UR_LATELY_SHIPPING_ADDR_ID
+		FROM
+			UR_LATELY_SHIPPING_ADDR T1
+			INNER JOIN OD_SHIPPING_ZONE T2
+				ON T1.RECEIVER_NM = T2.RECV_NM
+				AND T1.RECEIVER_ZIP_CD = T2.RECV_ZIP_CD
+				AND T1.BUILDING_CD = FN_ENCRYPT(T2.RECV_BLD_NO)
+				AND T1.RECEIVER_ADDR1 = T2.RECV_ADDR1
+				AND T1.RECEIVER_ADDR2 = T2.RECV_ADDR2
+				AND T2.OD_ORDER_ID = #{odOrderId}
+		WHERE
+			T1.UR_USER_ID = #{urUserId}
+		GROUP BY T1.UR_LATELY_SHIPPING_ADDR_ID
+		ORDER BY T1.UR_LATELY_SHIPPING_ADDR_ID ASC
+		LIMIT 0, 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.15		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addLatelyShippingAddress">
+		/* buyerShippingAddr.addShippingAddress */
+		INSERT INTO UR_LATELY_SHIPPING_ADDR
+			(UR_USER_ID, RECEIVER_NM, RECEIVER_MO, RECEIVER_TEL, RECEIVER_ZIP_CD, RECEIVER_ADDR1, BUILDING_CD, RECEIVER_ADDR2, SHIPPING_CMNT, ACCESS_INFORMATION_TP, ACCESS_INFORMATION_PASSWORD, CREATE_DT)
+		SELECT
+			#{urUserId}, RECV_NM, RECV_HP, RECV_TEL, RECV_ZIP_CD, RECV_ADDR1, FN_ENCRYPT(RECV_BLD_NO), RECV_ADDR2, DELIVERY_MSG, DOOR_MSG_CD, DOOR_MSG, CREATE_DT
+		FROM
+			OD_SHIPPING_ZONE
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+		LIMIT 0, 1
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 날짜 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.15		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putLatelyShippingAddress">
+		/* buyerShippingAddr.addShippingAddress */
+		UPDATE UR_LATELY_SHIPPING_ADDR
+			SET CREATE_DT = NOW()
+		WHERE
+			UR_LATELY_SHIPPING_ADDR_ID = #{urLatelyShippingAddrId}
+	</update>
+
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 마이페이지 배송지  조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.15		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getMypageShippingAddressListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.CommonGetShippingAddressListResultVo">
+		<result column="UR_SHIPPING_ADDR_ID"			property="shippingAddressId" />
+		<result column="DEFAULT_YN"						property="defaultYn" />
+		<result column="RECEIVER_NM"					property="receiverName" />
+		<result column="RECEIVER_MO"					property="receiverMobile" />
+		<result column="RECEIVER_ZIP_CD"				property="receiverZipCode" />
+		<result column="RECEIVER_ADDR1"					property="receiverAddress1" />
+		<result column="RECEIVER_ADDR2"					property="receiverAddress2" />
+		<result column="BUILDING_CODE"					property="buildingCode" />
+		<result column="SHIPPING_CMNT"					property="shippingCmnt" />
+		<result column="ACCESS_INFORMATION_TP"			property="accessInformationType" />
+		<result column="ACCESS_INFORMATION_NM"			property="accessInformationTypeName" />
+		<result column="ACCESS_INFORMATION_PASSWORD"	property="accessInformationPassword" />
+		<result column="LATELY_YN"						property="latelyYn" />
+	</resultMap>
+	<select id="getMypageShippingAddressList" resultMap="getMypageShippingAddressListResultMap">
+		/* buyerShippingAddr.getMypageShippingAddressList */
+		SELECT
+			  A.UR_SHIPPING_ADDR_ID
+			, A.DEFAULT_YN
+			, FN_DECRYPT(A.RECEIVER_NM) AS RECEIVER_NM
+			, FN_DECRYPT(A.RECEIVER_MO) AS RECEIVER_MO
+			, FN_DECRYPT(A.RECEIVER_ZIP_CD) AS RECEIVER_ZIP_CD
+			, FN_DECRYPT(A.RECEIVER_ADDR1) AS RECEIVER_ADDR1
+			, FN_DECRYPT(A.RECEIVER_ADDR2) AS RECEIVER_ADDR2
+			, FN_DECRYPT(A.BUILDING_CD) AS BUILDING_CODE
+			, A.SHIPPING_CMNT
+			, ACCESS_INFORMATION_TP
+			, FN_COMN_CODE_DIC(ACCESS_INFORMATION_TP) AS ACCESS_INFORMATION_NM
+			, FN_DECRYPT(A.ACCESS_INFORMATION_PASSWORD) AS ACCESS_INFORMATION_PASSWORD
+			, 'N' AS LATELY_YN
+			, 1 AS SORT
+		FROM
+			UR_SHIPPING_ADDR A
+		WHERE
+			UR_USER_ID = #{urUserId}
+		UNION ALL
+		(
+		SELECT
+			  A.UR_LATELY_SHIPPING_ADDR_ID AS UR_SHIPPING_ADDR_ID
+			, 'N' AS DEFAULT_YN
+			, FN_DECRYPT(A.RECEIVER_NM) AS RECEIVER_NM
+			, FN_DECRYPT(A.RECEIVER_MO) AS RECEIVER_MO
+			, FN_DECRYPT(A.RECEIVER_ZIP_CD) AS RECEIVER_ZIP_CD
+			, FN_DECRYPT(A.RECEIVER_ADDR1) AS RECEIVER_ADDR1
+			, FN_DECRYPT(A.RECEIVER_ADDR2) AS RECEIVER_ADDR2
+			, FN_DECRYPT(A.BUILDING_CD) AS BUILDING_CODE
+			, A.SHIPPING_CMNT
+			, ACCESS_INFORMATION_TP
+			, FN_COMN_CODE_DIC(ACCESS_INFORMATION_TP) AS ACCESS_INFORMATION_NM
+			, FN_DECRYPT(A.ACCESS_INFORMATION_PASSWORD) AS ACCESS_INFORMATION_PASSWORD
+			, 'Y' AS LATELY_YN
+			, 2 AS SORT
+		FROM
+			UR_LATELY_SHIPPING_ADDR A
+		WHERE
+			UR_USER_ID = #{urUserId}
+		ORDER BY A.CREATE_DT DESC
+		LIMIT 0, 10
+		)
+		ORDER BY SORT ASC, DEFAULT_YN DESC
+	</select>
+</mapper>
+

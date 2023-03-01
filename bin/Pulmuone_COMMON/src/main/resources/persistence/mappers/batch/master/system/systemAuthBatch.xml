@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.system.SystemAuthBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 시스템 프로그램 사용자 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.18		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSystemProgramUserList" resultType="long">
+        /* systemAuthBatch.getSystemProgramUserList */
+        SELECT SA.UR_USER_ID
+        FROM ST_PROGRAM  SP
+            INNER JOIN ST_PROGRAM_AUTH SPA ON SP.ST_PROGRAM_ID = SPA.ST_PROGRAM_ID
+            INNER JOIN ST_MENU SM ON SP.ST_PROGRAM_ID = SM.ST_PROGRAM_ID
+            INNER JOIN ST_ROLE_MENU_AUTH_MAPPING SRM ON SM.ST_MENU_ID = SM.ST_MENU_ID AND SPA.ST_PROGRAM_AUTH_ID = SRM.ST_PROGRAM_AUTH_ID
+            INNER JOIN ST_ROLE_TYPE SRT ON SRM.ST_ROLE_TP_ID = SRT.ST_ROLE_TP_ID
+            INNER JOIN ST_AUTH_USER_MAPPING SA ON SRT.ST_ROLE_TP_ID = SA.ST_ROLE_TP_ID
+        WHERE SP.PG_ID = #{pgId}
+            AND SP.USE_YN = 'Y'
+            AND SRT.USE_YN = 'Y'
+        GROUP BY SA.UR_USER_ID
+    </select>
+
+</mapper>

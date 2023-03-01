@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.stndpnt.StandingPointMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품입점상담 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addStandingPointQna">
+        /* standingPoint.addStandingPointQna */
+        INSERT INTO CS_STAND_PNT_QNA (
+            COMP_NM, COMP_CEO_NM, BIZ_REG_NUM, QUESTION, MANAGER_UR_USER_ID,
+            MANAGER_NM, ADDRESS1, ADDRESS2, ZIP_CD, MOBILE,
+            TEL, EMAIL, QUESTION_STAT, CREATE_ID, CREATE_DT
+        ) VALUES (
+            #{companyName}, #{companyCeoName}, #{businessRegistrationNumber}, #{question}, #{managerUrUserId},
+            #{managerName}, #{address1}, #{address2}, #{zipCode}, #{mobile},
+            #{telephone}, #{email}, #{questionStatus}, #{createId}, NOW()
+        )
+        <selectKey resultType="Long" keyProperty="csStandPntId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품입점상담 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addStandingPointQnaAttach">
+        /* standingPoint.addStandingPointQnaAttach */
+        INSERT INTO CS_STAND_PNT_QNA_ATTC (
+            CS_STAND_PNT_ID, FILE_PATH, FILE_NM, REAL_FILE_NM, CREATE_ID,
+            CREATE_DT
+        ) VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+            (
+                #{csStandPntId}, #{vo.filePath}, #{vo.fileName}, #{vo.realFileName}, #{createId},
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+</mapper>

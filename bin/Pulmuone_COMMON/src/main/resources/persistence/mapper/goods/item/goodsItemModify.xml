@@ -1,0 +1,1586 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemModifyMapper">
+
+    <!-- 마스터 품목 수정 화면 관련 로직 Start -->
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : 해당 품목코드로 IL_ITEM 테이블의 마스터 품목 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.28        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getMasterItemMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.MasterItemVo">
+        <result column="IL_ITEM_CODE"                 property="ilItemCode" />
+        <result column="ITEM_TYPE"                    property="itemType" />
+        <result column="ITEM_NAME"                    property="itemName" />
+        <result column="ITEM_BARCODE"                 property="itemBarcode" />
+        <result column="ERP_IF_YN"                    property="erpLinkIfYn"   typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="ERP_STOCK_IF_YN"              property="erpStockIfYn"  typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="CATEGORY_STANDARD_FIRST_ID"   property="bosCategoryStandardFirstId" />
+        <result column="CATEGORY_STANDARD_SECOND_ID"  property="bosCategoryStandardSecondId" />
+        <result column="CATEGORY_STANDARD_THIRD_ID"   property="bosCategoryStandardThirdId" />
+        <result column="CATEGORY_STANDARD_FOURTH_ID"  property="bosCategoryStandardFourthId" />
+        <result column="UR_SUPPLIER_ID"               property="urSupplierId" />
+        <result column="UR_BRAND_ID"                  property="urBrandId" />
+        <result column="DP_BRAND_ID"                  property="dpBrandId" />
+
+        <result column="ITEM_GROUP"                   property="bosItemGroup" />
+        <result column="STORAGE_METHOD_TYPE"          property="storageMethodType" />
+        <result column="ORIGIN_TYPE"                  property="originType" />
+        <result column="ORIGIN_DETAIL"                property="originDetail" />
+        <result column="DISTRIBUTION_PERIOD"          property="distributionPeriod" />
+        <result column="BOX_WIDTH"                    property="boxWidth" />
+        <result column="BOX_DEPTH"                    property="boxDepth" />
+        <result column="BOX_HEIGHT"                   property="boxHeight" />
+        <result column="PIECES_PER_BOX"               property="piecesPerBox" />
+        <result column="UNIT_OF_MEASUREMENT"          property="unitOfMeasurement" />
+        <result column="SIZE_PER_PACKAGE"             property="sizePerPackage" />
+        <result column="SIZE_UNIT"                    property="sizeUnit" />
+        <result column="SIZE_UNIT_ETC"                property="sizeUnitEtc" />
+        <result column="QUANTITY_PER_PACKAGE"         property="quantityPerPackage" />
+        <result column="PACKAGE_UNIT"                 property="packageUnit" />
+        <result column="PACKAGE_UNIT_ETC"             property="packageUnitEtc" />
+        <result column="PDM_GROUP_CODE"               property="pdmGroupCode" />
+        <result column="TAX_YN"                       property="taxYn"  typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="IL_SPEC_MASTER_ID"            property="ilSpecMasterId" />
+        <result column="NUTRITION_DISPLAY_YN"         property="nutritionDisplayYn"  typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="NUTRITION_DISPLAY_DEFAULT"    property="nutritionDisplayDefalut" />
+        <result column="NUTRITION_QUANTITY_PER_ONCE"  property="nutritionQuantityPerOnce" />
+        <result column="NUTRITION_QUANTITY_TOTAL"     property="nutritionQuantityTotal" />
+        <result column="NUTRITION_ETC"                property="nutritionEtc" />
+        <result column="UNDELIVERABLE_AREA_TYPE"      property="undeliverableAreaType" />
+        <result column="EXTINCTION_YN"                property="extinctionYn"     typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="VIDEO_URL"                    property="videoUrl" />
+        <result column="VIDEO_AUTOPLAY_YN"            property="videoAutoplayYn"  typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="BASIC_DESCRIPTION"            property="basicDescription" />
+        <result column="DETAIL_DESCRIPTION"           property="detaillDescription" />
+        <result column="ETC_DESCRIPTION"              property="etcDescription" />
+        <result column="ERP_ITEM_NAME"                property="erpItemName" />
+        <result column="ERP_ITEM_BARCODE"             property="erpItemBarcode" />
+        <result column="ERP_REGAL_TYPE_CODE"          property="erpLegalTypeCode" />
+        <result column="ERP_CATEGORY_LEVEL1_ID"       property="erpCategoryLevel1Id" />
+        <result column="ERP_CATEGORY_LEVEL2_ID"       property="erpCategoryLevel2Id" />
+        <result column="ERP_CATEGORY_LEVEL3_ID"       property="erpCategoryLevel3Id" />
+        <result column="ERP_CATEGORY_LEVEL4_ID"       property="erpCategoryLevel4Id" />
+        <result column="ERP_BRAND_NAME"               property="erpBrandName" />
+        <result column="ERP_ITEM_GROUP"               property="erpItemGroup" />
+        <result column="ERP_STORAGE_METHOD"           property="erpStorageMethod" />
+        <result column="ERP_ORIGIN_NAME"              property="erpOriginName" />
+        <result column="ERP_DISTRIBUTION_PERIOD"      property="erpDistributionPeriod" />
+        <result column="ERP_BOX_WIDTH"                property="erpBoxWidth" />
+        <result column="ERP_BOX_DEPTH"                property="erpBoxDepth" />
+        <result column="ERP_BOX_HEIGHT"               property="erpBoxHeight" />
+        <result column="ITEM_DISP_WEIGHT"             property="itemDispWeight" />
+        <result column="ITEM_REAL_WEIGHT"             property="itemRealWeight" />
+        <result column="ERP_PIECES_PER_BOX"           property="erpPiecesPerBox" />
+        <result column="ERP_TAX_YN"                   property="erpTaxYn"    typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="ERP_PO_TYPE"                  property="erpPoType" />
+        <result column="ERP_CAN_PO_YN"                property="erpCanPoYn"  typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+        <result column="ERP_NUTRITION_QUANTITY_PER_ONCE" property="erpNutritionQtyPerOnce" />
+        <result column="ERP_NUTRITION_QUANTITY_TOTAL" property="erpNutritionQtyTotal" />
+        <result column="ERP_NUTRITION_ETC"            property="erpNutritionEtc" />
+        <result column="ERP_O2O_EXPOSURE_TYPE"        property="erpO2oExposureType" />
+        <result column="ERP_PRODUCT_TYPE"             property="erpProductType" />
+		<result column="ERP_SUPPLIER_NM"              property="erpSupplierName" />
+        <result column="CREATE_USER_ID"               property="createUserId" />
+        <result column="CREATE_USER_NAME"             property="createUserName" />
+        <result column="CREATE_DATE"                  property="createDate" />
+        <result column="RECENT_MODIFY_USER_ID"        property="recentModifyUserId" />
+        <result column="RECENT_MODIFY_USER_NAME"      property="recentModifyUserName" />
+        <result column="RECENT_MODIFY_DATE"           property="recentModifyDate" />
+
+		<result column="RENTAL_FEE_PER_MONTH"         property="rentalFeePerMonth" />
+		<result column="RENTAL_DUE_MONTH"             property="rentalDueMonth" />
+		<result column="RENTAL_DEPOSIT"           	  property="rentalDeposit" />
+		<result column="RENTAL_INSTALL_FEE"           property="rentalInstallFee" />
+		<result column="RENTAL_REGIST_FEE"            property="rentalRegistFee" />
+
+		<result column="IL_ITEM_APPR_ID"            property="ilItemApprId" />
+		<result column="APPR_STAT"            		property="apprStat" />
+		<result column="STATUS_CMNT"            	property="statusCmnt" />
+
+		<result column="ITEM_STATUS_TP"            	property="itemStatusTp" />
+		<result column="APPR_STAT_NAME"            	property="apprStatName" />
+		<result column="MODIFY_DT"            		property="modifyDt" />
+		<result column="STORE_WAREHOUSE_YN" 		  property="storeWarehouseYn" />
+
+		<result column="ITEM_REGIST_ITEM_APPR_ID"           property="itemRegistItemApprId" />
+		<result column="ITEM_REGIST_APPR_REQ_USER_ID"       property="itemRegistApprReqUserId" />
+		<result column="ITEM_REGIST_APPR_STAT"            	property="itemRegistApprStat" />
+		<result column="ITEM_REGIST_APPR_STAT_NAME"         property="itemRegistApprStatName" />
+		<result column="ITEM_REGIST_APPR_STATUS_CMNT"       property="itemRegistApprStatusCmnt" />
+		<result column="ITEM_CLIENT_ITEM_APPR_ID"           property="itemClientItemApprId" />
+		<result column="ITEM_CLIENT_APPR_REQ_USER_ID"       property="itemClientApprReqUserId" />
+		<result column="ITEM_CLIENT_APPR_STAT"            	property="itemClientApprStat" />
+		<result column="ITEM_CLIENT_APPR_STAT_NAME"         property="itemClientApprStatName" />
+		<result column="ITEM_CLIENT_APPR_STATUS_CMNT"       property="itemClientApprStatusCmnt" />
+		<result column="GOODS_REGIST_APPR_STAT"       		property="goodsRegistApprStat" />
+		<result column="GOODS_REGIST_APPR_STAT_NAME"       	property="goodsRegistApprStatName" />
+		<result column="GOODS_CLIENT_APPR_STAT"       		property="goodsClientApprStat" />
+		<result column="GOODS_CLIENT_APPR_STAT_NAME"       	property="goodsClientApprStatName" />
+    </resultMap>
+
+	<resultMap id="itemPoTypeMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoTypeVo">
+		<result column="ROWNUM" property="rowNumber" />
+		<result column="IL_PO_TP_ID" property="ilPoTpId" />
+		<result column="UR_SUPPLIER_ID" property="urSupplierId" />
+		<result column="SUPPLIER_CD" property="supplierCd" />
+
+		<result column="UR_COMPANY_ID" property="urCompanyId" />
+		<result column="COMP_NM" property="compNm" />
+		<result column="PO_TP_NM" property="poTpNm" />
+
+		<result column="PO_TP" property="poTp" />
+		<result column="PO_TP_NAME" property="poTpName" />
+
+		<result column="ERP_PO_TP" property="erpPoTp" />
+		<result column="ERP_PO_TP_NAME" property="erpPoTpName" />
+		<result column="PO_PER_ITEM_YN" property="poPerItemYn" />
+		<result column="PO_DEADLINE" property="poDeadline" />
+		<result column="PO_TYPE_NUM" property="poTypeNum" />
+		<result column="PO_TYPE" property="poType" />
+		<result column="MON_VALUE" property="monValue" />
+		<result column="TUE_VALUE" property="tueValue" />
+		<result column="WED_VALUE" property="wedValue" />
+		<result column="THU_VALUE" property="thuValue" />
+		<result column="FRI_VALUE" property="friValue" />
+		<result column="SAT_VALUE" property="satValue" />
+		<result column="SUN_VALUE" property="sunValue" />
+
+		<result column="CHECK_SUN" property="checkSun" />
+		<result column="CHECK_MON" property="checkMon" />
+		<result column="CHECK_TUE" property="checkTue" />
+		<result column="CHECK_WED" property="checkWed" />
+		<result column="CHECK_THU" property="checkThu" />
+		<result column="CHECK_FRI" property="checkFri" />
+		<result column="CHECK_SAT" property="checkSat" />
+
+		<result column="SCHEDULED_SUN" property="scheduledSun" />
+		<result column="SCHEDULED_MON" property="scheduledMon" />
+		<result column="SCHEDULED_TUE" property="scheduledTue" />
+		<result column="SCHEDULED_WED" property="scheduledWed" />
+		<result column="SCHEDULED_THU" property="scheduledThu" />
+		<result column="SCHEDULED_FRI" property="scheduledFri" />
+		<result column="SCHEDULED_SAT" property="scheduledSat" />
+
+		<result column="MOVE_REQ_SUN" property="moveReqSun" />
+		<result column="MOVE_REQ_MON" property="moveReqMon" />
+		<result column="MOVE_REQ_TUE" property="moveReqTue" />
+		<result column="MOVE_REQ_WED" property="moveReqWed" />
+		<result column="MOVE_REQ_THU" property="moveReqThu" />
+		<result column="MOVE_REQ_FRI" property="moveReqFri" />
+		<result column="MOVE_REQ_SAT" property="moveReqSat" />
+
+		<result column="PO_REQ_SUN" property="poReqSun" />
+		<result column="PO_REQ_MON" property="poReqMon" />
+		<result column="PO_REQ_TUE" property="poReqTue" />
+		<result column="PO_REQ_WED" property="poReqWed" />
+		<result column="PO_REQ_THU" property="poReqThu" />
+		<result column="PO_REQ_FRI" property="poReqFri" />
+		<result column="PO_REQ_SAT" property="poReqSat" />
+
+		<result column="PO_DEADLINE_HOUR" property="poDeadlineHour" />
+		<result column="PO_DEADLINE_MIN" property="poDeadlineMin" />
+
+		<result column="WEEK_DAY" property="weekDay" />
+		<result column="PO_WEEK" property="poWeek" />
+		<result column="SCHEDULED_WEEK" property="scheduledWeek" />
+
+	</resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 마스터 품목 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.31        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMasterItem" resultMap="getMasterItemMap">
+    /* goodsItemModify.getMasterItem */
+    WITH RECURSIVE CTE AS ( /* 해당 품목코드의 표준 카테고리 정보를 RECURSIVE 쿼리로 조회 */
+        SELECT
+            IL_CTGRY_STD_ID
+          , CTGRY_STD_NM
+          , PRNTS_CTGRY_ID
+          , DEPTH
+         FROM  IL_CTGRY_STD
+        WHERE  DEL_YN = 'N'
+          AND  IL_CTGRY_STD_ID = (
+                  SELECT  IL_CTGRY_STD_ID
+                    FROM  IL_ITEM
+                   WHERE  IL_ITEM_CD = #{ilItemCode}
+              )
+        UNION ALL
+        SELECT
+            t.IL_CTGRY_STD_ID
+          , t.CTGRY_STD_NM
+          , t.PRNTS_CTGRY_ID
+          , t.DEPTH
+          FROM  IL_CTGRY_STD t
+    INNER JOIN  CTE cte
+            ON  t.IL_CTGRY_STD_ID = cte.PRNTS_CTGRY_ID
+    )
+    , BOS_CATEGORY_INFO AS (
+        SELECT
+            MAX( CASE WHEN DEPTH = 1 THEN CTE.IL_CTGRY_STD_ID END )  AS CATEGORY_STANDARD_FIRST_ID  /* 표준 카테고리 대분류 ID */
+          , MAX( CASE WHEN DEPTH = 2 THEN CTE.IL_CTGRY_STD_ID END )  AS CATEGORY_STANDARD_SECOND_ID /* 표준 카테고리 중분류 ID */
+          , MAX( CASE WHEN DEPTH = 3 THEN CTE.IL_CTGRY_STD_ID END )  AS CATEGORY_STANDARD_THIRD_ID  /* 표준 카테고리 소분류 ID */
+          , MAX( CASE WHEN DEPTH = 4 THEN CTE.IL_CTGRY_STD_ID END )  AS CATEGORY_STANDARD_FOURTH_ID /* 표준 카테고리 세분류 ID */
+          FROM  CTE
+      ORDER BY  DEPTH
+    )
+    SELECT
+        A.IL_ITEM_CD                                                     AS IL_ITEM_CODE
+      , A.ITEM_TP                                                        AS ITEM_TYPE
+      , A.ITEM_NM                                                        AS ITEM_NAME
+      , A.ITEM_BARCODE                                                   AS ITEM_BARCODE
+      , A.ERP_IF_YN                                                      AS ERP_IF_YN
+      , A.ERP_STOCK_IF_YN                                                AS ERP_STOCK_IF_YN
+      , ( SELECT CATEGORY_STANDARD_FIRST_ID  FROM BOS_CATEGORY_INFO )    AS CATEGORY_STANDARD_FIRST_ID
+      , ( SELECT CATEGORY_STANDARD_SECOND_ID FROM BOS_CATEGORY_INFO )    AS CATEGORY_STANDARD_SECOND_ID
+      , ( SELECT CATEGORY_STANDARD_THIRD_ID  FROM BOS_CATEGORY_INFO )    AS CATEGORY_STANDARD_THIRD_ID
+      , ( SELECT CATEGORY_STANDARD_FOURTH_ID FROM BOS_CATEGORY_INFO )    AS CATEGORY_STANDARD_FOURTH_ID
+      , A.UR_SUPPLIER_ID                                                 AS UR_SUPPLIER_ID
+      , A.UR_BRAND_ID                                                    AS UR_BRAND_ID
+      , A.DP_BRAND_ID													 AS	DP_BRAND_ID
+      , A.ITEM_GRP                                                       AS ITEM_GROUP
+      , A.STORAGE_METHOD_TP                                              AS STORAGE_METHOD_TYPE
+      , A.ORIGIN_TP                                                      AS ORIGIN_TYPE
+      , A.ORIGIN_DETL                                                    AS ORIGIN_DETAIL
+      , A.DISTRIBUTION_PERIOD                                            AS DISTRIBUTION_PERIOD
+      , A.BOX_WIDTH                                                      AS BOX_WIDTH
+      , A.BOX_DEPTH                                                      AS BOX_DEPTH
+      , A.BOX_HEIGHT                                                     AS BOX_HEIGHT
+      , A.PCS_PER_BOX                                                    AS PIECES_PER_BOX
+      , A.OMS                                                            AS UNIT_OF_MEASUREMENT
+      , A.SIZE_PER_PACKAGE                                               AS SIZE_PER_PACKAGE
+      , A.SIZE_UNIT                                                      AS SIZE_UNIT
+      , A.SIZE_UNIT_ETC                                                  AS SIZE_UNIT_ETC
+      , A.QTY_PER_PACKAGE                                                AS QUANTITY_PER_PACKAGE
+      , A.PACKAGE_UNIT                                                   AS PACKAGE_UNIT
+      , A.PACKAGE_UNIT_ETC                                               AS PACKAGE_UNIT_ETC
+      , A.PDM_GROUP_CD                                                   AS PDM_GROUP_CODE
+      , A.TAX_YN                                                         AS TAX_YN
+      , A.IL_SPEC_MASTER_ID                                              AS IL_SPEC_MASTER_ID
+      , A.NUTRITION_DISP_YN                                              AS NUTRITION_DISPLAY_YN
+      , A.NUTRITION_DISP_DEFAULT                                         AS NUTRITION_DISPLAY_DEFAULT
+      , A.NUTRITION_QTY_PER_ONCE                                         AS NUTRITION_QUANTITY_PER_ONCE
+      , A.NUTRITION_QTY_TOTAL                                            AS NUTRITION_QUANTITY_TOTAL
+      , A.NUTRITION_ETC                                                  AS NUTRITION_ETC
+      , A.UNDELIVERABLE_AREA_TP                                          AS UNDELIVERABLE_AREA_TYPE
+      , A.EXTINCTION_YN                                                  AS EXTINCTION_YN
+      , A.VIDEO_URL                                                      AS VIDEO_URL
+      , A.VIDEO_AUTOPLAY_YN                                              AS VIDEO_AUTOPLAY_YN
+      , A.BASIC_DESC                                                     AS BASIC_DESCRIPTION
+      , A.DETL_DESC                                                      AS DETAIL_DESCRIPTION
+      , A.ETC_DESC                                                       AS ETC_DESCRIPTION
+      , A.ERP_ITEM_NM                                                    AS ERP_ITEM_NAME
+      , A.ERP_ITEM_BARCODE                                               AS ERP_ITEM_BARCODE
+      , A.ERP_REGAL_CD                                                   AS ERP_REGAL_TYPE_CODE
+      , A.ERP_CTGRY_LV1_ID                                               AS ERP_CATEGORY_LEVEL1_ID
+      , A.ERP_CTGRY_LV2_ID                                               AS ERP_CATEGORY_LEVEL2_ID
+      , A.ERP_CTGRY_LV3_ID                                               AS ERP_CATEGORY_LEVEL3_ID
+      , A.ERP_CTGRY_LV4_ID                                               AS ERP_CATEGORY_LEVEL4_ID
+      , A.ERP_BRAND_NM                                                   AS ERP_BRAND_NAME
+      , A.ERP_ITEM_GRP                                                   AS ERP_ITEM_GROUP
+      , A.ERP_STORAGE_METHOD                                             AS ERP_STORAGE_METHOD
+      , A.ERP_ORIGIN_NM                                                  AS ERP_ORIGIN_NAME
+      , A.ERP_DISTRIBUTION_PERIOD                                        AS ERP_DISTRIBUTION_PERIOD
+      , A.ERP_BOX_WIDTH                                                  AS ERP_BOX_WIDTH
+      , A.ERP_BOX_DEPTH                                                  AS ERP_BOX_DEPTH
+      , A.ERP_BOX_HEIGHT                                                 AS ERP_BOX_HEIGHT
+      , IFNULL(A.ITEM_DISP_WEIGHT, '')                                   AS ITEM_DISP_WEIGHT
+      , IFNULL(A.ITEM_REAL_WEIGHT, '')                                   AS ITEM_REAL_WEIGHT
+      , A.ERP_PCS_PER_BOX                                                AS ERP_PIECES_PER_BOX
+      , A.ERP_TAX_YN                                                     AS ERP_TAX_YN
+      , A.ERP_PO_TYPE                                                    AS ERP_PO_TYPE
+      , A.ERP_CAN_PO_YN                                                  AS ERP_CAN_PO_YN
+      , A.ERP_NUTRITION_QTY_PER_ONCE                                     AS ERP_NUTRITION_QUANTITY_PER_ONCE
+      , A.ERP_NUTRITION_QTY_TOTAL                                        AS ERP_NUTRITION_QUANTITY_TOTAL
+      , A.ERP_NUTRITION_ETC                                              AS ERP_NUTRITION_ETC
+      , A.ERP_O2O_EXPOSURE_TP                                            AS ERP_O2O_EXPOSURE_TYPE
+      , A.ERP_PRODUCT_TP                                                 AS ERP_PRODUCT_TYPE
+	  , IFNULL(A.ERP_SUPPLIER_NM, '')                                    AS ERP_SUPPLIER_NM
+      , A.RENTAL_FEE_PER_MONTH											 AS RENTAL_FEE_PER_MONTH
+	  , A.RENTAL_DUE_MONTH												 AS RENTAL_DUE_MONTH
+	  , A.RENTAL_DEPOSIT												 AS RENTAL_DEPOSIT
+	  , A.RENTAL_INSTALL_FEE											 AS RENTAL_INSTALL_FEE
+	  , A.RENTAL_REGIST_FEE												 AS RENTAL_REGIST_FEE
+      , ( SELECT  U.LOGIN_ID FROM UR_USER U
+           WHERE  U.UR_USER_ID = A.CREATE_ID  )                          AS CREATE_USER_ID
+      , ( SELECT  FN_DECRYPT( U.USER_NM )
+            FROM  UR_USER  U
+           WHERE  U.UR_USER_ID = A.CREATE_ID  )                          AS CREATE_USER_NAME
+      , A.CREATE_DT                                                      AS CREATE_DATE
+      , IFNULL( ( SELECT  U.LOGIN_ID FROM UR_USER U
+                   WHERE  U.UR_USER_ID = A.MODIFY_ID ), '' )             AS RECENT_MODIFY_USER_ID
+      , CASE WHEN  A.MODIFY_ID IS NOT NULL
+             THEN (
+                 SELECT  FN_DECRYPT( U.USER_NM )
+                   FROM  UR_USER  U
+                  WHERE  U.UR_USER_ID = A.MODIFY_ID
+              )
+              ELSE ''
+          END                                                            AS RECENT_MODIFY_USER_NAME
+      , IFNULL( A.MODIFY_DT, '' )                                        AS RECENT_MODIFY_DATE
+      , A.ITEM_STATUS_TP
+      ,	A.MODIFY_DT
+      , IFNULL(IF(
+	      	(SELECT COUNT(*)
+	     	FROM IL_ITEM_WAREHOUSE T1
+	     	INNER JOIN  UR_SUPPLIER_WAREHOUSE T2 ON T1.UR_SUPPLIER_WAREHOUSE_ID = T2.UR_SUPPLIER_WAREHOUSE_ID
+		    JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_STORE_ID' ) WAREHOUSE_STORE_ID ON T2.UR_WAREHOUSE_ID = IFNULL(WAREHOUSE_STORE_ID.PS_VAL,'')
+	     	WHERE T1.IL_ITEM_CD = A.IL_ITEM_CD) > 0, 'Y' ,'N'), 'N') 	 AS STORE_WAREHOUSE_YN
+      ,	IRIIA.IL_ITEM_APPR_ID AS ITEM_REGIST_ITEM_APPR_ID
+      ,	IRIIA.APPR_REQ_USER_ID AS ITEM_REGIST_APPR_REQ_USER_ID
+	  ,	IRIIA.APPR_STAT AS ITEM_REGIST_APPR_STAT
+      ,	IRIIA.APPR_STAT_NAME AS ITEM_REGIST_APPR_STAT_NAME
+      ,	IRIIA.STATUS_CMNT AS ITEM_REGIST_APPR_STATUS_CMNT
+      ,	ICIIA.IL_ITEM_APPR_ID AS ITEM_CLIENT_ITEM_APPR_ID
+      ,	ICIIA.APPR_REQ_USER_ID AS ITEM_CLIENT_APPR_REQ_USER_ID
+	  ,	ICIIA.APPR_STAT AS ITEM_CLIENT_APPR_STAT
+      ,	ICIIA.APPR_STAT_NAME AS ITEM_CLIENT_APPR_STAT_NAME
+      ,	ICIIA.STATUS_CMNT AS ITEM_CLIENT_APPR_STATUS_CMNT
+      ,	GRIGA.APPR_STAT AS GOODS_REGIST_APPR_STAT
+      ,	GRIGA.APPR_STAT_NAME AS GOODS_REGIST_APPR_STAT_NAME
+      ,	GCIGA.APPR_STAT AS GOODS_CLIENT_APPR_STAT
+      ,	GCIGA.APPR_STAT_NAME AS GOODS_CLIENT_APPR_STAT_NAME
+	FROM IL_ITEM A
+		LEFT JOIN (
+			SELECT
+				IIA.IL_ITEM_CD
+				, IIA.IL_ITEM_APPR_ID
+				, IIA.APPR_REQ_USER_ID
+				, IIA.APPR_STAT
+				, DIC.NAME AS APPR_STAT_NAME
+				, (
+					SELECT
+						IIASH.STATUS_CMNT
+					FROM IL_ITEM_APPR_STATUS_HISTORY IIASH
+					WHERE
+						IIASH.IL_ITEM_APPR_ID = IIA.IL_ITEM_APPR_ID
+						AND IIASH.APPR_STAT = IIA.APPR_STAT
+					ORDER BY IIASH.IL_ITEM_APPR_STATUS_HISTORY_ID DESC
+					LIMIT 1
+				) AS STATUS_CMNT
+			FROM IL_ITEM_APPR IIA
+				LEFT JOIN (
+					SELECT
+						SCC.ST_COMN_CODE_ID AS CODE
+						, GDM.DIC_MST_NM AS NAME
+					FROM ST_COMN_CODE SCC
+						INNER JOIN GB_DIC_MST GDM
+							ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+					WHERE
+						SCC.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+						AND SCC.USE_YN = UPPER('Y')
+				) DIC
+					ON IIA.APPR_STAT = DIC.CODE
+			WHERE
+				IIA.IL_ITEM_APPR_ID IN (
+					SELECT
+						MAX(IL_ITEM_APPR_ID) AS IL_ITEM_APPR_ID
+					FROM IL_ITEM_APPR
+					WHERE
+						APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+						AND IL_ITEM_CD = #{ilItemCode}
+					GROUP BY IL_ITEM_CD
+				)
+		) IRIIA
+			ON IRIIA.IL_ITEM_CD = A.IL_ITEM_CD
+		LEFT JOIN (
+			SELECT
+				IIA.IL_ITEM_CD
+				, IIA.IL_ITEM_APPR_ID
+				, IIA.APPR_REQ_USER_ID
+				, IIA.APPR_STAT
+				, DIC.NAME AS APPR_STAT_NAME
+				, (
+					SELECT
+						IIASH.STATUS_CMNT
+					FROM IL_ITEM_APPR_STATUS_HISTORY IIASH
+					WHERE
+						IIASH.IL_ITEM_APPR_ID = IIA.IL_ITEM_APPR_ID
+						AND IIASH.APPR_STAT = IIA.APPR_STAT
+					ORDER BY IIASH.IL_ITEM_APPR_STATUS_HISTORY_ID DESC
+					LIMIT 1
+				) AS STATUS_CMNT
+			FROM IL_ITEM_APPR IIA
+				LEFT JOIN (
+					SELECT
+						SCC.ST_COMN_CODE_ID AS CODE
+						, GDM.DIC_MST_NM AS NAME
+					FROM ST_COMN_CODE SCC
+						INNER JOIN GB_DIC_MST GDM
+							ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+					WHERE
+						SCC.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+						AND SCC.USE_YN = UPPER('Y')
+				) DIC
+					ON IIA.APPR_STAT = DIC.CODE
+			WHERE
+				IIA.IL_ITEM_APPR_ID IN (
+					SELECT
+						MAX(IL_ITEM_APPR_ID) AS IL_ITEM_APPR_ID
+					FROM IL_ITEM_APPR
+					WHERE
+						APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+						AND IL_ITEM_CD = #{ilItemCode}
+					GROUP BY IL_ITEM_CD
+				)
+		) ICIIA
+			ON ICIIA.IL_ITEM_CD = A.IL_ITEM_CD
+		LEFT JOIN (
+			SELECT
+				IG.IL_ITEM_CD AS IL_ITEM_CD
+				, IGA.APPR_STAT AS APPR_STAT
+				, '승인진행중' AS APPR_STAT_NAME
+			FROM IL_GOODS IG
+				INNER JOIN IL_GOODS_APPR IGA
+					ON IGA.IL_GOODS_ID = IG.IL_GOODS_ID
+					AND IGA.APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+					AND IGA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+			WHERE
+				IG.IL_ITEM_CD = #{ilItemCode}
+			GROUP BY IG.IL_ITEM_CD
+		) GRIGA
+			ON GRIGA.IL_ITEM_CD = A.IL_ITEM_CD
+		LEFT JOIN (
+			SELECT
+				IG.IL_ITEM_CD AS IL_ITEM_CD
+				, IGA.APPR_STAT AS APPR_STAT
+				, '승인진행중' AS APPR_STAT_NAME
+			FROM IL_GOODS IG
+				INNER JOIN IL_GOODS_APPR IGA
+					ON IGA.IL_GOODS_ID = IG.IL_GOODS_ID
+					AND IGA.APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+					AND IGA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+			WHERE
+				IG.IL_ITEM_CD = #{ilItemCode}
+			GROUP BY IG.IL_ITEM_CD
+		) GCIGA
+			ON GCIGA.IL_ITEM_CD = A.IL_ITEM_CD
+    WHERE
+    	A.IL_ITEM_CD = #{ilItemCode}
+
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 승인 상태 항목
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16		임상건		  최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemRegistApprVo" id="itemApprStatusMap">
+		<result column="IL_ITEM_CD"			property="ilItemCd"/>
+		<result column="IL_ITEM_APPR_ID"	property="ilItemApprId"/>
+		<result column="APPR_STAT"			property="apprStat"/>
+		<result column="APPR_STAT_NAME"		property="apprStatName"/>
+		<result column="APPR_ID"			property="apprId"/>
+		<result column="USER_NM"			property="userName"/>
+		<result column="LOGIN_ID"			property="loginId"/>
+		<result column="APPR_DT"			property="apprDate"/>
+
+		<result column="APPR_KIND_TP"			property="apprKindTp"/>
+		<result column="APPR_REQ_DT"			property="apprReqDt"/>
+		<result column="APPR_REQ_USER_ID"		property="apprReqUserId"/>
+		<result column="APPR_SUB_USER_ID"		property="apprSubUserId"/>
+		<result column="APPR_SUB_CHG_USER_ID"	property="apprSubChgUserId"/>
+		<result column="APPR_SUB_CHG_DT"		property="apprSubChgDt"/>
+		<result column="APPR_USER_ID"			property="apprUserId"/>
+		<result column="APPR_CHG_USER_ID"		property="apprChgUserId"/>
+		<result column="APPR_CHG_DT"			property="apprChgDt"/>
+		<result column="CREATE_ID"				property="createId"/>
+		<result column="MODIFY_ID"				property="modifyId"/>
+		<result column="ITEM_TP"				property="itemTp"/>
+		<result column="ITEM_NM"				property="itemNm"/>
+		<result column="ITEM_BARCODE"			property="itemBarcode"/>
+		<result column="ERP_IF_YN"				property="erpIfYn"/>
+		<result column="ERP_STOCK_IF_YN"		property="erpStockIfYn"/>
+		<result column="IL_CTGRY_STD_ID"		property="ilCtgryStdId"/>
+		<result column="UR_SUPPLIER_ID"			property="urSupplierId"/>
+		<result column="UR_BRAND_ID"			property="urBrandId"/>
+		<result column="DP_BRAND_ID"			property="dpBrandId"/>
+		<result column="ITEM_GRP"				property="itemGrp"/>
+		<result column="STORAGE_METHOD_TP"		property="storageMethodTp"/>
+		<result column="ORIGIN_TP"				property="originTp"/>
+		<result column="ORIGIN_DETL"			property="originDetl"/>
+		<result column="DISTRIBUTION_PERIOD"	property="distributionPeriod"/>
+		<result column="BOX_WIDTH"				property="boxWidth"/>
+		<result column="BOX_DEPTH"				property="boxDepth"/>
+		<result column="BOX_HEIGHT"				property="boxHeight"/>
+		<result column="PCS_PER_BOX"			property="piecesPerBox"/>
+		<result column="OMS"					property="oms"/>
+		<result column="SIZE_PER_PACKAGE"		property="sizePerPackage"/>
+		<result column="SIZE_UNIT"				property="sizeUnit"/>
+		<result column="SIZE_UNIT_ETC"			property="sizeUnitEtc"/>
+		<result column="QTY_PER_PACKAGE"		property="qtyPerPackage"/>
+		<result column="PACKAGE_UNIT"			property="packageUnit"/>
+		<result column="PACKAGE_UNIT_ETC"		property="packageUnitEtc"/>
+		<result column="PDM_GROUP_CD"			property="pdmGroupCd"/>
+		<result column="TAX_YN"					property="taxYn"/>
+		<result column="IL_SPEC_MASTER_ID"		property="ilSpecMasterId"/>
+		<result column="NUTRITION_DISP_YN"		property="nutritionDispYn"/>
+
+		<result column="NUTRITION_DISP_DEFAULT"	property="nutritionDispDefault"/>
+		<result column="NUTRITION_QTY_PER_ONCE"	property="nutritionQtyPerOnce"/>
+		<result column="NUTRITION_QTY_TOTAL"	property="nutritionQtyTotal"/>
+		<result column="NUTRITION_ETC"			property="nutritionEtc"/>
+		<result column="IL_PO_TP_ID"			property="ilPoTpId"/>
+		<result column="PRE_ORDER_YN"			property="preOrderYn"/>
+		<result column="UNDELIVERABLE_AREA_TP"			property="undeliverableAreaTp"/>
+		<result column="EXTINCTION_YN"			property="extinctionYn"/>
+		<result column="RETURN_PERIOD"			property="returnPeriod"/>
+		<result column="VIDEO_URL"			property="videoUrl"/>
+		<result column="VIDEO_AUTOPLAY_YN"			property="videoAutoplayYn"/>
+		<result column="BASIC_DESC"			property="basicDesc"/>
+		<result column="DETL_DESC"			property="detlDesc"/>
+		<result column="ETC_DESC"			property="etcDesc"/>
+		<result column="ERP_ITEM_NM"			property="erpItemNm"/>
+		<result column="ERP_ITEM_BARCODE"			property="erpItemBarcode"/>
+		<result column="ERP_BOX_BARCODE"			property="erpBoxBarcode"/>
+		<result column="ERP_CTGRY_LV1_ID"			property="erpCtgryLv1Id"/>
+		<result column="ERP_CTGRY_LV2_ID"			property="erpCtgryLv2Id"/>
+		<result column="ERP_CTGRY_LV3_ID"			property="erpCtgryLv3Id"/>
+		<result column="ERP_CTGRY_LV4_ID"			property="erpCtgryLv4Id"/>
+		<result column="ERP_BRAND_NM"			property="erpBrandNm"/>
+		<result column="ERP_ITEM_GRP"			property="erpItemGrp"/>
+		<result column="ERP_STORAGE_METHOD"			property="erpStorageMethod"/>
+		<result column="ERP_ORIGIN_NM"			property="erpOriginNm"/>
+		<result column="ERP_SUPPLIER_NM"			property="erpSupplierName"/>
+		<result column="ERP_DISTRIBUTION_PERIOD"			property="erpDistributionPeriod"/>
+		<result column="ERP_ITEM_WIDTH"			property="erpItemWidth"/>
+		<result column="ERP_ITEM_DEPTH"			property="erpItemDepth"/>
+		<result column="ERP_ITEM_HEIGHT"			property="erpItemHeight"/>
+		<result column="ERP_BOX_WIDTH"			property="erpBoxWidth"/>
+		<result column="ERP_BOX_DEPTH"			property="erpBoxDepth"/>
+		<result column="ERP_BOX_HEIGHT"			property="erpBoxHeight"/>
+		<result column="ERP_PCS_PER_BOX"			property="erpPcsPerBox"/>
+		<result column="ERP_TAX_YN"			property="erpTaxYn"/>
+		<result column="ERP_PO_TYPE"			property="erpPoType"/>
+		<result column="ERP_CAN_PO_YN"			property="erpCanPoYn"/>
+		<result column="ERP_NUTRITION_QTY_PER_ONCE"			property="erpNutritionQtyPerOnce"/>
+		<result column="ERP_NUTRITION_QTY_TOTAL"			property="erpNutritionQtyTotal"/>
+		<result column="ERP_NUTRITION_ETC"			property="erpNutritionEtc"/>
+		<result column="ERP_O2O_EXPOSURE_TP"			property="erpO2oExposureTp"/>
+		<result column="ERP_PRODUCT_TP"			property="erpProductTp"/>
+		<result column="ERP_REGAL_CD"			property="erpRegalCd"/>
+
+		<result column="PO_PRO_REA"			property="poProArea"/>
+		<result column="BATCH_PRICE_CHANGE_DT"			property="batchPriceChangeDt"/>
+		<result column="PRICE_CHANGE_PROC_YN"			property="priceChangeProcYn"/>
+		<result column="PRICE_CHANGE_PROC_DT"			property="priceChangeProcDt"/>
+		<result column="RENTAL_FEE_PER_MONTH"			property="rentalFeePerMonth"/>
+		<result column="RENTAL_DUE_MONTH"			property="rentalDueMonth"/>
+		<result column="RENTAL_DEPOSIT"			property="rentalDeposit"/>
+		<result column="RENTAL_INSTALL_FEE"			property="rentalInstallFee"/>
+		<result column="RENTAL_REGIST_FEE"			property="rentalRegistFee"/>
+
+	</resultMap>
+
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemCertificationApprVo" id="itemCertApprResultMap">
+		<result column="IL_ITEM_CERTIFICATION_ID"		property="ilItemCertificationId"/>
+		<result column="IL_ITEM_APPR_ID"				property="ilItemApprId"/>
+		<result column="IL_ITEM_CD"						property="ilItemCd"/>
+		<result column="IL_CERTIFICATION_ID"			property="ilCertificationId"/>
+		<result column="CERTIFICATION_DESC"				property="certificationDesc"/>
+		<result column="CREATE_ID"						property="createId"/>
+	</resultMap>
+
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemImageApprVo" id="itemImageApprResultMap">
+
+		<result column="IL_ITEM_IMG_ID"		property="ilItemImgId"/>
+		<result column="IL_ITEM_APPR_ID"	property="ilItemApprId"/>
+		<result column="IL_ITEM_CD"			property="ilItemCd"/>
+		<result column="BASIC_YN"			property="basicYn"/>
+		<result column="IMG_NM"				property="imgNm"/>
+		<result column="IMG_ORIGIN_NM"		property="imgOriginNm"/>
+		<result column="B_IMG"				property="bImg"/>
+		<result column="M_IMG"				property="MImg"/>
+		<result column="MS_IMG"				property="msImg"/>
+		<result column="S_IMG"				property="sImg"/>
+		<result column="C_IMG"				property="cImg"/>
+		<result column="SORT"				property="sort"/>
+		<result column="CREATE_ID"			property="createId"/>
+	</resultMap>
+
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemNutritionApprVo" id="itemNutrApprResultMap">
+
+		<result column="IL_ITEM_NUTRITION_ID"		property="ilItemNutritionId"/>
+		<result column="IL_ITEM_APPR_ID"			property="ilItemApprId"/>
+		<result column="IL_ITEM_CD"					property="ilItemCd"/>
+		<result column="IL_NUTRITION_CD"			property="nutritionCode"/>
+		<result column="ERP_NUTRITION_QTY"			property="erpNutritionQuantity"/>
+		<result column="ERP_NUTRITION_PERCENT"		property="erpNutritionPercent"/>
+		<result column="NUTRITION_QTY"				property="nutritionQuantity"/>
+		<result column="NUTRITION_PERCENT"			property="nutritionPercent"/>
+		<result column="SORT"						property="sort"/>
+		<result column="CREATE_ID"					property="createId"/>
+
+	</resultMap>
+
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemSpecApprVo" id="itemSpecApprResultMap">
+
+		<result column="IL_ITEM_SPEC_VALUE_ID"		property="ilItemSpecValueId"/>
+		<result column="IL_ITEM_APPR_ID"			property="ilItemApprId"/>
+		<result column="IL_ITEM_CD"					property="ilItemCode"/>
+		<result column="IL_SPEC_FIELD_ID"			property="ilSpecFieldId"/>
+		<result column="SPEC_FIELD_VAL"				property="specFieldValue"/>
+		<result column="DIRECT_YN"					property="directYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+		<result column="CREATE_ID"					property="createId"/>
+	</resultMap>
+
+
+
+	<select id="itemApprStatusList" resultMap="itemApprStatusMap">
+		/* goodsItemModify.itemApprStatusList */
+		SELECT
+			*
+		FROM
+		(
+			SELECT
+				IIA.IL_ITEM_CD
+			,	IIA.IL_ITEM_APPR_ID
+			,	IIA.APPR_STAT
+			,	APPR_STAT_CODE.NAME AS APPR_STAT_NAME
+			,	IIA.APPR_CHG_USER_ID AS APPR_ID
+			,	FN_DECRYPT(UU.USER_NM) AS USER_NM
+			,	UU.LOGIN_ID
+			,	IIA.APPR_CHG_DT AS APPR_DT
+			FROM
+				IL_ITEM_APPR IIA
+			LEFT JOIN (
+				SELECT
+					A.ST_COMN_CODE_ID AS CODE
+					, B.DIC_NM AS NAME
+				FROM
+					ST_COMN_CODE A
+				INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+				WHERE
+					A.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+				AND A.USE_YN = UPPER('Y')
+			) APPR_STAT_CODE ON APPR_STAT_CODE.CODE = IIA.APPR_STAT
+			LEFT JOIN UR_USER UU ON UU.UR_USER_ID = IIA.APPR_CHG_USER_ID
+			WHERE
+				IIA.IL_ITEM_CD = #{ilItemCd}
+			AND	IIA.APPR_STAT = 'APPR_STAT.APPROVED'
+			ORDER BY IIA.IL_ITEM_APPR_ID DESC
+			LIMIT 1
+		) A
+		UNION ALL
+		SELECT
+			*
+		FROM
+		(
+			SELECT
+				IIA.IL_ITEM_CD
+			,	IIA.IL_ITEM_APPR_ID
+			,	IIA.APPR_STAT
+			,	APPR_STAT_CODE.NAME AS APPR_STAT_NAME
+			,	CASE WHEN IIA.APPR_STAT = 'APPR_STAT.REQUEST' THEN
+					IIA.APPR_REQ_USER_ID
+				WHEN IIA.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN
+					IIA.APPR_SUB_CHG_USER_ID
+				END AS APPR_ID
+			,	FN_DECRYPT(UU.USER_NM) AS USER_NM
+			,	UU.LOGIN_ID
+			,	CASE WHEN IIA.APPR_STAT = 'APPR_STAT.REQUEST' THEN
+					IIA.APPR_REQ_DT
+				WHEN IIA.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN
+					IIA.APPR_SUB_CHG_DT
+				END AS APPR_DT
+			FROM
+				IL_ITEM_APPR IIA
+			LEFT JOIN (
+				SELECT
+					A.ST_COMN_CODE_ID AS CODE
+					, B.DIC_NM AS NAME
+				FROM
+					ST_COMN_CODE A
+				INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+				WHERE
+					A.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+				AND A.USE_YN = UPPER('Y')
+			) APPR_STAT_CODE ON APPR_STAT_CODE.CODE = IIA.APPR_STAT
+			LEFT JOIN UR_USER UU ON UU.UR_USER_ID = CASE WHEN IIA.APPR_STAT = 'APPR_STAT.REQUEST' THEN
+					IIA.APPR_REQ_USER_ID
+				WHEN IIA.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN
+					IIA.APPR_SUB_CHG_USER_ID
+				END
+			WHERE
+				IIA.IL_ITEM_CD = #{ilItemCd}
+			AND	IIA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+			ORDER BY IIA.IL_ITEM_APPR_ID DESC
+			LIMIT 1
+		) B
+	</select>
+
+	<select id="getItemApprInfo" resultMap="itemApprStatusMap">
+		/* goodsItemModify.getItemApprInfo */
+		SELECT
+			IL_ITEM_APPR_ID
+			, IL_ITEM_CD
+			, APPR_KIND_TP
+			, APPR_STAT
+			, APPR_REQ_DT
+			, APPR_REQ_USER_ID
+			, APPR_SUB_USER_ID
+			, APPR_SUB_CHG_USER_ID
+			, APPR_SUB_CHG_DT
+			, APPR_USER_ID
+			, APPR_CHG_USER_ID
+			, APPR_CHG_DT
+			, CREATE_ID
+			, MODIFY_ID
+			, ITEM_TP
+			, ITEM_NM
+			, ITEM_BARCODE
+			, ERP_IF_YN
+			, ERP_STOCK_IF_YN
+			, IL_CTGRY_STD_ID
+			, UR_SUPPLIER_ID
+			, UR_BRAND_ID
+			, DP_BRAND_ID
+			, ITEM_GRP
+			, STORAGE_METHOD_TP
+			, ORIGIN_TP
+			, ORIGIN_DETL
+			, DISTRIBUTION_PERIOD
+			, BOX_WIDTH
+			, BOX_DEPTH
+			, BOX_HEIGHT
+			, PCS_PER_BOX
+			, OMS
+			, SIZE_PER_PACKAGE
+			, SIZE_UNIT
+			, SIZE_UNIT_ETC
+			, QTY_PER_PACKAGE
+			, PACKAGE_UNIT
+			, PACKAGE_UNIT_ETC
+			, PDM_GROUP_CD
+			, TAX_YN
+			, IL_SPEC_MASTER_ID
+			, NUTRITION_DISP_YN
+			, NUTRITION_DISP_DEFAULT
+			, NUTRITION_QTY_PER_ONCE
+			, NUTRITION_QTY_TOTAL
+			, NUTRITION_ETC
+			, IL_PO_TP_ID
+			, PRE_ORDER_YN
+			, UNDELIVERABLE_AREA_TP
+			, EXTINCTION_YN
+			, RETURN_PERIOD
+			, VIDEO_URL
+			, VIDEO_AUTOPLAY_YN
+			, BASIC_DESC
+			, DETL_DESC
+			, ETC_DESC
+			, ERP_ITEM_NM
+			, ERP_ITEM_BARCODE
+			, ERP_BOX_BARCODE
+			, ERP_CTGRY_LV1_ID
+			, ERP_CTGRY_LV2_ID
+			, ERP_CTGRY_LV3_ID
+			, ERP_CTGRY_LV4_ID
+			, ERP_BRAND_NM
+			, ERP_ITEM_GRP
+			, ERP_STORAGE_METHOD
+			, ERP_ORIGIN_NM
+			, ERP_DISTRIBUTION_PERIOD
+			, ERP_ITEM_WIDTH
+			, ERP_ITEM_DEPTH
+			, ERP_ITEM_HEIGHT
+			, ERP_BOX_WIDTH
+			, ERP_BOX_DEPTH
+			, ERP_BOX_HEIGHT
+			, ERP_PCS_PER_BOX
+			, ERP_TAX_YN
+			, ERP_PO_TYPE
+			, ERP_CAN_PO_YN
+			, ERP_NUTRITION_QTY_PER_ONCE
+			, ERP_NUTRITION_QTY_TOTAL
+			, ERP_NUTRITION_ETC
+			, ERP_O2O_EXPOSURE_TP
+			, ERP_PRODUCT_TP
+			, ERP_REGAL_CD
+			, ERP_SUPPLIER_NM
+			, PO_PRO_REA
+			, BATCH_PRICE_CHANGE_DT
+			, PRICE_CHANGE_PROC_YN
+			, PRICE_CHANGE_PROC_DT
+			, RENTAL_FEE_PER_MONTH
+			, RENTAL_DUE_MONTH
+			, RENTAL_DEPOSIT
+			, RENTAL_INSTALL_FEE
+			, RENTAL_REGIST_FEE
+		FROM IL_ITEM_APPR iia
+		WHERE IL_ITEM_APPR_ID = #{ilItemApprId}
+		AND IL_ITEM_CD = #{ilItemCd}
+		AND APPR_KIND_TP = #{apprKindTp}
+	</select>
+
+	<select id="getItemCertApprList" resultMap="itemCertApprResultMap">
+		/* goodsItemModify.getItemCertApprList */
+		SELECT
+			IL_ITEM_CERTIFICATION_ID
+			, IL_ITEM_APPR_ID
+			, IL_ITEM_CD
+			, IL_CERTIFICATION_ID
+			, CERTIFICATION_DESC
+			, CREATE_ID
+		FROM IL_ITEM_CERTIFICATION_APPR iica
+		WHERE IL_ITEM_APPR_ID = #{ilItemApprId}
+		AND IL_ITEM_CD = #{ilItemCd}
+	</select>
+
+	<select id="getItemImageApprList" resultMap="itemImageApprResultMap">
+		/* goodsItemModify.getItemImageApprList */
+		SELECT
+			IL_ITEM_IMG_ID
+			, IL_ITEM_APPR_ID
+			, IL_ITEM_CD
+			, BASIC_YN
+			, IMG_NM
+			, IMG_ORIGIN_NM
+			, B_IMG
+			, M_IMG
+			, MS_IMG
+			, S_IMG
+			, C_IMG
+			, SORT
+			, CREATE_ID
+		FROM IL_ITEM_IMG_APPR iiia
+		WHERE IL_ITEM_APPR_ID = #{ilItemApprId}
+		AND IL_ITEM_CD = #{ilItemCd}
+	</select>
+
+	<select id="getItemNutrApprList" resultMap="itemNutrApprResultMap">
+		/* goodsItemModify.getItemNutrApprList */
+		SELECT
+			IL_ITEM_NUTRITION_ID
+			, IL_ITEM_APPR_ID
+			, IL_ITEM_CD
+			, IL_NUTRITION_CD
+			, ERP_NUTRITION_QTY
+			, ERP_NUTRITION_PERCENT
+			, NUTRITION_QTY
+			, NUTRITION_PERCENT
+			, SORT
+			, CREATE_ID
+
+		FROM IL_ITEM_NUTRITION_APPR
+		WHERE IL_ITEM_APPR_ID = #{ilItemApprId}
+		AND IL_ITEM_CD = #{ilItemCd}
+
+	</select>
+
+	<select id="getItemSpecApprList" resultMap="itemSpecApprResultMap">
+		/* goodsItemModify.getItemSpecApprList */
+		SELECT
+
+			IL_ITEM_SPEC_VALUE_ID
+			, IL_ITEM_APPR_ID
+			, IL_ITEM_CD
+			, IL_SPEC_FIELD_ID
+			, SPEC_FIELD_VAL
+			, DIRECT_YN
+			, CREATE_ID
+			, MODIFY_ID
+		FROM IL_ITEM_SPEC_VALUE_APPR
+		WHERE IL_ITEM_APPR_ID = #{ilItemApprId}
+		AND IL_ITEM_CD = #{ilItemCd}
+
+	</select>
+
+
+
+
+
+
+
+	<select id="getPoTpDetailInfoList" resultMap="itemPoTypeMap">
+    /* goodsItemModify.getPoTpDetailInfoList */
+
+		WITH PO_TYPE_LIST AS
+		(
+
+		SELECT
+			'일요일' AS WEEK_DAY1,
+			'월요일' AS WEEK_DAY2,
+			'화요일' AS WEEK_DAY3,
+			'수요일' AS WEEK_DAY4,
+			'목요일' AS WEEK_DAY5,
+			'금요일' AS WEEK_DAY6,
+			'토요일' AS WEEK_DAY7,
+			PO_SUN_YN,
+			PO_MON_YN,
+			PO_TUE_YN,
+			PO_WED_YN,
+			PO_THU_YN,
+			PO_FRI_YN,
+			PO_SAT_YN,
+			SCHEDULED_SUN,
+			SCHEDULED_MON,
+			SCHEDULED_TUE,
+			SCHEDULED_WED,
+			SCHEDULED_THU,
+			SCHEDULED_FRI,
+			SCHEDULED_SAT,
+			PO_REQ_SUN,
+			PO_REQ_MON,
+			PO_REQ_TUE,
+			PO_REQ_WED,
+			PO_REQ_THU,
+			PO_REQ_FRI,
+			PO_REQ_SAT
+		FROM IL_PO_TP
+		WHERE IL_PO_TP_ID = #{ilPoTpId}
+
+		)
+		, COPY_T AS
+		(
+		SELECT 1 lv
+		UNION ALL SELECT 2
+		UNION ALL SELECT 3
+		UNION ALL SELECT 4
+		UNION ALL SELECT 5
+		UNION ALL SELECT 6
+		UNION ALL SELECT 7
+		)
+		SELECT * FROM (
+			SELECT
+		     	CASE lv
+		     	  	WHEN 1 THEN WEEK_DAY1
+		       		WHEN 2 THEN WEEK_DAY2
+		       		WHEN 3 THEN WEEK_DAY3
+		       		WHEN 4 THEN WEEK_DAY4
+		       		WHEN 5 THEN WEEK_DAY5
+		       		WHEN 6 THEN WEEK_DAY6
+		       		WHEN 7 THEN WEEK_DAY7
+		        END WEEK_DAY
+		     ,
+			 	CASE lv
+		       		WHEN 1 THEN PO_SUN_YN
+		       		WHEN 2 THEN PO_MON_YN
+		       		WHEN 3 THEN PO_TUE_YN
+		       		WHEN 4 THEN PO_WED_YN
+		       		WHEN 5 THEN PO_THU_YN
+		       		WHEN 6 THEN PO_FRI_YN
+		       		WHEN 7 THEN PO_SAT_YN
+		        END PO_WEEK
+		     ,
+		     	CASE lv
+		       		WHEN 1 THEN SCHEDULED_SUN
+		       		WHEN 2 THEN SCHEDULED_MON
+		       		WHEN 3 THEN SCHEDULED_TUE
+		       		WHEN 4 THEN SCHEDULED_WED
+		       		WHEN 5 THEN SCHEDULED_THU
+		       		WHEN 6 THEN SCHEDULED_FRI
+		       		WHEN 7 THEN SCHEDULED_SAT
+		        END SCHEDULED_WEEK
+		  FROM PO_TYPE_LIST a, COPY_T b
+		  WHERE lv  <![CDATA[<=]]>  7
+		ORDER BY lv LIMIT 10
+		)A
+		WHERE PO_WEEK = 'Y'
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 마스터 품목 정보 수정
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.31        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="modifyItem"  parameterType="kr.co.pulmuone.v1.goods.item.dto.ItemModifyRequestDto" >
+    /* goodsItemModify.modifyItem */
+    UPDATE  IL_ITEM
+       SET  ITEM_BARCODE            = #{itemBarcode}
+          , ITEM_NM                 = #{itemName}
+          , IL_CTGRY_STD_ID         = #{ilCategoryStandardId}
+          , UR_BRAND_ID             = #{urBrandId}
+          , DP_BRAND_ID				= #{dpBrandId}
+          , ITEM_GRP                = #{bosItemGroup}
+          , STORAGE_METHOD_TP       = #{storageMethodType}
+          , ORIGIN_TP               = #{originType}
+          , ORIGIN_DETL             = #{originDetail}
+          , DISTRIBUTION_PERIOD     = #{distributionPeriod}
+          , BOX_WIDTH               = #{boxWidth}
+          , BOX_DEPTH               = #{boxDepth}
+          , BOX_HEIGHT              = #{boxHeight}
+          , PCS_PER_BOX             = #{piecesPerBox}
+          , OMS                     = #{unitOfMeasurement}
+          , SIZE_PER_PACKAGE        = #{sizePerPackage}
+          , SIZE_UNIT               = #{sizeUnit}
+          , SIZE_UNIT_ETC           = #{sizeUnitEtc}
+          , QTY_PER_PACKAGE         = #{quantityPerPackage}
+          , PACKAGE_UNIT            = #{packageUnit}
+          , PACKAGE_UNIT_ETC        = #{packageUnitEtc}
+          , PDM_GROUP_CD            = #{pdmGroupCode}
+          , TAX_YN                  = #{taxYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+          , IL_SPEC_MASTER_ID       = #{ilSpecMasterId}
+          , NUTRITION_DISP_YN       = #{nutritionDisplayYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+          , NUTRITION_DISP_DEFAULT  = #{nutritionDisplayDefalut}
+          , NUTRITION_QTY_PER_ONCE  = #{nutritionQuantityPerOnce}
+          , NUTRITION_QTY_TOTAL     = #{nutritionQuantityTotal}
+          , NUTRITION_ETC           = #{nutritionEtc}
+          , IL_PO_TP_ID             = null
+          , UNDELIVERABLE_AREA_TP   = #{undeliverableAreaType}
+          , EXTINCTION_YN           = #{extinctionYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+          , VIDEO_URL               = #{videoUrl}
+          , VIDEO_AUTOPLAY_YN       = #{videoAutoplayYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+          , BASIC_DESC              = #{basicDescription}
+          , DETL_DESC               = #{detaillDescription}
+          , ETC_DESC                = #{etcDescription}
+          , MODIFY_ID               = #{modifyId}
+          , MODIFY_DT               = NOW()
+          , RENTAL_FEE_PER_MONTH	= #{rentalFeePerMonth}
+		  , RENTAL_DUE_MONTH		= #{rentalDueMonth}
+		  , RENTAL_DEPOSIT			= #{rentalDeposit}
+		  , RENTAL_INSTALL_FEE		= #{rentalInstallFee}
+		  , RENTAL_REGIST_FEE		= #{rentalRegistFee}
+          , ITEM_DISP_WEIGHT		= #{itemDispWeight}
+          , ITEM_REAL_WEIGHT		= #{itemRealWeight}
+     WHERE  IL_ITEM_CD              = #{ilItemCode}
+    </update>
+
+	<update id="putItemMasterApprInfo">
+	    /* goodsItemModify.putItemMasterApprInfo */
+
+	    UPDATE
+	    	IL_ITEM
+	    SET
+			IL_ITEM_CD = #{ilItemCd}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemGrp)">
+			, ITEM_GRP = #{itemGrp}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storageMethodTp)">
+			, STORAGE_METHOD_TP = #{storageMethodTp}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(originTp)">
+			, ORIGIN_TP = #{originTp}
+			</if>
+			<if test="originDetl != null">
+			, ORIGIN_DETL = #{originDetl}
+			</if>
+			, BOX_WIDTH = #{boxWidth}
+			, BOX_DEPTH = #{boxDepth}
+			, BOX_HEIGHT = #{boxHeight}
+			, PCS_PER_BOX = #{piecesPerBox}
+			<if test="oms != null">
+			, OMS = #{oms}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(distributionPeriod)">
+			, DISTRIBUTION_PERIOD = #{distributionPeriod}
+			</if>
+			, SIZE_PER_PACKAGE = #{sizePerPackage}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sizeUnit)">
+			, SIZE_UNIT = #{sizeUnit}
+			</if>
+			<if test="sizeUnitEtc != null">
+			, SIZE_UNIT_ETC = #{sizeUnitEtc}
+			</if>
+			, QTY_PER_PACKAGE = #{qtyPerPackage}
+			<if test="packageUnit != null">
+			, PACKAGE_UNIT = #{packageUnit}
+			</if>
+			<if test="packageUnitEtc != null">
+			, PACKAGE_UNIT_ETC = #{packageUnitEtc}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBrandId)">
+			, UR_BRAND_ID = #{urBrandId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)">
+			, DP_BRAND_ID = #{dpBrandId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilSpecMasterId)">
+			, IL_SPEC_MASTER_ID = #{ilSpecMasterId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(nutritionDispYn)">
+			, NUTRITION_DISP_YN = #{nutritionDispYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(nutritionDispDefault)">
+			, NUTRITION_DISP_DEFAULT = #{nutritionDispDefault}
+			</if>
+			<if test="nutritionQtyPerOnce != null">
+			, NUTRITION_QTY_PER_ONCE = #{nutritionQtyPerOnce}
+			</if>
+			<if test="nutritionQtyTotal != null">
+			, NUTRITION_QTY_TOTAL = #{nutritionQtyTotal}
+			</if>
+			<if test="nutritionEtc != null">
+			, NUTRITION_ETC = #{nutritionEtc}
+			</if>
+			<if test="videoUrl != null">
+			, VIDEO_URL = #{videoUrl}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(videoAutoplayYn)">
+			, VIDEO_AUTOPLAY_YN = #{videoAutoplayYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+			</if>
+			<if test="basicDesc != null">
+			, BASIC_DESC = #{basicDesc}
+			</if>
+			<if test="detlDesc != null">
+			, DETL_DESC = #{detlDesc}
+			</if>
+			, MODIFY_DT = NOW()
+			, MODIFY_ID = #{modifyId}
+	    WHERE IL_ITEM_CD = #{ilItemCd}
+
+    </update>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 가격정보 전체 이력 목록 조회
+     * @
+     * @ * includePastPriceHistory 값 'Y' 전달시 : 과거 이력까지 모두 조회
+     * @ * includePastPriceHistory 값 미전달시   : 현재 일자 기준 적용 가격부터 미래의 예정 가격 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.24        임상건          최초생성
+     * @ 2020.09.01        박주형          ItemMgmModifyMapper 로 로직 이동
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPriceVo" id="getItemPriceResultMap">
+        <result column="IL_ITEM_PRICE_ID"         property="ilItemPriceId"/>
+        <result column="IL_ITEM_CODE"             property="ilItemCode"/>
+		<result column="UPDATE_TP_NM"             property="updateTypeName"/>
+        <result column="PRICE_APPLY_START_DATE"   property="priceApplyStartDate"/>
+        <result column="PRICE_APPLY_END_DATE"     property="priceApplyEndDate"/>
+        <result column="STANDARD_PRICE"           property="standardPrice"/>
+        <result column="RECOMMENDED_PRICE"        property="recommendedPrice"/>
+        <result column="CAN_DELETED"              property="canDeleted"/>
+        <result column="CREATE_ID"                property="createId"/>
+        <result column="MODIFY_ID"                property="modifyId"/>
+        <result column="PRICE_RATIO"              property="priceRatio"/>
+        <result column="APPROVAL_STATUS_CODE"     property="approvalStatusCode"/>
+        <result column="APPROVAL_STATUS_CODE_NAME"     property="approvalStatusCodeName"/>
+        <result column="APPROVAL_1ST"     			property="approval1st"/>
+        <result column="APPROVAL_CONFIRM"     		property="approvalConfirm"/>
+		<result column="APPROVAL_REQUEST_USER_INFO"	property="approvalRequestUserInfo"/>
+		<result column="APPROVAL_ADMIN_USER_INFO"	property="approvalAdminUserInfo"/>
+    </resultMap>
+
+    <resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemDiscountVo" id="getItemDiscountResultMap">
+        <result column="IL_ITEM_DISCOUNT_ID"        property="ilItemDiscountId"/>
+        <result column="IL_ITEM_CD"             	property="ilItemCd"/>
+        <result column="DISCOUNT_TP"   				property="discountTp"/>
+        <result column="DISCOUNT_TP_NM"     		property="discountTpNm"/>
+        <result column="DISCOUNT_START_DT"          property="discountStartDt"/>
+        <result column="DISCOUNT_END_DT"       		property="discountEndDt"/>
+        <result column="DISCOUNT_METHOD_TP"         property="discountMethodTp"/>
+        <result column="DISCOUNT_METHOD_TP_NM"      property="discountMethodTpNm"/>
+        <result column="DISCOUNT_RATIO"             property="discountRatio"/>
+        <result column="DISCOUNT_SALE_PRICE"        property="discountSalePrice"/>
+        <result column="DISCOUNT_PRICE"        		property="discountPrice"/>
+    </resultMap>
+
+    <select id="getItemPriceHistory" resultMap="getItemPriceResultMap">
+        /* goodsItemModify.getItemPriceHistory */
+        SELECT
+            IIP.IL_ITEM_PRICE_ID                    AS IL_ITEM_PRICE_ID
+        	, IIP.IL_ITEM_CD                          AS IL_ITEM_CODE
+			, CONCAT_WS('/', IF(IIPO.SYSTEM_UPDATE_YN = 'Y', '시스템', NULL), IF(IIPO.MANAGER_UPDATE_YN = 'Y', '관리자', NULL)) AS UPDATE_TP_NM
+          	, DATE_FORMAT(IIP.START_DT, '%Y-%m-%d')   AS PRICE_APPLY_START_DATE
+          	, DATE_FORMAT(IIP.END_DT, '%Y-%m-%d')     AS PRICE_APPLY_END_DATE
+          	, IIP.STANDARD_PRICE                      AS STANDARD_PRICE
+          	, IIP.RECOMMENDED_PRICE                   AS RECOMMENDED_PRICE
+          	, CASE WHEN ITEM.TAX_YN = 'Y'
+          			THEN TRUNCATE( ((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.1)) / IIP.RECOMMENDED_PRICE * 100), 0)
+          		ELSE TRUNCATE( ((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.0)) / IIP.RECOMMENDED_PRICE * 100), 0)
+          		END PRICE_RATIO
+			, 'APPR_STAT.APPROVED' AS APPROVAL_STATUS_CODE
+			, IFNULL(FN_COMN_CODE_DIC('APPR_STAT.APPROVED'), '승인완료') AS APPROVAL_STATUS_CODE_NAME
+		  	, '' 					AS APPROVAL_1ST
+		  	, '' 					AS APPROVAL_CONFIRM
+<!--    <choose>-->
+<!--        <when test=" ! @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(includePastPriceHistory,'Y')">-->
+<!--          , CASE WHEN  IIP.START_DT <![CDATA[<=]]> NOW() AND IIP.END_DT <![CDATA[>=]]> NOW()  THEN 'N'-->
+<!--                 ELSE 'Y'-->
+<!--             END                                AS CAN_DELETED-->
+<!--        </when>-->
+<!--    </choose>-->
+          , IIP.CREATE_ID                           AS CREATE_ID
+          , IIP.MODIFY_ID                           AS MODIFY_ID
+			, CONCAT(FN_DECRYPT(UUAR.USER_NM), '(', UUAR.LOGIN_ID, ')') AS APPROVAL_REQUEST_USER_INFO
+			, (CASE WHEN IIPA.APPR_SUB_CHG_USER_ID IS NOT NULL
+				THEN CONCAT(FN_DECRYPT(UUASC.USER_NM), '(', UUASC.LOGIN_ID, ') / ', FN_DECRYPT(UUAC.USER_NM), '(', UUAC.LOGIN_ID, ')')
+				ELSE CONCAT(FN_DECRYPT(UUAC.USER_NM), '(', UUAC.LOGIN_ID, ')')
+				END ) AS APPROVAL_ADMIN_USER_INFO
+        FROM  IL_ITEM_PRICE IIP
+			INNER JOIN IL_ITEM_PRICE_ORIG IIPO
+				ON IIPO.IL_ITEM_PRICE_ORIG_ID = IIP.IL_ITEM_PRICE_ID
+        	INNER JOIN IL_ITEM ITEM ON ITEM.IL_ITEM_CD = IIP.IL_ITEM_CD
+			LEFT OUTER JOIN IL_ITEM_PRICE_APPR IIPA ON IIP.IL_ITEM_CD = IIPA.IL_ITEM_CD
+				AND IIP.START_DT = IIPA.START_DT
+				AND IIP.STANDARD_PRICE = IIPA.STANDARD_PRICE
+				AND IIP.RECOMMENDED_PRICE = IIPA.RECOMMENDED_PRICE
+				AND IIPA.APPR_DISPOSAL_YN = 'N'
+				AND IIPA.APPR_STAT = 'APPR_STAT.APPROVED'
+			LEFT OUTER JOIN UR_USER UUAR ON IIPA.APPR_REQ_USER_ID = UUAR.UR_USER_ID
+			LEFT OUTER JOIN UR_USER UUASC ON IIPA.APPR_SUB_CHG_USER_ID = UUASC.UR_USER_ID
+			LEFT OUTER JOIN UR_USER UUAC ON IIPA.APPR_CHG_USER_ID = UUAC.UR_USER_ID
+		WHERE
+			IIP.IL_ITEM_CD = #{ilItemCode}
+			AND NOW() <![CDATA[<=]]> IIP.END_DT
+		ORDER BY  IIP.START_DT ASC
+    </select>
+
+	<select id="getItemErpPriceSchedule" resultMap="getItemDiscountResultMap">
+        /* goodsItemModify.getItemErpPriceSchedule */
+		SELECT
+			IID.IL_ITEM_DISCOUNT_ID,
+			IID.IL_ITEM_CD,
+			IID.DISCOUNT_TP,
+			-- FN_COMN_CODE_DIC(IID.DISCOUNT_TP) AS DISCOUNT_TP_NM,
+			'ERP 행사' AS DISCOUNT_TP_NM,
+			DATE_FORMAT(IID.DISCOUNT_START_DT, '%Y-%m-%d') AS DISCOUNT_START_DT,
+			DATE_FORMAT(IID.DISCOUNT_END_DT, '%Y-%m-%d') AS DISCOUNT_END_DT,
+			IID.DISCOUNT_METHOD_TP,
+			FN_COMN_CODE_DIC(IID.DISCOUNT_METHOD_TP) AS DISCOUNT_METHOD_TP_NM,
+			IID.DISCOUNT_RATIO,
+			IID.DISCOUNT_SALE_PRICE AS DISCOUNT_PRICE
+		FROM IL_ITEM_DISCOUNT IID
+		WHERE IL_ITEM_CD = #{ilItemCode}
+		AND USE_YN = 'Y'
+		AND (DISCOUNT_START_DT <![CDATA[<=]]>  NOW() OR DISCOUNT_START_DT <![CDATA[>=]]> NOW())
+		AND  DISCOUNT_END_DT <![CDATA[>=]]> NOW()
+		LIMIT 2
+    </select>
+
+	<select id="getItemDiscountPriceHistory" resultMap="getItemDiscountResultMap">
+        /* goodsItemModify.getItemErpPriceSchedule */
+		SELECT
+			IID.IL_ITEM_DISCOUNT_ID,
+			IID.IL_ITEM_CD,
+			IID.DISCOUNT_TP,
+			-- FN_COMN_CODE_DIC(IID.DISCOUNT_TP) AS DISCOUNT_TP_NM,
+			'ERP 행사' AS DISCOUNT_TP_NM,
+			DATE_FORMAT(IID.DISCOUNT_START_DT, '%Y-%m-%d') AS DISCOUNT_START_DT,
+			DATE_FORMAT(IID.DISCOUNT_END_DT, '%Y-%m-%d') AS DISCOUNT_END_DT,
+			IID.DISCOUNT_METHOD_TP,
+			FN_COMN_CODE_DIC(IID.DISCOUNT_METHOD_TP) AS DISCOUNT_METHOD_TP_NM,
+			IID.DISCOUNT_RATIO,
+			IID.DISCOUNT_SALE_PRICE AS DISCOUNT_PRICE
+		FROM IL_ITEM_DISCOUNT IID
+		WHERE IL_ITEM_CD = #{ilItemCode}
+		AND USE_YN = 'Y'
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description : 품목 가격 - 조회 - 일자기준
+	 * @
+	 * @ 수정일            수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.05        이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemPriceListByDate" resultMap="getItemPriceResultMap">
+		/* goodsItemModify.getItemPriceListByDate */
+		SELECT IIP.IL_ITEM_CD AS IL_ITEM_CODE
+			, DATE_FORMAT(IIP.START_DT, '%Y-%m-%d')   AS PRICE_APPLY_START_DATE
+			, DATE_FORMAT(IIP.END_DT, '%Y-%m-%d')     AS PRICE_APPLY_END_DATE
+			, IIP.STANDARD_PRICE                      AS STANDARD_PRICE
+			, IIP.RECOMMENDED_PRICE                   AS RECOMMENDED_PRICE
+		FROM  IL_ITEM_PRICE IIP
+		WHERE IIP.IL_ITEM_CD = #{ilItemCode}
+			AND #{targetDate} BETWEEN IIP.START_DT AND IIP.END_DT
+		ORDER BY IIP.START_DT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description : 품목 가격 - Popup 정보조회
+	 * @
+	 * @ 수정일            수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.17        이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPriceVo" id="getItemPricePopupResultMap">
+		<result column="IL_ITEM_PRICE_APPR_ID" property="ilItemPriceApprId"/>
+		<result column="IL_ITEM_PRICE_ORIG_ID" property="ilItemPriceOrigId"/>
+		<result column="UPDATE_TP_NM" property="updateTypeName"/>
+		<result column="SYSTEM_UPDATE_YN" property="systemUpdateYn"/>
+		<result column="MANAGER_UPDATE_YN" property="managerUpdateYn"/>
+		<result column="PRICE_APPLY_START_DATE" property="priceApplyStartDate"/>
+		<result column="PRICE_APPLY_END_DATE" property="priceApplyEndDate"/>
+		<result column="STANDARD_PRICE" property="standardPrice"/>
+		<result column="RECOMMENDED_PRICE" property="recommendedPrice"/>
+		<result column="PRICE_RATIO" property="priceRatio"/>
+		<result column="APPROVAL_STATUS_CODE" property="approvalStatusCode"/>
+		<result column="APPROVAL_STATUS_CODE_NAME" property="approvalStatusCodeName"/>
+		<result column="APPROVAL_REQUEST_USER_INFO"	property="approvalRequestUserInfo"/>
+		<result column="APPROVAL_ADMIN_USER_INFO" property="approvalAdminUserInfo"/>
+	</resultMap>
+	<select id="getItemPricePopup" resultMap="getItemPricePopupResultMap">
+		/* goodsItemModify.getItemPricePopup */
+		SELECT *
+		FROM (
+			SELECT IIPA.IL_ITEM_PRICE_APPR_ID
+				, IIPO.IL_ITEM_PRICE_ORIG_ID
+				, CONCAT_WS('/', IF(IIPO.SYSTEM_UPDATE_YN = 'Y', '시스템', NULL), IF(IIPO.MANAGER_UPDATE_YN = 'Y', '관리자', NULL)) AS UPDATE_TP_NM
+				, IIPO.SYSTEM_UPDATE_YN
+				, IIPO.MANAGER_UPDATE_YN
+				, DATE_FORMAT(IIP.START_DT, '%Y-%m-%d')   AS PRICE_APPLY_START_DATE
+				, DATE_FORMAT(IIP.END_DT, '%Y-%m-%d')     AS PRICE_APPLY_END_DATE
+				, IIP.STANDARD_PRICE                      AS STANDARD_PRICE
+				, IIP.RECOMMENDED_PRICE                   AS RECOMMENDED_PRICE
+				, CASE WHEN ITEM.TAX_YN = 'Y'
+					THEN TRUNCATE( ((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.1)) / IIP.RECOMMENDED_PRICE * 100), 0)
+					ELSE TRUNCATE( ((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.0)) / IIP.RECOMMENDED_PRICE * 100), 0)
+					END PRICE_RATIO
+				, 'APPR_STAT.APPROVED' AS APPROVAL_STATUS_CODE
+				, IFNULL(FN_COMN_CODE_DIC('APPR_STAT.APPROVED'), '승인완료') AS APPROVAL_STATUS_CODE_NAME
+				, CONCAT(FN_DECRYPT(UUAR.USER_NM), '(', UUAR.LOGIN_ID, ')') AS APPROVAL_REQUEST_USER_INFO
+				, (CASE WHEN IIPA.APPR_SUB_CHG_USER_ID IS NOT NULL
+					THEN CONCAT(FN_DECRYPT(UUASC.USER_NM), '(', UUASC.LOGIN_ID, ') / ', FN_DECRYPT(UUAC.USER_NM), '(', UUAC.LOGIN_ID, ')')
+					ELSE CONCAT(FN_DECRYPT(UUAC.USER_NM), '(', UUAC.LOGIN_ID, ')')
+					END ) AS APPROVAL_ADMIN_USER_INFO
+			FROM IL_ITEM_PRICE IIP
+				INNER JOIN IL_ITEM_PRICE_ORIG IIPO
+					ON IIPO.IL_ITEM_PRICE_ORIG_ID = IIP.IL_ITEM_PRICE_ID
+				INNER JOIN IL_ITEM ITEM ON ITEM.IL_ITEM_CD = IIP.IL_ITEM_CD
+				LEFT OUTER JOIN IL_ITEM_PRICE_APPR IIPA ON IIP.IL_ITEM_CD = IIPA.IL_ITEM_CD
+					AND IIP.START_DT = IIPA.START_DT
+					AND IIP.STANDARD_PRICE = IIPA.STANDARD_PRICE
+					AND IIP.RECOMMENDED_PRICE = IIPA.RECOMMENDED_PRICE
+					AND IIPA.APPR_DISPOSAL_YN = 'N'
+					AND IIPA.APPR_STAT = 'APPR_STAT.APPROVED'
+				LEFT OUTER JOIN UR_USER UUAR ON IIPA.APPR_REQ_USER_ID = UUAR.UR_USER_ID
+				LEFT OUTER JOIN UR_USER UUASC ON IIPA.APPR_SUB_CHG_USER_ID = UUASC.UR_USER_ID
+				LEFT OUTER JOIN UR_USER UUAC ON IIPA.APPR_CHG_USER_ID = UUAC.UR_USER_ID
+			WHERE
+				IIP.IL_ITEM_CD = #{ilItemCode}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(includePastPriceHistory,'Y')">
+					AND NOW() <![CDATA[<=]]> IIP.END_DT
+				</if>
+			UNION ALL
+			SELECT IIPA.IL_ITEM_PRICE_APPR_ID
+				, '' AS IL_ITEM_PRICE_ORIG_ID
+				, '관리자' AS UPDATE_TP_NM
+				, 'N' AS SYSTEM_UPDATE_YN
+				, 'Y' AS MANAGER_UPDATE_YN
+				, DATE_FORMAT(IIPA.START_DT, '%Y-%m-%d')   AS PRICE_APPLY_START_DATE
+				, '2999-12-31' AS PRICE_APPLY_END_DATE
+				, IIPA.STANDARD_PRICE                      AS STANDARD_PRICE
+				, IIPA.RECOMMENDED_PRICE                   AS RECOMMENDED_PRICE
+				, (CASE WHEN ITEM.TAX_YN = 'Y'
+					THEN TRUNCATE( ((IIPA.RECOMMENDED_PRICE - (IIPA.STANDARD_PRICE * 1.1)) / IIPA.RECOMMENDED_PRICE * 100), 0)
+					ELSE TRUNCATE( ((IIPA.RECOMMENDED_PRICE - (IIPA.STANDARD_PRICE * 1.0)) / IIPA.RECOMMENDED_PRICE * 100), 0)
+					END) PRICE_RATIO
+				, IIPA.APPR_STAT AS APPROVAL_STATUS_CODE
+				, FN_COMN_CODE_DIC(IIPA.APPR_STAT) AS APPROVAL_STATUS_CODE_NAME
+				, CONCAT(FN_DECRYPT(UUAR.USER_NM), '(', UUAR.LOGIN_ID, ')') AS APPROVAL_REQUEST_USER_INFO
+				, (CASE WHEN IIPA.APPR_SUB_USER_ID IS NOT NULL
+					THEN CONCAT(FN_DECRYPT(UUAS.USER_NM), '(', UUAS.LOGIN_ID, ') / ', FN_DECRYPT(UUA.USER_NM), '(', UUA.LOGIN_ID, ')')
+					ELSE CONCAT(FN_DECRYPT(UUA.USER_NM), '(', UUA.LOGIN_ID, ')')
+					END ) AS APPROVAL_ADMIN_USER_INFO
+			FROM IL_ITEM_PRICE_APPR IIPA
+				INNER JOIN IL_ITEM ITEM ON ITEM.IL_ITEM_CD = IIPA.IL_ITEM_CD
+				LEFT OUTER JOIN UR_USER UUAR ON IIPA.APPR_REQ_USER_ID = UUAR.UR_USER_ID
+				LEFT OUTER JOIN UR_USER UUAS ON IIPA.APPR_SUB_USER_ID = UUAS.UR_USER_ID
+				LEFT OUTER JOIN UR_USER UUA ON IIPA.APPR_USER_ID = UUA.UR_USER_ID
+			WHERE IIPA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+				AND IIPA.APPR_DISPOSAL_YN = 'N'
+				AND IIPA.IL_ITEM_CD = #{ilItemCode}
+		) G1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(includePastPriceHistory,'Y')">
+				ORDER BY G1.PRICE_APPLY_START_DATE DESC
+			</when>
+			<otherwise>
+				ORDER BY G1.PRICE_APPLY_START_DATE ASC
+			</otherwise>
+		</choose>
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목 코드의 가격 적용 시작일에 해당하는 가격정보 삭제
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.02        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteItemPriceOrigin" >
+    /* goodsItemModify.deleteItemPriceOrigin */
+    DELETE FROM IL_ITEM_PRICE_ORIG
+     WHERE IL_ITEM_CD  = #{ilItemCode}
+       AND START_DT    = STR_TO_DATE( #{priceApplyStartDate} , '%Y-%m-%d' )
+
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 상품정보 제공고시 삭제
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteItemSpecValue" >
+    /* goodsItemModify.deleteItemSpecValue */
+    DELETE FROM IL_ITEM_SPEC_VALUE
+     WHERE IL_ITEM_CD  = #{ilItemCode}
+
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 영양정보 상세항목 삭제
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteItemNutrition" >
+    /* goodsItemModify.deleteItemNutrition */
+    DELETE FROM IL_ITEM_NUTRITION
+     WHERE IL_ITEM_CD  = #{ilItemCode}
+
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 상품 인증정보 삭제
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteItemCertification" >
+    /* goodsItemModify.deleteItemCertification */
+    DELETE FROM IL_ITEM_CERTIFICATION
+     WHERE IL_ITEM_CD  = #{ilItemCode}
+
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 출고처 정보 삭제
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.03        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteItemWarehouse" >
+    /* goodsItemModify.deleteItemWarehouse */
+    DELETE FROM IL_ITEM_WAREHOUSE
+     WHERE IL_ITEM_CD  = #{ilItemCode}
+
+    </delete>
+
+    <delete id="deleteItemWarehouseId" >
+    /* goodsItemModify.deleteItemWarehouseId */
+    DELETE FROM IL_ITEM_WAREHOUSE
+    WHERE IL_ITEM_WAREHOUSE_ID  = #{ilItemWarehouseId}
+
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 품목의 이미지 정보 삭제
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.31        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteItemImage" parameterType="string" >
+    /* goodsItemModify.deleteItemImage */
+    DELETE FROM IL_ITEM_IMG
+     WHERE IL_ITEM_CD = #{ilItemCode}
+
+    </delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 마스터 품목 승인 수정 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.31        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMasterItemApprClientDetail" resultMap="getMasterItemMap">
+    /* goodsItemModify.getMasterItemApprClientDetail */
+    SELECT
+	    A.IL_ITEM_APPR_ID												 AS IL_ITEM_APPR_ID
+	  , A.APPR_KIND_TP													 AS APPR_KIND_TP
+	  , A.IL_ITEM_CD												 	 AS IL_ITEM_CODE
+	  , A.ERP_IF_YN                                                      AS ERP_IF_YN
+	  , A.ERP_STOCK_IF_YN                                                AS ERP_STOCK_IF_YN
+	  , A.UR_SUPPLIER_ID                                                 AS UR_SUPPLIER_ID
+	  , A.UR_BRAND_ID                                                    AS UR_BRAND_ID
+	  , A.DP_BRAND_ID													 AS	DP_BRAND_ID
+	  , A.ITEM_GRP                                                       AS ITEM_GROUP
+	  , A.STORAGE_METHOD_TP                                              AS STORAGE_METHOD_TYPE
+	  , A.ORIGIN_TP                                                      AS ORIGIN_TYPE
+	  , A.ORIGIN_DETL                                                    AS ORIGIN_DETAIL
+	  , A.DISTRIBUTION_PERIOD                                            AS DISTRIBUTION_PERIOD
+	  , A.BOX_WIDTH                                                      AS BOX_WIDTH
+	  , A.BOX_DEPTH                                                      AS BOX_DEPTH
+	  , A.BOX_HEIGHT                                                     AS BOX_HEIGHT
+	  , A.PCS_PER_BOX                                                    AS PIECES_PER_BOX
+	  , A.OMS                                                            AS UNIT_OF_MEASUREMENT
+	  , A.SIZE_PER_PACKAGE                                               AS SIZE_PER_PACKAGE
+	  , A.SIZE_UNIT                                                      AS SIZE_UNIT
+	  , A.SIZE_UNIT_ETC                                                  AS SIZE_UNIT_ETC
+	  , A.QTY_PER_PACKAGE                                                AS QUANTITY_PER_PACKAGE
+	  , A.PACKAGE_UNIT                                                   AS PACKAGE_UNIT
+	  , A.PACKAGE_UNIT_ETC                                               AS PACKAGE_UNIT_ETC
+	  , A.PDM_GROUP_CD                                                   AS PDM_GROUP_CODE
+	  , A.IL_SPEC_MASTER_ID                                              AS IL_SPEC_MASTER_ID
+	  , A.NUTRITION_DISP_YN                                              AS NUTRITION_DISPLAY_YN
+	  , A.NUTRITION_DISP_DEFAULT                                         AS NUTRITION_DISPLAY_DEFAULT
+	  , A.NUTRITION_QTY_PER_ONCE                                         AS NUTRITION_QUANTITY_PER_ONCE
+	  , A.NUTRITION_QTY_TOTAL                                            AS NUTRITION_QUANTITY_TOTAL
+	  , A.NUTRITION_ETC                                                  AS NUTRITION_ETC
+	  , A.UNDELIVERABLE_AREA_TP                                          AS UNDELIVERABLE_AREA_TYPE
+	  , A.EXTINCTION_YN                                                  AS EXTINCTION_YN
+	  , A.VIDEO_URL                                                      AS VIDEO_URL
+	  , A.VIDEO_AUTOPLAY_YN                                              AS VIDEO_AUTOPLAY_YN
+	  , A.BASIC_DESC                                                     AS BASIC_DESCRIPTION
+	  , A.DETL_DESC                                                      AS DETAIL_DESCRIPTION
+	  , A.ETC_DESC                                                       AS ETC_DESCRIPTION
+	  , A.ERP_BRAND_NM                                                   AS ERP_BRAND_NAME
+	  , A.ERP_ITEM_GRP                                                   AS ERP_ITEM_GROUP
+	  , A.ERP_STORAGE_METHOD                                             AS ERP_STORAGE_METHOD
+	  , A.ERP_ORIGIN_NM                                                  AS ERP_ORIGIN_NAME
+	  , A.ERP_DISTRIBUTION_PERIOD                                        AS ERP_DISTRIBUTION_PERIOD
+	  , A.ERP_BOX_WIDTH                                                  AS ERP_BOX_WIDTH
+	  , A.ERP_BOX_DEPTH                                                  AS ERP_BOX_DEPTH
+	  , A.ERP_BOX_HEIGHT                                                 AS ERP_BOX_HEIGHT
+	  , A.ERP_PCS_PER_BOX                                                AS ERP_PIECES_PER_BOX
+	  , A.ERP_NUTRITION_QTY_PER_ONCE                                     AS ERP_NUTRITION_QUANTITY_PER_ONCE
+	  , A.ERP_NUTRITION_QTY_TOTAL                                        AS ERP_NUTRITION_QUANTITY_TOTAL
+	  , A.ERP_NUTRITION_ETC                                              AS ERP_NUTRITION_ETC
+	  , A.ERP_O2O_EXPOSURE_TP                                            AS ERP_O2O_EXPOSURE_TYPE
+	  , A.ERP_PRODUCT_TP                                                 AS ERP_PRODUCT_TYPE
+	  , A.ERP_SUPPLIER_NM                                                AS ERP_SUPPLIER_NM
+	 FROM  IL_ITEM_APPR  A
+	 WHERE A.IL_ITEM_APPR_ID = #{ilItemApprId}
+    </select>
+
+    <!-- 마스터 품목 수정 화면 관련 로직 End -->
+
+</mapper>

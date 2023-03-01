@@ -1,0 +1,706 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.reward.RewardMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 고객보상제 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.17		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardList" resultType="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardBosListVo">
+        /* rewardBos.getRewardList */
+        SELECT
+		T.CS_REWARD_ID
+	   ,T.REWARD_NM
+	   ,T.REWARD_PAY_TP
+	   ,T.USE_YN
+	   ,T.STATUS_SE
+	   ,T.STATUS_NM
+	   ,T.START_DT
+	   ,T.END_DT
+	   ,T.CREATE_DT
+	   ,T.CREATE_USER_NM
+	   ,T.CREATE_USER_ID
+	   ,T.MODIFY_DT
+	   ,T.MODIFY_USER_NM
+	   ,T.MODIFY_USER_ID
+	FROM (
+			SELECT
+					CS.CS_REWARD_ID
+				  , CS.REWARD_NM
+				  , FN_COMN_CODE_DIC(CS.REWARD_PAY_TP) AS REWARD_PAY_TP
+				  , CASE WHEN CS.USE_YN = 'Y' THEN '예' ELSE '아니오' END AS USE_YN
+	              , CASE WHEN CS.START_DT  <![CDATA[>]]>  NOW() THEN 'BEF'
+	                   WHEN CS.START_DT  <![CDATA[<=]]> NOW()
+	                        AND
+	                        CS.END_DT    <![CDATA[>=]]> NOW() THEN 'ING'
+	                   WHEN CS.END_DT    <![CDATA[<]]>  NOW() THEN 'END'
+	                   ELSE ''
+	                END  STATUS_SE
+				  , CASE WHEN CS.START_DT  <![CDATA[>]]>  NOW() THEN '진행예정'
+	                   WHEN CS.START_DT  <![CDATA[<=]]> NOW()
+	                        AND
+	                        CS.END_DT    <![CDATA[>=]]> NOW() THEN '진행중'
+	                   WHEN CS.END_DT    <![CDATA[<]]>  NOW() THEN '진행종료'
+	                   ELSE ''
+	               END  STATUS_NM
+				  , CS.START_DT
+				  , CS.END_DT
+				  , IFNULL(CS.CREATE_DT, '') AS CREATE_DT
+				  , IFNULL(FN_DECRYPT(UU1.USER_NM), '') AS CREATE_USER_NM
+			      , IFNULL(UU1.LOGIN_ID, '') AS CREATE_USER_ID
+				  , IFNULL(CS.MODIFY_DT, '') AS MODIFY_DT
+				  , IFNULL(FN_DECRYPT(UU2.USER_NM), '') AS MODIFY_USER_NM
+			      , IFNULL(UU2.LOGIN_ID, '') AS MODIFY_USER_ID
+			FROM  CS_REWARD CS
+	        INNER JOIN UR_USER UU1 ON CS.CREATE_ID = UU1.UR_USER_ID
+			LEFT OUTER JOIN UR_USER UU2 ON CS.MODIFY_ID = UU2.UR_USER_ID
+			WHERE 1=1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardId) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(csRewardId, '0')">
+	      		AND CS.CS_REWARD_ID = #{csRewardId}
+	 		</if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(rewardNm)">
+		      	AND CS.REWARD_NM LIKE CONCAT('%' , #{rewardNm} , '%')
+	 		</if>
+			<if test="rewardPayTpList !=null and rewardPayTpList.size() > 0">
+				AND CS.REWARD_PAY_TP IN
+				<foreach collection="rewardPayTpList" item="rewardPayTp" index="index" separator="," open="(" close=")">
+					#{rewardPayTp}
+				</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		      	AND CS.USE_YN = #{useYn}
+	 		</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDt)'>
+                AND
+			    (
+                    (
+                    CS.START_DT <![CDATA[>]]> (CASE WHEN IFNULL(#{startDt}, '') = '' THEN CS.START_DT ELSE STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') END)
+                    AND
+                    CS.START_DT <![CDATA[<=]]> (CASE WHEN IFNULL(#{endDt}  , '') = '' THEN CS.END_DT   ELSE STR_TO_DATE(#{endDt}  , '%Y%m%d%H%i%s') END)
+                    )
+                    OR
+                    (
+                    CS.START_DT <![CDATA[<=]]> (CASE WHEN IFNULL(#{startDt}, '') = '' THEN CS.START_DT ELSE STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') END)
+                    AND
+                    CS.END_DT   <![CDATA[>=]]> (CASE WHEN IFNULL(#{startDt}, '') = '' THEN CS.END_DT   ELSE STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') END)
+                    )
+                    OR
+                    (
+                    CS.START_DT <![CDATA[<=]]> (CASE WHEN IFNULL(#{endDt}, '') = '' THEN CS.START_DT ELSE STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s') END)
+                    AND
+                    CS.END_DT   <![CDATA[>=]]> (CASE WHEN IFNULL(#{endDt}, '') = '' THEN CS.END_DT   ELSE STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s') END)
+                    )
+                    OR
+                    (
+                    CS.END_DT   <![CDATA[>=]]> (CASE WHEN IFNULL(#{startDt}, '') = '' THEN CS.START_DT ELSE STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') END)
+                    AND
+                    CS.END_DT  <![CDATA[<]]> (CASE WHEN IFNULL(#{endDt}  , '') = '' THEN CS.END_DT   ELSE STR_TO_DATE(#{endDt}  , '%Y%m%d%H%i%s') END)
+                    )
+              )
+              </if>
+		) T
+		<where>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusSeList) and statusSeList.size() > 0'>
+        AND  T.STATUS_SE IN <foreach collection="statusSeList" item="statusSe" index="index" separator="," open="(" close=")">
+                                #{statusSe}
+                              </foreach>
+        </if>
+    	</where>
+		ORDER BY T.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+   * description    : 고객보상제 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.06.24   최윤지    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addReward" parameterType="kr.co.pulmuone.v1.customer.reward.dto.RewardBosRequestDto">
+      /*rewardBos.addReward*/
+      INSERT INTO CS_REWARD(
+          REWARD_NM
+        , REWARD_CONTENT
+        , REWARD_APPLY_STANDARD
+        , REWARD_PAY_TP
+        , USE_YN
+        , ORDER_APPR_PERIOD
+        , DETL_HTML_PC
+        , DETL_HTML_MOBILE
+        , REWARD_NOTICE
+        , REWARD_GOODS_TP
+        , START_DT
+        , END_DT
+        , TIME_OVER_CLOSE_YN
+        , CREATE_DT
+        , CREATE_ID
+      )
+      VALUES(
+          #{rewardNm}
+        , #{rewardContent}
+        , #{rewardApplyStandard}
+        , #{rewardPayTp}
+        , #{useYn}
+        , #{orderApprPeriod}
+        , #{detlHtmlPc}
+        , #{detlHtmlMobile}
+        , #{rewardNotice}
+        , #{rewardGoodsTp}
+        , #{startDt}
+        , #{endDt}
+        , #{timeOverCloseYn}
+        , NOW()
+        , #{userVo.userId}
+      )
+      <selectKey resultType="String" keyProperty="csRewardId" keyColumn="CS_REWARD_ID" order="AFTER">
+         SELECT LAST_INSERT_ID()
+      </selectKey>
+  </insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+   * description    : 고객보상제 적용대상 상품 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.06.24   최윤지    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addRewardTargetGoods">
+      /*rewardBos.addRewardTargetGoods*/
+      INSERT INTO CS_REWARD_TARGET_GOODS
+      (
+	      CS_REWARD_ID
+	    , IL_GOODS_ID
+	    , GOODS_SORT
+	  )
+	  VALUES
+     <foreach item="insertData" index="index" collection="rewardTargetGoodsList" open="" separator="," close="">
+        (
+          #{csRewardId}
+        , #{insertData.ilGoodsId}
+        , #{insertData.goodsSort}
+        )
+     </foreach>
+  </insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+   * description    : 고객보상제 수정
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.06.24   최윤지    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putReward" parameterType="kr.co.pulmuone.v1.customer.reward.dto.RewardBosRequestDto">
+      /*rewardBos.putReward*/
+	  UPDATE CS_REWARD
+		 SET
+			REWARD_NM = #{rewardNm}
+		  , REWARD_CONTENT = #{rewardContent}
+		  , REWARD_APPLY_STANDARD = #{rewardApplyStandard}
+		  , REWARD_PAY_TP = #{rewardPayTp}
+		  , USE_YN = #{useYn}
+		   <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderApprPeriod)">
+		  , ORDER_APPR_PERIOD = #{orderApprPeriod}
+		   </if>
+		  , DETL_HTML_PC = #{detlHtmlPc}
+		  , DETL_HTML_MOBILE = #{detlHtmlMobile}
+		  , REWARD_NOTICE = #{rewardNotice}
+		   <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(rewardGoodsTp)">
+		  , REWARD_GOODS_TP = #{rewardGoodsTp}
+		   </if>
+		  , START_DT = #{startDt}
+		  , END_DT = #{endDt}
+		  , TIME_OVER_CLOSE_YN = #{timeOverCloseYn}
+		  , MODIFY_DT = NOW()
+		  , MODIFY_ID = #{userVo.userId}
+	  WHERE CS_REWARD_ID = #{csRewardId}
+  </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+   * description    : 고객보상제 적용대상 상품 삭제 - 보상제ID기준 (실제 삭제)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.06.24   최윤지    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delRewardTargetGoodsByCsRewardId" parameterType="java.lang.String">
+      /*rewardBos.delRewardTargetGoodsByCsRewardId*/
+      DELETE FROM CS_REWARD_TARGET_GOODS
+      WHERE  CS_REWARD_ID = #{csRewardId}
+  </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 고객보상제 상세조회 (기본정보, 지급)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.25		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardInfo" resultType="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardBosDetailVo">
+        /* rewardBos.getRewardInfo */
+        SELECT
+				CS.CS_REWARD_ID
+			  , CS.USE_YN
+			  , IFNULL(CS.CREATE_DT, '') AS CREATE_DT
+			  , IFNULL(FN_DECRYPT(UU1.USER_NM), '') AS CREATE_USER_NM
+			  , IFNULL(UU1.LOGIN_ID, '') AS CREATE_USER_ID
+			  , IFNULL(CS.MODIFY_DT, '') AS MODIFY_DT
+			  , IFNULL(FN_DECRYPT(UU2.USER_NM), '') AS MODIFY_USER_NM
+			  , IFNULL(UU2.LOGIN_ID, '') AS MODIFY_USER_ID
+			  , CS.REWARD_APPLY_STANDARD
+			  , CS.REWARD_NM
+			  , CS.REWARD_CONTENT
+			  , CS.START_DT
+			  , CS.END_DT
+			  , CS.ORDER_APPR_PERIOD
+			  , CS.DETL_HTML_PC
+			  , CS.DETL_HTML_MOBILE
+			  , IFNULL(CS.REWARD_NOTICE, '') AS REWARD_NOTICE
+			  , CS.REWARD_PAY_TP
+        	  , CS.REWARD_GOODS_TP
+        	  , CS.TIME_OVER_CLOSE_YN
+		FROM  CS_REWARD CS
+		INNER JOIN UR_USER UU1 ON CS.CREATE_ID = UU1.UR_USER_ID
+		LEFT OUTER JOIN UR_USER UU2 ON CS.MODIFY_ID = UU2.UR_USER_ID
+		WHERE 1=1
+		 AND CS.CS_REWARD_ID = #{csRewardId}
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 고객보상제 상세조회 (적용대상 상품)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.25		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardTargetGoodsInfo" resultType="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardTargetGoodsBosVo">
+        /* rewardBos.getRewardTargetGoodsInfo */
+        SELECT
+               CRTG.CS_REWARD_ID
+     		 , CRTG.CS_REWARD_TARGET_GOODS_ID
+     		 , CRTG.GOODS_SORT
+     		 , FN_COMN_CODE_DIC(IG.GOODS_TP) AS GOODS_TP_NM
+     		 , CRTG.IL_GOODS_ID
+     		 , II.C_IMG AS GOODS_IMAGE_PATH
+     		 , IG.GOODS_NM
+             , FN_COMN_CODE_DIC(IG.SALE_STATUS) AS SALE_STATUS_NM
+		 FROM CS_REWARD_TARGET_GOODS CRTG
+		 INNER JOIN IL_GOODS IG ON CRTG.IL_GOODS_ID = IG.IL_GOODS_ID
+		 LEFT OUTER JOIN IL_ITEM_IMG II ON II.IL_ITEM_CD = IG.IL_ITEM_CD AND II.BASIC_YN = 'Y'
+		 WHERE CRTG.CS_REWARD_ID = #{csRewardId}
+		 ORDER BY CRTG.GOODS_SORT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 고객보상제 신청관리 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.15		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardApplyVo" id="getRewardApplyListMap">
+        <result column="CS_REWARD_APPLY_ID" property="csRewardApplyId"/>
+        <result column="REWARD_NM" property="rewardNm"/>
+        <result column="REWARD_APPLY_CONTENT" property="rewardApplyContent"/>
+        <result column="USER_NM" property="userName"/>
+        <result column="LOGIN_ID" property="loginId"/>
+        <result column="DELAY_YN" property="delayYn"/>
+        <result column="CREATE_DT" property="createDate"/>
+        <result column="MODIFY_DT" property="modifyDate"/>
+        <result column="REWARD_APPLY_STATUS" property="rewardApplyStatus"/>
+        <result column="REWARD_APPLY_STATUS_NAME" property="rewardApplyStatusName"/>
+        <result column="MODIFY_ID" property="modifyId"/>
+        <result column="MODIFY_LOGIN_ID" property="modifyId"/>
+        <result column="MODIFY_USER_NM" property="modifyUserName"/>
+        <result column="REWARD_PAY_TP" property="rewardPayTp"/>
+        <result column="REWARD_PAY_TP_NAME" property="rewardPayTpName"/>
+        <result column="REWARD_PAY_DETL" property="rewardPayDetl"/>
+        <result column="GOODS_NM" property="goodsNm"/>
+        <result column="ODID" property="odid"/>
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="OD_ORDER_ID" property="odOrderId"/>
+        <result column="OD_ORDER_DETL_ID" property="odOrderDetlId"/>
+        <result column="GOODS_TP" property="goodsTp"/>
+        <result column="CS_REWARD_ID" property="csRewardId"/>
+        <result column="REWARD_EXCEL" property="rewardExcel"/>
+        <result column="REWARD_APPLY_STANDARD" property="rewardApplyStandard"/>
+        <result column="PRODUCT_INFO" property="productInfo"/>
+    </resultMap>
+    <select id="getRewardApplyList" resultMap="getRewardApplyListMap">
+        /* rewardBos.getRewardApplyList */
+
+        SELECT RA.CS_REWARD_APPLY_ID		                    /*접수ID*/
+            , CR.REWARD_NM 					                    /*보상제명*/
+            , RA.IL_GOODS_ID
+            , IG.GOODS_NM
+            , IG.GOODS_TP
+            , OO.ODID
+            , RA.OD_ORDER_ID
+            , RA.OD_ORDER_DETL_ID
+            , CASE WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_GOODS' THEN IG.GOODS_NM
+                   WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.PACK_DELIVERY' OR CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_NUMBER' THEN OO.ODID
+                   WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.NONE' THEN ''
+                   WHEN RA.IL_GOODS_ID IS NULL AND RA.OD_ORDER_ID IS NULL THEN ''
+              END AS PRODUCT_INFO                               /*신청대상*/
+            , CASE WHEN CHAR_LENGTH(RA.REWARD_APPLY_CONTENT) <![CDATA[>]]> 30 THEN CONCAT(SUBSTR(RA.REWARD_APPLY_CONTENT , 1 ,30),'...')
+                   ELSE RA.REWARD_APPLY_CONTENT
+              END AS REWARD_APPLY_CONTENT
+            , FN_DECRYPT(RA.USER_NM) AS USER_NM					/*회원명*/
+            , RA.LOGIN_ID 					                    /*회원ID*/
+            , CASE WHEN RA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN 'Y'
+                   WHEN RA.REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.ACCEPT' AND DATE_ADD(DATE_FORMAT(RA.CREATE_DT,'%Y-%m-%d'), INTERVAL 8 DAY) <![CDATA[<]]> NOW() THEN 'N'
+                   ELSE 'Y'
+              END  AS DELAY_YN                                  /*처리지연여부*/
+            , RA.CREATE_DT 					                    /*신청일*/
+            , CASE WHEN RA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN  RA.MODIFY_DT 					/*처리날짜*/
+                   ELSE ''
+              END AS MODIFY_DT
+            , RA.REWARD_APPLY_STATUS 		                    /*처리상태*/
+            , FN_COMN_CODE_DIC(RA.REWARD_APPLY_STATUS) AS REWARD_APPLY_STATUS_NAME
+            , UM.LOGIN_ID AS MODIFY_ID                          /*처리담당자*/
+            , FN_DECRYPT(UM.USER_NM) AS MODIFY_USER_NM          /*처림담당자명*/
+            , RA.REWARD_PAY_TP 				                    /*지급유형*/
+            , FN_COMN_CODE_DIC(RA.REWARD_PAY_TP) AS REWARD_PAY_TP_NAME
+            , RA.REWARD_PAY_DETL 			                    /*지금상세*/
+            , CR.CS_REWARD_ID
+            , CR.REWARD_APPLY_STANDARD
+        FROM CS_REWARD_APPLY RA
+        JOIN CS_REWARD CR ON CR.CS_REWARD_ID = RA.CS_REWARD_ID
+        LEFT JOIN UR_USER UM ON UM.UR_USER_ID = RA.MODIFY_ID
+        LEFT JOIN IL_GOODS IG ON IG.IL_GOODS_ID = RA.IL_GOODS_ID
+        LEFT JOIN OD_ORDER OO ON OO.OD_ORDER_ID  = RA.OD_ORDER_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findApplyKeyword)">
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApplySelect, "SEARCH_ANSWER.USER_NAME")'>
+                        AND   FN_DECRYPT(UM.USER_NM) = #{findApplyKeyword}
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApplySelect, "SEARCH_ANSWER.USER_ID")'>
+                        AND   UM.LOGIN_ID = #{findApplyKeyword}
+                    </when>
+                    <otherwise>
+                        AND   (FN_DECRYPT(UM.USER_NM) = #{findApplyKeyword} OR UM.LOGIN_ID = #{findApplyKeyword})
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findRequestKeyword)">
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchRequestSelect, "SEARCH_SELECT.USER_NAME")'>
+                        AND   FN_DECRYPT(RA.USER_NM) = #{findRequestKeyword}
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchRequestSelect, "SEARCH_SELECT.USER_ID")'>
+                        AND   RA.LOGIN_ID = #{findRequestKeyword}
+                    </when>
+                </choose>
+            </if>
+            <choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(csRewardId)'> <!-- csRewardId가 없으면 -->
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+                            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+                                AND   RA.CREATE_DT BETWEEN  DATE_FORMAT(#{createDateStart}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{createDateEnd}, '%Y-%m-%d 23:59:59')
+                            </if>
+                        </if>
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardId)'> <!-- (고객보상제 리스트 > 신청관리 ) csRewardId가 있으면 -->
+						AND CR.CS_REWARD_ID = #{csRewardId}
+					</when>
+            </choose>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(rewardNm)">
+                AND CR.CS_REWARD_ID = #{rewardNm}
+            </if>
+           <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(rewardStatusList)">
+                <if test="rewardStatusList.size() > 0">
+                    AND   RA.REWARD_APPLY_STATUS IN
+                    <foreach collection="rewardStatusList" item="rewardStatus" index="index" separator="," open="(" close=")">
+                        #{rewardStatus}
+                    </foreach>
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(applyDelayView, 'Y')">
+                AND   CASE WHEN RA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN 'Y'
+                           WHEN RA.REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.ACCEPT' AND DATE_ADD(DATE_FORMAT(RA.CREATE_DT,'%Y-%m-%d'), INTERVAL 8 DAY) <![CDATA[<]]> NOW() THEN 'N'
+                           ELSE 'Y'
+                      END = 'N'
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardApplyId)">
+                AND   RA.CS_REWARD_APPLY_ID = #{csRewardApplyId}
+            </if>
+
+        </where>
+        ORDER BY RA.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+         * description 		: 고객보상제 신청관리 내역 엑셀 다운로드
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.07.07		안치열          최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardApplyListExportExcel" resultMap="getRewardApplyListMap">
+        /* rewardBos.getRewardApplyListExportExcel */
+
+        SELECT    RA.CS_REWARD_APPLY_ID		                /*접수ID*/
+                , CR.REWARD_NM 					            /*보상제명*/
+                , RA.IL_GOODS_ID
+                , IG.GOODS_NM
+                , IG.GOODS_TP
+                , OO.ODID
+                , RA.OD_ORDER_ID
+                , RA.OD_ORDER_DETL_ID
+                , CASE WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_GOODS' THEN IFNULL(IG.GOODS_NM,'')
+                       WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.PACK_DELIVERY' OR CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_NUMBER' THEN IFNULL(OO.ODID,'')
+                       WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.NONE' THEN ''
+                       WHEN RA.IL_GOODS_ID IS NULL AND RA.OD_ORDER_ID IS NULL THEN ''
+                  END AS REWARD_EXCEL                       /*신청대상*/
+                , RA.REWARD_APPLY_CONTENT		            /*신청내용*/
+                , FN_DECRYPT(RA.USER_NM) AS USER_NM			/*회원명*/
+                , RA.LOGIN_ID 					            /*회원ID*/
+                , CASE WHEN RA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN '지연'
+                       WHEN RA.REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.ACCEPT' AND DATE_ADD(DATE_FORMAT(RA.CREATE_DT,'%Y-%m-%d'), INTERVAL 8 DAY) <![CDATA[<]]> NOW() THEN '정상'
+                       ELSE '지연'
+                  END AS DELAY_YN                           /*처리지연여부*/
+                , RA.CREATE_DT 					            /*신청일*/
+                , CASE WHEN RA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN  RA.MODIFY_DT 					/*처리날짜*/
+                       ELSE ' '
+                  END AS MODIFY_DT
+                , RA.REWARD_APPLY_STATUS 		            /*처리상태*/
+                , FN_COMN_CODE_DIC(RA.REWARD_APPLY_STATUS) AS REWARD_APPLY_STATUS_NAME
+                , RA.MODIFY_ID 					            /*처리담당자*/
+                , UM.LOGIN_ID
+                , CASE WHEN UM.USER_NM IS NULL THEN ''
+                       ELSE CONCAT(FN_DECRYPT(UM.USER_NM), '(', UM.LOGIN_ID ,')')
+                  END AS MODIFY_USER_NM                     /*처림담당자명*/
+                , RA.REWARD_PAY_TP 				            /*지급유형*/
+                , FN_COMN_CODE_DIC(RA.REWARD_PAY_TP) AS REWARD_PAY_TP_NAME
+                , CASE WHEN RA.REWARD_PAY_TP = 'REWARD_PAY_TP.POINT' AND CHAR_LENGTH(RA.REWARD_PAY_DETL ) <![CDATA[>]]>  0 THEN CONCAT(RA.REWARD_PAY_DETL,'원')
+                       WHEN RA.REWARD_PAY_TP = 'REWARD_PAY_TP.POINT' AND RA.REWARD_PAY_DETL IS NULL THEN ''
+                       ELSE IFNULL(RA.REWARD_PAY_DETL,'')
+                       END AS REWARD_PAY_DETL 			    /*지금상세*/
+                , CR.CS_REWARD_ID
+        FROM CS_REWARD_APPLY RA
+        JOIN CS_REWARD CR ON CR.CS_REWARD_ID = RA.CS_REWARD_ID
+        LEFT JOIN UR_USER UM ON UM.UR_USER_ID = RA.MODIFY_ID
+        LEFT JOIN IL_GOODS IG ON IG.IL_GOODS_ID = RA.IL_GOODS_ID
+        LEFT JOIN OD_ORDER OO ON OO.OD_ORDER_ID  = RA.OD_ORDER_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findApplyKeyword)">
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApplySelect, "SEARCH_ANSWER.USER_NAME")'>
+                        AND   FN_DECRYPT(UM.USER_NM) = #{findApplyKeyword}
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApplySelect, "SEARCH_ANSWER.USER_ID")'>
+                        AND   UM.LOGIN_ID = #{findApplyKeyword}
+                    </when>
+                    <otherwise>
+                        AND   (FN_DECRYPT(UM.USER_NM) = #{findApplyKeyword} OR UM.LOGIN_ID = #{findApplyKeyword})
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findRequestKeyword)">
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchRequestSelect, "SEARCH_SELECT.USER_NAME")'>
+                        AND   FN_DECRYPT(RA.USER_NM) = #{findRequestKeyword}
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchRequestSelect, "SEARCH_SELECT.USER_ID")'>
+                        AND   RA.LOGIN_ID = #{findRequestKeyword}
+                    </when>
+                </choose>
+            </if>
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(csRewardId)'> <!-- csRewardId가 없으면 -->
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+                            AND   RA.CREATE_DT BETWEEN  DATE_FORMAT(#{createDateStart}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{createDateEnd}, '%Y-%m-%d 23:59:59')
+                        </if>
+                    </if>
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardId)'> <!-- (고객보상제 리스트 > 신청관리 ) csRewardId가 있으면 -->
+                    AND CR.CS_REWARD_ID = #{csRewardId}
+                </when>
+            </choose>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(rewardNm)">
+                AND CR.CS_REWARD_ID = #{rewardNm}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(rewardStatusList)">
+                <if test="rewardStatusList.size() > 0">
+                    AND   RA.REWARD_APPLY_STATUS IN
+                    <foreach collection="rewardStatusList" item="rewardStatus" index="index" separator="," open="(" close=")">
+                        #{rewardStatus}
+                    </foreach>
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(applyDelayView, 'Y')">
+                AND   CASE WHEN RA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN 'Y'
+                           WHEN RA.REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.ACCEPT' AND DATE_ADD(DATE_FORMAT(RA.CREATE_DT,'%Y-%m-%d'), INTERVAL 8 DAY) <![CDATA[<]]> NOW() THEN 'N'
+                           ELSE 'Y'
+                      END = 'N'
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardApplyId)">
+                AND   RA.CS_REWARD_APPLY_ID = #{csRewardApplyId}
+            </if>
+
+        </where>
+        ORDER BY RA.CREATE_DT DESC
+    </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 보상제 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.16		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getRewardNmListMap" type="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardApplyVo">
+        <result column="CS_REWARD_ID"  property="csRewardId"/>
+        <result column="REWARD_NM"  property="rewardNm"/>
+    </resultMap>
+
+    <select id="getRewardNmList" resultMap="getRewardNmListMap">
+        /* rewardBos.getRewardNmList */
+        SELECT CS_REWARD_ID
+            , REWARD_NM
+        FROM CS_REWARD
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardId)">
+            WHERE CS_REWARD_ID = #{csRewardId}
+        </if>
+        ORDER BY CREATE_DT DESC
+
+    </select>
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 고객보상제 신청 상세
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.17		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardApplyDetail" resultType="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardApplyVo">
+        /* rewardBos.getRewardApplyDetail */
+        SELECT CA.CS_REWARD_ID
+            , CA.CS_REWARD_APPLY_ID
+            , FN_DECRYPT(CA.USER_NM) AS USER_NAME
+            , CA.LOGIN_ID
+            , CA.UR_USER_ID
+            , FN_DECRYPT(CA.MOBILE) AS MOBILE
+            , FN_DECRYPT(CA.MAIL) AS MAIL
+            , FN_DECRYPT(CA.MOBILE) AS MOBILE_SEND
+            , FN_DECRYPT(CA.MAIL) AS MAIL_SEND
+            , CR.REWARD_APPLY_STANDARD
+            , FN_COMN_CODE_DIC(CR.REWARD_APPLY_STANDARD) AS REWARD_APPLY_STANDARD_NAME
+            , CA.CREATE_DT AS CREATE_DATE
+            , CA.REWARD_APPLY_STATUS
+            , FN_COMN_CODE_DIC(CA.REWARD_APPLY_STATUS) AS REWARD_APPLY_STATUS_NAME
+            , CASE WHEN CA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN  CA.MODIFY_DT					/*처리날짜*/
+                   ELSE ' '
+                   END AS MODIFY_DATE
+            , CASE WHEN CA.REWARD_APPLY_STATUS <![CDATA[<>]]> 'REWARD_APPLY_STATUS.ACCEPT' THEN 'Y'
+                   WHEN CA.REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.ACCEPT'  AND DATE_ADD(DATE_FORMAT(CA.CREATE_DT, '%Y-%m-%d'), INTERVAL 8 DAY) <![CDATA[<]]> NOW() THEN 'N'
+                   ELSE 'Y'
+               END AS DELAY_YN
+            , CA.ANSWER_SMS_YN
+            , CA.ANSWER_MAIL_YN
+            , CA.REWARD_APPLY_CONTENT
+            , CA.ADMIN_CMT
+            , CA.REWARD_PAY_TP
+            , CA.REWARD_PAY_DETL
+            , CA.ANSWER
+            , CASE WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_GOODS' THEN IG.GOODS_NM
+                   WHEN CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.PACK_DELIVERY' OR CR.REWARD_APPLY_STANDARD = 'REWARD_APPLY_STANDARD.ORDER_NUMBER' THEN OO.ODID
+                   WHEN CA.IL_GOODS_ID IS NULL AND CA.OD_ORDER_ID IS NULL THEN ''
+              END AS PRODUCT_INFO
+            , CA.IL_GOODS_ID
+            , CA.OD_ORDER_ID
+            , CA.OD_ORDER_DETL_ID
+            , OO.ODID
+            , IG.GOODS_TP
+            , CR.REWARD_NM AS REWARD_NAME
+        FROM CS_REWARD_APPLY CA
+        JOIN CS_REWARD CR ON CA.CS_REWARD_ID = CR.CS_REWARD_ID
+        LEFT JOIN IL_GOODS IG ON IG.IL_GOODS_ID = CA.IL_GOODS_ID
+        LEFT JOIN OD_ORDER OO ON OO.OD_ORDER_ID = CA.OD_ORDER_ID
+        WHERE CA.CS_REWARD_APPLY_ID = #{csRewardApplyId}
+
+    </select>
+
+ <!--───────────────────────────────────────────────────────────────────────
+   * description 		: 1:1문의 상세 첨부파일 이미지
+   * @
+   * @ 수정일			수정자		  수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.06.17		안치열		  최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+    <select id="getImageList" resultType="kr.co.pulmuone.v1.customer.reward.dto.vo.RewardApplyVo">
+        /* rewardBos.getImageList */
+        SELECT
+              CS_REWARD_APPLY_ATTC_ID
+            , CS_REWARD_APPLY_ID
+            , IMG_ORIGIN_NM
+            , IMG_NM AS IMAGE_NAME
+            , IMG_PATH AS IMAGE_PATH
+        FROM CS_REWARD_APPLY_ATTC
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csRewardApplyId)">
+            WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+        </if>
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 처리진행 상태변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.21		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putRewardApplyConfirmStatus">
+        /*	rewardBos.putRewardApplyConfirmStatus	*/
+        UPDATE CS_REWARD_APPLY
+        SET REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.CONFIRM',
+        MODIFY_DT = now(),
+        MODIFY_ID = #{urUserId}
+        WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 보상제 신청 상세 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.21		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putRewardApplyInfo">
+        /*	rewardBos.putRewardApplyInfo	*/
+        UPDATE CS_REWARD_APPLY
+        SET REWARD_APPLY_STATUS = #{rewardApplyResult},
+            REWARD_APPLY_RESULT = #{rewardApplyResult},
+            REWARD_PAY_DETL = #{rewardPayDetl},
+            ANSWER = #{answer},
+            ADMIN_CMT = #{adminCmt},
+            MODIFY_DT = now(),
+            MODIFY_ID = #{urUserId}
+        WHERE CS_REWARD_APPLY_ID = #{csRewardApplyId}
+    </update>
+
+</mapper>

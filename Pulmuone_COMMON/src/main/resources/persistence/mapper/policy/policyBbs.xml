@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.bbs.PolicyBbsMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 게시판 관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.bbs.dto.PolicyBbsBannedWordDto" id="getPolicyBbsBannedWordInfoMap">
+		<result column="MALL_BANNED_WORD"  property="mallBannedWord"  />
+		<result column="BOS_BANNED_WORD"  property="bosBannedWord" />
+		<result column="MALL_USE_YN"  property="mallUseYn"  />
+		<result column="BOS_USE_YN"  property="bosUseYn" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.bbs.dto.vo.PolicyBbsDivisionVo" id="getPolicyBbsDivisionMap">
+		<result column="CS_CATEGORY_ID"  property="csCategoryId"  />
+		<result column="BBS_TP"  property="bbsTp" />
+		<result column="BBS_TP_NAME"  property="bbsTpNm"  />
+		<result column="PARENT_CATEGORY_ID"  property="parentCategoryId" />
+		<result column="PARENT_CATEGORY_NM"  property="parentCategoryNm" />
+		<result column="CATEGORY_NM"  property="categoryNm" />
+		<result column="USE_YN"  property="useYn" />
+		<result column="SORT"  property="sort" />
+		<result column="USER_DEF_CD"  property="userDefCd" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.bbs.dto.vo.PolicyBbsAuthVo" id="getPolicyBbsAuthMap">
+		<result column="CS_BBS_CONFIG_ID"  property="csBbsConfigId"  />
+		<result column="CS_CATEGORY_ID"  property="csCategoryId"  />
+		<result column="BBS_NM"  property="bbsNm"  />
+		<result column="IMAGE_YN"  property="imageYn" />
+		<result column="ATTACH_YN"  property="attachYn" />
+		<result column="REPLY_YN"  property="replyYn" />
+		<result column="COMMENT_YN"  property="commentYn" />
+		<result column="COMMENT_SECRET_YN"  property="commentSecretYn" />
+		<result column="RECOMMEND_YN"  property="recommendYn" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+
+	<select id="getPolicyBbsBannedWord" resultMap="getPolicyBbsBannedWordInfoMap">
+		/*	PolicyBbsBannedWord.getPolicyBbsBannedWord	*/
+		SELECT
+		  GROUP_CONCAT(if(SITE_TP = 'MALL', BANNED_WORD, NULL)) AS 'MALL_BANNED_WORD',
+		  GROUP_CONCAT(if(SITE_TP = 'BOS', BANNED_WORD, NULL)) AS 'BOS_BANNED_WORD',
+		  GROUP_CONCAT(if(SITE_TP = 'MALL', USE_YN, NULL)) AS 'MALL_USE_YN' ,
+		  GROUP_CONCAT(if(SITE_TP = 'BOS', USE_YN, NULL)) AS 'BOS_USE_YN'
+		FROM CS_SPAM
+		WHERE 1=1
+		AND SITE_TP in
+		('MALL'
+		,'BOS'
+		)
+		LIMIT 1
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 게시판 금칙어 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPolicyBbsBannedWord">
+		/*	PolicyBbs.putPolicyBbsBannedWord	*/
+		UPDATE CS_SPAM
+		SET
+			BANNED_WORD =
+				CASE
+				WHEN SITE_TP = 'MALL' THEN #{mallBannedWord}
+				WHEN SITE_TP = 'BOS' THEN #{bosBannedWord}
+				END
+			, USE_YN =
+				CASE
+				WHEN SITE_TP = 'MALL' THEN #{mallUseYn}
+				WHEN SITE_TP = 'BOS' THEN #{bosUseYn}
+				END
+		WHERE 1=1
+		AND SITE_TP in
+		('MALL'
+		,'BOS'
+		)
+	</update>
+
+	<insert id="addPolicyBbsBannedWord">
+        /*	PolicyBbs.addPolicyBbsBannedWord	*/
+        INSERT INTO CS_SPAM(
+				SITE_TP, BANNED_WORD, USE_YN, CREATE_ID, CREATE_DT
+		)
+		VALUES
+		(
+				'MALL', #{mallBannedWord}, #{mallUseYn}, #{userVo.userId}, NOW()
+			)
+		,(
+				'BOS', #{bosBannedWord}, #{bosUseYn}, #{userVo.userId}, NOW()
+			)
+    </insert>
+	<select id="getPolicyBbsDivisionList" resultMap="getPolicyBbsDivisionMap">
+		/*	PolicyBbs.getPolicyBbsDivisionList	*/
+		SELECT
+			CC.CS_CATEGORY_ID, CC.BBS_TP
+			, (SELECT FN_DIC(COMNCODE.GB_DIC_MST_ID, '1')  FROM ST_COMN_CODE COMNCODE WHERE ST_COMN_CODE_MST_CD = 'BBS_TP' AND COMNCODE.ST_COMN_CODE_ID = CC.BBS_TP) AS BBS_TP_NAME
+			, CC.PARENT_CATEGORY_ID
+			,(SELECT CATEGORY_NM FROM CS_CATEGORY WHERE CS_CATEGORY_ID = CC.PARENT_CATEGORY_ID) AS PARENT_CATEGORY_NM
+			, CATEGORY_NM, USE_YN, SORT, USER_DEF_CD
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM CS_CATEGORY CC
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(bbsTp)">
+		AND BBS_TP = #{bbsTp}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryNm)">
+		AND CATEGORY_NM like CONCAT('%', #{categoryNm}, '%')
+		</if>
+		ORDER BY SORT ASC
+	</select>
+	<select id="getPolicyBbsDivisionParentCategoryList" resultMap="getPolicyBbsDivisionMap">
+		/*	PolicyBbs.getPolicyBbsDivisionParentCategoryList	*/
+		SELECT
+			CS_CATEGORY_ID, CATEGORY_NM
+		FROM CS_CATEGORY
+		WHERE BBS_TP = #{bbsTp}
+		AND PARENT_CATEGORY_ID is null
+	</select>
+	<select id="getPolicyBbsDivisionInfo" resultMap="getPolicyBbsDivisionMap">
+		/*	PolicyBbs.getPolicyBbsDivisionInfo	*/
+		SELECT
+			CC.CS_CATEGORY_ID, CC.BBS_TP
+			, (SELECT FN_DIC(COMNCODE.GB_DIC_MST_ID, '1')  FROM ST_COMN_CODE COMNCODE WHERE ST_COMN_CODE_MST_CD = 'BBS_TP' AND COMNCODE.ST_COMN_CODE_ID = CC.BBS_TP) AS BBS_TP_NAME
+			, CC.PARENT_CATEGORY_ID
+			,(SELECT CATEGORY_NM FROM CS_CATEGORY WHERE CS_CATEGORY_ID = CC.PARENT_CATEGORY_ID) AS PARENT_CATEGORY_NM
+			, CATEGORY_NM, USE_YN, SORT, USER_DEF_CD
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM CS_CATEGORY CC
+		WHERE CS_CATEGORY_ID = #{csCategoryId}
+	</select>
+	<insert id="addPolicyBbsDivision">
+		INSERT INTO CS_CATEGORY
+			(BBS_TP,
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentCategoryId)">
+			PARENT_CATEGORY_ID,
+			</if>
+			CATEGORY_NM, USE_YN
+			, CREATE_ID, CREATE_DT)
+		VALUES
+			(#{bbsTp},
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentCategoryId)">
+			#{parentCategoryId},
+			</if>
+			#{categoryNm}, #{useYn}
+			, #{userVo.userId}, NOW())
+	</insert>
+	<update id="putPolicyBbsDivision">
+		UPDATE CS_CATEGORY
+		SET
+			BBS_TP = #{bbsTp}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(parentCategoryId)">
+			, PARENT_CATEGORY_ID = null
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentCategoryId)">
+			, PARENT_CATEGORY_ID = #{parentCategoryId}
+			</if>
+			, CATEGORY_NM = #{categoryNm}
+			, USE_YN = #{useYn}
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = NOW()
+		WHERE CS_CATEGORY_ID = #{csCategoryId}
+	</update>
+	<delete id="delPolicyBbsDivision">
+		/*	PolicyBbs.delPolicyBbsDivision	*/
+		DELETE
+		FROM CS_CATEGORY
+		WHERE CS_CATEGORY_ID = #{csCategoryId}
+	</delete>
+	<select id="getPolicyBbsAuthList" resultMap="getPolicyBbsAuthMap">
+		/*	PolicyBbs.getPolicyBbsAuthList	*/
+		SELECT
+			CC.BBS_TP, CBC.CS_BBS_CONFIG_ID, CBC.CS_CATEGORY_ID, CBC.BBS_NM, CBC.IMAGE_YN, CBC.ATTACH_YN,
+			CBC.REPLY_YN, CBC.COMMENT_YN, CBC.COMMENT_SECRET_YN, CBC.RECOMMEND_YN, CBC.CREATE_ID, CBC.CREATE_DT, CBC.MODIFY_ID, CBC.MODIFY_DT
+		FROM CS_BBS_CONFIG CBC
+		LEFT OUTER JOIN CS_CATEGORY CC ON CBC.CS_CATEGORY_ID = CC.CS_CATEGORY_ID
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(bbsTp)">
+		AND CC.BBS_TP = #{bbsTp}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(bbsNm)">
+		AND CBC.BBS_NM like CONCAT('%', #{bbsNm}, '%')
+		</if>
+		ORDER BY CREATE_DT DESC
+	</select>
+	<select id="getPolicyBbsAuthCategoryList" resultMap="getPolicyBbsDivisionMap">
+		/*	PolicyBbs.getPolicyBbsAuthCategoryList	*/
+		SELECT
+			CS_CATEGORY_ID, CATEGORY_NM
+		FROM CS_CATEGORY
+		WHERE PARENT_CATEGORY_ID is not null
+	</select>
+	<select id="getPolicyBbsAuthInfo" resultMap="getPolicyBbsAuthMap">
+		/*	PolicyBbs.getPolicyBbsAuthInfo	*/
+		SELECT
+			CC.CATEGORY_NM, CBC.CS_BBS_CONFIG_ID, CBC.CS_CATEGORY_ID, CBC.BBS_NM, CBC.IMAGE_YN, CBC.ATTACH_YN,
+			CBC.REPLY_YN, CBC.COMMENT_YN, CBC.COMMENT_SECRET_YN, CBC.RECOMMEND_YN, CBC.CREATE_ID, CBC.CREATE_DT, CBC.MODIFY_ID, CBC.MODIFY_DT
+		FROM CS_BBS_CONFIG CBC
+		LEFT OUTER JOIN CS_CATEGORY CC ON CBC.CS_CATEGORY_ID = CC.CS_CATEGORY_ID
+		WHERE CS_BBS_CONFIG_ID = #{csBbsConfigId}
+	</select>
+	<insert id="addPolicyBbsAuth">
+		INSERT INTO CS_BBS_CONFIG
+			(CS_CATEGORY_ID, BBS_NM, IMAGE_YN, ATTACH_YN, REPLY_YN
+			, COMMENT_YN, COMMENT_SECRET_YN, RECOMMEND_YN, CREATE_ID, CREATE_DT
+			)
+		VALUES
+			(#{csCategoryId}, #{bbsNm}, #{imageYn}, #{attachYn}, #{replyYn}
+			, #{commentYn}, #{commentSecretYn}, #{recommendYn}, #{userVo.userId}, NOW()
+			)
+	</insert>
+	<update id="putPolicyBbsAuth">
+		UPDATE CS_BBS_CONFIG
+		SET
+			BBS_NM = #{bbsNm}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csCategoryId)">
+			, CS_CATEGORY_ID = #{csCategoryId}
+			</if>
+			, IMAGE_YN = #{imageYn}
+			, ATTACH_YN = #{attachYn}
+			, REPLY_YN = #{replyYn}
+			, COMMENT_YN = #{commentYn}
+			, COMMENT_SECRET_YN = #{commentSecretYn}
+			, RECOMMEND_YN = #{recommendYn}
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = NOW()
+		WHERE CS_BBS_CONFIG_ID = #{csBbsConfigId}
+	</update>
+	<delete id="delPolicyBbsAuth">
+		DELETE
+		FROM CS_BBS_CONFIG
+		WHERE CS_BBS_CONFIG_ID = #{csBbsConfigId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 금칙어 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.13		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSpam" resultType="string">
+		/*	PolicyBbs.getSpam	*/
+		SELECT BANNED_WORD
+		FROM CS_SPAM
+		WHERE SITE_TP = #{siteType}
+			AND USE_YN = 'Y'
+	</select>
+</mapper>

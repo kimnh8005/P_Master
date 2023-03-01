@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.employee.ErpRegalMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 법인정보 최근 업데이트 일자
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17        손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getLastUpdateDate" resultType="java.lang.String">
+    /* erpRegal.getLastUpdateDate */
+    SELECT IFNULL( DATE_FORMAT(A.LAST_UPDATE_DATE, '%Y-%m-%d %H:%i:%s'), '') AS LAST_UPDATE_DATE
+      FROM (
+            SELECT IFNULL(MAX(MODIFY_DT), MAX(CREATE_DT)) AS LAST_UPDATE_DATE
+              FROM UR_ERP_REGAL
+             WHERE USE_YN = 'Y'
+         ) A
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 법인정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17        손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getPulmuoneRegalListResultMap" type="kr.co.pulmuone.v1.user.employee.dto.vo.ErpRegalVo">
+        <result column="ERP_REGAL_CODE" property="erpRegalCode" />
+        <result column="ERP_REGAL_NAME" property="erpRegalName" />
+        <result column="EMPLOYEE_DISCOUNT_YN" property="employeeDiscountYn" />
+    </resultMap>
+
+    <!-- ERP 법인정보 조회 -->
+    <select id="getPulmuoneRegalList" resultMap="getPulmuoneRegalListResultMap">
+        /* erpRegal.getPulmuoneRegalList */
+        SELECT ER.ERP_REGAL_CD AS ERP_REGAL_CODE /* 법인코드 */
+             , ER.ERP_REGAL_NM AS ERP_REGAL_NAME /* 법인명 */
+             , ER.EMPLOYEE_DISCOUNT_YN /* 임직원 혜택적용 여부 */
+          FROM UR_ERP_REGAL ER
+         WHERE ER.USE_YN = 'Y'
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ERP_REGAL_NAME")'>
+                AND ER.ERP_REGAL_NM LIKE CONCAT('%', #{findKeyword}, '%')
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ERP_REGAL_CODE")'>
+                AND ER.ERP_REGAL_CD = #{findKeyword}
+            </when>
+        </choose>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(employeeBenefitsApply)">
+            AND ER.EMPLOYEE_DISCOUNT_YN = #{employeeBenefitsApply}
+        </if>
+         ORDER BY ER.ERP_REGAL_NM
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 법인정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addErpRegal">
+        /* erpRegal.addErpRegal */
+        INSERT INTO UR_ERP_REGAL
+        (
+          ERP_REGAL_CD
+        , ERP_REGAL_NM
+        , EMPLOYEE_DISCOUNT_YN
+        , USE_YN
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{erpRegalCode}
+        , #{erpRegalName}
+        , #{employeeDiscountYn}
+        , #{useYn}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 법인정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putErpRegal">
+        /* erpRegal.putErpRegal */
+        UPDATE UR_ERP_REGAL
+           SET MODIFY_DT = NOW()
+             , MODIFY_ID = #{createId}
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalName)">
+             , ERP_REGAL_NM = #{erpRegalName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(employeeDiscountYn)">
+             , EMPLOYEE_DISCOUNT_YN = #{employeeDiscountYn}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+             , USE_YN = #{useYn}
+         </if>
+         WHERE ERP_REGAL_CD = #{erpRegalCode}
+    </update>
+</mapper>

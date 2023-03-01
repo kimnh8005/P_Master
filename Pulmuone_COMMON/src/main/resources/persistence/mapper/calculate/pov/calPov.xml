@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.pov.CalPovMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: POV I/F 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPovListMap" type="kr.co.pulmuone.v1.calculate.pov.dto.vo.CalPovAllocationVo">
+		<result property="scenario" column="SCENARIO"/>
+		<result property="allocationType" column="ALLOCATION_TYPE"/>
+		<result property="year" column="YEAR"/>
+		<result property="month" column="MONTH"/>
+		<result property="corporationCode" column="CORP"/>
+		<result property="channelCode" column="SHOP"/>
+		<result property="skuCode" column="SKU"/>
+		<result property="accountCode" column="ACCOUNT"/>
+		<result property="cost" column="VALUE"/>
+		<result property="creator" column="CREATOR"/>
+		<result property="loadTime" column="LOAD_TIME"/>
+		<result property="factoryCode" column="SHIP_ORG"/>
+	</resultMap>
+	<select id="getPovList" resultMap="getPovListMap">
+		/* calPov.getPovList */
+		SELECT
+				SCENARIO,
+				ALLOCATION_TYPE,
+				YEAR,
+				MONTH,
+				CORP,
+				SHOP,
+				SKU,
+				ACCOUNT,
+				VALUE,
+				CREATOR,
+				LOAD_TIME,
+				SHIP_ORG
+		FROM    CA_POV_ALLOCATION
+		WHERE   SCENARIO = #{scenario}
+			AND YEAR = #{year}
+			AND MONTH = #{month}
+	</select>
+
+
+	<resultMap id="getPovProcessListMap" type="kr.co.pulmuone.v1.calculate.pov.dto.vo.CalPovProcessVo">
+		<result property="year" column="YEAR" />
+		<result property="month" column="MONTH" />
+		<result property="scenario" column="SCENARIO" />
+		<result property="isInterfaced" column="IF_CHK"/>
+		<result property="creator" column="CREATOR" />
+		<result property="createDate" column="CREATE_DT" />
+		<result property="updater" column="UPDATER" />
+		<result property="updateDate" column="UPDATE_DT" />
+	</resultMap>
+	<select id="getPovProcessList" resultMap="getPovProcessListMap">
+		/* calPov.getPovProcessList */
+		SELECT
+				YEAR,
+				MONTH,
+				SCENARIO,
+				IF(IF_CHK = 'Y',TRUE, FALSE) AS IF_CHK,
+				CREATOR,
+				CREATE_DT,
+				UPDATER,
+				UPDATE_DT
+		FROM    CA_POV_PROCESS
+		WHERE   SCENARIO = #{scenario}
+			AND YEAR = #{year}
+			AND MONTH = #{month}
+	</select>
+
+	<delete id="deletePovProcessByScenarioAndYearAndMonth">
+		/* calPov.deletePovProcessByScenarioAndYearAndMonth */
+		DELETE FROM
+				CA_POV_PROCESS
+		WHERE SCENARIO = #{scenario}
+			AND YEAR = #{year}
+			AND MONTH = #{month}
+	</delete>
+
+	<delete id="deletePovAllocationByScenarioAndYearAndMonth">
+		/* calPov.deletePovAllocationByScenarioAndYearAndMonth */
+		DELETE FROM
+				CA_POV_ALLOCATION
+		WHERE SCENARIO = #{scenario}
+			AND YEAR = #{year}
+			AND MONTH = #{month}
+	</delete>
+
+	<insert id="insertPovProcess" parameterType="kr.co.pulmuone.v1.calculate.pov.dto.vo.CalPovProcessVo">
+		/* calPov.insertPovProcess */
+		INSERT INTO
+			CA_POV_PROCESS (
+				YEAR,
+				MONTH,
+				SCENARIO,
+				IF_CHK,
+				CREATOR,
+				CREATE_DT
+		) VALUES (
+				#{year},
+				#{month},
+				#{scenario},
+				<choose>
+					<when test="isInterfaced">
+						'Y',
+					</when>
+					<otherwise>
+						'N',
+					</otherwise>
+				</choose>
+				#{creator},
+				#{createDate}
+		)
+	</insert>
+
+	<insert id="insertPovAllocation" parameterType="kr.co.pulmuone.v1.calculate.pov.dto.vo.CalPovAllocationVo">
+		 /* calPov.insertPovAllocation */
+		INSERT INTO
+			CA_POV_ALLOCATION (
+				SCENARIO,
+				ALLOCATION_TYPE,
+				YEAR,
+				MONTH,
+				CORP,
+				SHOP,
+				SKU,
+				ACCOUNT,
+				VALUE,
+				CREATOR,
+				LOAD_TIME,
+				SHIP_ORG
+		) VALUES (
+				#{scenario},
+				#{allocationType},
+				#{year},
+				#{month},
+				#{corporationCode},
+				#{channelCode},
+				#{skuCode},
+				#{accountCode},
+				#{cost},
+				#{creator},
+				#{loadTime},
+				#{factoryCode}
+		)
+	</insert>
+
+	<update id="updatePovProcessWhenInterfaced" parameterType="kr.co.pulmuone.v1.calculate.pov.dto.vo.CalPovProcessVo">
+		/* calPov.updatePovProcessWhenInterfaced */
+		UPDATE
+				CA_POV_PROCESS
+		SET 	IF_CHK =
+				<choose>
+					<when test="isInterfaced">
+						'Y',
+					</when>
+					<otherwise>
+						'N',
+					</otherwise>
+				</choose>
+				UPDATER = #{updater},
+				UPDATE_DT = #{updateDate}
+		WHERE	SCENARIO = #{scenario}
+			AND	YEAR = #{year}
+			AND MONTH = #{month}
+	</update>
+</mapper>

@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.delivery.OrderBulkTrackingNumberMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description		:  주문상세 번호 존재여부 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOdOrderDetlIdCount" resultType="int">
+		/* orderBulkTrackingNumber.getOdOrderDetlIdCount */
+		 SELECT OOD.OD_ORDER_DETL_ID
+		   FROM OD_ORDER_DETL OOD	/* 주문상세 */
+		  WHERE
+		  		OOD.ODID = #{odid}
+		  		AND OOD.OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description		:  택배사 존재여부 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPsShippingCompIdCount" resultType="int">
+		/* orderBulkTrackingNumber.getPsShippingCompIdCount */
+		SELECT COUNT(PSC.PS_SHIPPING_COMP_ID)
+		  FROM PS_SHIPPING_COMP PSC	/* 택배사 설정 */
+		 WHERE PSC.USE_YN = 'Y'
+		   AND PSC.PS_SHIPPING_COMP_ID = #{psShippingCompId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄송장정보 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderBulkTrackingNumber" >
+		<selectKey resultType="Long" keyProperty="odBulkTrackingNumberId" order="AFTER">
+            SELECT IFNULL(MAX(OD_BULK_TRACKING_NUMBER_ID), 1)  FROM OD_BULK_TRACKING_NUMBER
+        </selectKey>
+
+		/* orderBulkTrackingNumber.addOrderBulkTrackingNumber */
+		INSERT INTO OD_BULK_TRACKING_NUMBER
+		(
+		  SUCCESS_CNT		/* 정상건수 */
+		, FAILURE_CNT		/* 실패건수 */
+		, CREATE_ID			/* 등록자 UR_USER.UR_USER_ID */
+		, CREATE_DT			/* 등록일 */
+		, ORIGIN_NM			/* 원본파일명 */
+		)
+		VALUES
+		( #{successCnt}
+		, #{failureCnt}
+		, #{createId}
+		, NOW()
+		, #{originNm}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description		:  주문상세 번호 존재여부 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderTrackingNumberCnt" resultType="int">
+		/* orderBulkTrackingNumber.getOrderTrackingNumberCnt */
+		SELECT COUNT(OTN.OD_TRACKING_NUMBER_ID)
+		  FROM OD_TRACKING_NUMBER OTN /* 주문상세 송장번호 */
+		 WHERE OTN.OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 송장번호 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderTrackingNumber" >
+		/* orderBulkTrackingNumber.addOrderTrackingNumber */
+		INSERT INTO OD_TRACKING_NUMBER
+		(
+		  OD_ORDER_DETL_ID		/* 주문상세 PK */
+		, PS_SHIPPING_COMP_ID	/* 택배사 PK */
+		, TRACKING_NO			/* 개별송장번호 */
+		, SORT					/* 순서 */
+		, CREATE_ID				/* 등록자  UR_USER.UR_USER_ID */
+		, CREATE_DT				/* 등록일 */
+		, EZADMIN_API_YN		/* 이지어드민 송장입력 API */
+		)
+		VALUES
+		( #{odOrderDetlId}
+		, #{psShippingCompId}
+		, REPLACE(#{trackingNo},'-','')
+		, 1
+		, #{createId}
+		, NOW()
+		, 'N'
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 송장번호 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderTrackingNumber" >
+		/* orderBulkTrackingNumber.putOrderTrackingNumber */
+		UPDATE OD_TRACKING_NUMBER	/* 주문상세 송장번호 */
+		   SET PS_SHIPPING_COMP_ID = #{psShippingCompId}	/* 택배사 PK */
+		     , TRACKING_NO		   = #{trackingNo}			/* 개별송장번호 */
+		     , CREATE_ID		   = #{createId}			/* 등록자  UR_USER.UR_USER_ID */
+		     , CREATE_DT		   = NOW()					/* 등록일 */
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}	/* 주문상세 PK */
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 송장번호 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="delOrderTrackingNumber" >
+		/* orderBulkTrackingNumber.delOrderTrackingNumber */
+		DELETE FROM OD_TRACKING_NUMBER	/* 주문상세 송장번호 */
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}	/* 주문상세 PK */
+	</update>
+
+	<!-- 취소요청 건 조회 -->
+	<select id="selectCancelRequestClaimInfo" resultType="int">
+		/* orderBulkTrackingNumber.selectCancelRequestClaimInfo */
+		SELECT COUNT(OD_CLAIM_DETL_ID)
+		FROM OD_CLAIM_DETL
+		WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+		AND CLAIM_STATUS_CD = 'CA'
+	</select>
+
+	<!-- 취소거부 사유 업데이트 -->
+	<update id="putCancelDenialReason" >
+		/* orderBulkTrackingNumber.putCancelDenialReason */
+		UPDATE OD_CLAIM
+		SET REJECT_REASON_MSG = #{denialReason}
+		    , CLAIM_YN = 'N'
+		WHERE OD_CLAIM_ID IN (SELECT OD_CLAIM_ID FROM OD_CLAIM_DETL WHERE OD_ORDER_DETL_ID = #{odOrderDetlId} AND CLAIM_STATUS_CD = 'CA')
+	</update>
+
+	<!-- 주문정보 취소수량 원복 -->
+	<update id="putOrderDetlCancelCnt" >
+		/* orderBulkTrackingNumber.putOrderDetlCancelCnt */
+		UPDATE OD_ORDER_DETL
+		SET CANCEL_CNT = CANCEL_CNT - IFNULL((SELECT SUM(CLAIM_CNT) FROM OD_CLAIM_DETL WHERE OD_ORDER_DETL_ID = #{odOrderDetlId} AND CLAIM_STATUS_CD = 'CA') ,0)
+		WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+	<!-- 취소거부로 업데이트 -->
+	<update id="putCancelRequestClaimDenial" >
+		/* orderBulkTrackingNumber.putCancelRequestClaimDenial */
+		UPDATE OD_CLAIM_DETL
+		SET CLAIM_STATUS_CD = 'CE'
+		WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+		AND CLAIM_STATUS_CD = 'CA'
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄송장 성공내역 테이블 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderBulkTrackingNumberSucc" >
+		/* orderBulkTrackingNumber.addOrderBulkTrackingNumberSucc */
+		INSERT INTO OD_BULK_TRACKING_NUMBER_SUCC_DETL	/* 일괄송장 성공내역 */
+		(
+		  OD_BULK_TRACKING_NUMBER_ID	/* 일괄송장입력 PK */
+		, OD_ORDER_DETL_ID				/* 주문상세 PK */
+		, PS_SHIPPING_COMP_ID			/* 택배사 PK */
+		, TRACKING_NO					/* 송장번호 */
+		, ODID							/* 주문번호 */
+		, OD_ORDER_DETL_SEQ				/* 주문상세 순번 */
+		)
+		VALUES
+		( #{odBulkTrackingNumberId}
+		, #{odOrderDetlId}
+		, #{psShippingCompId}
+		, #{trackingNo}
+		, #{odid}
+		, #{odOrderDetlSeq}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄송장 실패내역 테이블 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderBulkTrackingNumberFail" >
+		/* orderBulkTrackingNumber.addOrderBulkTrackingNumberFail */
+		INSERT INTO OD_BULK_TRACKING_NUMBER_FAIL_DETL	/* 일괄송장 실패내역 */
+		(
+		  OD_BULK_TRACKING_NUMBER_ID	/* 일괄송장입력 PK */
+		, OD_ORDER_DETL_ID				/* 주문상세 PK */
+		, PS_SHIPPING_COMP_ID			/* 택배사 PK */
+		, TRACKING_NO					/* 송장번호 */
+		, ODID							/* 주문번호 */
+		, OD_ORDER_DETL_SEQ				/* 주문상세 순번 */
+		, FAIL_REASON					/* 실패사유 */
+		)
+		VALUES
+		( #{odBulkTrackingNumberId}
+		, #{odOrderDetlId}
+		, #{psShippingCompId}
+		, #{trackingNo}
+		, #{odid}
+		, #{odOrderDetlSeq}
+		, #{failReason}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄송장정보 수정(성공/실패 건수 업데이트)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderBulkTrackingNumber" >
+		/* orderBulkTrackingNumber.putOrderBulkTrackingNumber */
+		UPDATE OD_BULK_TRACKING_NUMBER		/* 일괄송장정보 */
+		   SET SUCCESS_CNT	= #{successCnt}	/* 정상건수 */
+		     , FAILURE_CNT  = #{failureCnt}	/* 실패건수 */
+		     , CREATE_ID	= #{createId}	/* 등록자 UR_USER.UR_USER_ID */
+		     , CREATE_DT	= NOW()			/* 등록일 */
+		     , ORIGIN_NM	= #{originNm}	/* 원본파일명 */
+		 WHERE OD_BULK_TRACKING_NUMBER_ID = #{odBulkTrackingNumberId}	/* 일괄송장입력 PK */
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄송장 입력 내역 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.28		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderBulkTrackingNumberList" resultType="kr.co.pulmuone.v1.order.delivery.dto.vo.OrderBulkTrackingNumberVo">
+		/* orderBulkTrackingNumber.getOrderBulkTrackingNumberList */
+		SELECT *
+		  FROM (
+			    SELECT @ROWNUM :=@ROWNUM + 1 		AS ROW_NUM		/* No */
+                 	 , OBTN.OD_BULK_TRACKING_NUMBER_ID				/* 일괄송장입력 PK */
+                     , OBTN.SUCCESS_CNT								/* 정상건수 */
+                     , OBTN.FAILURE_CNT								/* 실패건수 */
+                     , OBTN.CREATE_ID								/* 등록자ID UR_USER.UR_USER_ID */
+                     , FN_DECRYPT(UU.USER_NM) 		AS CREATE_NM 	/* 등록자명*/
+                     , DATE_FORMAT(OBTN.CREATE_DT, '%Y-%m-%d %H:%i:%s')	AS CREATE_DT	/* 등록일 */
+                     , OBTN.ORIGIN_NM								/* 원본파일명 */
+                     , UU.LOGIN_ID									/* 로그인ID */
+                  FROM (SELECT @ROWNUM := 0) TMP
+                     , OD_BULK_TRACKING_NUMBER OBTN
+                  LEFT JOIN UR_USER UU ON UU.UR_USER_ID = OBTN.CREATE_ID
+                 WHERE 1=1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+                	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+                   AND OBTN.CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                	</if>
+            	</if>
+            	 ORDER BY OBTN.CREATE_DT ASC
+               ) OD_BULK_TRACKING_NUMBER
+           ORDER BY OD_BULK_TRACKING_NUMBER.ROW_NUM DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄송장 입력 실패내역 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.29		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderBulkTrackingNumberFailList" resultType="kr.co.pulmuone.v1.order.delivery.dto.vo.OrderBulkTrackingNumberFailVo">
+		/* orderBulkTrackingNumber.getOrderBulkTrackingNumberFailList */
+		SELECT IFNULL(ODID, '')	AS ODID 	/* 주문번호 */
+		     , IFNULL(OD_ORDER_DETL_SEQ, '')	AS OD_ORDER_DETL_SEQ 	/* 주문상세 PK */
+			 , IFNULL(PS_SHIPPING_COMP_ID, '')	AS PS_SHIPPING_COMP_ID 	/* 택배사 PK */
+			 , IFNULL(TRACKING_NO, '')			AS TRACKING_NO 			/* 송장번호 */
+			 , IFNULL(FAIL_REASON, '')			AS FAIL_REASON 			/* 실패사유 */
+		  FROM OD_BULK_TRACKING_NUMBER_FAIL_DETL	/* 일괄송장 실패내역 */
+		 WHERE 1=1
+		   AND OD_BULK_TRACKING_NUMBER_ID = #{odBulkTrackingNumberId}	/* 일괄송장입력 PK */
+ 		 ORDER BY OD_BULK_TRACKING_NUMBER_FAIL_DETL_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄 송장 입력 내역 상세 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.29		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderBulkTrackingNumberDetlList" resultType="kr.co.pulmuone.v1.order.delivery.dto.OrderBulkTrackingNumberDetlDto">
+		/* orderBulkTrackingNumber.getOrderBulkTrackingNumberDetlList */
+		SELECT @ROWNUM :=@ROWNUM + 1 		AS ROW_NUM	/* NO */
+             , DETL.ODID								/* 주문번호 */
+             , DETL.OD_ORDER_DETL_ID					/* 주문상세 PK */
+				, DETL.OD_ORDER_DETL_SEQ					/* 주문상세 SEQ */
+             , IFNULL(DETL.SHIPPING_COMP_NM, '') AS SHIPPING_COMP_NM					/* 택배사명 */
+             , DETL.TRACKING_NO							/* 송장번호 */
+             , DETL.PS_SHIPPING_COMP_ID					/* 택배사 PK */
+             , DETL.CREATE_DT							/* 등록일자 */
+		  FROM (SELECT (SELECT OO2.ODID
+		                  FROM OD_ORDER OO2
+		                 WHERE OO2.OD_ORDER_ID = (SELECT OOD2.OD_ORDER_ID
+		                                            FROM OD_ORDER_DETL OOD2
+		                                           WHERE OOD2.OD_ORDER_DETL_ID = OBTNSD.OD_ORDER_DETL_ID
+		                                         )
+		               ) 						AS ODID				/* 주문번호 */
+		             , OBTNSD.OD_ORDER_DETL_ID	AS OD_ORDER_DETL_ID	/* 주문상세 PK */
+					 , OBTNSD.OD_ORDER_DETL_SEQ	AS OD_ORDER_DETL_SEQ	/* 주문상세 PK */
+		             , PSC.SHIPPING_COMP_NM	AS SHIPPING_COMP_NM			/* 택배사명 */
+		             , OBTNSD.TRACKING_NO		AS TRACKING_NO		/* 송장번호 */
+		             , OBTNSD.PS_SHIPPING_COMP_ID	AS PS_SHIPPING_COMP_ID		/* 택배사 PK */
+		             , DATE_FORMAT(OBTN.CREATE_DT, '%Y-%m-%d %H:%i:%s')	AS CREATE_DT /* 등록일자 */
+		          FROM OD_BULK_TRACKING_NUMBER_SUCC_DETL OBTNSD		/* 일괄송장 성공내역 */
+		          LEFT JOIN PS_SHIPPING_COMP PSC					/* 택배사 설정 */
+		   			ON OBTNSD.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+		   		   AND PSC.USE_YN          = 'Y'
+		 		  LEFT JOIN OD_BULK_TRACKING_NUMBER OBTN			/* 일괄송장정보 */
+    				ON OBTNSD.OD_BULK_TRACKING_NUMBER_ID = OBTN.OD_BULK_TRACKING_NUMBER_ID
+				  WHERE 1=1
+		           AND OBTNSD.OD_BULK_TRACKING_NUMBER_ID = #{odBulkTrackingNumberId}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(codeSearch)">
+					<!-- 주문번호 -->
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'orderNo') ">
+		  		   AND OBTNSD.OD_ORDER_DETL_ID IN (SELECT OOD.OD_ORDER_DETL_ID
+		                                             FROM OD_ORDER_DETL OOD
+		                                            WHERE OOD.OD_ORDER_ID IN (SELECT OO.OD_ORDER_ID
+		                                                                        FROM OD_ORDER OO
+		                                                                       WHERE OO.ODID IN
+																			<foreach item="data" index="index" collection="codeArray" open="(" separator="," close=")">
+                              													#{data}
+                          													</foreach>
+		                                                            		  )
+		                                          )
+					</if>
+					<!-- 주문상세번호 -->
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'orderDetailNo') ">
+		  			AND OBTNSD.OD_ORDER_DETL_ID IN
+		  					<foreach item="data" index="index" collection="codeArray" open="(" separator="," close=")">
+                              #{data}
+                          	</foreach>
+					</if>
+					<!-- 송장번호 -->
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'trackingNo') ">
+		  			AND OBTNSD.TRACKING_NO IN
+							<foreach item="data" index="index" collection="codeArray" open="(" separator="," close=")">
+                              #{data}
+							</foreach>
+					</if>
+				</if>
+				  ORDER BY ODID, OD_ORDER_DETL_ID
+		       ) DETL
+		     , (SELECT @ROWNUM := 0) TMP
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일괄송장 입력 가능 여부 조회(주문상태가 배송준비중,배송중이고 클레임주문건이 아닌경우만 송장 입력 가능)
+	 *					  TOTAL 값이 1인 경우 송장 입력 가능 / 0 인 경우 송장 입력 불가능
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.22		천혜현          최초생성
+	 * @ 2021.08.10		배민영          SPMO-418 산지직송의 경우 결제완료 상태에서 송장번호 입력 가능
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderBulkTrackingNumberOrderStatus" resultType="int">
+		/* orderBulkTrackingNumber.getOrderBulkTrackingNumberOrderStatus */
+		SELECT
+			CASE WHEN OOD.ORDER_STATUS_CD IN ('DR','DI') AND OOD.ORDER_CNT - IFNULL(X.CLAIM_CNT, 0) <![CDATA[ > ]]> 0 THEN 1
+			  <!-- SPMO-418 결제완료 상태에서 송장입력 가능하도록 수정
+			   		산지직송인 경우(출고처의 주문변경 여부코드가 배송준비중 변경, 사용안함)에는
+			   		결제완료인 경우에 송장번호 입력 가능 -->
+				 WHEN UW.ORDER_CHANGE_TP IN ('ORDER_CHANGE_TP.ORDER_CHANGE', 'ORDER_CHANGE_TP.NOT_USE')
+					 AND OOD.ORDER_STATUS_CD IN ('IC')
+					 AND OOD.ORDER_CNT - IFNULL(X.CLAIM_CNT, 0) <![CDATA[ > ]]> 0
+					 THEN 1
+				 ELSE 0
+				END AS TOTAL
+		FROM
+			OD_ORDER_DETL OOD
+			LEFT JOIN (
+				SELECT
+					SUM(OCD.CLAIM_CNT) AS CLAIM_CNT
+					, OCD.OD_ORDER_DETL_ID
+				FROM OD_CLAIM OC
+				INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+				WHERE OC.CLAIM_YN = 'Y'
+				AND OCD.CLAIM_STATUS_CD != 'CA'
+				AND OCD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+				GROUP BY OCD.OD_ORDER_DETL_ID
+			) X ON OOD.OD_ORDER_DETL_ID = X.OD_ORDER_DETL_ID
+			INNER JOIN UR_WAREHOUSE UW ON OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+		WHERE
+			OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+	<select id="getOdClaimId" resultType="kr.co.pulmuone.v1.order.delivery.dto.vo.ClaimNumberSearchVo">
+		/* orderBulkTrackingNumber.getOdClaimId */
+        SELECT
+        	OOD.ODID,
+            OOD.OD_ORDER_DETL_ID,
+            IFNULL(OCD.OD_CLAIM_ID, 0) AS OD_CLAIM_ID,
+            IFNULL(OCD.OD_CLAIM_DETL_ID, 0) AS OD_CLAIM_DETL_ID
+        FROM OD_ORDER_DETL OOD
+        LEFT OUTER JOIN OD_CLAIM_DETL OCD ON OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID AND OCD.CLAIM_STATUS_CD = 'CA'
+        LEFT OUTER JOIN OD_CLAIM OC ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID AND OOD.OD_ORDER_ID = OC.OD_ORDER_ID AND OC.CLAIM_YN = 'Y'
+        WHERE OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+        LIMIT 1
+	</select>
+
+	<select id="getOrderInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRegisterRequestDto">
+		/* orderBulkTrackingNumber.getOrderInfo */
+		SELECT
+			OD.OD_ORDER_ID,
+		    OD.ODID,
+		    OC.TARGET_TP,
+		    OC.RETURNS_YN
+		FROM OD_ORDER OD
+		INNER JOIN OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+		WHERE OD.ODID = #{odid}
+		AND OC.OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<select id="getOrderDetlInfoList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+		/* orderBulkTrackingNumber.getOrderDetlInfoList */
+		SELECT
+			OOD.OD_ORDER_ID,
+			OOD.OD_ORDER_DETL_ID,
+			OOD.OD_ORDER_DETL_SEQ,
+			OOD.ORDER_CNT,
+			OOD.CANCEL_CNT,
+			OCD.CLAIM_CNT,
+			OOD.GOODS_NM,
+			OOD.UR_WAREHOUSE_ID,
+			OOD.IL_GOODS_ID,
+			OCD.PS_CLAIM_BOS_ID,
+			OCD.BOS_CLAIM_LARGE_ID,
+			OCD.BOS_CLAIM_MIDDLE_ID,
+			OCD.BOS_CLAIM_SMALL_ID
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+		INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID AND OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+		WHERE OD.ODID = #{odid}
+		AND OC.OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+</mapper>

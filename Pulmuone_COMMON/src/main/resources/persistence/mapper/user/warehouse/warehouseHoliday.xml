@@ -1,0 +1,770 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.warehouse.WarehouseHolidayMapper">
+
+	<sql id="holidayNoGroupSql">
+		WITH RECURSIVE  TD AS (
+			SELECT UW.UR_WAREHOUSE_ID
+				, UW.WAREHOUSE_NM
+				, UWH.HOLIDAY_DT ,UWH.HOLIDAY_DT AS ISSUE_END_DT
+				, UWH.HOLIDAY_DT + INTERVAL  0 HOUR FROM_DATE
+				, UWH.HOLIDAY_DT + INTERVAL  9 HOUR TO_DATE
+				, UWH.GROUP_YN
+				, UWH.DAWN_DLVRY_YN
+				, UW.WAREHOUSE_GRP_CD
+				, UWH.CREATE_DT
+				, UWH.CREATE_ID
+			FROM UR_WAREHOUSE UW
+			INNER JOIN UR_WAREHOUSE_HLDY UWH ON UW.UR_WAREHOUSE_ID = UWH.UR_WAREHOUSE_ID AND UWH.GROUP_YN = 'N'
+			UNION ALL
+			SELECT UR_WAREHOUSE_ID
+				, WAREHOUSE_NM
+				, HOLIDAY_DT
+				, ISSUE_END_DT
+				, FROM_DATE + INTERVAL  1 DAY STD
+				, TO_DATE + INTERVAL 1 DAY TO_DATE
+				, NULL AS GROUP_YN
+				, NULL AS DAWN_DLVRY_YN
+				, NULL AS WAREHOUSE_GRP_CD
+				, CREATE_DT
+				, CREATE_ID
+			FROM TD
+			WHERE TO_DATE <![CDATA[<]]> ISSUE_END_DT
+		)
+	</sql>
+
+	<sql id="holidayGroupAll">
+		SELECT UR_WAREHOUSE_HLDY_ID,
+			UR_WAREHOUSE_ID,
+			CASE WHEN DAWN_DLVRY_YN = 'Y' THEN CONCAT('(새벽)', WAREHOUSE_NM)
+			ELSE WAREHOUSE_NM
+			END AS WAREHOUSE_NM,
+			HOLIDAY_DT,
+			MIN(HOLIDAY_DT) AS FROM_DATE,
+			MAX(HOLIDAY_DT) AS TO_DATE,
+			COUNT(*) AS DURATION,
+			DAWN_DLVRY_YN,
+			WAREHOUSE_GRP_CD,
+			CREATE_DT,
+			CREATE_ID,
+			GROUP_YN
+		FROM
+		(SELECT T.*,
+				@rownum := @rownum + 1 AS ROWNUM,
+				DATE_SUB(T.HOLIDAY_DT, INTERVAL @rownum day) AS GROUP_DATE
+		FROM   (SELECT UW.UR_WAREHOUSE_ID
+					, UW.WAREHOUSE_NM
+					, UWH.HOLIDAY_DT
+					, UWH.HOLIDAY_DT AS ISSUE_END_DT
+					, UWH.HOLIDAY_DT + INTERVAL  0 HOUR STD
+					, UWH.HOLIDAY_DT + INTERVAL  9 HOUR EDT
+					, UWH.GROUP_YN
+					, UWH.DAWN_DLVRY_YN
+					, UW.WAREHOUSE_GRP_CD
+					, UWH.CREATE_DT
+					, UWH.CREATE_ID
+					, UWH.UR_WAREHOUSE_HLDY_ID
+				FROM UR_WAREHOUSE UW
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(listYn, 'Y')">
+						INNER JOIN UR_WAREHOUSE_HLDY UWH ON UW.UR_WAREHOUSE_ID = UWH.UR_WAREHOUSE_ID AND UWH.GROUP_YN ='Y') AS T
+					</when>
+					<otherwise>
+						INNER JOIN UR_WAREHOUSE_HLDY UWH ON UW.UR_WAREHOUSE_ID = UWH.UR_WAREHOUSE_ID AND UWH.GROUP_YN =#{groupYn}) AS T
+					</otherwise>
+
+				</choose>
+				<!--INNER JOIN UR_WAREHOUSE_HLDY UWH ON UW.UR_WAREHOUSE_ID = UWH.UR_WAREHOUSE_ID AND UWH.GROUP_YN =#{groupYn}) AS T-->
+				INNER JOIN (SELECT @ROWNUM := 0) R
+		ORDER  BY UR_WAREHOUSE_ID, DAWN_DLVRY_YN, HOLIDAY_DT ) AS TA
+		GROUP  BY UR_WAREHOUSE_ID,  GROUP_DATE
+	</sql>
+
+	<sql id="holidayGroupOne">
+		SELECT UR_WAREHOUSE_HLDY_ID,
+			UR_WAREHOUSE_ID,
+			CASE WHEN DAWN_DLVRY_YN = 'Y' THEN CONCAT('(새벽)', WAREHOUSE_NM)
+			ELSE WAREHOUSE_NM
+			END AS WAREHOUSE_NM,
+			HOLIDAY_DT,
+			MIN(HOLIDAY_DT) AS FROM_DATE,
+			MAX(HOLIDAY_DT) AS TO_DATE,
+			COUNT(*) AS DURATION,
+			DAWN_DLVRY_YN,
+			WAREHOUSE_GRP_CD,
+			GROUP_YN,
+			CREATE_DT,
+			CREATE_ID
+		FROM
+			(SELECT T.*,
+					@rownum := @rownum + 1 AS ROWNUM,
+					DATE_SUB(T.HOLIDAY_DT, INTERVAL @rownum day) AS GROUP_DATE
+			 FROM   (SELECT UW.UR_WAREHOUSE_ID
+						, UW.WAREHOUSE_NM
+						, UWH.HOLIDAY_DT
+						, UWH.HOLIDAY_DT AS ISSUE_END_DT
+						, UWH.HOLIDAY_DT + INTERVAL  0 HOUR STD
+						, UWH.HOLIDAY_DT + INTERVAL  9 HOUR EDT
+						, UWH.GROUP_YN
+						, UWH.DAWN_DLVRY_YN
+						, UW.WAREHOUSE_GRP_CD
+						, UWH.CREATE_DT
+						, UWH.CREATE_ID
+						, UWH.UR_WAREHOUSE_HLDY_ID
+					FROM UR_WAREHOUSE UW
+					INNER JOIN UR_WAREHOUSE_HLDY UWH ON UW.UR_WAREHOUSE_ID = UWH.UR_WAREHOUSE_ID AND UWH.GROUP_YN = #{groupYn}) AS T
+					INNER JOIN (SELECT @ROWNUM := 0) R
+					WHERE UR_WAREHOUSE_ID = #{urWarehouseId}
+					ORDER  BY UR_WAREHOUSE_ID, DAWN_DLVRY_YN, HOLIDAY_DT ) AS TA
+		GROUP  BY UR_WAREHOUSE_ID,  GROUP_DATE
+	</sql>
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 출고처 휴일 설정 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.09		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getWarehouseHolidayListResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseHolidayResultVo">
+		<result column="ID"  property="urWarehouseHolidayId"/>
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="WAREHOUSE_GROUP_CD"  property="warehouseGroupCd"/>
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+		<result column="GROUP_YN"  property="groupYn"/>
+		<result column="FROM_DATE"  property="fromDate"/>
+		<result column="TO_DATE"  property="toDate"/>
+		<result column="HOLIDAY"  property="holiday"/>
+		<result column="CREATE_DT"  property="createInfo"/>
+	</resultMap>
+
+	<select id="getWarehouseHolidayList" resultMap="getWarehouseHolidayListResultMap">
+	/* warehouseHoliday.getWarehouseHolidayList */
+
+			<include refid="holidayNoGroupSql" />
+
+			SELECT *
+			FROM
+				(
+				SELECT
+					 CASE WHEN ID_COUNT <![CDATA[<]]> 6 THEN ID
+				           ELSE CONCAT(SUBSTRING_INDEX(H.ID,',',5), '외',H.ID_COUNT-5,'건')
+				      END ID
+				     , H.ID AS ID_BASE
+				     , CASE WHEN ID_COUNT <![CDATA[<]]> 6 THEN H.WAREHOUSE_NM
+				           ELSE CONCAT(SUBSTRING_INDEX(H.WAREHOUSE_NM,',',5), '외',H.ID_COUNT-5,'건')
+				        END WAREHOUSE_NM
+				     , H.WAREHOUSE_NM AS WAREHOUSE_NM_BASE
+				     , H.WAREHOUSE_GRP_CD
+				     , H.FROM_DATE,  H.TO_DATE
+				     , CASE WHEN DATE_FORMAT(H.FROM_DATE,'%Y-%m-%d') = DATE_FORMAT(H.TO_DATE,'%Y-%m-%d') THEN DATE_FORMAT(H.FROM_DATE,'%Y-%m-%d')
+				            ELSE CONCAT(DATE_FORMAT(H.FROM_DATE,'%Y-%m-%d'), '~' , DATE_FORMAT(H.TO_DATE,'%Y-%m-%d'))
+				       END AS HOLIDAY
+				     , CASE WHEN DATE_FORMAT(H.FROM_DATE,'%Y-%m-%d') = DATE_FORMAT(H.TO_DATE,'%Y-%m-%d') THEN 'N'
+				            ELSE 'Y'
+				       END AS GROUP_YN
+				     , CREATE_DT
+				FROM
+					(
+					SELECT GROUP_CONCAT(UR_WAREHOUSE_ID) AS ID
+						, GROUP_CONCAT(WAREHOUSE_NM) AS WAREHOUSE_NM
+						, GROUP_CONCAT(WAREHOUSE_GRP_CD) AS WAREHOUSE_GRP_CD
+						, COUNT(*) ID_COUNT
+						, DATE_FORMAT(FROM_DATE,'%Y-%m-%d') AS FROM_DATE
+					    , DATE_FORMAT(TO_DATE,'%Y-%m-%d') AS TO_DATE
+						, DAWN_DLVRY_YN
+						, CREATE_DT
+					FROM TD
+					WHERE FROM_DATE IS NOT NULL
+					GROUP BY FROM_DATE
+					UNION ALL
+					SELECT GROUP_CONCAT(KK.UR_WAREHOUSE_ID) AS ID
+					      , GROUP_CONCAT(KK.WAREHOUSE_NM)WAREHOUSE_NM
+					      , GROUP_CONCAT(KK.WAREHOUSE_GRP_CD) AS WAREHOUSE_GRP_CD
+					      , COUNT(*) ID_COUNT
+					      , DATE_FORMAT(KK.FROM_DATE,'%Y-%m-%d') AS FROM_DATE
+					      , DATE_FORMAT(KK.TO_DATE,'%Y-%m-%d') AS TO_DATE
+					      , KK.DAWN_DLVRY_YN
+					      , KK.CREATE_DT
+					FROM
+						(
+						<include refid="holidayGroupAll" />
+						) AS KK
+					GROUP BY KK.FROM_DATE, KK.TO_DATE
+					ORDER BY FROM_DATE, ID
+					) AS H
+				) AS O
+			WHERE 1=1
+			AND O.FROM_DATE <![CDATA[>=]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+				AND O.WAREHOUSE_GRP_CD LIKE CONCAT ('%', #{warehouseGroup}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+				AND O.WAREHOUSE_NM_BASE LIKE CONCAT('%',#{warehouseName},'%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startHoliday)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endHoliday)">
+					AND (O.FROM_DATE BETWEEN DATE_FORMAT(#{startHoliday},'%Y-%m-%d') AND DATE_FORMAT(#{endHoliday},'%Y-%m-%d')
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+							AND O.WAREHOUSE_GRP_CD LIKE CONCAT ('%', #{warehouseGroup}, '%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+							AND O.WAREHOUSE_NM_BASE LIKE CONCAT('%',#{warehouseName},'%')
+						</if>
+						)
+					OR (O.TO_DATE BETWEEN DATE_FORMAT(#{startHoliday},'%Y-%m-%d') AND DATE_FORMAT(#{endHoliday},'%Y-%m-%d')
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+							AND O.WAREHOUSE_GRP_CD LIKE CONCAT ('%', #{warehouseGroup}, '%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+							AND O.WAREHOUSE_NM_BASE LIKE CONCAT('%',#{warehouseName},'%')
+						</if>
+						)
+					OR (O.FROM_DATE <![CDATA[<=]]> DATE_FORMAT(#{startHoliday},'%Y-%m-%d') AND O.TO_DATE <![CDATA[>=]]> DATE_FORMAT(#{endHoliday},'%Y-%m-%d')
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+							AND O.WAREHOUSE_GRP_CD LIKE CONCAT ('%', #{warehouseGroup}, '%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+							AND O.WAREHOUSE_NM_BASE LIKE CONCAT('%',#{warehouseName},'%')
+						</if>
+						)
+			    </if>
+			</if>
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 출고처 설정 대상 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.10		안치열          최초생성
+	 * @ 2021.01.30		최윤지			새벽배송여부 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getWarehouseSetListResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseHolidayResultVo">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="WAREHOUSE_GROUP_CD"  property="warehouseGroupCd"/>
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+		<result column="DAWN_DLVRY_YN"  property="dawnDlvryYn"/>
+		<result column="DAWN_YN"  property="dawnYn"/>
+		<result column="DAWN_YN_NAME"  property="dawnYnName"/>
+	</resultMap>
+
+	<select id="getWarehouseSetList" resultMap="getWarehouseSetListResultMap">
+	/* warehouseHoliday.getWarehouseSetList */
+	SELECT A.*
+			FROM(
+				SELECT U.UR_WAREHOUSE_ID
+						, U.WAREHOUSE_NM
+						, U.WAREHOUSE_GRP_CD
+						, FN_COMN_CODE_DIC(U.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+						, U.DAWN_DLVRY_YN
+						, 'N' AS DAWN_YN
+						, '-' AS DAWN_YN_NAME
+						, U.CREATE_DT
+				FROM UR_WAREHOUSE U
+				WHERE U.DAWN_DLVRY_YN = 'N'
+				UNION ALL
+				SELECT U.UR_WAREHOUSE_ID
+						, U.WAREHOUSE_NM
+						, U.WAREHOUSE_GRP_CD
+						, FN_COMN_CODE_DIC(U.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+						, U.DAWN_DLVRY_YN
+						, 'Y' AS DAWN_YN
+						, '새벽' AS DAWN_YN_NAME
+						, U.CREATE_DT
+				FROM UR_WAREHOUSE U
+				WHERE U.DAWN_DLVRY_YN = 'Y'
+				UNION ALL
+				SELECT U.UR_WAREHOUSE_ID
+						, U.WAREHOUSE_NM
+						, U.WAREHOUSE_GRP_CD
+						, FN_COMN_CODE_DIC(U.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+						, U.DAWN_DLVRY_YN
+						, 'N' AS DAWN_YN
+						, '-' AS DAWN_YN_NAME
+						, U.CREATE_DT
+				FROM UR_WAREHOUSE U
+				WHERE U.DAWN_DLVRY_YN = 'Y'
+				) AS A
+			WHERE 1=1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+				AND A.WAREHOUSE_NM LIKE CONCAT(#{warehouseName}, '%')
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroupName)">
+				AND A.WAREHOUSE_GRP_CD = #{warehouseGroupName}
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnYnName)">
+				AND A.DAWN_YN_NAME = #{dawnYnName}
+	        </if>
+			ORDER BY A.CREATE_DT DESC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 출고처 설정 대상 수정 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.10		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getWarehouseHolidayDetailResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseHolidayResultVo">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="WAREHOUSE_GROUP_CD"  property="warehouseGroupCd"/>
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+		<result column="DAWN_DLVRY_YN"  property="dawnDlvryYn"/>
+		<result column="DAWN_YN"  property="dawnYn"/>
+		<result column="DAWN_YN_NAME"  property="dawnYnName"/>
+	</resultMap>
+
+	<select id="getWarehouseHolidayDetail" resultMap="getWarehouseHolidayDetailResultMap">
+	/* warehouseHoliday.getWarehouseHolidayDetail */
+
+		SELECT A.*
+		FROM(
+				SELECT  U.UR_WAREHOUSE_ID
+						, U.WAREHOUSE_NM
+						, U.WAREHOUSE_GRP_CD
+						, FN_COMN_CODE_DIC(U.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+						, U.DAWN_DLVRY_YN
+						, 'N' AS DAWN_YN
+						, '-' AS DAWN_YN_NAME
+						, U.CREATE_DT
+				FROM UR_WAREHOUSE U
+				UNION ALL
+				SELECT U.UR_WAREHOUSE_ID
+						, U.WAREHOUSE_NM
+						, U.WAREHOUSE_GRP_CD
+						, FN_COMN_CODE_DIC(U.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+						, U.DAWN_DLVRY_YN
+						, 'Y' AS DAWN_YN
+						, '새벽' AS DAWN_YN_NAME
+						, U.CREATE_DT
+				FROM UR_WAREHOUSE U
+				WHERE U.DAWN_DLVRY_YN = 'Y'
+			) AS A
+	    WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+			AND A.WAREHOUSE_NM LIKE CONCAT(#{warehouseName}, '%')
+        </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroupName)">
+			AND A.WAREHOUSE_GRP_CD = #{warehouseGroupName}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnYnName)">
+			AND A.DAWN_YN_NAME = #{dawnYnName}
+        </if>
+	    AND (A.UR_WAREHOUSE_ID, A.DAWN_YN ) NOT IN (	SELECT UH.UR_WAREHOUSE_ID , CASE WHEN UH.DAWN_DLVRY_YN = 'Y' THEN '새벽' ELSE '-' END AS DAWN_YN
+		FROM UR_WAREHOUSE_HLDY UH
+		INNER JOIN UR_WAREHOUSE U ON U.UR_WAREHOUSE_ID = UH.UR_WAREHOUSE_ID
+		WHERE 1=1
+		AND UH.HOLIDAY_DT BETWEEN #{fromDate} AND #{toDate}
+		GROUP BY UH.UR_WAREHOUSE_ID , UH.DAWN_DLVRY_YN)
+		ORDER BY UR_WAREHOUSE_ID DESC
+	</select>
+
+
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 출고처 설정 대상 수정 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.10		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getConfirmWarehouseHolidayListResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseHolidayResultVo">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="WAREHOUSE_GROUP_CD"  property="warehouseGroupCd"/>
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+		<result column="DAWN_DLVRY_YN"  property="dawnDlvryYn"/>
+		<result column="DAWN_YN"  property="dawnYn"/>
+		<result column="DAWN_YN_NAME"  property="dawnYnName"/>
+		<result column="HOLIDAY"  property="holiday"/>
+		<result column="FROM_DATE"  property="fromDate"/>
+		<result column="TO_DATE"  property="toDate"/>
+		<result column="CREATE_INFO"  property="createInfo"/>
+	</resultMap>
+
+	<select id="getConfirmWarehouseHolidayList" resultMap="getConfirmWarehouseHolidayListResultMap">
+	/* warehouseHoliday.getConfirmWarehouseHolidayList */
+			<include refid="holidayNoGroupSql" />
+
+			SELECT O.UR_WAREHOUSE_ID
+				, O.WAREHOUSE_NM
+				, O.WAREHOUSE_GRP_CD
+				, FN_COMN_CODE_DIC(O.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+				, O.DAWN_DLVRY_YN AS DAWN_YN
+				, CASE WHEN O.DAWN_DLVRY_YN ='Y' THEN '새벽'
+				 	 END AS DAWN_YN_NAME
+				, #{holiday} AS HOLIDAY
+				, O.GROUP_YN
+				, O.FROM_DATE
+				, O.TO_DATE
+				, CONCAT(O.CREATE_DT, ' ' , FN_DECRYPT(U.USER_NM ),'(',O.CREATE_ID ,')') AS CREATE_INFO
+			FROM (
+				SELECT UR_WAREHOUSE_ID
+					, WAREHOUSE_NM AS WAREHOUSE_NM
+					, WAREHOUSE_GRP_CD AS WAREHOUSE_GRP_CD
+					, DATE_FORMAT(FROM_DATE,'%Y-%m-%d') AS FROM_DATE
+				    , DATE_FORMAT(TO_DATE,'%Y-%m-%d') AS TO_DATE
+					, DAWN_DLVRY_YN
+					, CREATE_DT
+					, CREATE_ID
+					, GROUP_YN
+				FROM TD
+				WHERE FROM_DATE IS NOT NULL
+				UNION ALL
+				SELECT K.UR_WAREHOUSE_ID
+				      , K.WAREHOUSE_NM AS WAREHOUSE_NM
+				      , K.WAREHOUSE_GRP_CD AS WAREHOUSE_GRP_CD
+				      , DATE_FORMAT(K.FROM_DATE,'%Y-%m-%d') AS FROM_DATE
+				      , DATE_FORMAT(K.TO_DATE,'%Y-%m-%d') AS TO_DATE
+				      , K.DAWN_DLVRY_YN
+				      , K.CREATE_DT
+					  , K.CREATE_ID
+					  , K.GROUP_YN
+				FROM
+					(
+					<include refid="holidayGroupAll" />
+					) AS K
+					<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)'>
+					JOIN (
+						<include refid="holidayGroupOne" />
+						) AS KB ON K.FROM_DATE = KB.FROM_DATE AND K.TO_DATE = KB.TO_DATE AND #{holiday} BETWEEN KB.FROM_DATE AND KB.TO_DATE AND KB.DAWN_DLVRY_YN = #{dawnYn}
+					</if>
+				) AS O
+				INNER JOIN UR_USER U ON O.CREATE_ID = U.UR_USER_ID
+			WHERE 1=1
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(urWarehouseId)'>
+			AND O.FROM_DATE = #{holiday}
+        	AND O.TO_DATE = #{holiday}
+			</if>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(groupYn, "Y")'>
+					AND O.GROUP_YN = 'Y'
+					AND #{holiday} BETWEEN O.FROM_DATE AND O.TO_DATE
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(groupYn, "N")'>
+					AND O.GROUP_YN = 'N'
+					AND #{holiday} BETWEEN O.FROM_DATE AND O.TO_DATE
+				</when>
+			</choose>
+			GROUP BY UR_WAREHOUSE_ID, DAWN_YN
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 출고처 설정 대상 수정 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.10		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOldConfirmWarehouseHolidayListResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseHolidayResultVo">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="WAREHOUSE_GROUP_CD"  property="warehouseGroupCd"/>
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+		<result column="DAWN_DLVRY_YN"  property="dawnDlvryYn"/>
+		<result column="DAWN_YN"  property="dawnYn"/>
+		<result column="DAWN_YN_NAME"  property="dawnYnName"/>
+		<result column="GROUP_YN"  property="groupYn"/>
+		<result column="UR_WAREHOUSE_HLDY_ID"  property="urWarehouseHolidayId"/>
+	</resultMap>
+
+	<select id="getOldConfirmWarehouseHolidayList" resultMap="getOldConfirmWarehouseHolidayListResultMap">
+	/* warehouseHoliday.getOldConfirmWarehouseHolidayList */
+
+		SELECT  KK.UR_WAREHOUSE_HLDY_ID
+			, KK.UR_WAREHOUSE_ID
+			, DATE_FORMAT(KK.FROM_DATE,'%Y-%m-%d') AS FROM_DATE
+			, DATE_FORMAT(KK.TO_DATE,'%Y-%m-%d') AS TO_DATE
+			, KK.DAWN_DLVRY_YN AS DAWN_YN
+			, KK.GROUP_YN
+		FROM
+		(
+		<include refid="holidayGroupAll" />
+		) AS KK
+		JOIN (
+		<include refid="holidayGroupOne" />
+		) AS KB ON KK.FROM_DATE = KB.FROM_DATE AND KK.TO_DATE = KB.TO_DATE AND #{holiday} BETWEEN KB.FROM_DATE AND KB.TO_DATE AND KB.DAWN_DLVRY_YN = #{dawnYn}
+		WHERE #{holiday} BETWEEN KK.FROM_DATE AND KK.TO_DATE
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: Scheduler 출고처 설정 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.10		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getScheduleWarehouseHolidayListResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseHolidayResultVo">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="HOLIDAY_DT"  property="holiday"/>
+		<result column="GROUP_YN"  property="groupYn"/>
+		<result column="DAWN_DLVRY_YN"  property="dawnDlvryYn"/>
+		<result column="HOLIDAY_GROUP_KEY"  property="holidayGroupKey"/>
+	</resultMap>
+
+	<select id="getScheduleWarehouseHolidayList" resultMap="getScheduleWarehouseHolidayListResultMap">
+		/* warehouseHoliday.getScheduleWarehouseHolidayList */
+		SELECT CASE WHEN H.GROUP_YN = 'Y' AND H.DAWN_DLVRY_YN = 'Y' THEN CONCAT('(새벽)', U.WAREHOUSE_NM ,'[연휴]')
+					WHEN H.GROUP_YN = 'Y' AND H.DAWN_DLVRY_YN = 'N' THEN CONCAT(U.WAREHOUSE_NM ,'[연휴]')
+					WHEN H.GROUP_YN = 'N' AND H.DAWN_DLVRY_YN = 'Y' THEN CONCAT('(새벽)', U.WAREHOUSE_NM)
+					ELSE U.WAREHOUSE_NM
+					END AS WAREHOUSE_NM
+				, H.UR_WAREHOUSE_ID
+				, H.HOLIDAY_DT
+				, H.GROUP_YN
+				, H.DAWN_DLVRY_YN
+				, CONCAT(DATE_FORMAT(GP.FROM_DATE, '%Y%m%d'),'/',DATE_FORMAT(GP.TO_DATE, '%m%d')) AS HOLIDAY_GROUP_KEY
+		FROM UR_WAREHOUSE U
+		INNER JOIN UR_WAREHOUSE_HLDY H ON U.UR_WAREHOUSE_ID = H.UR_WAREHOUSE_ID
+			LEFT JOIN(
+				SELECT
+					UR_WAREHOUSE_ID,
+					MIN(HOLIDAY_DT) AS FROM_DATE,
+					MAX(HOLIDAY_DT) AS TO_DATE,
+					GROUP_YN
+				FROM
+					(SELECT T.*,
+						@rownum := @rownum + 1 AS ROWNUM,
+						DATE_SUB(T.HOLIDAY_DT, INTERVAL @rownum day) AS GROUP_DATE
+					FROM   (SELECT UW.UR_WAREHOUSE_ID
+								, UWH.HOLIDAY_DT
+								, UWH.GROUP_YN
+								, UWH.DAWN_DLVRY_YN
+								, UWH.UR_WAREHOUSE_HLDY_ID
+							FROM UR_WAREHOUSE UW
+							INNER JOIN UR_WAREHOUSE_HLDY UWH ON UW.UR_WAREHOUSE_ID = UWH.UR_WAREHOUSE_ID AND UWH.GROUP_YN = 'Y') AS T
+							INNER JOIN (SELECT @ROWNUM := 0) R
+							ORDER  BY UR_WAREHOUSE_ID, DAWN_DLVRY_YN, HOLIDAY_DT ) AS TA
+					GROUP  BY UR_WAREHOUSE_ID,  GROUP_DATE
+		) GP ON GP.UR_WAREHOUSE_ID = U.UR_WAREHOUSE_ID  AND H.GROUP_YN = 'Y'
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(calendarWarehouseGroup)">
+			AND U.WAREHOUSE_GRP_CD = #{calendarWarehouseGroup}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(scheduleWarehouseName)">
+			AND U.WAREHOUSE_NM LIKE CONCAT('%', #{scheduleWarehouseName},'%')
+		</if>
+		AND H.GROUP_YN = 'Y'
+		AND H.HOLIDAY_DT BETWEEN GP.FROM_DATE AND GP.TO_DATE
+		GROUP BY UR_WAREHOUSE_ID , HOLIDAY_DT , GROUP_YN , DAWN_DLVRY_YN
+		UNION ALL
+		SELECT CASE WHEN H.GROUP_YN = 'Y' AND H.DAWN_DLVRY_YN = 'Y' THEN CONCAT('(새벽)', U.WAREHOUSE_NM ,'[연휴]')
+					WHEN H.GROUP_YN = 'Y' AND H.DAWN_DLVRY_YN = 'N' THEN CONCAT(U.WAREHOUSE_NM ,'[연휴]')
+					WHEN H.GROUP_YN = 'N' AND H.DAWN_DLVRY_YN = 'Y' THEN CONCAT('(새벽)', U.WAREHOUSE_NM)
+					ELSE U.WAREHOUSE_NM
+					END AS WAREHOUSE_NM
+				, H.UR_WAREHOUSE_ID
+				, H.HOLIDAY_DT
+				, H.GROUP_YN
+				, H.DAWN_DLVRY_YN
+				, '' AS HOLIDAY_GROUP_KEY
+		FROM UR_WAREHOUSE U
+		INNER JOIN UR_WAREHOUSE_HLDY H ON U.UR_WAREHOUSE_ID = H.UR_WAREHOUSE_ID
+		WHERE H.GROUP_YN = 'N'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(calendarWarehouseGroup)">
+			AND U.WAREHOUSE_GRP_CD = #{calendarWarehouseGroup}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(scheduleWarehouseName)">
+			AND U.WAREHOUSE_NM LIKE CONCAT('%', #{scheduleWarehouseName},'%')
+		</if>
+		ORDER BY HOLIDAY_DT , GROUP_YN DESC , DAWN_DLVRY_YN DESC,  WAREHOUSE_NM
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: Scheduler 출고처 휴일정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.13		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getHolidayWarehouseInfoResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseResultVo">
+		<result column="FROM_DATE"  property="fromDate"/>
+		<result column="TO_DATE"  property="toDate"/>
+		<result column="CREATE_INFO"  property="createInfo"/>
+		<result column="HOLIDAY"  property="holiday"/>
+	</resultMap>
+
+	<select id="getHolidayWarehouseInfo" resultMap="getHolidayWarehouseInfoResultMap">
+	/* warehouseHoliday.getHolidayWarehouseInfo */
+			<include refid="holidayNoGroupSql" />
+
+			SELECT A.ID
+				, A.WAREHOUSE_NM
+				, A.WAREHOUSE_GRP_CD
+				, A.ID_COUNT
+				, A.FROM_DATE
+				, A.TO_DATE
+				, A.DAWN_DLVRY_YN
+				, A.GROUP_YN
+				, CONCAT(A.CREATE_DT, ' ' , FN_DECRYPT(U.USER_NM ),'(',A.CREATE_ID ,')') AS CREATE_INFO
+				, #{holiday} AS HOLIDAY
+			FROM (
+					SELECT GROUP_CONCAT(UR_WAREHOUSE_ID) AS ID
+						, GROUP_CONCAT(WAREHOUSE_NM) AS WAREHOUSE_NM
+						, GROUP_CONCAT(WAREHOUSE_GRP_CD) AS WAREHOUSE_GRP_CD
+						, COUNT(*) ID_COUNT
+						, DATE_FORMAT(FROM_DATE,'%Y-%m-%d') AS FROM_DATE
+					    , DATE_FORMAT(TO_DATE,'%Y-%m-%d') AS TO_DATE
+						, DAWN_DLVRY_YN
+						, GROUP_YN
+						, CREATE_DT
+						, CREATE_ID
+					FROM TD
+					WHERE FROM_DATE IS NOT NULL
+					GROUP BY FROM_DATE
+					UNION ALL
+					SELECT GROUP_CONCAT(KK.UR_WAREHOUSE_ID) AS ID
+					      , GROUP_CONCAT(KK.WAREHOUSE_NM)WAREHOUSE_NM
+					      , GROUP_CONCAT(KK.WAREHOUSE_GRP_CD) AS WAREHOUSE_GRP_CD
+					      , COUNT(*) ID_COUNT
+					      , DATE_FORMAT(KK.FROM_DATE,'%Y-%m-%d') AS FROM_DATE
+					      , DATE_FORMAT(KK.TO_DATE,'%Y-%m-%d') AS TO_DATE
+					      , KK.DAWN_DLVRY_YN
+					      , KK.GROUP_YN
+					      , KK.CREATE_DT
+					      , KK.CREATE_ID
+					FROM
+						(
+						<include refid="holidayGroupAll" />
+						) AS KK
+						JOIN (
+							<include refid="holidayGroupOne" />
+							) AS KB ON KK.FROM_DATE = KB.FROM_DATE AND KK.TO_DATE = KB.TO_DATE AND #{holiday} BETWEEN KB.FROM_DATE AND KB.TO_DATE AND KB.DAWN_DLVRY_YN = #{dawnYn}
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(groupYn, "Y")'>
+							WHERE #{holiday} BETWEEN KK.FROM_DATE AND KK.TO_DATE
+						</when>
+						<otherwise>
+							GROUP BY KK.FROM_DATE, KK.TO_DATE
+						</otherwise>
+					</choose>
+					ORDER BY FROM_DATE, ID
+					) AS A
+				INNER JOIN UR_USER U ON A.CREATE_ID = U.UR_USER_ID
+				WHERE 1=1
+				AND #{holiday} BETWEEN A.FROM_DATE AND A.TO_DATE
+				AND A.ID LIKE CONCAT('%', #{urWarehouseId},'%')
+				AND A.GROUP_YN = #{groupYn}
+
+	</select>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 출고처 휴일설정 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.11		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addWarehouseHoliday" >
+        /* warehouseHoliday.addWarehouseHoliday */
+        INSERT INTO UR_WAREHOUSE_HLDY
+        (
+         UR_WAREHOUSE_ID
+        , HOLIDAY_DT
+        , DAWN_DLVRY_YN
+        , GROUP_YN
+        , CREATE_DT
+        , CREATE_ID
+        )
+        VALUES
+        <foreach item="item" index="index" collection="insertSaveDataList" open="" separator="," close="">
+        (
+            #{item.urWarehouseId}
+            ,#{item.holiday}
+            ,#{item.dawnYn}
+            ,#{item.groupYn}
+            ,now()
+            ,#{item.urUserId}
+        )
+        </foreach>
+    </insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  휴일 등록 출고처 중복 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.08.19      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateHldy" resultType="int">
+
+		/*	warehouseHoliday.getDuplicateHldy */
+
+		SELECT COUNT(*)
+		FROM UR_WAREHOUSE_HLDY
+		WHERE UR_WAREHOUSE_ID = #{urWarehouseId}
+		AND HOLIDAY_DT = #{holiday}
+		AND DAWN_DLVRY_YN = #{dawnYn}
+		AND GROUP_YN = #{groupYn}
+	</select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 출고처 휴일설정 수정
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.11     안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delWarehouseHoliday">
+        /* warehouseHoliday.delWarehouseHoliday */
+        DELETE FROM UR_WAREHOUSE_HLDY
+		WHERE UR_WAREHOUSE_HLDY_ID  IN (SELECT A.ID
+										FROM  (
+												SELECT UR_WAREHOUSE_HLDY_ID AS ID
+												FROM UR_WAREHOUSE_HLDY
+												WHERE HOLIDAY_DT  = #{holiday}
+												AND UR_WAREHOUSE_ID = #{urWarehouseId}
+												AND DAWN_DLVRY_YN  = #{dawnYn}
+												AND GROUP_YN = #{groupYn}
+												) AS A
+										)
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 출고처 휴일리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getWarehouseHolidayListByIdResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseHolidayResultVo">
+		<result column="UR_WAREHOUSE_HLDY_ID"	property="urWarehouseHolidayId"/>
+		<result column="UR_WAREHOUSE_ID"  		property="urWarehouseId"/>
+		<result column="HOLIDAY" 				property="holiday"/>
+		<result column="DAWN_DLVRY_YN"			property="dawnDlvryYn"/>
+		<result column="GROUP_YN"  				property="groupYn"/>
+	</resultMap>
+	<select id="getWarehouseHolidayListById" resultMap="getWarehouseHolidayListByIdResultMap">
+	/* warehouseHoliday.getWarehouseHolidayListById */
+		SELECT
+			UR_WAREHOUSE_HLDY_ID
+			,UR_WAREHOUSE_ID
+			,DATE_FORMAT(HOLIDAY_DT, '%Y-%m-%d') AS HOLIDAY
+			,DAWN_DLVRY_YN
+			,GROUP_YN
+		FROM
+			UR_WAREHOUSE_HLDY
+		WHERE
+			UR_WAREHOUSE_ID = #{urWarehouseId}
+	</select>
+
+</mapper>

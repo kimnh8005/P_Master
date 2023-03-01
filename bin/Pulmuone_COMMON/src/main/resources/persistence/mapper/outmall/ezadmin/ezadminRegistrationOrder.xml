@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.outmall.ezadmin.EZAdminOrderRegistrationMapper">
+
+    <resultMap id="getEZAdminOrderCreateTargetListResultMap" type="kr.co.pulmuone.v1.outmall.ezadmin.dto.EZAdminOrderDto">
+        <result column="IF_EASYADMIN_INFO_ID"              property="ifEasyadminInfoId"/>
+        <result column="IF_EASYADMIN_ORDER_SUCC_ID"        property="ifEasyadminOrderSuccId"/>
+        <result column="IF_EASYADMIN_ORDER_SUCC_DETL_ID"   property="ifEasyadminOrderSuccDetlId"/>
+        <result column="PACK"                              property="collectionMallId"/>
+        <result column="PRD_SEQ"                           property="collectionMallDetailId"/>
+        <result column="OM_SELLERS_ID"                     property="omSellersId"/>
+        <result column="SELLERS_GROUP_CD"                  property="sellersGroupCd"/>
+        <result column="IL_ITEM_CD"                        property="ilItemCd"/>
+        <result column="IL_GOODS_ID"                       property="ilGoodsId"/>
+        <result column="GOODS_NM"                          property="goodsName"/>
+        <result column="QTY"                               property="orderCount"/>
+        <result column="PRD_SEQ"                           property="prdSeq"/>
+        <result column="PRD_AMOUNT"                  	   property="paidPrice"/>
+        <result column="ORDER_NAME"                        property="buyerName"/>
+        <result column="ORDER_TEL"                         property="buyerTel"/>
+        <result column="ORDER_MOBILE"                      property="buyerMobile"/>
+        <result column="RECV_NAME"                         property="receiverName"/>
+        <result column="RECV_TEL"                          property="receiverTel"/>
+        <result column="RECV_MOBILE"                       property="receiverMobile"/>
+        <result column="RECV_ZIP"                          property="receiverZipCode"/>
+        <result column="RECV_ADDRESS"                      property="receiverAddress1"/>
+        <result column="RECV_ADDRESS2"                     property="receiverAddress2"/>
+        <result column="MEMO"                              property="deliveryMessage"/>
+        <result column="ORDER_ID"                          property="outMallId"/>
+        <result column="ORDER_ID_SEQ"                      property="outMallDetailId"/>
+        <result column="TRANS_CORP"                        property="logisticsCd"/>
+        <result column="TRANS_NO"                          property="trackingNo"/>
+        <result column="PREPAY_PRICE"                      property="shippingPrice"/>
+        <result column="UR_SUPPLIER_ID"                    property="urSupplierId"/>
+        <result column="UR_WAREHOUSE_ID"                   property="urWarehouseId"/>
+        <result column="GOODS_DAILY_TP"                    property="goodsDailyTp"/>
+        <result column="GOODS_TP"                          property="goodsTp"/>
+        <result column="SALE_TP"                           property="saleTp"/>
+        <result column="IL_SHIPPING_TMPL_ID"               property="ilShippingTmplId"/>
+        <result column="WAREHOUSE_GRP_CD"                  property="warehouseGrpCd"/>
+        <result column="STORAGE_METHOD_TP"                 property="storageMethodTp"/>
+        <result column="ITEM_BARCODE"                      property="itemBarcode"/>
+        <result column="TAX_YN"                            property="taxYn"/>
+        <result column="IL_CTGRY_STD_ID"                   property="ilCtgryStdId"/>
+        <result column="IL_CTGRY_DISPLAY_ID"               property="ilCtgryDisplayId"/>
+        <result column="IL_CTGRY_MALL_ID"                  property="ilCtgryMallId"/>
+        <result column="GRP_SHIPPING_ZONE"                 property="grpShippingZone"/>
+        <result column="GRP_SHIPPING_PRICE"                property="grpShippingPrice"/>
+        <result column="STANDARD_PRICE"                    property="standardPrice"/>
+        <result column="RECOMMENDED_PRICE"                 property="recommendedPrice"/>
+        <result column="SALE_PRICE"                        property="salePrice"/>
+		<result column="PROMOTION_NM"                      property="promotionNm"/>
+    </resultMap>
+    <select id="getEZAdminOrderCreateTargetList" resultMap="getEZAdminOrderCreateTargetListResultMap">
+        /* ezadminRegistrationOrder.getEZAdminOrderCreateTargetList */
+        SELECT
+			T1.*,
+		    T2.STANDARD_PRICE,  /* 원가 */
+		    T2.RECOMMENDED_PRICE /* 정상가 */
+		    /* T2.SALE_PRICE  판매가 */
+		    , CASE
+             	WHEN T1.GOODS_TP = 'GOODS_TYPE.PACKAGE' AND T1.PACKAGE_UNIT_DISP_YN = 'Y' THEN CONCAT(T1.GOODS_NAME, ' (', T1.PACKAGE_UNIT_DESC, ')')
+             	WHEN T1.GOODS_TP = 'GOODS_TYPE.PACKAGE' AND T1.PACKAGE_UNIT_DISP_YN = 'N' THEN T1.GOODS_NAME
+             	WHEN T1.QTY_PER_PACKAGE = '' THEN CONCAT(T1.GOODS_NAME, ' (', T1.SIZE_PER_PACKAGE, T1.SIZE_UNIT, ')')
+             	ELSE CONCAT(T1.GOODS_NAME, ' (', T1.SIZE_PER_PACKAGE, T1.SIZE_UNIT, 'X', T1.QTY_PER_PACKAGE, T1.PACKAGE_UNIT, ')')
+             END AS GOODS_NM /* 상품명 */
+		FROM
+			(
+				SELECT
+					IEOS.IF_EASYADMIN_INFO_ID,
+					IEOS.IF_EASYADMIN_ORDER_SUCC_ID,
+					IEOSD.IF_EASYADMIN_ORDER_SUCC_DETL_ID,
+					IEOS.PACK,
+					IEOS.SEQ,
+					IEOS.OM_SELLERS_ID,
+                	(SELECT SELLERS_GROUP_CD FROM OM_SELLERS WHERE OM_SELLERS_ID = IEOS.OM_SELLERS_ID) AS SELLERS_GROUP_CD,
+					IEOS.SHOP_ID,
+					IEOS.ORDER_ID, /* OUT_MALL_ID */
+					IEOS.ORDER_ID AS ORDER_ID_SEQ,
+					IEOSD.QTY,
+					IEOSD.PRD_SEQ,
+					IEOSD.SHOP_PRICE,
+					IEOSD.PRD_SUPPLY_PRICE,
+					IEOSD.PRD_AMOUNT,
+					IEOSD.PRD_AMOUNT AS SALE_PRICE, /* 판매가 (외부몰 정산의 경우 판매금액 기준 정산 처리를 하므로 (주문정보판매금액 / 수량) 데이터로 판매가 설정) */
+					T2.IL_ITEM_CD,
+					T2.IL_GOODS_ID,
+					T2.GOODS_NM AS GOODS_NAME,
+					IEOS.ORDER_NAME,
+					IEOS.ORDER_MOBILE,
+					IEOS.ORDER_TEL,
+					IEOS.RECV_NAME,
+					IEOS.RECV_MOBILE,
+					IEOS.RECV_TEL,
+					IEOS.RECV_ZIP,
+					IEOS.RECV_ADDRESS,
+					IEOS.RECV_ADDRESS2,
+					IEOS.MEMO,
+					IEOS.TRANS_CORP,
+					IEOS.TRANS_NO,
+					IEOS.TRANS_WHO,
+					IEOS.PREPAY_PRICE,
+					II.UR_SUPPLIER_ID,
+					T2.UR_WAREHOUSE_ID,
+					T2.GOODS_DAILY_TP,
+					T2.GOODS_TP,
+					T2.SALE_TP,
+					ST.IL_SHIPPING_TMPL_ID,
+					UW.WAREHOUSE_GRP_CD,
+					II.STORAGE_METHOD_TP,
+					II.ITEM_BARCODE,
+					II.TAX_YN,
+					IFNULL(II.IL_CTGRY_STD_ID, 0) AS IL_CTGRY_STD_ID,
+					IFNULL((	SELECT IL_CTGRY_ID
+				                            FROM IL_GOODS_CTGRY T
+				                            WHERE BASIC_YN = 'Y' AND MALL_DIV = 'MALL_DIV.PULMUONE'
+				                                AND T.IL_GOODS_ID = T2.IL_GOODS_ID), 0) AS IL_CTGRY_DISPLAY_ID,
+					IFNULL((	SELECT IL_CTGRY_ID
+				                            FROM IL_GOODS_CTGRY T
+				                            WHERE BASIC_YN = 'Y' AND MALL_DIV != 'MALL_DIV.PULMUONE'
+				                                AND T.IL_GOODS_ID = T2.IL_GOODS_ID), 0) AS IL_CTGRY_MALL_ID,
+					(
+		                SELECT
+		                    IL_GOODS_PRICE_ID
+		                FROM
+		                    IL_GOODS_PRICE
+		                WHERE
+		                        IL_GOODS_ID = T2.IL_GOODS_ID
+		                    AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+		                ORDER BY IL_GOODS_PRICE_ID DESC
+		                LIMIT 1) AS IL_GOODS_PRICE_ID,
+					CONCAT(IEOS.RECV_NAME, '∀', IEOS.RECV_MOBILE, '∀', IEOS.RECV_ZIP, '∀', IEOS.RECV_ADDRESS, '∀', IFNULL(IEOS.RECV_ADDRESS2, '')) AS GRP_SHIPPING_ZONE,
+					CONCAT('SPG_', IEOS.PACK, '∀', T2.UR_WAREHOUSE_ID, '∀', ST.BUNDLE_YN, '∀', IF (ST.BUNDLE_YN = 'N', IEOS.IF_EASYADMIN_ORDER_SUCC_ID , 0)) AS GRP_SHIPPING_PRICE
+					, CASE
+	                    WHEN II.SIZE_PER_PACKAGE IS NULL THEN ''
+	                    ELSE TRIM(II.SIZE_PER_PACKAGE)+0
+	                END AS SIZE_PER_PACKAGE /* 포장단위별 용량 */
+	                , CASE
+	                    WHEN II.SIZE_UNIT_ETC IS NOT NULL AND TRIM(II.SIZE_UNIT_ETC) != '' THEN II.SIZE_UNIT_ETC
+	                    ELSE IFNULL(FN_COMN_CODE_DIC(II.SIZE_UNIT), '')
+	                END AS SIZE_UNIT /* 용량(중량)단위 */
+	                , IFNULL(II.QTY_PER_PACKAGE, '') AS QTY_PER_PACKAGE /* 구성정보 용량 */
+	                , CASE
+	                    WHEN II.PACKAGE_UNIT_ETC IS NOT NULL AND TRIM(II.PACKAGE_UNIT_ETC) != '' THEN II.PACKAGE_UNIT_ETC
+	                    ELSE IFNULL(FN_COMN_CODE_DIC(II.PACKAGE_UNIT), '')
+	                END AS PACKAGE_UNIT /* 구성정보 단위 */
+	                , T2.PACKAGE_UNIT_DISP_YN
+	                , T2.PACKAGE_UNIT_DESC
+	                , IF(
+						NOW() BETWEEN T2.PROMOTION_NM_START_DT AND T2.PROMOTION_NM_END_DT
+						, IF(
+							T2.PROMOTION_NM IS NULL OR TRIM(T2.PROMOTION_NM) = ''
+							, ''
+							, CONCAT('[', T2.PROMOTION_NM, '] ')
+							)
+						, ''
+	                	) AS PROMOTION_NM
+				FROM
+					IF_EASYADMIN_ORDER_SUCC IEOS
+					INNER JOIN IF_EASYADMIN_ORDER_SUCC_DETL IEOSD ON IEOS.IF_EASYADMIN_ORDER_SUCC_ID = IEOSD.IF_EASYADMIN_ORDER_SUCC_ID
+					INNER JOIN IL_GOODS T2 ON IEOSD.BRAND = T2.IL_GOODS_ID
+					INNER JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (T2.IL_GOODS_ID = GST.IL_GOODS_ID AND T2.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+					INNER JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+					INNER JOIN UR_WAREHOUSE UW ON (UW.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID)
+					INNER JOIN IL_ITEM II ON T2.IL_ITEM_CD = II.IL_ITEM_CD
+				WHERE
+					IEOS.IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+				AND
+					IEOS.IF_EASYADMIN_INFO_REQ_DATA_ID = #{ifEasyadminInfoReqDataId}
+				AND
+					IEOS.ORDER_CS = 0
+				AND
+					IEOSD.ORDER_CS = 0
+				AND
+					IEOS.ORDER_CREATE_YN = 'N'
+		) T1
+		INNER JOIN IL_GOODS_PRICE T2 ON T1.IL_GOODS_PRICE_ID = T2.IL_GOODS_PRICE_ID
+    </select>
+
+    <select id="getOdOrderDetlIds" resultType="long">
+        /* ezadminRegistrationOrder.getOdOrderDetlIds */
+    	SELECT
+			OOD.OD_ORDER_DETL_ID
+		FROM
+			OD_ORDER OD
+		INNER JOIN
+			OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		WHERE
+			OD.OD_ORDER_ID IN
+		<foreach collection="odOrderIds" item="odOrderId" index="index" separator="," open="(" close=")">
+			#{odOrderId}
+		</foreach>
+    </select>
+
+	<insert id="addEzadminCreateOrderFailSelectInsert">
+		/* ezadminRegistrationOrder.addEzadminCreateOrderFailSelectInsert */
+		INSERT INTO IF_EASYADMIN_ORDER_FAIL
+		(IF_EASYADMIN_INFO_ID, PACK, SEQ, SHOP_ID, SHOP_NAME, ORDER_ID, ORDER_ID_SEQ, ORDER_ID_SEQ2, SHOP_PRODUCT_ID, PRODUT_NAME, `OPTIONS`, QTY, ORDER_NAME, ORDER_MOBILE, ORDER_TEL, RECV_NAME, RECV_MOBILE
+		, RECV_TEL, RECV_ADDRESS, RECV_ADDRESS2, RECV_ZIP, MEMO, STATUS, ORDER_CS, COLLECT_DATE, ORDER_DATE, TRANS_DATE, TRANS_DATE_POS, SUPPLY_PRICE, AMOUNT, EXTRA_MONEY, TRANS_CORP, TRANS_NO, TRANS_WHO
+		, PREPAY_PRICE, GIFT, `HOLD`, ORG_SEQ, DEAL_NO, ERROR_MSG, FAIL_TYPE)
+		SELECT
+			IF_EASYADMIN_INFO_ID, PACK, SEQ, SHOP_ID, SHOP_NAME, ORDER_ID, ORDER_ID_SEQ, ORDER_ID_SEQ2, SHOP_PRODUCT_ID, PRODUT_NAME, `OPTIONS`, QTY, ORDER_NAME, ORDER_MOBILE, ORDER_TEL, RECV_NAME, RECV_MOBILE
+			, RECV_TEL, RECV_ADDRESS, RECV_ADDRESS2, RECV_ZIP, MEMO, STATUS, ORDER_CS, COLLECT_DATE, ORDER_DATE, TRANS_DATE, TRANS_DATE_POS, SUPPLY_PRICE, AMOUNT, EXTRA_MONEY, TRANS_CORP, TRANS_NO, TRANS_WHO
+			, PREPAY_PRICE, GIFT, `HOLD`, ORG_SEQ, DEAL_NO, #{failMessage}, #{failType}
+		FROM
+			IF_EASYADMIN_ORDER_SUCC
+		WHERE
+			IF_EASYADMIN_ORDER_SUCC_ID = (SELECT IF_EASYADMIN_ORDER_SUCC_ID FROM IF_EASYADMIN_ORDER_SUCC_DETL WHERE IF_EASYADMIN_ORDER_SUCC_DETL_ID = #{ifEasyadminOrderSuccDetlId})
+		<selectKey resultType="Long" keyProperty="ifEasyadminOrderFailId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<insert id="addEzadminCreateOrderFailSelectInsertDetl">
+        /* ezadminRegistrationOrder.addEzadminCreateOrderFailSelectInsertDetl */
+        INSERT INTO IF_EASYADMIN_ORDER_FAIL_DETL
+		(IF_EASYADMIN_ORDER_FAIL_ID, IF_EASYADMIN_INFO_ID, PRD_SEQ, ORDER_CS, PRODUCT_ID, NAME, `OPTIONS`, QTY, ENABLE_SALE, SUPPLY_CODE, SUPPLY_NAME, BRAND, BARCODE, SHOP_PRICE, PRD_SUPPLY_PRICE, PRD_AMOUNT, EXTRA_MONEY, CANCEL_DATE, CHANGE_DATE, ERROR_MSG)
+		SELECT
+            #{ifEasyadminOrderFailId}, IF_EASYADMIN_INFO_ID, PRD_SEQ, ORDER_CS, PRODUCT_ID, NAME, `OPTIONS`, QTY, ENABLE_SALE, SUPPLY_CODE, SUPPLY_NAME, BRAND, BARCODE, SHOP_PRICE, PRD_SUPPLY_PRICE, PRD_AMOUNT, EXTRA_MONEY, CANCEL_DATE, CHANGE_DATE, #{failMessage}
+        FROM
+            IF_EASYADMIN_ORDER_SUCC_DETL
+        WHERE
+			IF_EASYADMIN_ORDER_SUCC_DETL_ID = #{ifEasyadminOrderSuccDetlId}
+    </insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부몰 주문 엑셀업로드 - 실패데이터 성공테이블에서 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.26		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<delete id="delEzadminCreateOrderSuccess">
+        /* outmallOrder.delEzadminCreateOrderSuccess */
+        DELETE FROM IF_EASYADMIN_ORDER_SUCC
+        WHERE IF_EASYADMIN_ORDER_SUCC_ID = (SELECT IF_EASYADMIN_ORDER_SUCC_ID FROM IF_EASYADMIN_ORDER_SUCC_DETL WHERE IF_EASYADMIN_ORDER_SUCC_DETL_ID = #{ifEasyadminOrderSuccDetlId})
+    </delete>
+
+	<delete id="delEzadminCreateOrderSuccessDetl">
+		/* outmallOrder.delEzadminCreateOrderSuccessDetl */
+		DELETE FROM IF_EASYADMIN_ORDER_SUCC_DETL
+		WHERE IF_EASYADMIN_ORDER_SUCC_ID IN (SELECT TBL.IF_EASYADMIN_ORDER_SUCC_ID FROM(SELECT IF_EASYADMIN_ORDER_SUCC_ID FROM IF_EASYADMIN_ORDER_SUCC_DETL WHERE IF_EASYADMIN_ORDER_SUCC_DETL_ID = #{ifEasyadminOrderSuccDetlId})TBL)
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 생성 - 주문생성여부 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.16		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putEZAdminOrderSuccOrderCreateYn">
+		/*	ezadminRegistrationOrder.putEZAdminOrderSuccOrderCreateYn */
+		UPDATE IF_EASYADMIN_ORDER_SUCC
+		SET ORDER_CREATE_YN = 'Y'
+		WHERE
+		    PACK = #{collectionMallId}
+		  	AND IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reqDataId) ">
+			AND IF_EASYADMIN_INFO_REQ_DATA_ID = #{reqDataId}
+		</if>
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 생성 - 이지어드민 요청 데이터 정보 테이블 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.30		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIfEasyadminInfoReqDataIdList" resultType="Long">
+		/* ezadminRegistrationOrder.getIfEasyadminInfoReqDataIdList */
+		SELECT
+			IEIRD.IF_EASYADMIN_INFO_REQ_DATA_ID
+		FROM
+			IF_EASYADMIN_INFO_REQ_DATA IEIRD
+			JOIN IF_EASYADMIN_ORDER_SUCC IEOS ON IEIRD.IF_EASYADMIN_INFO_REQ_DATA_ID = IEOS.IF_EASYADMIN_INFO_REQ_DATA_ID
+		WHERE
+			IEIRD.IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+		  	AND IEIRD.COLLECT_CD = 'S'							/* 수집구분(S:수집성공) */
+		  	AND IEOS.ORDER_CREATE_YN = 'N'						/* 주문생성여부 */
+		GROUP BY IEIRD.IF_EASYADMIN_INFO_REQ_DATA_ID
+	</select>
+
+</mapper>

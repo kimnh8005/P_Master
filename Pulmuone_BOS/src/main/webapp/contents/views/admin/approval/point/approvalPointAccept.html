@@ -1,0 +1,174 @@
+<style>
+<!--
+.bgColorGreen {
+    background: #D9E289;
+}
+-->
+</style>
+<div class="wrap-location">
+    <h1 class="title"></h1>
+    <span class="location"></span>
+</div>
+<div class="fb__sect">
+    <form id="searchForm" name="searchForm">
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width:20%">
+                <col style="width:30%">
+                <col style="width:20%">
+                <col style="width:30%">
+            </colgroup>
+            <tbody>
+            <tr>
+                <th scope="row"><label for="searchPointName">적립금명</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <div style="width: 100%;">
+                            <input id="searchPointName" class="comm-input" name="searchPointName" type="text">
+                        </div>
+                    </div>
+                </td>
+                <th scope="row"><label for="searchPointType">설정 구분</label></th>
+                <td colspan="3">
+                    <div class="complex-condition">
+                        <div class="complex-condition fb__custom__select left">
+                            <input id="searchPointType" class="fb__custom__select left-input" name="searchPointType"
+                                   type="text" style="width:200px;">
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="searchApprReqUser">승인요청자</label></th>
+                <td>
+					<div class="complex-condition">
+						<div class="fb__custom__select fb__space--divide" style="width: 100px;">
+							<input id="searchApprReqUserType" name="searchApprReqUserType" type="text">
+						</div>
+                     	<input type="text" name="searchApprReqUser" id="searchApprReqUser" class="comm-input" style="width: 250px; margin: 0 10px"/>
+					</div>
+				</td>
+                <th scope="row"><label for="searchApprChgUser">승인관리자</label></th>
+                <td>
+					<div class="complex-condition">
+						<div class="fb__custom__select fb__space--divide" style="width: 100px;">
+							<input id="searchApprChgUserType" name="searchApprChgUserType" type="text">
+						</div>
+                     	<input type="text" name="searchApprChgUser" id="searchApprChgUser" class="comm-input" style="width: 250px; margin: 0 10px"/>
+					</div>
+				</td>
+            </tr>
+            <tr>
+				<th scope="row"><label for="searchApprovalStatus">승인상태</label></th>
+				<td colspan="3">
+					<div class="complex-condition" style="width:100%;">
+						<div id="searchApprovalStatus" class="checkbox-wrapper fb__custom__checkbox"></div>
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="approvalReqStartDate">승인요청일자</label></th>
+				<td colspan="3">
+					<div class="complex-condition" style="width: 100%">
+                        <!-- 시작 Datepicker -->
+                        <div class="datepicker-wrapper startdate-wrapper" style="width: 140px">
+                            <input type="text" id="approvalReqStartDate" class="datepicker-input" name="approvalReqStartDate" />
+                        </div>
+                        <!-- 종료 Datepicker -->
+                        <div class="datepicker-wrapper">
+                            <input type="text" id="approvalReqEndDate" class="datepicker-input" name="approvalReqEndDate" />
+                        </div>
+                    </div>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="approvalChgStartDate">승인처리일자</label></th>
+				<td colspan="3">
+					<div class="complex-condition" style="width: 100%">
+                        <!-- 시작 Datepicker -->
+                        <div class="datepicker-wrapper startdate-wrapper" style="width: 140px">
+                            <input type="text" id="approvalChgStartDate" class="datepicker-input" name="approvalChgStartDate" />
+                        </div>
+                        <!-- 종료 Datepicker -->
+                        <div class="datepicker-wrapper">
+                            <input type="text" id="approvalChgEndDate" class="datepicker-input" name="approvalChgEndDate" />
+                        </div>
+                    </div>
+				</td>
+			</tr>
+            </tbody>
+        </table>
+        <span class="btn-area">
+			<button id="fnSearch" class="set-btn-type4" type="button" onclick="$scope.fnSearch()">조회 </button>
+			<button id="fnClear" class="set-btn-type5" type="button" onclick="$scope.fnClear()">초기화 </button>
+		</span>
+    </form>
+</div>
+
+<div class="fb__sect grid-sect">
+    <div class="wrap-tit case1" style="width: 100%">
+        <div class="ea-title">
+            <h3>목록</h3>
+        </div>
+        <div class="ea-title">
+            <span>총 <em id="countTotalSpan">0</em> 건 검색</span>
+            <button type="button" id="fnProcessApproved" class="btn-point btn-m marginL10" onclick="$scope.fnConfirmApprovalChkbox()" auth-remove="CONFIRM_SELECT_APPRL">선택 승인</button>
+            <button type="button" id="fnProcessDenied" class="btn-point btn-m marginL10" onclick="$scope.fnDenieApprovalPopup()" auth-remove="DENY_SELECT_APPRL">선택 승인반려</button>
+        </div>
+    </div>
+    <div id="aGrid"></div>
+</div>
+
+<div id="kendoPopup">
+    <div id="contents" class="pop-contents">
+        <form id="inputRejectForm" name="inputRejectForm">
+            <input type="hidden" id="pmPointId" name="pmPointId">
+            <input type="hidden" id="groupPmPointIdList" name="groupPmPointIdList">
+            <table class="datatable v-type">
+                <colgroup>
+                    <col style="width:30%">
+                    <col style="width:70%">
+                </colgroup>
+                <tbody>
+                <tr>
+                    <th scope="row" class="must"><label for="statusComment">사유</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <label for="statusComment" style="display:none;">내용</label>
+                            <textarea id="statusComment" name="statusComment" type="textarea" class="comm-textarea"
+                                      style="height:200px" required> </textarea>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </form>
+        <span class="btn-area align-center">
+			<button id="fnSave" class="fb-btn btn-l btn-point" type="button"
+                    onclick="$scope.fnDenieApproval()">저장</button>
+		</span>
+    </div>
+</div>
+
+<div id="kendoPopupDenyInfo" style="visibility: hidden; display: none;">
+    <div id="contents" class="pop-contents">
+	    <table class="datatable v-type">
+	        <colgroup>
+	            <col style="width:30%">
+	            <col style="width:70%">
+	        </colgroup>
+	        <tbody>
+	        <tr>
+	            <th scope="row"><label for="apprDeniedReasonInfo">사유</label></th>
+	            <td>
+	                <div class="complex-condition">
+	                    <label for="apprDeniedReasonInfo" style="display:none;">내용</label>
+	                    <textarea id="apprDeniedReasonInfo" name="apprDeniedReasonInfo" type="textarea" class="comm-textarea"
+	                              style="height:200px" disabled> </textarea>
+	                </div>
+	            </td>
+	        </tr>
+	        </tbody>
+	    </table>
+    </div>
+</div>

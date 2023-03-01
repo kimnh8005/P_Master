@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.promotion.PromotionEventBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  이벤트 사용여부 설정 대상
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.25		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.promotion.event.dto.vo.EventTimeOverVo" id="eventTimeOverResultMap">
+        <result column="EV_EVENT_ID" property="evEventId"/>
+        <result column="END_DT" property="endDateTime"/>
+    </resultMap>
+    <select id="getEventTimeOver" resultMap="eventTimeOverResultMap">
+        /*	promotionEventBatch.getEventTimeOver  */
+        SELECT EV_EVENT_ID,
+            DATE_FORMAT(END_DT, '%Y-%m-%d %H:%i') AS END_DT
+        FROM EV_EVENT
+        WHERE TIME_OVER_CLOSE_YN = 'Y'
+            AND USE_YN = 'Y'
+            AND END_DT <![CDATA[< ]]> NOW()
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		:  이벤트 사용여부 N 처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.25		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putEventUseYn">
+        /*	promotionEventBatch.putEventUseYn  */
+        UPDATE EV_EVENT
+        SET USE_YN = 'N'
+        WHERE EV_EVENT_ID = #{evEventId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  스탬프 구매 이벤트 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.30		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.promotion.event.dto.vo.EventStampPurchaseVo" id="stampPurchaseResultMap">
+        <result column="EV_EVENT_ID" property="evEventId"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="ORDER_PRICE" property="orderPrice"/>
+        <result column="STAMP_CNT2" property="stampCount2"/>
+    </resultMap>
+    <select id="getStampPurchase" resultMap="stampPurchaseResultMap">
+        /*	promotionEventBatch.getStampPurchase  */
+        SELECT EE.EV_EVENT_ID,
+            EE.START_DT,
+            EE.END_DT,
+            EES.ORDER_PRICE,
+            EES.STAMP_CNT2
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_STAMP EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EVENT_TP = 'EVENT_TP.PURCHASE'
+            AND EE.DEL_YN = 'N'
+            AND NOW() BETWEEN EE.START_DT AND DATE_ADD(EE.END_DT, INTERVAL 15 DAY)
+        ORDER BY EE.EV_EVENT_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  스탬프 구매 이벤트 참여 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.30		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.promotion.event.dto.vo.EventStampPurchaseJoinVo" id="stampPurchaseJoinResultMap">
+        <result column="EV_EVENT_JOIN_ID" property="evEventStampJoinId"/>
+        <result column="UR_USER_ID" property="urUserId"/>
+    </resultMap>
+    <select id="getStampPurchaseJoin" resultMap="stampPurchaseJoinResultMap">
+        /*	promotionEventBatch.getStampPurchaseJoin  */
+        SELECT EV_EVENT_JOIN_ID,
+            UR_USER_ID
+        FROM EV_EVENT_JOIN
+        WHERE EV_EVENT_ID = #{evEventId}
+        ORDER BY EV_EVENT_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  스탬프 구매 이벤트 정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.30		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putEventStamp">
+        /*	promotionEventBatch.putEventStamp  */
+        UPDATE EV_EVENT_STAMP
+        SET STAMP_UPDATE_DT = NOW()
+        WHERE EV_EVENT_ID = #{evEventId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  스탬프 구매 이벤트 참여 정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.30		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putEventStampJoin">
+        /*	promotionEventBatch.putEventStampJoin  */
+        <foreach item="updateData" index="index" collection="list"  separator="; ">
+            UPDATE EV_EVENT_JOIN
+            SET STAMP_CNT     = #{updateData.stampCount}
+            WHERE EV_EVENT_JOIN_ID = #{updateData.evEventStampJoinId}
+        </foreach>
+    </update>
+
+</mapper>

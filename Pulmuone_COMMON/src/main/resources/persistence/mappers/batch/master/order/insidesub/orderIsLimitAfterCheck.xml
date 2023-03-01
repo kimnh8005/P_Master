@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.insidesub.OrderIsLimitAfterCheckMapper">
+
+    <!-- 주문제한정보 조회 -->
+    <select id="selectOrderLimitInfo" resultType="kr.co.pulmuone.v1.batch.order.insidesub.dto.vo.OrderLimitInfoVo">
+        /* OrderIsLimitAfterCheckMapper.selectOrderLimitInfo */
+        SELECT
+            OD_ORDER_LIMIT_ID AS odOrderLimitId
+            , ORDER_LIMIT_START_TIME AS orderLimitStartTime
+            , ORDER_LIMIT_END_TIME AS orderLimitEndTime
+            , ORDER_LIMIT_COUNT AS orderLimitCount
+            , ORDER_LIMIT_ADD_DAY AS orderLimitAddDay
+            , USE_YN AS useYn
+            , CREATE_DT AS createDt
+        FROM OD_ORDER_LIMIT_INFO
+        WHERE USE_YN = 'Y'
+        ORDER BY OD_ORDER_LIMIT_ID DESC
+        LIMIT 1
+    </select>
+
+    <!-- 제한시간내 주문건수 조회 -->
+    <select id="selectLimitIsOrderCount" resultType="int">
+        /* OrderIsLimitAfterCheckMapper.selectLimitIsOrderCount */
+        SELECT
+            COUNT(DISTINCT oo.OD_ORDER_ID) AS orderCount
+        FROM OD_ORDER oo
+        INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+        INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID
+        INNER JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+        INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+        WHERE (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+        AND DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d') /* 인터페이스일자 */
+        AND ood.ORDER_STATUS_CD IN (<foreach collection="orderStatusCd" item="orderStatusCd" separator=",">#{orderStatusCd}</foreach>) /* 결제완료, 배송준비중, 배송완료 */
+        AND ood.GOODS_DELIVERY_TYPE = #{goodsDeliveryType} /* 배송유형 */
+        AND DATE_FORMAT(opm.APPROVAL_DT, '%Y%m%d%H%i%s') BETWEEN CONCAT(DATE_FORMAT(NOW(),'%Y%m%d'), #{orderLimitStartTime}, '0000')
+                                                         AND CONCAT(DATE_FORMAT(NOW(),'%Y%m%d'), #{orderLimitEndTime}, '0000') /* 결제시간 */
+    </select>
+
+    <!-- 오늘 SMS 발송이력 카운트 조회 -->
+    <select id="selectTodaySmsSendHistCount" resultType="int">
+        /* OrderIsLimitAfterCheckMapper.selectTodaySmsSendHistCount */
+        SELECT
+			COUNT(OD_ORDER_LIMIT_SMS_SEND_HIST_ID) AS todaySmsSendHistCount
+		FROM OD_ORDER_LIMIT_SMS_SEND_HIST
+		WHERE ORDER_LIMIT_SMS_SEND_DATE = DATE_FORMAT(now(),'%Y%m%d')
+    </select>
+
+    <!-- SMS 발송 이력저장 -->
+    <insert id="putSmsSendHist">
+        /* OrderIsLimitAfterCheckMapper.putSmsSendHist */
+        INSERT INTO OD_ORDER_LIMIT_SMS_SEND_HIST (
+            ORDER_LIMIT_SMS_SEND_DATE
+            , ORDER_LIMIT_SMS_SEND_TIME
+        ) VALUES (
+            DATE_FORMAT(now(),'%Y%m%d')
+            , DATE_FORMAT(now(),'%H%i%s')
+        )
+    </insert>
+
+</mapper>

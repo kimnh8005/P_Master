@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.goods.GoodsSaleStatusMapper">
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 판매중지 30일 후 영구 판매 중지 처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.09		신선미          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="updateGoodsSaleStatusByGoodsIdList" parameterType="long">
+        /* goodsSaleStatusBatch.updateGoodsSaleStatusByGoodsIdList */
+        UPDATE IL_GOODS IG
+        SET IG.SALE_STATUS = 'SALE_STATUS.STOP_PERMANENT_SALE'
+            , IG.MODIFY_ID = 0
+            , IG.MODIFY_DT = NOW()
+        <where>
+            IG.IL_GOODS_ID IN
+            <foreach collection="list" item="id" open="(" close=")" separator=",">
+                #{id}
+            </foreach>
+        </where>
+    </update>
+
+    <select id="getGoodsIdListByGoodsBatch" resultType="long">
+        /* goodsSaleStatusBatch.getGoodsIdListByGoodsBatch */
+        SELECT
+            DISTINCT(IG.IL_GOODS_ID)
+        FROM
+            IL_GOODS IG
+        LEFT JOIN
+            IL_GOODS_CHNAGE_LOG IGCL
+        ON IG.IL_GOODS_ID = IGCL.IL_GOODS_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(saleStatus)">
+                AND IG.SALE_STATUS = #{saleStatus} AND IGCL.AFTER_DATA = #{saleStatus}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsType)">
+                AND IG.GOODS_TP != #{goodsType}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDate)">
+                AND IGCL.CREATE_DT  <![CDATA[<]]> DATE_FORMAT(#{searchDate}, '%Y-%m-%d')
+            </if>
+        </where>
+    </select>
+
+    <select id="getPackageGoodsIdListByGoodsBatch" resultType="long">
+        /* goodsSaleStatusBatch.getPackageGoodsIdListByGoodsBatch */
+        SELECT
+        DISTINCT(IGPGM.IL_GOODS_ID)
+        FROM
+            IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+        INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+        <where>
+            IG.IL_GOODS_ID IN
+            <foreach collection="list" item="id" open="(" close=")" separator=",">
+                #{id}
+            </foreach>
+        </where>
+    </select>
+</mapper>

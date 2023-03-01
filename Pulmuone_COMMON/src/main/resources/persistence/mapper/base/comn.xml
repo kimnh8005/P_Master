@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.base.ComnMapper">
+
+
+	<!-- 세션 VO -->
+	<resultMap id="UserVOResultMap" type="kr.co.pulmuone.v1.comm.base.vo.UserVo">
+        <result column="UR_USER_ID" property="userId" />
+        <result column="UR_CONNECT_LOG_ID" property="connectionId" />
+	</resultMap>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 나의 최근 로그인 시퀀스 받기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.04		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="hasSessionInfoByLoginId" resultMap="UserVOResultMap">
+		/* comn.getSessionInfo */
+		SELECT
+			MAX(UR_CONNECT_LOG_ID) AS UR_CONNECT_LOG_ID
+		FROM UR_CONNECT_LOG
+		WHERE UR_USER_ID = #{userId}
+			AND SUCCESS_YN = 'Y'
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 메뉴정보 조회 By Url
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.10		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getMenuUrlDataByUrl" resultType="kr.co.pulmuone.v1.base.dto.vo.MenuUrlResultVo">
+		/* comn.getMenuUrlDataByUrl */
+		SELECT
+	  		  ST_MENU_URL_ID AS SYSTEM_MENU_URL_ID
+			, (SELECT MENU_NM FROM ST_MENU WHERE ST_MENU_ID  = #{systemMenuId}) MENU_NAME
+			, URL_NM	AS URL_NAME
+			, URL
+			, PRIVACY_LOG_YN
+			, CRUD_TP AS CRUD_TYPE
+		from ST_MENU_URL
+		WHERE URL = #{url}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 메뉴이력조회 로그 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.10		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addMenuOperLog">
+		/* comn.addMenuOperLog */
+		INSERT INTO ST_MENU_OPER_LOG
+		(
+			  HANDLE_UR_USER_ID
+			, ST_MENU_ID
+			, ST_MENU_URL_ID
+			, MENU_NM
+			, URL_NM
+			, LOGIN_ID
+			, LOGIN_NM
+			, IP
+		)
+		VALUES
+		(
+			  #{userVo.userId}
+			, #{systemMenuId}
+			, #{systemMenuUrlId}
+			, #{menuName}
+			, #{urlName}
+			, #{userVo.loginId}
+			, FN_ENCRYPT(#{userVo.loginName})
+			, #{ip}
+		)
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 개인정보 처리 이력 로그 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.11		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPrivacyMenuOperLog">
+		/* comn.addPrivacyMenuOperLog */
+		INSERT INTO ST_PRIVACY_MENU_OPER_LOG
+		(
+			  HANDLE_UR_USER_ID
+			, ST_MENU_URL_ID
+			, LOGIN_ID
+			, LOGIN_NM
+			, URL_NM
+			, URL
+			, CRUD_TP
+			, PARAM_VALUE
+			, IP
+		)
+		VALUES
+		(
+			  #{userVo.userId}
+			, #{systemMenuUrlId}
+			, #{userVo.loginId}
+			, FN_ENCRYPT(#{userVo.loginName})
+			, #{urlName}
+			, #{url}
+			, #{crudType}
+			, #{paramValue}
+			, #{ip}
+		)
+	</insert>
+
+</mapper>

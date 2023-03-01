@@ -1,0 +1,841 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.MealScheduleListMapper">
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.06		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealPatternListVo">
+        /* mealScheduleList.getMealPatternList */
+        SELECT
+                 MP.IL_GOODS_DAILY_MEAL_PATTERN_CD AS PATTERN_CD
+               , MP.IL_GOODS_DAILY_MEAL_PATTERN_NM AS PATTERN_NM
+               , FN_COMN_CODE_DIC(MP.MALL_DIV) AS MALL_DIV_NM
+               , DATE_FORMAT(MP.PATTERN_START_DT, '%Y-%m-%d') PATTERN_START_DT
+		       , DATE_FORMAT(MP.PATTERN_END_DT, '%Y-%m-%d') PATTERN_END_DT
+               , MP.CREATE_DT
+               , IFNULL(MP.MODIFY_DT, '') AS MODIFY_DT
+               , MPG.IL_GOODS_ID_INFO
+         FROM IL_GOODS_DAILY_MEAL_PATTERN MP
+        LEFT OUTER JOIN (
+                        SELECT
+                              MPG1.IL_GOODS_DAILY_MEAL_PATTERN_CD
+                            , GROUP_CONCAT(
+                                        DISTINCT CONCAT(
+                                                        MPG1.IL_GOODS_ID, ",", IL.GOODS_NM
+                                                        ) SEPARATOR '∀'
+                                                )  AS IL_GOODS_ID_INFO
+                        FROM IL_GOODS_DAILY_MEAL_PATTERN_GOODS MPG1
+                        INNER JOIN IL_GOODS IL ON MPG1.IL_GOODS_ID = IL.IL_GOODS_ID
+                        GROUP BY MPG1.IL_GOODS_DAILY_MEAL_PATTERN_CD
+                        ) MPG ON MP.IL_GOODS_DAILY_MEAL_PATTERN_CD = MPG.IL_GOODS_DAILY_MEAL_PATTERN_CD
+        WHERE 1=1
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+                <choose>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.PATTERN_CD")'>
+                    AND MP.IL_GOODS_DAILY_MEAL_PATTERN_CD IN
+                                        <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                          #{findKeyword}
+                                        </foreach>
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.IL_GOODS_ID")'>
+                    AND  MP.IL_GOODS_DAILY_MEAL_PATTERN_CD IN (
+                            SELECT MP.IL_GOODS_DAILY_MEAL_PATTERN_CD
+                            FROM IL_GOODS_DAILY_MEAL_PATTERN_GOODS MPG
+                            INNER JOIN IL_GOODS IL ON MPG.IL_GOODS_ID = IL.IL_GOODS_ID
+                            INNER JOIN IL_GOODS_DAILY_MEAL_PATTERN MP ON MPG.IL_GOODS_DAILY_MEAL_PATTERN_CD = MP.IL_GOODS_DAILY_MEAL_PATTERN_CD
+                            WHERE MPG.IL_GOODS_ID IN
+                                        <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                          #{findKeyword}
+                                        </foreach>
+                            GROUP BY MP.IL_GOODS_DAILY_MEAL_PATTERN_CD
+                         )
+                  </when>
+                </choose>
+              </if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(patternNm)">
+	      		AND MP.IL_GOODS_DAILY_MEAL_PATTERN_NM LIKE CONCAT('%' , #{patternNm} , '%')
+	 		</if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+		      	AND MP.MALL_DIV = #{mallDiv}
+	 		</if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+                    <choose>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CREATE_DT")'> <!-- 등록일 -->
+                            AND MP.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                        </when>
+                    </choose>
+                </if>
+            </if>
+        ORDER BY MP.PATTERN_START_DT
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealPattern">
+		/* mealScheduleList.delMealPattern */
+		DELETE FROM IL_GOODS_DAILY_MEAL_PATTERN
+		 WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 연결상품 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealPatternGoods">
+		/* mealScheduleList.delMealPatternGoods */
+		DELETE FROM IL_GOODS_DAILY_MEAL_PATTERN_GOODS
+		 WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</delete>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 상세정보 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealPatternDetail">
+		/* mealScheduleList.delMealPatternDetail */
+		DELETE FROM IL_GOODS_DAILY_MEAL_PATTERN_DETL
+		 WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</delete>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 > 스케줄 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealSchedule">
+		/* mealScheduleList.delMealSchedule */
+		DELETE FROM IL_GOODS_DAILY_MEAL_SCH
+		 WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 상세정보 수
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternDetailCount" resultType="int">
+		/* mealScheduleList.getMealPatternDetailCount */
+		SELECT COUNT(*)
+          FROM IL_GOODS_DAILY_MEAL_PATTERN_DETL
+         WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 수정/상세조회 - 연결상품 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternGoodsList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealPatternGoodsListVo">
+		/* mealScheduleList.getMealPatternGoodsList */
+		SELECT
+                IL.IL_ITEM_CD
+              , MPG.IL_GOODS_ID
+              , IL.GOODS_NM
+		      , FN_COMN_CODE_DIC(MP.MALL_DIV) AS MALL_DIV_NM
+              , FN_COMN_CODE_DIC(IL.SALE_STATUS) AS SALE_STATUS_NM
+              , IF(IL.DISP_YN = 'Y', '전시' , '미전시') AS  DISPLAY_YN_NM
+        FROM IL_GOODS_DAILY_MEAL_PATTERN_GOODS MPG
+        INNER JOIN IL_GOODS_DAILY_MEAL_PATTERN MP ON MPG.IL_GOODS_DAILY_MEAL_PATTERN_CD = MP.IL_GOODS_DAILY_MEAL_PATTERN_CD
+        INNER JOIN IL_GOODS IL ON MPG.IL_GOODS_ID = IL.IL_GOODS_ID
+        WHERE MPG.IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+        ORDER BY MPG.IL_GOODS_ID
+	</select>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 수정/상세조회 - 패턴정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternDetailList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealPatternDetailListVo">
+		/* mealScheduleList.getMealPatternDetailList */
+		SELECT
+              	MPD.IL_GOODS_DAILY_MEAL_PATTERN_DETL_ID AS PATTERN_DETL_ID
+              , MPD.PATTERN_NO
+              , MPD.SET_NO
+              , IFNULL(MPD.SET_CD, '') AS SET_CD
+              , IFNULL(MPD.SET_NM, '') AS SET_NM
+              , MPD.IL_GOODS_DAILY_MEAL_CONTS_CD AS MEAL_CONTS_CD
+              , MC.IL_GOODS_DAILY_MEAL_NM AS MEAL_NM
+              , IF(MC.ALLERGY_YN = 'Y', 'Y', 'N') AS ALLERGY_YN
+              , IFNULL(MPD.MODIFY_DT, '') AS MODIFY_DT
+              , IFNULL(MPD.MODIFY_ID, '') AS MODIFY_ID
+        FROM IL_GOODS_DAILY_MEAL_PATTERN_DETL MPD
+        LEFT OUTER JOIN IL_GOODS_DAILY_MEAL_CONTS MC ON MC.IL_GOODS_DAILY_MEAL_CONTS_CD = MPD.IL_GOODS_DAILY_MEAL_CONTS_CD
+        WHERE MPD.IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+        ORDER BY PATTERN_NO, SET_NO
+	</select>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 수정/상세조회 - 기본정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternInfo" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealPatternListVo">
+		/* mealScheduleList.getMealPatternInfo */
+		SELECT
+                 MP.MALL_DIV
+               , FN_COMN_CODE_DIC(MP.MALL_DIV) AS MALL_DIV_NM
+               , MP.CREATE_DT
+               , MP.CREATE_ID
+               , FN_DECRYPT(UU1.USER_NM) AS CREATE_NM
+		       , UU1.LOGIN_ID AS CREATE_LOGIN_ID
+               , MP.MODIFY_DT
+               , MP.MODIFY_ID
+               , FN_DECRYPT(UU2.USER_NM) AS MODIFY_NM
+		       , UU2.LOGIN_ID AS MODIFY_LOGIN_ID
+               , MP.IL_GOODS_DAILY_MEAL_PATTERN_CD AS PATTERN_CD
+               , MP.IL_GOODS_DAILY_MEAL_PATTERN_NM AS PATTERN_NM
+               , DATE_FORMAT(MP.PATTERN_START_DT, '%Y-%m-%d') PATTERN_START_DT
+               , DATE_FORMAT(MP.PATTERN_END_DT, '%Y-%m-%d') PATTERN_END_DT
+        FROM IL_GOODS_DAILY_MEAL_PATTERN MP
+        INNER JOIN UR_USER UU1 ON MP.CREATE_ID = UU1.UR_USER_ID
+        LEFT OUTER JOIN UR_USER UU2 ON MP.MODIFY_ID = UU2.UR_USER_ID
+        WHERE MP.IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</select>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 수정/상세조회 - 기본정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.07		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putMealPatternInfo">
+		/* mealScheduleList.putMealPatternInfo */
+		UPDATE  IL_GOODS_DAILY_MEAL_PATTERN
+          SET  MODIFY_DT = NOW()
+             , MODIFY_ID = #{userVo.userId}
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(patternNm)">
+             , IL_GOODS_DAILY_MEAL_PATTERN_NM = #{patternNm}
+             </if>
+		     <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(patternStartDt) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(patternEndDt)">
+             , PATTERN_START_DT = #{patternStartDt}
+		     , PATTERN_END_DT = #{patternEndDt}
+             </if>
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+   * description    : 식단 패턴 연결상품 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.09.07   최윤지    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addMealPatternGoods">
+      /*mealScheduleList.addMealPatternGoods*/
+      INSERT INTO IL_GOODS_DAILY_MEAL_PATTERN_GOODS
+      (
+	      IL_GOODS_DAILY_MEAL_PATTERN_CD
+	    , IL_GOODS_ID
+	    , CREATE_ID
+	    , CREATE_DT
+	  )
+	  VALUES
+     <foreach item="insertData" index="index" collection="patternGoodsList" open="" separator="," close="">
+        (
+          #{patternCd}
+        , #{insertData.ilGoodsId}
+        , #{insertData.createId}
+        , NOW()
+        )
+     </foreach>
+  </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 수정/상세조회 - 연결상품 추가확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.08		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="checkMealPatternGoods" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealPatternGoodsListVo">
+		/* mealScheduleList.checkMealPatternGoods */
+		SELECT IL.IL_GOODS_ID
+              , IL.GOODS_NM
+              , ILC.MALL_DIV
+        FROM IL_GOODS IL
+        LEFT OUTER JOIN (
+                        SELECT ILC.MALL_DIV
+                              , ILC.IL_GOODS_ID
+                        FROM IL_GOODS_CTGRY ILC
+                        INNER JOIN IL_GOODS IL ON IL.IL_GOODS_ID = ILC.IL_GOODS_ID
+                        WHERE IL.IL_GOODS_ID = #{ilGoodsId}
+                        AND ILC.MALL_DIV NOT IN ('MALL_DIV.PULMUONE', 'MALL_DIV.ORGA', #{mallDiv})
+                        ) ILC ON IL.IL_GOODS_ID = ILC.IL_GOODS_ID
+        WHERE IL.IL_GOODS_ID = #{ilGoodsId}
+        LIMIT 1
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 수정/상세조회 - 연결상품 추가 데이터 GET
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.08		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternGoodsData" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealPatternGoodsListVo">
+		/* mealScheduleList.getMealPatternGoodsData */
+		SELECT
+       		  IL.IL_ITEM_CD
+       		, IL.IL_GOODS_ID
+       		, IL.GOODS_NM
+       		, FN_COMN_CODE_DIC(ILC.MALL_DIV) AS MALL_DIV_NM
+       		, FN_COMN_CODE_DIC(IL.SALE_STATUS) AS SALE_STATUS_NM
+       		, IF(IL.DISP_YN = 'Y', '전시' , '미전시') AS  DISPLAY_YN_NM
+       FROM IL_GOODS IL
+       INNER JOIN IL_GOODS_CTGRY ILC ON ILC.IL_GOODS_ID = IL.IL_GOODS_ID
+       WHERE ILC.MALL_DIV NOT IN ('MALL_DIV.PULMUONE', 'MALL_DIV.ORGA')
+       AND IL.IL_GOODS_ID =  #{ilGoodsId}
+       LIMIT 1
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 상세저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.09		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealPatternDetail">
+		/* mealScheduleList.addMealPatternDetail */
+		INSERT INTO IL_GOODS_DAILY_MEAL_PATTERN_DETL
+        (
+              IL_GOODS_DAILY_MEAL_PATTERN_CD
+            , IL_GOODS_DAILY_MEAL_CONTS_CD
+            , PATTERN_NO
+            , SET_NO
+            , SET_CD
+            , SET_NM
+            , CREATE_ID
+            , CREATE_DT
+        )
+        VALUES
+         <foreach item="insertData" index="index" collection="patternDetlList" open="" separator="," close="">
+        (
+              #{patternCd}
+            , #{insertData.mealContsCd}
+            , #{insertData.patternNo}
+            , #{insertData.setNo}
+            , #{insertData.setCd}
+            , #{insertData.setNm}
+            , #{createId}
+            , NOW()
+        )
+         </foreach>
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 스케쥴 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.09		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealSchedule">
+		/* mealScheduleList.addMealSchedule */
+		INSERT INTO IL_GOODS_DAILY_MEAL_SCH
+        (
+              IL_GOODS_DAILY_MEAL_PATTERN_CD
+            , IL_GOODS_DAILY_MEAL_CONTS_CD
+            , IL_GOODS_DAILY_MEAL_PATTERN_DETL_ID
+            , DELIVERY_DT
+            , DELIVERY_WEEK_CODE
+            , CREATE_ID
+            , CREATE_DT
+        )
+        VALUES
+         <foreach item="insertData" index="index" collection="mealSchedulelList" open="" separator="," close="">
+        (
+              #{patternCd}
+            , #{insertData.mealContsCd}
+            , #{insertData.patternDetlId}
+            , #{insertData.deliveryDate}
+            , #{insertData.deliveryWeekCode}
+            , #{createId}
+            , NOW()
+        )
+         </foreach>
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+   * description    : 식단 패턴 기본정보 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.09.09   최윤지    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+      <insert id="addMealPatternInfo">
+          /*mealScheduleList.addMealPatternInfo*/
+          INSERT INTO IL_GOODS_DAILY_MEAL_PATTERN
+          (
+              IL_GOODS_DAILY_MEAL_PATTERN_CD
+            , IL_GOODS_DAILY_MEAL_PATTERN_NM
+            , MALL_DIV
+            , PATTERN_START_DT
+            , PATTERN_END_DT
+            , CREATE_ID
+            , CREATE_DT
+          )
+          VALUES
+          (
+              #{patternCd}
+            , #{patternNm}
+            , #{mallDiv}
+            , #{patternStartDt}
+            , #{patternEndDt}
+            , #{createId}
+            , NOW()
+          )
+      </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 패턴코드 생성 (베이비밀 : BM1000* / 잇슬림 : IS2000*)
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.09		최윤지	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNewPatternCode" resultType="string" parameterType="String">
+		/*	mealScheduleList.getNewPatternCode  */
+		 SELECT
+		       <choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mallDiv, "MALL_DIV.BABYMEAL")'> /*베이비밀*/
+					CONCAT('BM1000' , REPLACE(MP.IL_GOODS_DAILY_MEAL_PATTERN_CD, 'BM1000', '') + 1) AS NEW_PATTERN_CODE
+				</when>
+				<otherwise>
+					CONCAT('IS2000' , REPLACE(MP.IL_GOODS_DAILY_MEAL_PATTERN_CD, 'IS2000', '') + 1) AS NEW_PATTERN_CODE /*잇슬림*/
+				</otherwise>
+			    </choose>
+         FROM IL_GOODS_DAILY_MEAL_PATTERN MP
+         WHERE MP.MALL_DIV = #{mallDiv}
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mallDiv, "MALL_DIV.BABYMEAL")'> /*베이비밀*/
+                ORDER BY CAST(REPLACE(MP.IL_GOODS_DAILY_MEAL_PATTERN_CD,'BM1000','') AS DECIMAL) DESC
+            </when>
+            <otherwise>
+                ORDER BY CAST(REPLACE(MP.IL_GOODS_DAILY_MEAL_PATTERN_CD,'IS2000','') AS DECIMAL) DESC
+            </otherwise>
+        </choose>
+         LIMIT 1
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 스케쥴 상세조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.09		최윤지	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getMealScheduleDetailList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealSchedulelDetailListVo">
+		/*	mealScheduleList.getMealScheduleDetailList  */
+		 SELECT
+                MS.IL_GOODS_DAILY_MEAL_SCH_ID AS SCH_ID
+              , DATE_FORMAT(MS.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DATE_STR
+              , DATE_FORMAT(MS.DELIVERY_DT, '%Y년 %m월 %d일') AS DELIVERY_DATE_EXCEL_STR
+              , FN_COMN_CODE_DIC(MS.DELIVERY_WEEK_CODE) AS DELIVERY_WEEK_CODE
+              , MS.IL_GOODS_DAILY_MEAL_CONTS_CD AS MEAL_CONTS_CD
+		      , IF(MS.HOLIDAY_YN = 'Y', MS.HOLIDAY_NM, MC.IL_GOODS_DAILY_MEAL_NM) AS MEAL_NM
+              , MC.ALLERGY_YN
+              , IFNULL(MS.MODIFY_DT, '') AS MODIFY_DT
+              , MS.IL_GOODS_DAILY_MEAL_PATTERN_CD AS PATTERN_CD
+		      , MS.HOLIDAY_YN
+        FROM IL_GOODS_DAILY_MEAL_SCH MS
+        LEFT OUTER JOIN IL_GOODS_DAILY_MEAL_CONTS MC ON MS.IL_GOODS_DAILY_MEAL_CONTS_CD = MC.IL_GOODS_DAILY_MEAL_CONTS_CD
+        WHERE MS.IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+		    AND MS.DELIVERY_DT BETWEEN DATE_FORMAT(#{dateSearchStart}, '%Y-%m-%d') AND DATE_FORMAT(#{dateSearchEnd}, '%Y-%m-%d')
+		</if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(patternStartDt) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(patternStartDt)">
+		    AND MS.DELIVERY_DT <![CDATA[<]]> DATE_FORMAT(#{updatePatternStartDt}, '%Y-%m-%d')
+            OR  MS.DELIVERY_DT <![CDATA[>]]> DATE_FORMAT(#{updatePatternEndDt}, '%Y-%m-%d')
+		</if>
+        ORDER BY MS.DELIVERY_DT
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 수정 시 식단패턴 임시저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.10		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealPatternDetailTemporay">
+		/* mealScheduleList.addMealPatternDetailTemporay */
+		INSERT INTO IL_GOODS_DAILY_MEAL_PATTERN_DETL_TEMP
+        (
+              IL_GOODS_DAILY_MEAL_PATTERN_CD
+            , IL_GOODS_DAILY_MEAL_CONTS_CD
+            , IL_GOODS_DAILY_MEAL_PATTERN_DETL_ORIGIN_ID
+            , PATTERN_NO
+            , SET_NO
+            , SET_CD
+            , SET_NM
+            , CREATE_ID
+            , CREATE_DT
+        )
+        VALUES
+         <foreach item="insertData" index="index" collection="patternDetlList" open="" separator="," close="">
+        (
+              #{patternCd}
+            , #{insertData.mealContsCd}
+            , #{insertData.patternDetlId}
+            , #{insertData.patternNo}
+            , #{insertData.setNo}
+            , #{insertData.setCd}
+            , #{insertData.setNm}
+            , #{createId}
+            , NOW()
+        )
+         </foreach>
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 별 상세 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.14		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putMealPatternDetailTemporay">
+		/* mealScheduleList.putMealPatternDetailTemporay */
+		UPDATE  IL_GOODS_DAILY_MEAL_PATTERN_DETL_TEMP
+          SET   MODIFY_ID = #{modifyId}
+              , MODIFY_DT = NOW()
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_DETL_ORIGIN_ID IN
+              <foreach collection="updatePatternDetlIdList" item="patternDetlId" index="index" separator="," open="(" close=")">
+                    #{patternDetlId}
+              </foreach>
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 수정 시 식단스케쥴 임시저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.10		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealScheduleTemporay">
+		/* mealScheduleList.addMealScheduleTemporay */
+		INSERT INTO IL_GOODS_DAILY_MEAL_SCH_TEMP
+        (
+              IL_GOODS_DAILY_MEAL_PATTERN_CD
+            , IL_GOODS_DAILY_MEAL_CONTS_CD
+            , IL_GOODS_DAILY_MEAL_PATTERN_DETL_ID
+            , DELIVERY_DT
+            , DELIVERY_WEEK_CODE
+            , CREATE_ID
+            , CREATE_DT
+        )
+        VALUES
+         <foreach item="insertData" index="index" collection="mealSchedulelList" open="" separator="," close="">
+        (
+              #{patternCd}
+            , #{insertData.mealContsCd}
+            , #{insertData.patternDetlId}
+            , #{insertData.deliveryDate}
+            , #{insertData.deliveryWeekCode}
+            , #{createId}
+            , NOW()
+        )
+         </foreach>
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 수정 시 식단스케쥴 임시저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.10		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealExistScheduleTemporay">
+    /* mealScheduleList.addMealExistScheduleTemporay */
+    INSERT INTO IL_GOODS_DAILY_MEAL_SCH_TEMP
+        (
+                IL_GOODS_DAILY_MEAL_PATTERN_CD
+              , IL_GOODS_DAILY_MEAL_CONTS_CD
+              , IL_GOODS_DAILY_MEAL_PATTERN_DETL_ID
+              , DELIVERY_DT
+              , DELIVERY_WEEK_CODE
+              , HOLIDAY_YN
+              , HOLIDAY_NM
+              , CREATE_ID
+              , CREATE_DT
+        )
+        SELECT
+                IL_GOODS_DAILY_MEAL_PATTERN_CD
+              , IL_GOODS_DAILY_MEAL_CONTS_CD
+              , IL_GOODS_DAILY_MEAL_PATTERN_DETL_ID
+              , DELIVERY_DT
+              , DELIVERY_WEEK_CODE
+              , HOLIDAY_YN
+              , HOLIDAY_NM
+              , CREATE_ID
+              , CREATE_DT
+        FROM IL_GOODS_DAILY_MEAL_SCH
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(bulkUpdateYn)'>
+          AND DELIVERY_DT <![CDATA[<]]> DATE_FORMAT(#{patternStartDt}, '%Y-%m-%d')
+          OR  DELIVERY_DT <![CDATA[>]]> DATE_FORMAT(#{patternEndDt}, '%Y-%m-%d')
+          </if>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 새로운 패턴 저장 (업데이트)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.10		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealPatternForUpdate">
+    /* mealScheduleList.addMealPatternForUpdate */
+    INSERT INTO IL_GOODS_DAILY_MEAL_PATTERN_DETL
+        (
+                IL_GOODS_DAILY_MEAL_PATTERN_CD
+              , IL_GOODS_DAILY_MEAL_CONTS_CD
+              , PATTERN_NO
+              , SET_NO
+              , SET_CD
+              , SET_NM
+              , CREATE_ID
+              , CREATE_DT
+              , MODIFY_ID
+              , MODIFY_DT
+        )
+        SELECT
+                IL_GOODS_DAILY_MEAL_PATTERN_CD
+              , IL_GOODS_DAILY_MEAL_CONTS_CD
+              , PATTERN_NO
+              , SET_NO
+              , SET_CD
+              , SET_NM
+              , CREATE_ID
+              , CREATE_DT
+              , MODIFY_ID
+              , MODIFY_DT
+        FROM IL_GOODS_DAILY_MEAL_PATTERN_DETL_TEMP
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 새로운 스케쥴 저장 (업데이트)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.10		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealScheduleForUpdate">
+    /* mealScheduleList.addMealScheduleForUpdate */
+    INSERT INTO IL_GOODS_DAILY_MEAL_SCH
+        (
+                  IL_GOODS_DAILY_MEAL_PATTERN_CD
+                , IL_GOODS_DAILY_MEAL_CONTS_CD
+                , IL_GOODS_DAILY_MEAL_PATTERN_DETL_ID
+                , DELIVERY_DT
+                , DELIVERY_WEEK_CODE
+                , HOLIDAY_YN
+                , HOLIDAY_NM
+                , CREATE_ID
+                , CREATE_DT
+                , MODIFY_ID
+                , MODIFY_DT
+        )
+        SELECT
+                  IL_GOODS_DAILY_MEAL_PATTERN_CD
+                , IL_GOODS_DAILY_MEAL_CONTS_CD
+                , IL_GOODS_DAILY_MEAL_PATTERN_DETL_ID
+                , DELIVERY_DT
+                , DELIVERY_WEEK_CODE
+                , HOLIDAY_YN
+                , HOLIDAY_NM
+                , CREATE_ID
+                , CREATE_DT
+                , MODIFY_ID
+                , MODIFY_DT
+        FROM IL_GOODS_DAILY_MEAL_SCH_TEMP
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+    </insert>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴(임시테이블) 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.15		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealPatternDetailTemporary">
+		/* mealScheduleList.delMealPatternDetailTemporary */
+		DELETE FROM IL_GOODS_DAILY_MEAL_PATTERN_DETL_TEMP
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 스케쥴(임시테이블) 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.15		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealScheduleTemporary">
+		/* mealScheduleList.delMealScheduleTemporary */
+		DELETE FROM IL_GOODS_DAILY_MEAL_SCH_TEMP
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+	</delete>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 스케쥴 단일변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.15		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putMealSchedule">
+		/* mealScheduleList.putMealSchedule */
+		UPDATE  IL_GOODS_DAILY_MEAL_SCH
+          SET   HOLIDAY_YN = #{holidayYn}
+              , IL_GOODS_DAILY_MEAL_CONTS_CD = #{mealContsCd}
+              , HOLIDAY_NM = #{holidayNm}
+              , MODIFY_ID = #{modifyId}
+              , MODIFY_DT = NOW()
+        WHERE  IL_GOODS_DAILY_MEAL_SCH_ID = #{schId}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 스케쥴 일괄변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.15		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putMealScheduleBulk">
+		/* mealScheduleList.putMealScheduleBulk */
+		UPDATE  IL_GOODS_DAILY_MEAL_SCH_TEMP
+          SET   HOLIDAY_YN = #{holidayYn}
+              <choose>
+              <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(holidayYn, "N")'>
+              , IL_GOODS_DAILY_MEAL_CONTS_CD = #{mealContsCd}
+              </when>
+              <otherwise>
+              , IL_GOODS_DAILY_MEAL_CONTS_CD = #{mealContsCd}
+              , HOLIDAY_NM = #{holidayNm}
+              </otherwise>
+              </choose>
+              , MODIFY_ID = #{modifyId}
+              , MODIFY_DT = NOW()
+        WHERE IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+          AND IL_GOODS_DAILY_MEAL_CONTS_CD = #{originMealContsCd}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 스케쥴 엑셀다운로드 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.16		최윤지	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getMealScheduleDetailExcelList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealSchedulelDetailListVo">
+		/*	mealScheduleList.getMealScheduleDetailExcelList  */
+		 SELECT
+                MS.IL_GOODS_DAILY_MEAL_PATTERN_CD AS PATTERN_CD
+		      , #{patternNm} AS PATTERN_NM
+              , DATE_FORMAT(MS.DELIVERY_DT, '%Y년 %m월 %d일') AS DELIVERY_DATE_EXCEL_STR
+              , FN_COMN_CODE_DIC(MS.DELIVERY_WEEK_CODE) AS DELIVERY_WEEK_CODE
+              , MS.IL_GOODS_DAILY_MEAL_CONTS_CD AS MEAL_CONTS_CD
+		      , IF(MS.HOLIDAY_YN = 'Y', MS.HOLIDAY_NM, MC.IL_GOODS_DAILY_MEAL_NM) AS MEAL_NM
+              , MC.ALLERGY_YN
+        FROM IL_GOODS_DAILY_MEAL_SCH MS
+        LEFT OUTER JOIN IL_GOODS_DAILY_MEAL_CONTS MC ON MS.IL_GOODS_DAILY_MEAL_CONTS_CD = MC.IL_GOODS_DAILY_MEAL_CONTS_CD
+        WHERE MS.IL_GOODS_DAILY_MEAL_PATTERN_CD = #{patternCd}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(downloadDateStart) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(downloadDateEnd)">
+		    AND MS.DELIVERY_DT BETWEEN DATE_FORMAT(#{downloadDateStart}, '%Y-%m-%d') AND DATE_FORMAT(#{downloadDateEnd}, '%Y-%m-%d')
+		</if>
+	</select>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 업로드 시 식단품목명, 알러지식단 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.05		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternUploadData" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealSchedulelDetailListVo">
+		/* mealScheduleList.getMealPatternUploadData */
+		SELECT
+			  IL_GOODS_DAILY_MEAL_NM AS MEAL_NM
+			, ALLERGY_YN
+        FROM IL_GOODS_DAILY_MEAL_CONTS
+        WHERE IL_GOODS_DAILY_MEAL_CONTS_CD = #{mealContsCd}
+	</select>
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 식단 패턴 업로드 시 식단품목명, 알러지식단 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.22		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealPatternUploadDataList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealSchedulelDetailListVo">
+		/* mealScheduleList.getMealPatternUploadDataList */
+		SELECT
+		      IL_GOODS_DAILY_MEAL_CONTS_CD AS MEAL_CONTS_CD
+			, IL_GOODS_DAILY_MEAL_NM AS MEAL_NM
+			, ALLERGY_YN
+        FROM IL_GOODS_DAILY_MEAL_CONTS
+        WHERE IL_GOODS_DAILY_MEAL_CONTS_CD IN
+            <foreach collection="list" item="mealContsCd" index="index" separator="," open="(" close=")">
+                    #{mealContsCd}
+            </foreach>
+	</select>
+
+</mapper>

@@ -1,0 +1,1701 @@
+<div class="wrap-location">
+	 <h1 class="title"></h1>
+	 <span class="location"></span>
+</div>
+<form
+    id="searchForm"
+    name="searchForm"
+>
+    <div
+        class="fb__sect"
+        id="view"
+    >
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 35%">
+                <col style="width: 15%">
+                <col style="width: 35%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    colspan="4"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">기본 정보</label></th>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th">마스터 품목 유형</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="masterItemType"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            data-bind="value: masterItemType, events: { change: onMasterItemTypeChange }"
+                        >
+                    </div>
+                </td>
+                <th scope="row"><label class="req-star-th">ERP 품목 연동여부</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="erpItemLinkYn"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            data-bind="value: erpItemLinkYn, disabled: isErpItemLinkYnDisabled, events: { change: onErpItemLinkYnChange }"
+                        >
+                    </div>
+                </td>
+            </tr>
+            <tr data-bind="visible: isErpItemLink">
+                <th scope="row"><label class="req-star-th">ERP 품목코드</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <div class="flexBox">
+                            <input
+                                class="comm-input"
+                                type="text"
+                                style="width: 80%"
+                                data-bind="value: erpItemCode"
+                                disabled
+                            />
+                            <button
+                                id="fnErpItemSearchPopup"
+                                type="button"
+                                class="btn-point btn-s marginL5"
+                                onClick="$scope.fnErpItemSearchPopup()"
+                            >검색</button>
+                        </div>
+                    </div>
+                </td>
+                <td colspan="2">
+                    <!-- 데이터 마이그레이션 관련 로직 Start : 추후 삭제 예정 -->
+                    <button
+                        id="fnSetMigrationData"
+                        type="button"
+                        class="btn-white btn-s"
+                        style="display: none"
+                        onClick="$scope.fnSetMigrationData()"
+                    >품목정보 이관</button> <!-- 데이터 마이그레이션 관련 로직 End -->
+                </td>
+            </tr>
+            <tr data-bind="visible: isNotErpItemLink">
+                <th scope="row"><label class="req-star-th">품목코드</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            class="comm-input"
+                            type="text"
+                            style="width: 80%"
+                            disabled
+                            data-bind="value: bosItemCode, visible: isNotErpItemLink"
+                        />
+                    </div>
+                </td>
+                <th scope="row"><label>품목 바코드</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="bosItemBarCode"
+                            class="comm-input"
+                            type="text"
+                            style="width: 80%"
+                            maxlength="14"
+                            data-bind="value: bosItemBarCode, visible: isNotErpItemLink"
+                        />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label>마스터품목 정보복사</label></th>
+                <td
+                    colspan="3"
+                    style="text-align: left"
+                >
+                    <button
+                        id="fnMasterItemSearch"
+                        type="button"
+                        class="btn-point btn-s"
+                        onclick="$scope.fnMasterItemSearchPopup()"
+                    >마스터 품목 검색</button> <span
+                    style="padding-left: 15px"
+                    data-bind="value: itemNameInCopy"
+                ></span>
+                </td>
+            </tr>
+            <tr data-bind="visible: isErpItemLink">
+                <th scope="row"><label class="req-star-th">ERP 품목명</label></th>
+                <td>
+                    <div
+                        class="complex-condition"
+                        style="min-height: 32px;"
+                    >
+                        <span
+                            name="erpItemName"
+                            style="line-height: 30px;"
+                            data-bind="text: erpItemName"
+                        > </span>
+                    </div>
+                </td>
+                <th scope="row"><label>품목 바코드</label></th>
+                <td>
+                	<span name="erpItemBarcode" data-bind="text: erpItemBarCode"></span>
+                	<input
+                            id="bosItemBarCode"
+                            class="comm-input"
+                            type="text"
+                            style="width: 40%"
+                            maxlength="14"
+                            data-bind="value: bosItemBarCode, visible: isErpItemLink, disabled: isAllDisabled"
+                        />
+                </td>
+            </tr>
+            <tr data-bind="visible: hasO2oExposureType">
+                <th scope="row"><label>매장품목유형</label></th>
+                <td><span
+                    style="font-weight: bold"
+                    data-bind="text: o2oExposureTypeName"
+                ></span></td>
+                <td colspan="2"></td>
+            </tr>
+            <tr data-bind="visible: hasProductType">
+                <th scope="row"><label>상품판매유형</label></th>
+                <td><span
+                    style="font-weight: bold"
+                    data-bind="text: productType"
+                ></span></td>
+                <td colspan="2"></td>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th">마스터 품목명</label></th>
+                <td colspan="3">
+                    <div class="complex-condition">
+                        <input
+                            id="itemName"
+                            class="comm-input"
+                            type="text"
+                            style="width: 50%"
+                            maxlength="30"
+                            data-bind="value: itemName, disabled: isAllDisabled"
+                        />
+                    </div>
+                </td>
+            </tr>
+            <tr data-bind="visible: isErpItemLink">
+                <th scope="row"><label class="req-star-th">ERP 카테고리</label></th>
+                <td colspan="3">
+                    <div class="fb__custom__selectWrapper">
+                        <input
+                            type="text"
+                            id="erpCtgry1"
+                            class="comm-input"
+                            style="width: 130px;"
+                            data-bind="value: erpCategoryLevel1Id"
+                            disabled
+                        /><input
+                            type="text"
+                            id="erpCtgry2"
+                            class="comm-input"
+                            style="width: 130px;"
+                            data-bind="value: erpCategoryLevel2Id"
+                            disabled
+                        /><input
+                            type="text"
+                            id="erpCtgry3"
+                            class="comm-input"
+                            style="width: 130px;"
+                            data-bind="value: erpCategoryLevel3Id"
+                            disabled
+                        /><input
+                            type="text"
+                            id="erpCtgry4"
+                            class="comm-input"
+                            style="width: 130px;"
+                            data-bind="value: erpCategoryLevel4Id"
+                            disabled
+                        />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th">표준 카테고리</label></th>
+                <td colspan="3">
+                    <div class="complex-condition">
+                        <div class="fb__custom__selectWrapper">
+                            <input
+                                type="text"
+                                id="categoryStandardDepth1"
+                                name="categoryStandardDepth1"
+                                class="fb__custom__select fb__space--divide"
+                                style="width: 130px;"
+                                data-bind="value: bosCategoryStandardFirstId, disabled: isAllDisabled, events: { change: onCalculateReturnPeriod }"
+                            /> <input
+                                type="text"
+                                id="categoryStandardDepth2"
+                                name="categoryStandardDepth2"
+                                class="fb__custom__select fb__space--divide"
+                                style="width: 130px;"
+                                data-bind="value: bosCategoryStandardSecondId, events: { change: onCalculateReturnPeriod }"
+                            /> <input
+                                type="text"
+                                id="categoryStandardDepth3"
+                                name="categoryStandardDepth3"
+                                class="fb__custom__select fb__space--divide"
+                                style="width: 130px;"
+                                data-bind="value: bosCategoryStandardThirdId, events: { change: onCalculateReturnPeriod }"
+                            /> <input
+                                type="text"
+                                id="categoryStandardDepth4"
+                                name="categoryStandardDepth4"
+                                class="fb__custom__select fb__space--divide"
+                                style="width: 130px;"
+                                data-bind="value: bosCategoryStandardFourthId, events: { change: onCalculateReturnPeriod }"
+                            />
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 35%">
+                <col style="width: 15%">
+                <col style="width: 35%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    colspan="4"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">상세 정보</label></th>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th">공급업체</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="bosSupplier"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            data-bind="value: bosSupplier, disabled: isSupplierDisabled, events: { select : onBosSupplierChange }"
+                        >
+                    </div>
+                </td>
+                <th scope="row">생산처</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                                id="erpSupplierName"
+                                class="comm-input marginR10"
+                                type="text"
+                                data-bind="value: erpSupplierName, visible: isErpItemLink"
+                                disabled
+                        >
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th">표준 브랜드</label></th>
+                <td >
+                    <div class="complex-condition">
+                        <input
+                            class="comm-input marginR10"
+                            type="text"
+                            style="width: 35%"
+                            data-bind="value: erpBrand, visible: isErpItemLink"
+                            disabled
+                        /> <span data-bind="visible: isErpItemLink"></span><input
+                            id="bosBrand"
+                            class="fb__custom__select fb__space--divide"
+                            name="bosBrand"
+                            type="text"
+                            style="width: 35%"
+                            data-bind="value: bosBrand, disabled: isBosBrandDisabled, events: { select : onBosBrandSelect }"
+                        >
+                    </div>
+                </td>
+                <th scope="row"><label class="req-star-th">전시 브랜드</label></th>
+                <td>
+					<div class="complex-condition">
+                        <input
+                            id="dpBrand"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            style="width: 35%"
+                            data-bind="value: dpBrand, disabled: isAllDisabled"
+                        >
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <th
+                    id="itemGroupTh"
+                    scope="row"
+                ><label class="req-star-th">상품군</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            class="comm-input"
+                            type="text"
+                            data-bind="value: erpItemGroupDisplayName, visible: isErpItemLink"
+                            disabled
+                        /> <input
+                            class="comm-input"
+                            type="text"
+                            maxlength="10"
+                            data-bind="value: bosItemGroup, visible: isNotErpItemLink"
+                        />
+                    </div>
+                </td>
+                <th scope="row"><label class="req-star-th">보관방법</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            class="comm-input marginR10"
+                            type="text"
+                            value="ERP 보관정보"
+                            style="width: 35%"
+                            data-bind="value: erpStorageMethod, visible: isErpItemLink"
+                            disabled
+                        /> <span data-bind="visible: isErpItemLink"></span><input
+                            id="bosStorageMethod"
+                            class="fb__custom__select fb__space--divide"
+                            name="bosStorageMethod"
+                            type="text"
+                            style="width: 35%"
+                            data-bind="value: bosStorageMethod, disabled: isAllDisabled, events: { change: onCalculateReturnPeriod }"
+                        >
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th">원산지</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            class="comm-input marginR10"
+                            type="text"
+                            style="width: 30%;"
+                            data-bind="value: erpOriginName, visible: isErpItemLink"
+                            disabled
+                        /> <span data-bind="visible: isErpItemLink"></span><input
+                            id="bosOriginType"
+                            class="fb__custom__select fb__space--divide marginR10"
+                            type="text"
+                            style="width: 30%"
+                            data-bind="value: bosOriginType, disabled: isAllDisabled, events: { change: onBosOriginChange }"
+                        ><input
+                            id="bosOriginDetailOverseas"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            style="width: 30%"
+                            data-bind="value: bosOriginDetailOverseas, visible: isBosOriginDetailOverseasVisible, disabled: isAllDisabled"
+                        > <input
+                            id="bosOriginDetailDirectInputValue"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            style="width: 30%"
+                            data-bind="value: bosOriginDetailDirectInputValue, visible: isBosOriginDetailDirectInputVisible, disabled: isAllDisabled"
+                        >
+                    </div>
+                </td>
+                <th scope="row"><label class="req-star-th">유통기간</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            class="comm-input marginR10"
+                            id="erpDistributionPeriod"
+                            type="text"
+                            data-bind="value: erpDistributionPeriod, visible: isErpItemLink"
+                            disabled
+                        /> <input
+                            id="bosDistributionPeriod"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="5"
+                            data-bind="value: bosDistributionPeriod, visible: isNotErpItemLink, events: { change: setSpecFieldModifiedMessage }"
+                        />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th incorporeal-star">박스체적<br>(가로x세로x높이)
+                </label></th>
+                <td>
+                    <div
+                        class="complex-condition isErpItemLink-wrapper"
+                        data-bind="visible: isErpItemLink"
+                    >
+                        <input
+                            class="comm-input"
+                            type="text"
+                            data-bind="value: erpBoxWidth"
+                            disabled
+                        /> <span class="marginR5 marginL5">&times;</span> <input
+                            class="comm-input"
+                            type="text"
+                            data-bind="value: erpBoxDepth"
+                            disabled
+                        /> <span class="marginR5 marginL5">&times;</span> <input
+                            class="comm-input"
+                            type="text"
+                            data-bind="value: erpBoxHeight"
+                            disabled
+                        />
+                    </div>
+                    <div data-bind="visible: isNotErpItemLink">
+                        <input
+                            id="boxWidth"
+                            class="comm-input"
+                            type="text"
+                            style="width: 28%;"
+                            data-role="numerictextbox"
+                            data-format="#.###"
+                            data-min="0"
+                            data-max="99999.999"
+                            data-spinners="false"
+                            data-decimals="3"
+                            data-restrict-decimals="true"
+                            data-round="false"
+                            data-bind="value: boxWidth"
+                        /> <span class="marginR5 marginL5">&times;</span> <input
+                            id="boxDepth"
+                            class="comm-input"
+                            type="text"
+                            style="width: 28%;"
+                            data-role="numerictextbox"
+                            data-format="#.###"
+                            data-min="0"
+                            data-max="99999.999"
+                            data-spinners="false"
+                            data-decimals="3"
+                            data-restrict-decimals="true"
+                            data-round="false"
+                            data-bind="value: boxDepth"
+                        /> <span class="marginR5 marginL5">&times;</span> <input
+                            id="boxHeight"
+                            class="comm-input"
+                            type="text"
+                            style="width: 28%;"
+                            data-role="numerictextbox"
+                            data-format="#.###"
+                            data-min="0"
+                            data-max="99999.999"
+                            data-spinners="false"
+                            data-decimals="3"
+                            data-restrict-decimals="true"
+                            data-round="false"
+                            data-bind="value: boxHeight"
+                        />
+                    </div>
+                </td>
+                <th scope="row"><label class="req-star-th incorporeal-star">박스입수량/UOM</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="bosPiecesPerBox"
+                            class="comm-input marginR10"
+                            style="width: 35%"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="5"
+                            data-bind="value: bosPiecesPerBox, visible: isNotErpItemLink"
+                        /><input
+                            class="comm-input marginR10"
+                            type="text"
+                            style="width: 35%"
+                            data-bind="value: erpPiecesPerBox, visible: isErpItemLink"
+                            disabled
+                        /><input
+                            id="unitOfMeasurement"
+                            class="comm-input"
+                            type="text"
+                            maxlength="10"
+                            style="width: 35%"
+                            data-bind="value: unitOfMeasurement, disabled: isErpItemLink"
+                        />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th incorporeal-star">포장단위별 용량</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="sizePerPackage"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="#.##"
+                            data-min="0"
+                            data-max="99999.99"
+                            data-spinners="false"
+                            data-decimals="2"
+                            data-restrict-decimals="true"
+                            data-round="false"
+                            data-bind="value: sizePerPackage, disabled: isAllDisabled"
+                        />
+                    </div>
+                </td>
+                <th scope="row"><label class="req-star-th incorporeal-star">용량(중량) 단위 <span id="tooltipSpan"><span
+                            class="k-icon k-i-question k-i-help"
+                            title="도움말 tooltip"
+                        ></span></span>
+                </label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            class="fb__custom__select fb__space--divide"
+                            id="sizeUnit"
+                            type="text"
+                            style="width: 35%"
+                            data-bind="value: sizeUnit, disabled: isAllDisabled, events: { change: onSizeUnitChange }"
+                        ><input
+                            id="sizeUnitDirectInputValue"
+                            class="comm-input pr--default"
+                            type="text"
+                            style="width: 35%"
+                            maxlength="5"
+                            data-bind="value: sizeUnitDirectInputValue, visible: isSizeUnitDirectInputVisible"
+                        >
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label>포장구성 수량</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="quantityPerPackage"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="5"
+                            data-bind="value: quantityPerPackage, disabled: isAllDisabled"
+                        />
+                    </div>
+                </td>
+                <th scope="row"><label>포장구성 단위</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <input
+                            id="packageUnit"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            style="width: 35%"
+                            data-bind="value: packageUnit, disabled: isAllDisabled, events: { change: onPackageUnitChange }"
+                        ><input
+                            id="packageUnitDirectInputValue"
+                            class="comm-input pr--default"
+                            type="text"
+                            style="width: 35%"
+                            maxlength="5"
+                            data-bind="value: packageUnitDirectInputValue, visible: isPackageUnitDirectInputVisible, disabled: isAllDisabled"
+                        >
+                    </div>
+                </td>
+            </tr>
+            <tr data-bind="visible: isPdmGroupCodeVisible">
+                <th scope="row"><label class="req-star-th">PDM 그룹코드</label></th>
+                <td colspan="3">
+                    <div class="complex-condition">
+                        <input
+                            id="pdmGroupCode"
+                            class="comm-input"
+                            type="text"
+                            style="width: 40%"
+                            maxlength="15"
+                            data-bind="value: pdmGroupCode, disabled: isPdmGroupCodeDisabled"
+                        />
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+<!--                 <col style="width: 15%"> -->
+<!--                 <col style="width: 85%"> -->
+
+				<col style="width: 15%">
+                <col style="width: 10%">
+                <col style="width: 25%">
+                <col style="width: 15%">
+                <col style="width: 35%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    colspan="6"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">판매 정보</label></th>
+            </tr>
+            <tr>
+                <th scope="row"><label class="req-star-th">과세 구분</label></th>
+                <td colspan="2">
+                    <div class="complex-condition">
+                        <input
+                            id="taxYn"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            data-bind="value: taxYn, disabled: isErpItemLink"
+                        >
+                    </div>
+                </td>
+                <th scope="row" data-bind="visible: showPriceApproval"><label class="req-star-th">가격승인대상 여부</label></th>
+                <td colspan="2" data-bind="visible: showPriceApproval">
+					<span style="font-weight: bold" data-bind="text: approvalTarget"></span>
+                </td>
+            </tr>
+
+            <!--  렌탈상품 판매정보 시작 -->
+			<tr data-bind="visible: showRentalPriceVisible">
+                <th scope="row"><label class="req-star-th">렌탈료 / 월</label></th>
+                <td colspan="2">
+                	<div class="complex-condition">
+                		<input
+                            id="rentalFeePerMonth"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="##,#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="10"
+                            data-bind="value: rentalFeePerMonth, disabled: isRetalEditDisabled, events: { change: rentalInfoChange }"
+                        />
+                	</div>
+
+                </td>
+                <th scope="row"><label class="req-star-th">의무사용기간 / 월</label></th>
+                <td colspan="2">
+                	<div class="complex-condition">
+                		<input
+                            id="rentalDueMonth"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="##,#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="3"
+                            data-bind="value: rentalDueMonth, disabled: isRetalEditDisabled, events: { change: rentalInfoChange }"
+                        />
+                	</div>
+
+                </td>
+            </tr>
+
+			<tr data-bind="visible: showRentalPriceVisible">
+                <th scope="row"><label class="req-star-th">총 렌탈료</label></th>
+                <td colspan="2">
+                    <div class="complex-condition">
+                		<span style="font-weight: bold" data-bind="text: rentalTotalPrice" data-format="##,#"></span>
+                		원  (렌탈료 X 의무사용기간)
+                	</div>
+                </td>
+                <th scope="row"><label class="">계약금</label></th>
+                <td colspan="2">
+					<div class="complex-condition">
+                		<input
+                            id="rentalDeposit"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="##,#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="10"
+                            data-bind="value: rentalDeposit, disabled: isRetalEditDisabled, events: { change: rentalInfoChange }"
+                        />
+                	</div>
+                </td>
+            </tr>
+
+            <tr data-bind="visible: showRentalPriceVisible">
+                <th scope="row"><label class="">설치비</label></th>
+                <td colspan="2">
+                    <div class="complex-condition">
+
+                		<input
+                            id="rentalInstallFee"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="##,#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="10"
+                            data-bind="value: rentalInstallFee, disabled: isRetalEditDisabled, events: { change: rentalInfoChange }"
+                        />
+                	</div>
+                </td>
+                <th scope="row"><label class="">등록비</label></th>
+                <td colspan="2">
+					<div class="complex-condition">
+                		<input
+                            id="rentalRegistFee"
+                            class="comm-input"
+                            type="text"
+                            data-role="numerictextbox"
+                            data-format="##,#"
+                            data-min="0"
+                            data-spinners="false"
+                            data-decimals="0"
+                            data-restrict-decimals="true"
+                            maxlength="10"
+                            data-bind="value: rentalRegistFee, disabled: isRetalEditDisabled, events: { change: rentalInfoChange }"
+                        />
+                	</div>
+                </td>
+            </tr>
+			<!--  렌탈상품 판매정보 끝 -->
+
+
+			<tr data-bind="visible: showItemPrice">
+                <th scope="row"><label>품목 가격정보</label></th>
+                <td colspan="5">
+                    <div>
+                        <span
+                            class="k-icon  k-i-arrow-60-right"
+                            style="font-size: 25px;"
+                        ></span><span>온라인 통합 가격정보</span>
+                    </div>
+                    <div>
+                        <table class="datatable v-type">
+                            <colgroup>
+                                <col style="width: 25%">
+                                <col style="width: 25%">
+                                <col style="width: 25%">
+                                <col style="width: 25%">
+                                <col style="width: 25%">
+                                <col style="width: 25%">
+                                <col style="width: 25%">
+                                <col style="width: 25%">
+                            </colgroup>
+                            <tr style="border-bottom: 1px solid #e5e5e5;">
+                            	<th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">승인상태</label></th>
+                                <th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">시작일/승인완료일</label></th>
+                                <th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">종료일</label></th>
+                                <th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">원가</label></th>
+                                <th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">정상가</label></th>
+                                <th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">마진율</label></th>
+                                <th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">승인요청자</label></th>
+                                <th
+                                    scope="row"
+                                    class="textCenter"
+                                ><label class="req-star-th">승인관리자(1차/최종)</label></th>
+                            </tr>
+							<tr data-bind="visible: showItemPriceRow">
+								<td style="text-align: center; border-right: 1px solid #e5e5e5;"><span data-bind="text: approvalStatusCodeName"></span></td>
+                                <td style="text-align: center; border-right: 1px solid #e5e5e5;"><span data-bind="text: priceApplyStartDate"></span></td>
+                                <td style="text-align: center; border-right: 1px solid #e5e5e5;"><span data-bind="text: priceApplyEndDate"></span></td>
+                                <td style="text-align: center; border-right: 1px solid #e5e5e5;"><span
+                                    data-format="##,#"
+                                    data-bind="text: standardPrice"
+                                ></span></td>
+                                <td style="text-align: center;"><span
+                                    data-format="##,#"
+                                    data-bind="text: recommendedPrice"
+                                ></td>
+                                <td style="text-align: center; border-right: 1px solid #e5e5e5;"><span
+                                    data-format="##,#"
+                                    data-bind="text: priceRatio"
+                                ></span>
+
+                                </td>
+                                <td style="text-align: center; border-right: 1px solid #e5e5e5;"><span
+                                    data-format="##,#"
+                                    data-bind="text: approval1st"
+                                ></span></td>
+                                <td style="text-align: center; border-right: 1px solid #e5e5e5;"><span
+                                    data-format="##,#"
+                                    data-bind="text: approvalConfirm"
+                                ></span></td>
+                            </tr>
+
+                            <tr data-bind="visible: noItemPriceInfo">
+                                <td
+                                    style="text-align: center;"
+                                    colspan="8"
+                                >&nbsp;</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div style="padding-top: 10px">
+
+                         <button
+                            id="fnItemPriceAddPopup"
+                            type="button"
+                            class="btn-gray btn-s"
+                            style="float: right;"
+                            onClick="$scope.fnItemPriceAddPopup(this)"
+							data-bind="visible: showItemPriceAddBtn"
+                        >가격등록</button>
+
+                    </div>
+                </td>
+            </tr>
+
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 85%">
+            </colgroup>
+            <tbody>
+                <tr>
+                    <th
+                        scope="row"
+                        colspan="2"
+                        class="active"
+                        style="text-align: left;"
+                    ><label style="font-size: 20px;">상품정보 제공고시</label></th>
+                </tr>
+                <tr style="border-bottom: 1px solid #e5e5e5;">
+                    <th scope="row"><label class="req-star-th">상품군</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input
+                                id="specGroup"
+                                type="text"
+                                class="fb__custom__select fb__space--divide"
+                                data-bind="value: selectedItemSpecMasterId, disabled: isAllDisabled, events: { change: onSpecGroupChange }"
+                            >
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+            <!-- 상품정보 제공고시 tr 출력 영역, kendo template 으로 Mapping 됨 -->
+            <tbody
+                data-template="spec-row-template"
+                data-bind="source: itemSpecValueList"
+            >
+            </tbody>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 21.25%">
+                <col style="width: 21.25%">
+                <col style="width: 21.25%">
+                <col style="width: 21.25%">
+            </colgroup>
+            <tbody id="beforeNutritionDetailContainer">
+                <tr>
+                    <th
+                        scope="row"
+                        colspan="5"
+                        class="active"
+                        style="text-align: left;"
+                    ><label style="font-size: 20px;">상품 영양정보</label></th>
+                </tr>
+                <tr>
+                    <th scope="row"><label class="req-star-th">영양정보 표시여부</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input
+                                id="nutritionDisplayYn"
+                                class="fb__custom__select fb__space--divide"
+                                type="text"
+                                data-bind="value: nutritionDisplayYn, disabled: isAllDisabled, events: { change: onNutritionDisplayYnChange }"
+                            >
+                        </div>
+                    </td>
+                    <td colspan="2">
+                        <div class="complex-condition">
+                            <input
+                                id="nutritionDisplayDefalut"
+                                class="comm-input"
+                                type="text"
+                                style="width: 100%"
+                                data-bind="value: nutritionDisplayDefalut, visible: isNutritionInputAreaNotVisible"
+                            />
+                        </div>
+                    </td>
+                    <td></td>
+                </tr>
+                <tr
+                    data-bind="visible: isNutritionInputAreaVisible"
+                    style="border-bottom: 1px solid #e5e5e5;"
+                >
+                    <th scope="row"><label>영양분석 단위</label></th>
+                    <td
+                        colspan="2"
+                        style="text-align: center; border-right: 1px solid #e5e5e5;"
+                    ><span data-bind="text : erpNutritionAnalysisMessage, visible: showErpNutritionAnalysisMessage"></span></td>
+                    <td colspan="2">
+                        <div class="complex-condition">
+                            <div class="nutiritionQuantity-wrapper">
+                                <span>1회 분량</span> <input
+                                    class="comm-input pr--default"
+                                    type="text"
+                                    data-bind="value: nutritionQuantityPerOnce, disabled: isAllDisabled"
+                                >
+                            </div>
+                            <div class="nutiritionQuantity-wrapper">
+                                <span>총</span> <input
+                                    class="comm-input pr--default"
+                                    type="text"
+                                    data-bind="value: nutritionQuantityTotal, disabled: isAllDisabled"
+                                >
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr data-bind="visible: isNutritionInputAreaVisible">
+                    <th scope="row"><label>신규분류 추가</label></th>
+                    <td
+                        scope="row"
+                        colspan="4"
+                        style="text-align: left;"
+                    >
+                        <div class="complex-condition">
+                            <input
+                                id="addAvailableNutritionCode"
+                                class="fb__custom__select fb__space--divide marginR10"
+                                type="text"
+                                data-bind="value: selectedAddAvailableNutritionCode, disabled: isAllDisabled"
+                            >
+                            <div class="addNewNutrition-wrapper">
+                                <input
+                                    id="nutritionCodeAutoComplete"
+                                    class="comm-input marginR5"
+                                    type="text"
+                                    style="display: inline-block;"
+                                    maxlength="15"
+                                    data-role="autocomplete"
+                                    data-value-Primitive="true"
+                                    data-placeholder="영양 정보 검색"
+                                    data-text-field="nutritionName"
+                                    data-bind="disabled: isAllDisabled, value: selectedNutritionName, source: addAvailableNutritionCodeList, events: { change: onNutritionAutoCompleteChange }"
+                                >
+                                <button
+                                    id="fnAddAvailableNutritionCode"
+                                    type="button"
+                                    class="btn-point btn-s middle"
+                                    data-bind="click: fnAddAvailableNutritionCode"
+                                >추가</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr
+                    data-bind="visible: isNutritionInputAreaVisible"
+                    style="border-bottom: 1px solid #e5e5e5"
+                >
+                    <th scope="row"><label>분류명</label></th>
+                    <th
+                        scope="row"
+                        colspan="2"
+                        style="padding: 5px;"
+                    ><label>영양성분</label></th>
+                    <th
+                        scope="row"
+                        colspan="2"
+                        style="padding: 5px;"
+                    ><label>영양소 기준치</label></th>
+                </tr>
+            </tbody>
+            <!-- 영양정보 상세 항목 tr 출력 영역, kendo template 으로 Mapping 됨 -->
+            <tbody
+                id="nutritionDetailContainer"
+                data-template="nutritionDetailList-row-template"
+                data-bind="source: itemNutritionDetailList"
+            >
+            </tbody>
+            <tbody>
+                <tr
+                    style="border-top: 1px solid #e5e5e5;"
+                    data-bind="visible: isNutritionInputAreaVisible"
+                >
+                    <th scope="row"><label>영양성분 기타</label></th>
+                    <td
+                        colspan="2"
+                        style="text-align: center; border-right: 1px solid #e5e5e5;"
+                    >
+                        <div class="complex-condition">
+                            <textarea
+                                class="comm-textarea"
+                                style="width: 100%; min-width: 100%; min-height: 100px;"
+                                data-bind="value : erpNutritionEtc"
+                                disabled
+                            ></textarea>
+                        </div>
+                    </td>
+                    <td colspan="2">
+                        <div class="complex-condition">
+                            <textarea
+                                id="nutritionEtc"
+                                style="width: 100%; min-width: 100%; min-height: 100px;"
+                                class="comm-textarea"
+                                maxlength="1000"
+                                data-bind="value : nutritionEtc, disabled: isAllDisabled"
+                            ></textarea>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 8%">
+                <col style="width: 70%">
+                <col style="width: 7%">
+            </colgroup>
+            <tbody>
+                <tr>
+                    <th
+                        scope="row"
+                        colspan="4"
+                        class="active"
+                        style="text-align: left;"
+                    ><label style="font-size: 20px;">상품 인증정보</label></th>
+                </tr>
+                <tr style="border-bottom: 1px solid #e5e5e5;">
+                    <th scope="row"><label>인증정보 선택</label><br> ( <span
+                        style="color: red;"
+                        data-bind="text: itemCertificationCount"
+                    ></span> / <span data-bind="text: itemCertificationMaxLimit"></span> )</th>
+                    <td colspan="3">
+                        <div class="complex-condition">
+                            <input
+                                id="itemCertification"
+                                class="fb__custom__select fb__space--divide marginR10"
+                                type="text"
+                                style="width: 50%"
+                                data-bind="value: selectedIlCertificationId, disabled: isAllDisabled"
+                            >
+                            <button
+                                id="fnAddItemCertification"
+                                type="button"
+                                class="btn-point btn-s middle marginR10"
+                                data-bind="click: fnAddItemCertification, disabled: isAllDisabled"
+                            >추가</button>
+                            <button
+                                id="fnRemoveAllItemCertification"
+                                type="button"
+                                class="btn-red btn-s middle"
+                                data-bind="click: fnRemoveAllItemCertification, disabled: isAllDisabled"
+                            >목록 전체삭제</button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+            <!-- 상품 인증정보 tr 출력 영역, kendo template 으로 Mapping 됨 -->
+            <tbody
+                data-template="itemCertification-row-template"
+                data-bind="source: itemCertificationList"
+            >
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 100%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">출고처 정보</label></th>
+            </tr>
+            <tr>
+                <td>
+                    <div>
+                        <span
+                            class="k-icon  k-i-arrow-60-right"
+                            style="font-size: 25px;"
+                        ></span><span>출고처 등록</span>
+                    </div>
+                    <div class="complex-condition marginB20" data-bind="visible: showAddWarehouse">
+                        <input id="warehouseGroup" class="fb__custom__select fb__space--divide marginR10"
+                        	type="text"
+                            style="width: 130px"
+                            data-bind="value: selectedWarehouseGroupCode, disabled: isAllDisabled"
+                        ><input
+                            id="warehouse"
+                            class="fb__custom__select fb__space--divide marginR10"
+                            type="text"
+                            style="width: 250px"
+                            data-bind="value: selectedUrSupplierWarehouseId, disabled: isAllDisabled"
+                        >
+                        <button
+                            id="fnAddWarehouse"
+                            type="button"
+                            class="btn-point btn-s middle"
+                            style="height: 32px;"
+                            data-bind="click: fnAddWarehouse"
+                        >출고처 추가</button>
+                    </div>
+                    <div class="marginB20">
+                        <table class="datatable v-type">
+                            <colgroup>
+                                <col style="width: 20%">
+                                <col style="width: 30%">
+                                <col style="width: 40%">
+                                <col style="width: 30%">
+                                <col style="width: 30%">
+                                <col style="width: 10%">
+                            </colgroup>
+                            <tr style="border-bottom: 1px solid #e5e5e5;">
+                                <th scope="row" class="textCenter"><label>출고처 그룹</label></th>
+                                <th scope="row" class="textCenter"><label>출고처명</label></th>
+                                <th scope="row" class="textCenter"><label>출고처 주소정보</label></th>
+                                <th scope="row" class="textCenter"><label>발주유형(ERP)</label></th>
+                                <th scope="row" class="textCenter"><label>발주유형(BOS)</label></th>
+                                <th scope="row" class="textCenter" ><label>관리</label></th>
+                            </tr>
+                            <tbody
+                                data-template="warehouse-row-template"
+                                data-bind="source: itemWarehouseList"
+                            >
+                            </tbody>
+                            <tbody data-bind="visible: noItemWarehouseInfo">
+                                <tr>
+                                    <td
+                                        style="text-align: center;"
+                                        colspan="6"
+                                    >&nbsp;</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+					<div data-bind="visible: visibleStoreStockInfo">
+	                    <div>
+	                        <span
+	                            class="k-icon  k-i-arrow-60-right"
+	                            style="font-size: 25px;"
+	                        ></span><span>매장별 재고정보</span>
+	                    </div>
+	                    <div class="marginB20">
+	                        <table class="datatable v-type">
+	                            <colgroup>
+	                                <col style="width: 70%">
+	                                <col style="width: 30%">
+	                            </colgroup>
+	                            <tr style="border-bottom: 1px solid #e5e5e5;">
+	                                <th scope="row" class="textCenter"><label>매장정보</label></th>
+	                                <th scope="row" class="textCenter"><label>재고</label></th>
+	                            </tr>
+	                            <tbody>
+	                                <tr>
+	                                    <td
+	                                        style="text-align: center;"
+	                                        colspan="2"
+	                                    >신규 등록완료 후 해당정보를 조회할 수 있습니다.</td>
+	                                </tr>
+	                            </tbody>
+	                        </table>
+	                    </div>
+					</div>
+                </td>
+            </tr>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 10%">
+                <col style="width: 25%">
+                <col style="width: 15%">
+                <col style="width: 35%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    colspan="5"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">배송/발주 정보</label></th>
+            </tr>
+            <!--
+            <tr data-bind="visible: isErpItemLink">
+                <th scope="row"><label class="req-star-th">발주 유형</label>
+                    <button
+                        id="fnPoTypeDetailInformationPopup"
+                        type="button"
+                        class="btn-point btn-s"
+                        onclick="$scope.fnPoTypeDetailInformationPopup()"
+                        data-bind="visible: poTypeDetailInformationPopupVisible"
+                    >상세보기</button></th>
+                <td colspan="4">
+                    <div class="complex-condition">
+                        <span
+                            class="middle marginR5"
+                            style="font-size: 16px;"
+                            data-bind="text: erpPoTypeDisplayName"
+                        ></span> <input
+                            id="bosPoType"
+                            class="fb__custom__select fb__space--divide"
+                            type="text"
+                            data-bind="value: selectedBosPoType, disabled: isAllDisabled, events: { change: onBosPoTypeChange }"
+                        >
+                    </div>
+                </td>
+            </tr>
+            -->
+            <tr data-bind="visible : hasErpCanPoYn">
+                <th scope="row"><label class="req-star-th">발주 가능여부</label></th>
+                <td colspan="4"><span
+                    style="font-size: 16px;"
+                    data-bind="text : erpCanPoYnMessage"
+                ></span></td>
+            </tr>
+            <tr>
+                <th scope="row"><label>배송 불가 지역</label></th>
+                <td colspan="2">
+                    <div class="complex-condition">
+                        <div
+                            id="shippingYn"
+                            class="checkbox-wrapper fb__custom__checkbox"
+                        ></div>
+                    </div>
+                </td>
+                <th scope="row"><label class="req-star-th">판매 허용여부(단종)</label></th>
+                <td>
+                    <div class="complex-condition">
+						<input id="extinctionYn" class="fb__custom__select fb__space--divide marginR10"
+                        	type="text"
+                            style="width: 130px"
+                            data-bind="value: extinctionYn, disabled: isAllDisabled"
+                        >
+                    	<!--
+                        <span
+                            id="extinctionYn"
+                            class="radios-wrapper fb__custom__radio"
+                            data-bind="value: extinctionYn"
+                        > </span>
+                        -->
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label>반품 가능 기간</label></th>
+                <td><span
+                    style="font-size: 16px;"
+                    data-bind="text: returnPeriod"
+                ></span></td>
+                <td colspan="3"></td>
+            </tr>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 60%">
+                <col style="width: 25%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    colspan="3"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">상품 상세 이미지</label></th>
+            <tr>
+                <th scope="row"><label class="req-star-th">상품 이미지 ( <span
+                        style="color: red;"
+                        data-bind="text: itemImageCount"
+                    ></span> / <span data-bind="text: itemImageMaxLimit"></span> )
+                </label></th>
+                <td colspan="2">
+                    <!-- 상품 이미지 div 출력 영역, kendo template 으로 Mapping 됨 -->
+                    <div
+                        id="divContainer"
+                        style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: left;"
+                    >
+                        <div id="beforeItemImageContainer"></div>
+                        <span
+                            id="itemImageContainer"
+                            style="display: flex; flex-wrap: wrap; justify-content: left;"
+                            data-template="itemImage-row-template"
+                            data-bind="source: itemImageList"
+                        ></span>
+                    </div>
+                    <div style="float: bottom; margin-left: 20px;">
+                        <div>최소권장 사이즈 : 1000 x 1000</div>
+                        <div>Jpg. Jpeg. GIF 만 허용 / 이미지당 최대 1 mb</div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label>동영상 정보입력</label></th>
+                <td colspan="2">
+                    <div class="complex-condition">
+                        <div class="marginB5">
+                            <input
+                                id="videoUrl"
+                                class="comm-input marginR10"
+                                type="text"
+                                style="width: 500px;"
+                                data-bind="value : videoUrl, disabled: isAllDisabled"
+                            /> <label> <input
+                                type="checkbox"
+                                id="videoAutoplayYn"
+                                data-bind="checked : videoAutoplayYn, disabled: isAllDisabled"
+                            /> <span>앱내 실행 시 wifi일 경우 오토플레이 적용</span>
+                            </label>
+                        </div>
+                        <span style="color: red;">* vimeo에 등록된 동영상 url만 입력해주세요.</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 60%">
+                <col style="width: 25%">
+            </colgroup>
+            <tr>
+                <th scope="row" class="active" style="text-align: left;" colspan="3">
+                	<label style="font-size: 20px;">상품 상세 기본 정보</label>
+                    <span class="itemMgm__info-title">이미지 등록 시 에디터의 이미지 첨부파일 기능을 이용해주시길 바랍니다. </span>
+                </th>
+            </tr>
+            <tr>
+                <th scope="row"><label>템플릿 선택</label></th>
+                <td colspan="2">
+                    <div class="complex-condition">
+                        <span id="templateSpan" class="radios-wrapper fb__custom__radio paddingL10"></span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td id="basicDescriptionTd" colspan="3"><textarea
+                        id="basicDescription"
+                        style="width: 100%; height: 700px"
+                    ></textarea></td>
+            </tr>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 100%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">상품 상세 주요 정보</label>
+                <span class="itemMgm__info-title">이미지 등록 시 에디터의 이미지 첨부파일 기능을 이용해주시길 바랍니다. </span>
+                </th>
+            </tr>
+            <tr>
+                <td id="detaillDescriptionTd"><textarea
+                        id="detaillDescription"
+                        style="width: 100%; height: 700px"
+                    ></textarea></td>
+            </tr>
+        </table>
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%">
+                <col style="width: 85%">
+            </colgroup>
+            <tr>
+                <th
+                    scope="row"
+                    colspan="2"
+                    class="active"
+                    style="text-align: left;"
+                ><label style="font-size: 20px;">기타 정보</label></th>
+            </tr>
+            <tr>
+                <th scope="row"><label>메모작성</label></th>
+                <td>
+                    <div class="complex-condition">
+                        <textarea
+                            id="memo"
+                            name="memo"
+                            class="comm-textarea"
+                            style="width: 100%; height: 100px;"
+                            data-bind="value: etcDescription, disabled: isAllDisabled"
+                        ></textarea>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+		<div class="complex-condition" style="text-align:center;margin-top:6px;">
+            <button id="fnSave" class="btn-point btn-l" type="button" auth-remove="SAVE" onclick="$scope.fnSave()">저장</button>
+		</div>
+
+		<div class="textCenter" id="apprChkDiv">
+			<input type="checkbox" id="approvalCheckbox" class="fb__custom__checkbox" name="approvalCheckbox"/>
+			<label for="approvalCheckbox">
+				승인요청 처리
+			</label>
+		</div>
+
+		<div class="fb__sect grid-sect" id="apprDiv">
+			<div class="wrap-tit">
+				<div class="ea-title">
+					<h3>승인관리자 정보</h3>
+				</div>
+				<span class="btn-area">
+					<button id="fnApprAdmin" class="set-btn-type4 clientAllow" type="button" onclick="$scope.fnApprAdmin()" auth-remove="SAVE">승인관리자 지정</button>
+					<button id="fnApprClear" class="set-btn-type5 clientAllow" type="button" onclick="$scope.fnApprClear()" auth-remove="SAVE">초기화</button>
+				</span>
+			</div>
+			<div id="apprGrid"></div>
+		</div>
+
+    </div>
+
+</form>
+
+<!------------ 상품 이미지 파일 첨부시 사용 Form ------------------->
+<form
+    id="uploadItemImageForm"
+    method="POST"
+    enctype="multipart/form-data"
+    onsubmit="return false;"
+    style="display: none"
+>
+    <!-- 상품 이미지 파일 accept 지정 : .jpg, .jpeg, .gif 파일만 선택 허용 -->
+    <input
+        type="file"
+        id="uploadItemImage"
+        name="uploadItemImage"
+        accept=".jpg, .jpeg, .gif"
+    >
+</form>
+
+<!------------ Editor 내 이미지 파일 첨부시 사용 Form ------------------->
+<form
+    id="uploadImageOfEditorForm"
+    method="POST"
+    enctype="multipart/form-data"
+    onsubmit="return false;"
+    style="display: none"
+>
+    <!-- accept 지정 : image 파일만 선택 허용 -->
+    <input
+        type="file"
+        id="uploadImageOfEditor"
+        name="uploadImageOfEditor"
+        accept="image/*"
+    >
+</form>
+
+<!-- Kendo Template 사용시 CSS 관련 주의사항 -->
+<!-- (1) 인라인 style=(key):(value); ... 에서 : 뒤에 공백 없어야 함 -->
+<!-- (2) \#e5e5e5 와 같이 # 앞에 escep 처리해야 함 -->
+<!-- 영양정보 상세항목 template -->
+<script
+    id="nutritionDetailList-row-template"
+    type="text/x-kendo-template"
+>
+    <tr data-bind="visible: isNutritionInputAreaVisible, attr: { data-id: nutritionCode }">
+        <th class="clearfix" style="border-right: 1px solid \#e5e5e5;">
+            <div class="middle floatLeft" style="line-height:30px;" data-bind="text: nutritionCodeName"></div>
+			<!-- 영양분류 코드명 -->
+            <!-- 삭제 버튼 -->
+            <button data-bind="visible: canDeleted, click: fnRemoveNutritionDetailRow" type="button" class="fb__btn__excel-down btn-white floatRight">삭제</button>
+        </th>
+        <td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+            <div data-bind="text: erpNutritionQuantity"></div>  <!-- ERP 영양성분량 -->
+        </td>
+        <td style="text-align:center;border-right: 1px solid \#e5e5e5;">
+            <input type="text" data-bind="value: nutritionQuantity" style=text-align:left; padding-left: 20px; width: 100%;"
+                   data-role="numerictextbox"
+                   data-format="\#.\#\#\#"
+                   data-min="0"
+                   data-spinners="false"
+                   data-decimals="3"
+                   data-restrict-decimals="true"
+                   data-round="false"
+            /> <!-- BOS 영양성분량 -->
+            <span data-bind="text: nutritionUnit" class="inlineBlock marginL5" style="width:35px;text-align:left;"></span>  <!-- BOS 영양성분량 단위 -->
+        </td>
+        <td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+            <span data-bind="text: erpNutritionPercent, visible: nutritionPercentYn"></span>  <!-- ERP 영양성분 기준치대비 함량 -->
+        </td>
+        <td style="text-align:center;">
+            <span data-bind="visible: nutritionPercentYn">
+                <input type="text" data-bind="value: nutritionPercent" style=text-align:left; padding-left: 20px; width: 100%;"
+                       data-role="numerictextbox"
+                       data-format="\#.\#\#\#"
+                       data-min="0"
+                       data-spinners="false"
+                       data-decimals="3"
+                       data-restrict-decimals="true"
+                       data-round="false"
+                /> <!-- BOS 영양성분 기준치대비 함량 -->
+                    &nbsp;&nbsp;&nbsp;
+                <span>%</span>
+            </span>
+        </td>
+    </tr>
+</script>
+<!-- 상품 인증정보 template -->
+<script
+    id="itemCertification-row-template"
+    type="text/x-kendo-template"
+>
+    <tr>
+        <th style="text-align:center;">
+            <span data-bind="text: certificationName"></span>  <!-- 상품인증정보 이름 -->
+        </th>
+        <td style="text-align:center;">
+			<div class="imgWrapper">
+				<figure>
+            		<img data-bind="attr: { src: imageSrc }"/>
+				</figure>
+			</div>
+        </td>
+        <td class="noResize-textarea-wrapper">
+			<div class="noResize-textarea">
+            	<textarea class="comm-textarea" style="width: 100%; min-height: 100px;"
+	                data-bind="value: certificationDescription" disabled
+            	></textarea>   <!-- 상품인증정보 상세 -->
+			</div>
+        </td>
+        <td style="text-align:center;">
+			<!-- 삭제 버튼 -->
+            <button data-bind="click: fnRemoveItemCertification" type="button" class="fb__btn__excel-down btn-white">삭제</button>
+        </td>
+    </tr>
+</script>
+<!-- 상품정보 제공고시 template -->
+<script
+    id="spec-row-template"
+    type="text/x-kendo-template"
+>
+    <tr>
+        <th scope="row">
+            <label data-bind="text: specFieldName" class="req-star-th"></label>  <!-- 상품정보 제공고시 항목명 -->
+			<div>
+            	<label data-bind="visible: showDirectInputCheckBox" >  <!-- 직접입력 체크박스 -->
+                	<input type="checkbox" data-bind="checked: directInputChecked, click: fnCheckSpecDirectInput" />
+					<span>직접입력</span>
+				</label>
+			</div>
+        </th>
+        <td>
+            <input class="comm-input" type="text" style="width: 50%"
+                   data-bind="value : basicValue, disabled: isValueDisabled"/>  <!--상품정보 제공고시 상세항목 정보 -->
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            <label data-bind="text: specDescription" ></label>  <!-- 상품정보 제공고시 부가설명 -->
+        </td>
+    </tr>
+</script>
+<!-- 출고처 template -->
+<script
+    id="warehouse-row-template"
+    type="text/x-kendo-template"
+>
+    <tr>
+        <td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+            <span data-bind="text: warehouseGroupName"></span>  <!--출고처 그룹명 -->
+        </td>
+        <td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+            <div data-bind="text: warehouseName"></div>  <!-- 출고처명 -->
+        </td>
+        <td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+            <span data-bind="text: warehouseAddress"></span>  <!-- 출고처 주소정보 -->
+        </td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+            <span data-bind="text: erpPoTypeDisplayName"></span>  <!-- 발주유형(ERP) -->
+        </td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			<input type="text" id="itemWarehousePoTpIdTemplateList#: urWarehouseId #" style="width:70%" name="itemWarehousePoTpIdTemplateList#: urWarehouseId #" data-bind="value: itemWarehousePoTpIdTemplateList" onchange="$scope.fnBosPoTypeChange(itemWarehousePoTpIdTemplateList#: urWarehouseId #)" required><!--발주유형(BOS) -->
+			<button
+				id="poTypeDetailPopup#: urWarehouseId #"
+				type="button"
+				class="btn-point btn-s"
+				style="display:none;"
+				onclick="$scope.fnPoTypeDetailInformationPopup(poTypeDetailPopup#: urWarehouseId #)"
+			>상세보기</button>
+        </td>
+        <td style="text-align:center;">
+            <span style="padding-left:10px; float:center;">        <!-- 삭제 버튼 -->
+                <button data-bind="click: fnRemoveWarehouseRow, visible: canDeleted" type="button" class="fb__btn__excel-down btn-red">삭제</button>
+            </span>
+        </td>
+    </tr>
+</script>
+<!-- 상품 이미지 template -->
+<script
+    id="itemImage-row-template"
+    type="text/x-kendo-template"
+>
+    <span
+        class="itemImage"
+        data-bind="attr: { data-id: imagePath }"
+        style="width:150px; height:150px; padding:10px; margin-right:10px; margin-bottom:10px; position:relative; border-color:\#a9a9a9; border-style:dashed; border-width:5px"
+    >
+        <span>
+            <img
+                style="max-width: 100%; max-height: 100%;"
+                data-bind="attr: { src: imageSrc }"
+            />
+        </span>
+        <span
+            class="k-icon k-i-close k-i-x"
+            style="display:block; width:25px; height:25px; margin-right:10px; margin-bottom:10px; position:absolute; top:0px; right:0px; background:white; overflow:hidden;"
+            data-bind="click: fnRemoveItemImage"
+        > </span>
+    </span>
+</script>
+<!-- 도움말 tooltip -->
+<script
+    id="tooltip-template"
+    type="text/x-kendo-template"
+>
+<div style="padding: 15px;">
+    <div style="text-align:left;"><strong>용량(중량) 단위</strong></div><br/>
+    <div style="text-align:left; padding-left: 15px;">- 단위당 가격의 기준단위가 되는 정보입력</div>
+    <div style="text-align:left; padding-left: 15px;">- kg, g, ml, mg 등</div>
+</div>
+</script>

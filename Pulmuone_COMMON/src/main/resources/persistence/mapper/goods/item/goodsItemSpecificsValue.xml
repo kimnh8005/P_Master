@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemSpecificsValueMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 품목별 상품정보제공고시 값 삭제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.13     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delItemSpecificsValue">
+        /* goodsItemSpecificsValue.delItemSpecificsValue */
+        DELETE FROM IL_ITEM_SPEC_VALUE ISV
+         WHERE ISV.IL_SPEC_FIELD_ID = #{specificsFieldId}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(specificsMasterId)">
+            AND EXISTS (
+                        SELECT 1
+                          FROM IL_ITEM I
+                         WHERE I.IL_SPEC_MASTER_ID = #{specificsMasterId}
+                           AND I.IL_ITEM_CD = ISV.IL_ITEM_CD
+                       )
+        </if>
+    </delete>
+</mapper>

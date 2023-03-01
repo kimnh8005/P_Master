@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.stock.BatchItemErpStockMapper">
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 재고수량 조회 API 의 shiFroOrgId 출고처 ID 에 해당하는 BOS 상의 출고처 ID 조회
+   *
+   *               ( 공통코드 "ERP_STOCK_WAREHOUSE_ID" 의 ATTR2 컬럼 값 )
+   * @
+   * @ 수정일       수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.10.19   박주형   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getUrWarehouseIdByShiFroOrgId" resultType="string">
+    /* itemErpStock.getUrSupplierIdByShiFroOrgId */
+    SELECT  A.ATTR2   AS UR_SUPPLIER_ID
+      FROM  ST_COMN_CODE  A
+     WHERE  A.ST_COMN_CODE_MST_CD = 'ERP_STOCK_WAREHOUSE_ID'
+       AND  A.ST_COMN_CODE_CD     = #{shiFroOrgId}
+
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 재고수량 조회 API 의 shiFroOrgId 출고처 ID 에 해당하고 BOS 상에 등록된 모든 ERP 연동품목 조회
+   *
+   * @
+   * @ 수정일       수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.10.14   박주형   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <resultMap type="kr.co.pulmuone.v1.batch.goods.stock.dto.vo.ErpLinkItemVo" id="erpLinkItemMap">
+    <result column="IL_ITEM_CODE" property="ilItemCode" />
+    <result column="IL_ITEM_WAREHOUSE_ID" property="ilItemWarehouseId" />
+    <result column="ITEM_TYPE" property="itemType" />
+    <result column="ERP_STOCK_IF_YN" property="erpStockIfYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+    <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+    <result column="UR_SUPPLIER_WAREHOUSE_ID" property="urSupplierWarehouseId" />
+    <result column="UNLIMIT_STOCK_YN" property="unlimitStockYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+    <result column="STOCK_PO_YN" property="stockPoYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+    <result column="PRE_ORDER_YN" property="preOrderYn" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler" />
+    <result column="PRE_ORDER_TYPE" property="preOrderType" />
+    <result column="MEMO" property="memo" />
+
+  </resultMap>
+
+  <select id="getErpLinkItemList" resultMap="erpLinkItemMap">
+    /* itemErpStock.getErpLinkItemList */
+    WITH TEMP_UR_SUPPLIER_WAREHOUSE_ID AS (
+        SELECT  UR_SUPPLIER_WAREHOUSE_ID
+          FROM  UR_SUPPLIER_WAREHOUSE  T1
+    INNER JOIN (
+        SELECT  ATTR1  AS UR_SUPPLIER_ID
+             ,  ATTR2  AS UR_WAREHOUSE_ID
+          FROM  ST_COMN_CODE
+         WHERE  ST_COMN_CODE_MST_CD = 'ERP_STOCK_WAREHOUSE_ID'
+           AND  ST_COMN_CODE_CD     = #{shiFroOrgId}
+    ) T2
+          ON T1.UR_SUPPLIER_ID  = T2.UR_SUPPLIER_ID
+         AND T1.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID
+    )
+      SELECT
+            A.IL_ITEM_CD                AS IL_ITEM_CODE
+          , B.IL_ITEM_WAREHOUSE_ID      AS IL_ITEM_WAREHOUSE_ID
+          , A.ITEM_TP                   AS ITEM_TYPE
+          , A.ERP_STOCK_IF_YN           AS ERP_STOCK_IF_YN
+          , A.UR_SUPPLIER_ID            AS UR_SUPPLIER_ID
+          , B.UR_SUPPLIER_WAREHOUSE_ID  AS UR_SUPPLIER_WAREHOUSE_ID
+          , B.UNLIMIT_STOCK_YN          AS UNLIMIT_STOCK_YN
+          , B.STOCK_PO_YN               AS STOCK_PO_YN
+          , B.PRE_ORDER_YN              AS PRE_ORDER_YN
+          , B.PRE_ORDER_TP              AS PRE_ORDER_TYPE
+          , B.MEMO                      AS MEMO
+          FROM  IL_ITEM            A
+    INNER JOIN  IL_ITEM_WAREHOUSE  B
+            ON  A.IL_ITEM_CD = B.IL_ITEM_CD
+         WHERE
+            B.UR_SUPPLIER_WAREHOUSE_ID = ( SELECT UR_SUPPLIER_WAREHOUSE_ID FROM TEMP_UR_SUPPLIER_WAREHOUSE_ID )
+
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 품목 출고처 재고 조회
+   * @
+   * @ 수정일       수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.10.08   박주형   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <resultMap type="kr.co.pulmuone.v1.batch.goods.stock.dto.vo.ItemErpStockVo" id="itemErpStockMap">
+    <result column="IL_ITEM_ERP_STOCK_ID" property="ilItemErpStockId" />
+    <result column="IL_ITEM_WAREHOUSE_ID" property="ilItemWarehouseId" />
+    <result column="IL_ITEM_STOCK_EXPR_ID" property="ilItemStockExprId" />
+    <result column="IL_ITEM_CD" property="ilItemCd" />
+    <result column="BASE_DATE"  property="baseDate" />
+    <result column="EXPIRATION_DATE" property="expirationDate" />
+    <result column="STOCK_TYPE" property="stockType" />
+    <result column="STOCK_QUANTITY" property="stockQuantity" javaType="long" jdbcType="INTEGER" />
+    <result column="CREATE_ID" property="createId" />
+    <result column="CREATE_DATE" property="createDate" />
+    <result column="MODIFY_ID" property="modifyId" />
+    <result column="MODIFY_DATE" property="modifyDate" />
+  </resultMap>
+
+  <select id="getItemErpStock" resultMap="itemErpStockMap">
+    /* itemErpStock.getItemErpStock */
+    SELECT
+        A.IL_ITEM_ERP_STOCK_ID              AS  IL_ITEM_ERP_STOCK_ID
+      , A.IL_ITEM_WAREHOUSE_ID              AS  IL_ITEM_WAREHOUSE_ID
+      , CURDATE()                           AS  BASE_DATE
+      , A.STOCK_TP                          AS  STOCK_TYPE
+      , A.STOCK_QTY                         AS  STOCK_QUANTITY
+      , A.CREATE_ID                         AS  CREATE_ID
+      , A.CREATE_DT                         AS  CREATE_DATE
+      , A.MODIFY_ID                         AS  MODIFY_ID
+      , A.MODIFY_DT                         AS  MODIFY_DATE
+      FROM  IL_ITEM_ERP_STOCK  A
+    <where>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemWarehouseId)">
+        AND A.IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+      </if>
+
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(baseDate)">
+        AND A.BASE_DT = CURDATE() /* 기준일-현재일 */
+      </if>
+
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stockType)">
+        AND A.STOCK_TP = #{stockType}
+      </if>
+
+    </where>
+
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 품목 출고처 재고 저장
+   * @
+   * @ 수정일       수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.10.08   박주형   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addItemErpStock">
+    /* itemErpStock.addItemErpStock */
+    INSERT INTO IL_ITEM_ERP_STOCK (
+        IL_ITEM_WAREHOUSE_ID
+      , BASE_DT
+      , STOCK_TP
+      , STOCK_QTY
+      , CREATE_ID
+    ) VALUES (
+          #{ilItemWarehouseId}
+        , CURDATE() /* 기준일-현재일 */
+        , #{stockType}
+        , #{stockQuantity, javaType=long, jdbcType=INTEGER}
+        , #{createId}
+    ) ON DUPLICATE KEY
+    UPDATE
+        STOCK_QTY = #{stockQuantity, javaType=long, jdbcType=INTEGER}
+      , MODIFY_ID = #{createId}
+
+    <selectKey resultType="long" keyProperty="ilItemErpStockId" order="AFTER">
+          SELECT LAST_INSERT_ID()
+    </selectKey>
+
+  </insert>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 연동재고  > 품목 재고 저장(프로시져 호출)
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.18		이성준		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="spItemStockCaculatedPrepare" statementType="CALLABLE">
+		/* itemErpStock.spItemStockCaculatedPrepare */
+		CALL SP_ITEM_STOCK_CACULATED_PREPARE()
+	</update>
+
+	  <!--───────────────────────────────────────────────────────────────────────
+	   * description : 품목 유통기한별 재고 조회
+	   * @
+	   * @ 수정일                수정자   수정내용
+	   * @ ──────────────────────────────────────────────────────────────────────
+	   * @ 2021.1.8   이성준   최초생성
+	   * @
+	  ────────────────────────────────────────────────────────────────────────-->
+	  <select id="getIlItemStockExpr" resultType="kr.co.pulmuone.v1.batch.goods.stock.dto.vo.ItemErpStockVo">
+	  /* itemErpStock.getIlItemStockExpr */
+	  SELECT B.IL_ITEM_CD                       /* 품목코드 */
+	        ,A.IL_ITEM_STOCK_EXPR_ID            /* 품목 유통기한별 재고PK */
+	        ,A.IL_ITEM_WAREHOUSE_ID             /* 품목별 출고처ID */
+	        ,A.BASE_DT AS BASE_DATE             /* 기준일 */
+	        ,A.EXPIRATION_DT AS EXPIRATION_DATE /* 유통기한 */
+	        ,A.STOCK_QTY AS STOCK_QUANTITY      /* 재고수량 */
+	   FROM IL_ITEM_STOCK_EXPR A
+	  INNER JOIN IL_ITEM_WAREHOUSE B
+	          ON A.IL_ITEM_WAREHOUSE_ID = B.IL_ITEM_WAREHOUSE_ID
+	         AND A.BASE_DT = CURDATE() /* 기준일-현재일 */
+	  </select>
+
+
+      <!--───────────────────────────────────────────────────────────────────────
+	   * description : 품목 유통기한별 재고 계산된 목록 조회
+	   * @
+	   * @ 수정일                수정자   수정내용
+	   * @ ──────────────────────────────────────────────────────────────────────
+	   * @ 2021.1.22   이성준   최초생성
+	   * @
+	  ────────────────────────────────────────────────────────────────────────-->
+      <select id="getStockExprCalList" resultType="kr.co.pulmuone.v1.batch.goods.stock.dto.vo.ItemErpStockResultVo">
+      /* itemErpStock.getStockExprCalList */
+      SELECT E.IL_ITEM_WAREHOUSE_ID,
+		     B.IL_ITEM_CD,
+			 <![CDATA[
+			   CASE WHEN #{restDay} > A.IMMINENT THEN 'STOCK_EXPR_TP.NORMAL'    /* 정상 */
+					WHEN #{restDay} < A.DELIVERY THEN 'STOCK_EXPR_TP.DISCARD'   /* 폐기 */
+					WHEN #{restDay} >= A.DELIVERY AND #{restDay} <= A.IMMINENT THEN 'STOCK_EXPR_TP.IMMINENT' /* 임박 */
+				  ELSE ''
+			   END AS STOCK_TYPE,
+			 ]]>
+			 #{expirationDate} AS EXPIRATION_DATE,
+			 #{baseDate} AS BASE_DATE,
+			 #{restDay} AS REST_DAY,
+			 #{stockQuantity} AS STOCK_QUANTITY,
+			 #{ilItemStockExprId} AS IL_ITEM_STOCK_EXPR_ID,
+			 A.DELIVERY,
+			 A.IL_STOCK_DEADLINE_ID
+           , CAST(A.DELIVERY AS SIGNED) - #{restDay} AS DISPOSAL_LEFT_DAYS
+		FROM IL_STOCK_DEADLINE A
+		JOIN IL_ITEM_WAREHOUSE E
+			ON E.IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+		INNER JOIN UR_SUPPLIER_WAREHOUSE F
+			ON F.UR_SUPPLIER_WAREHOUSE_ID = E.UR_SUPPLIER_WAREHOUSE_ID
+		INNER JOIN IL_ITEM B
+			ON B.IL_ITEM_CD = E.IL_ITEM_CD
+		WHERE
+			A.UR_SUPPLIER_ID = F.UR_SUPPLIER_ID
+			AND A.UR_WAREHOUSE_ID IN (F.UR_WAREHOUSE_ID, 0)
+			AND A.BASIC_YN = 'Y'
+			AND A.DISTRIBUTION_PERIOD <![CDATA[ <= ]]> B.DISTRIBUTION_PERIOD
+		ORDER BY A.UR_WAREHOUSE_ID DESC, A.DISTRIBUTION_PERIOD DESC
+		LIMIT 1
+      </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고타입 수정
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.1.12  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putExcelUpload">
+    /* itemErpStock.putExcelUpload */
+    UPDATE IL_ITEM_STOCK_EXPR
+       SET  STOCK_TP  = #{stockType}
+           , DISPOSAL_LEFT_DAYS = #{disposalLeftDays}
+           ,MODIFY_DT = NOW()
+           ,MODIFY_ID = 0
+     WHERE IL_ITEM_STOCK_EXPR_ID = #{ilItemStockExprId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 품목별 출고처 관리 - 출고 기준관리ID 업데이트
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.1.21  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putIlItemWarehouse">
+    /* itemErpStock.putIlItemWarehouse */
+    UPDATE  IL_ITEM_WAREHOUSE
+       SET  IL_STOCK_DEADLINE_ID = #{ilStockDeadlineId} /* 출고 기준관리ID */
+           ,MODIFY_DT = NOW()
+     WHERE IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId} /* 품목별 출고처 관리ID */
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드 - 폐기예정으로 저장
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.1.12  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addErpStock">
+    /* itemErpStock.addErpStock */
+    INSERT INTO IL_ITEM_ERP_STOCK
+        (
+          IL_ITEM_WAREHOUSE_ID
+        , BASE_DT
+        , STOCK_TP
+        , STOCK_QTY
+        , SCHEDULE_DT
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{ilItemWarehouseId}
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(baseDate)">
+		        , #{baseDate}
+			</when>
+			<otherwise>
+		        , CURDATE()
+			</otherwise>
+		</choose>
+        , #{stockType}
+        , #{stockQuantity}
+        , #{scheduleDate}
+        , 0
+        , NOW()
+        )
+
+    <selectKey resultType="long" keyProperty="ilItemErpStockId" order="AFTER">
+          SELECT LAST_INSERT_ID()
+    </selectKey>
+
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : ERP 이력저장(공통)
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.2.4  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemErpStockHistory">
+    /* itemErpStock.addItemErpStockHistory */
+    INSERT INTO IL_ITEM_ERP_STOCK_HISTORY
+	   (
+	      IL_ITEM_ERP_STOCK_ID
+	    , IL_ITEM_WAREHOUSE_ID
+	    , BASE_DT
+	    , STOCK_TP
+	    , STOCK_QTY
+	    , SCHEDULE_DT
+	    , CREATE_ID
+	    , CREATE_DT
+	    )
+	 SELECT IL_ITEM_ERP_STOCK_ID
+	      , IL_ITEM_WAREHOUSE_ID
+	      , BASE_DT
+	      , STOCK_TP
+	      , STOCK_QTY
+	      , SCHEDULE_DT
+	      , CREATE_ID
+	      , CREATE_DT
+	  FROM IL_ITEM_ERP_STOCK
+	 WHERE IL_ITEM_ERP_STOCK_ID = #{ilItemErpStockId}
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	  * description : 품목 연동재고 건수 조회
+	  * @
+	  * @ 수정일                수정자   수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021.3.9   이성준   최초생성
+	  * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIlItemErpStockCount" resultType="int">
+	/* itemErpStock.getIlItemErpStock */
+	 SELECT COUNT(*) AS CNT
+	   FROM IL_ITEM_ERP_STOCK
+	  <where>
+	        IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+	    AND BASE_DT = CURDATE() /* 기준일-현재일 */
+	    AND STOCK_TP = #{stockType}
+	  </where>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description   : 품목 연동재고 수정
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.09  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putItemErpStock">
+    /* itemErpStock.putItemErpStock */
+    UPDATE  IL_ITEM_ERP_STOCK
+       SET  STOCK_QTY = #{stockQuantity, javaType=long, jdbcType=INTEGER}
+           ,MODIFY_ID = #{createId}
+           ,MODIFY_DT = NOW()
+     WHERE IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+       AND BASE_DT = CURDATE() /* 기준일-현재일 */
+       AND STOCK_TP = #{stockType}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 품목 연동재고이력 수정
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.09  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putItemErpStockHistory">
+    /* itemErpStock.putItemErpStockHistory */
+    UPDATE  IL_ITEM_ERP_STOCK_HISTORY
+       SET  STOCK_QTY = #{stockQuantity, javaType=long, jdbcType=INTEGER}
+           ,MODIFY_ID = #{createId}
+           ,MODIFY_DT = NOW()
+     WHERE IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+       AND BASE_DT = CURDATE() /* 기준일-현재일 */
+       AND STOCK_TP = #{stockType}
+    </update>
+
+</mapper>

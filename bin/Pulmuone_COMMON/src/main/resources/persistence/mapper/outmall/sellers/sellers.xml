@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.outmall.sellers.SellersMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.18		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSellersListResultMap" type="kr.co.pulmuone.v1.outmall.sellers.dto.vo.SellersListVo">
+    	<result column="OM_SELLERS_ID"              property="omSellersId"/>
+        <result column="SELLERS_CD"                 property="sellersCode"/>
+        <result column="SELLERS_NM"                 property="sellersName"/>
+        <result column="LOGISTICS_GUBUN"            property="logisticsGubun"/>
+        <result column="SELLERS_GROUP_NM"           property="sellersGroupName"/>
+        <result column="SELLERS_URL"                property="sellersUrl"/>
+        <result column="SELLERS_ADMIN_URL"          property="sellersAdminUrl"/>
+        <result column="INTERFACE_YN"            	property="interfaceYn"/>
+        <result column="ERP_INTERFACE_YN"           property="erpInterfaceYn"/>
+        <result column="USE_YN"            			property="useYn"/>
+        <result column="CREATE_DATE"                property="createDate"/>
+    </resultMap>
+    <select id="getSellersList" resultMap="getSellersListResultMap" parameterType="kr.co.pulmuone.v1.outmall.sellers.dto.SellersListRequestDto">
+        /* sellers.getSellersList */
+        SELECT
+        	TBL.*
+        FROM(
+	        SELECT
+	            OS.OM_SELLERS_ID
+	            ,OS.SELLERS_CD
+	            ,OS.SELLERS_NM
+                ,IFNULL(OS.LOGISTICS_GUBUN, '') AS LOGISTICS_GUBUN
+	            ,FN_COMN_CODE_DIC(OS.SELLERS_GROUP_CD) AS SELLERS_GROUP_NM
+	            ,OS.SELLERS_URL
+	            ,OS.SELLERS_ADMIN_URL
+	            ,OS.INTERFACE_YN
+                ,OS.ERP_INTERFACE_YN
+	            ,OS.USE_YN
+	            ,DATE_FORMAT(OS.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE
+	        FROM
+	            OM_SELLERS OS
+	            LEFT JOIN OM_BASIC_FEE OMF ON OS.OM_SELLERS_ID = OMF.OM_SELLERS_ID
+            WHERE
+                OS.OM_SELLERS_ID != 0
+
+	            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+	                <choose>
+	                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "SELLERS_CD")'>
+	                        AND OS.OM_SELLERS_ID LIKE CONCAT('%', #{findKeyword}, '%')
+	                    </when>
+	                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "SELLERS_NM")'>
+	                        AND OS.SELLERS_NM LIKE CONCAT('%', #{findKeyword}, '%')
+	                    </when>
+	                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "SUPPLIER_CD")'>
+	                        AND OMF.SUPPLIER_CD LIKE CONCAT('%', #{findKeyword}, '%')
+	                    </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "LOGISTICS_GUBUN")'>
+                            AND OS.LOGISTICS_GUBUN LIKE CONCAT('%', #{findKeyword}, '%')
+                        </when>
+	                    <otherwise>
+	                        AND (
+	                                   OS.SELLERS_CD LIKE CONCAT('%', #{findKeyword}, '%')
+	                                OR OS.SELLERS_NM LIKE CONCAT('%', #{findKeyword}, '%')
+                                    OR OS.LOGISTICS_GUBUN LIKE CONCAT('%', #{findKeyword}, '%')
+	                            )
+	                    </otherwise>
+	                </choose>
+	            </if>
+	            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findInterfaceYn)">
+	                AND OS.INTERFACE_YN = #{findInterfaceYn}
+	            </if>
+	            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findUseYn)">
+	                AND OS.USE_YN = #{findUseYn}
+	            </if>
+	            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findSellersGroupCd)">
+	                AND OS.SELLERS_GROUP_CD = #{findSellersGroupCd}
+	            </if>
+
+	       )TBL
+	       GROUP BY TBL.OM_SELLERS_ID
+	       ORDER BY TBL.OM_SELLERS_ID DESC
+    </select>
+
+    <resultMap id="getSellersExcelListResultMap" type="kr.co.pulmuone.v1.outmall.sellers.dto.SellersExcelDto">
+        <result column="OM_SELLERS_ID"              property="omSellersId"/>
+        <result column="SELLERS_NM"                 property="sellersNm"/>
+        <result column="LOGISTICS_GUBUN"            property="logisticsGubun"/>
+        <result column="SELLERS_GROUP_NM"           property="sellersGroupNm"/>
+        <result column="SUPPLIER_NM"                property="supplierNm"/>
+        <result column="SUPPLIER_CD"                property="supplierCd"/>
+        <result column="CALC_TYPE"                  property="calcType"/>
+        <result column="FEE"                        property="fee"/>
+        <result column="SELLERS_URL"                property="sellersUrl"/>
+        <result column="SELLERS_ADMIN_URL"          property="sellersAdminUrl"/>
+        <result column="INTERFACE_YN"            	property="interfaceYn"/>
+        <result column="USE_YN"            			property="useYn"/>
+        <result column="CREATE_DT"                  property="createDt"/>
+    </resultMap>
+    <select id="getSellersExcelList" resultMap="getSellersExcelListResultMap" parameterType="kr.co.pulmuone.v1.outmall.sellers.dto.SellersListRequestDto">
+            SELECT
+                T1.OM_SELLERS_ID,
+                T1.SELLERS_NM,
+                IFNULL(T1.LOGISTICS_GUBUN, '') AS LOGISTICS_GUBUN,
+                FN_COMN_CODE_DIC(T1.SELLERS_GROUP_CD) AS SELLERS_GROUP_NM,
+                T2.SUPPLIER_NM,
+                T2.SUPPLIER_CD,
+                CASE WHEN (T2.CALC_TYPE = 'S') THEN '판매가 기준' ELSE '공급가 기준' END AS CALC_TYPE,
+                CONCAT(T2.FEE, '%') AS FEE,
+                T1.SELLERS_URL,
+                T1.SELLERS_ADMIN_URL,
+                CASE WHEN (T1.INTERFACE_YN = 'Y') THEN '예' ELSE '아니요' END AS INTERFACE_YN,
+                CASE WHEN (T1.USE_YN = 'Y') THEN '예' ELSE '아니요' END AS USE_YN,
+                DATE_FORMAT(T1.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+            FROM
+                OM_SELLERS T1
+                INNER JOIN OM_BASIC_FEE T2 ON T1.OM_SELLERS_ID = T2.OM_SELLERS_ID
+            <where>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+                    <choose>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "SELLERS_CD")'>
+                            AND T1.OM_SELLERS_ID LIKE CONCAT('%', #{findKeyword}, '%')
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "SELLERS_NM")'>
+                            AND T1.SELLERS_NM LIKE CONCAT('%', #{findKeyword}, '%')
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "SUPPLIER_CD")'>
+                            AND T2.SUPPLIER_CD LIKE CONCAT('%', #{findKeyword}, '%')
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "LOGISTICS_GUBUN")'>
+                            AND T1.LOGISTICS_GUBUN LIKE CONCAT('%', #{findKeyword}, '%')
+                        </when>
+                        <otherwise>
+                            AND (
+                                        T1.SELLERS_CD LIKE CONCAT('%', #{findKeyword}, '%')
+                                    OR T1.SELLERS_NM LIKE CONCAT('%', #{findKeyword}, '%')
+                                    OR T1.LOGISTICS_GUBUN LIKE CONCAT('%', #{findKeyword}, '%')
+                            )
+                        </otherwise>
+                    </choose>
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findInterfaceYn)">
+                    AND T1.INTERFACE_YN = #{findInterfaceYn}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findUseYn)">
+                    AND T1.USE_YN = #{findUseYn}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findSellersGroupCd)">
+                    AND T1.SELLERS_GROUP_CD = #{findSellersGroupCd}
+                </if>
+            </where>
+            ORDER BY T1.OM_SELLERS_ID DESC
+    </select>
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.18		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getSellersCodeListResultMap" type="kr.co.pulmuone.v1.outmall.sellers.dto.SellersCodeListDto">
+        <result column="CODE"       property="code"/>
+        <result column="NAME"       property="name"/>
+    </resultMap>
+    <select id="getSellersGroupList" resultMap="getSellersCodeListResultMap" parameterType="kr.co.pulmuone.v1.outmall.sellers.dto.SellersListRequestDto">
+        /* sellers.getSellersGroupList */
+
+        SELECT
+             OS.OM_SELLERS_ID AS CODE
+            ,OS.SELLERS_NM AS NAME
+        FROM
+            OM_SELLERS OS
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findSellersGroupCd)">
+                AND OS.SELLERS_GROUP_CD = #{findSellersGroupCd}
+            </if>
+        </where>
+        ORDER BY OS.OM_SELLERS_ID DESC
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.18		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getSellersMap" type="kr.co.pulmuone.v1.outmall.sellers.dto.vo.SellersVo">
+        <result column="OM_SELLERS_ID"          property="omSellersId"/>
+        <result column="SELLERS_GROUP_CD"       property="sellersGroupCode"/>
+        <result column="SELLERS_CD"             property="sellersCode"/>
+        <result column="SELLERS_NM"             property="sellersName"/>
+        <result column="LOGISTICS_GUBUN"        property="logisticsGubun"/>
+        <result column="SELLERS_URL"            property="sellersUrl"/>
+        <result column="SELLERS_ADMIN_URL"      property="sellersAdminUrl"/>
+        <result column="INTERFACE_YN"           property="interfaceYn"/>
+        <result column="ERP_INTERFACE_YN"       property="erpInterfaceYn"/>
+        <result column="USE_YN"          		property="useYn"/>
+        <result column="OUTMALL_CD"       	    property="outmallCode"/>
+        <result column="OUTMALL_NM"         	property="outmallName"/>
+        <result column="CREATE_ID"              property="createId"/>
+        <result column="CREATE_DT"              property="createDate"/>
+        <result column="MODIFY_ID"              property="modifyId"/>
+        <result column="MODIFY_DT"              property="modifyDate"/>
+        <result column="CREATE_USER_NM"         property="createUserName"/>
+        <result column="MODIFY_USER_NM"         property="modifyUserName"/>
+    </resultMap>
+    <select id="getSellers" resultMap="getSellersMap">
+        /* sellers.getSellers */
+        SELECT
+            OM_SELLERS_ID
+            ,SELLERS_GROUP_CD
+            ,SELLERS_CD
+            ,SELLERS_NM
+            ,IFNULL(LOGISTICS_GUBUN, '') AS LOGISTICS_GUBUN
+            ,SELLERS_URL
+            ,SELLERS_ADMIN_URL
+            ,INTERFACE_YN
+            ,ERP_INTERFACE_YN
+            ,USE_YN
+            ,OUTMALL_CD
+			,OUTMALL_NM
+            ,CREATE_ID
+            ,CREATE_DT
+            ,MODIFY_ID
+            ,MODIFY_DT
+            ,(SELECT FN_DECRYPT(UU.USER_NM) FROM UR_USER UU WHERE UU.UR_USER_ID  = OM.CREATE_ID) AS CREATE_USER_NM
+            ,(SELECT FN_DECRYPT(UU.USER_NM) FROM UR_USER UU WHERE UU.UR_USER_ID  = OM.MODIFY_ID) AS MODIFY_USER_NM
+        FROM
+            OM_SELLERS OM
+        WHERE
+            OM_SELLERS_ID = #{omSellersId}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.18		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSellers">
+        /* sellers.addSellers */
+        INSERT INTO OM_SELLERS
+            (SELLERS_GROUP_CD, SELLERS_CD, SELLERS_NM, LOGISTICS_GUBUN, SELLERS_URL, SELLERS_ADMIN_URL, INTERFACE_YN, ERP_INTERFACE_YN, USE_YN, OUTMALL_CD, OUTMALL_NM, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT)
+        VALUES
+            (#{sellersGroupCode }, #{sellersCode }, #{sellersName }, #{logisticsGubun}, #{sellersUrl }, #{sellersAdminUrl }, #{interfaceYn }, #{erpInterfaceYn }, #{useYn},#{outmallCode }, #{outmallName }, #{userVo.userId }, CURRENT_TIMESTAMP, #{userVo.userId }, CURRENT_TIMESTAMP)
+
+        <selectKey resultType="long" keyProperty="omSellersId" keyColumn="OM_SELLERS_ID" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.18		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putSellers">
+     /* sellers.putSellers */
+     UPDATE OM_SELLERS SET
+                             SELLERS_GROUP_CD    = #{sellersGroupCode },
+                             SELLERS_CD          = #{sellersCode },
+                             SELLERS_NM          = #{sellersName },
+                             LOGISTICS_GUBUN     = #{logisticsGubun },
+                             SELLERS_URL         = #{sellersUrl },
+                             OUTMALL_CD          = #{outmallCode },
+                             OUTMALL_NM          = #{outmallName },
+                             SELLERS_ADMIN_URL   = #{sellersAdminUrl },
+                             INTERFACE_YN        = #{interfaceYn },
+                             ERP_INTERFACE_YN    = #{erpInterfaceYn },
+                             USE_YN              = #{useYn },
+                             MODIFY_ID           = #{userVo.userId},
+                             MODIFY_DT           = CURRENT_TIMESTAMP
+     WHERE
+     	OM_SELLERS_ID = #{omSellersId }
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰리스트 - 현재 적용중인 공급업체 수수료 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.18		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getAppllyOmBasicFeeListResultMap" type="kr.co.pulmuone.v1.policy.fee.dto.OmBasicFeeListDto">
+        <result column="OM_BASIC_FEE_ID" property="omBasicFeeId" />
+        <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+        <result column="UR_SUPPLIER_NAME" property="urSupplierName" />
+        <result column="UR_SUPPLIER_CODE" property="urSupplierCode" />
+        <result column="OM_SELLERS_ID" property="omSellersId" />
+        <result column="CALC_TYPE" property="calcType" />
+        <result column="FEE" property="fee" />
+        <result column="START_DT" property="startDt" />
+	</resultMap>
+	<!-- 외부몰리스트.공급업체 목록 조회-->
+	<select id="getApplyOmBasicFeeList" resultMap="getAppllyOmBasicFeeListResultMap">
+	    /* OmBasicFeeMapper.getApplyOmBasicFeeList */
+	    SELECT
+ 			TBL.*
+ 		FROM(
+	       <include refid="selectApplyOmBasicFeeList"/>
+		)TBL
+		GROUP BY TBL.UR_SUPPLIER_ID
+	</select>
+
+	<!-- 외부몰리스트.공급업체 목록 수-->
+	<select id="getApplyOmBasicFeeListCount" resultType="int">
+	    /* OmBasicFeeMapper.getApplyOmBasicFeeListCount */
+	     SELECT
+		 	COUNT(*)
+		 FROM(
+		    SELECT
+	 			TBL.*
+	 		FROM(
+		       <include refid="selectApplyOmBasicFeeList"/>
+			)TBL
+			GROUP BY TBL.UR_SUPPLIER_ID
+		)T
+	</select>
+
+	<sql id = "selectApplyOmBasicFeeList">
+		SELECT
+			OM_BASIC_FEE_ID
+		    , UR_SUPPLIER_ID
+		    , SUPPLIER_NM AS UR_SUPPLIER_NAME
+		    , SUPPLIER_CD AS UR_SUPPLIER_CODE
+		    , OM_SELLERS_ID
+		    , CALC_TYPE
+		    , FEE
+		    , START_DT
+		FROM
+			OM_BASIC_FEE
+		WHERE
+			OM_SELLERS_ID = #{omSellersId}
+			AND (UR_SUPPLIER_ID,START_DT) IN
+										(SELECT
+											UR_SUPPLIER_ID
+											,MAX(START_DT) AS START_DATE
+										FROM
+											OM_BASIC_FEE
+										WHERE
+											OM_SELLERS_ID = #{omSellersId}
+											AND DATE_FORMAT(STR_TO_DATE(START_DT ,'%Y-%m-%d'),'%Y-%m-%d') <![CDATA[ <= ]]> NOW()
+										GROUP BY UR_SUPPLIER_ID)
+		ORDER BY START_DT DESC
+	</sql>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.12.03		최용호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putErpInterfaceStatusChg">
+     /* sellers.putErpInterfaceStatusChg */
+     UPDATE OM_SELLERS
+        SET ERP_INTERFACE_YN    = #{erpInterfaceYn},
+            MODIFY_ID           = #{userVo.userId},
+            MODIFY_DT           = CURRENT_TIMESTAMP
+     WHERE
+     	OM_SELLERS_ID IN
+        <foreach item="data" index="index" collection="omSellersIdList" open="(" separator="," close=")">
+            #{data}
+        </foreach>
+    </update>
+</mapper>

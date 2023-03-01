@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.shippingcomp.PolicyShippingCompMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 택배사 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.shippingcomp.dto.PolicyShippingCompDto" id="getPolicyShippingCompInfoMap">
+		<result column="PS_SHIPPING_COMP_ID"		property="psShippingCompId"  />
+		<result column="SHIPPING_COMP_NM"			property="shippingCompNm"  />
+		<result column="TRACKING_URL"				property="trackingUrl" />
+		<result column="HTTP_REQUEST_TP"			property="httpRequestTp" />
+		<result column="INVOICE_PARAM"				property="invoiceParam" />
+		<result column="SHIPPING_COMP_TEL"			property="shippingCompTel" />
+		<result column="USE_YN"						property="useYn" />
+		<collection column="PS_SHIPPING_COMP_ID"	property="shippingCompCodeList" 	javaType="java.util.ArrayList" select="getShippingCompCodeList"/>
+		<collection column="PS_SHIPPING_COMP_ID"	property="shippingCompOutmallList"	javaType="java.util.ArrayList" select="getShippingCompOutmallList"/>
+	</resultMap>
+	<select id="getPolicyShippingCompInfo" resultMap="getPolicyShippingCompInfoMap">
+		/*	PolicyShippingComp.getPolicyShippingCompInfo	*/
+		SELECT
+			PS_SHIPPING_COMP_ID
+			, SHIPPING_COMP_NM
+			, TRACKING_URL
+			, HTTP_REQUEST_TP
+			, INVOICE_PARAM
+			, USE_YN
+		    , IFNULL(SHIPPING_COMP_TEL, '') AS SHIPPING_COMP_TEL
+			, CREATE_ID
+			, CREATE_DT
+			, MODIFY_ID
+			, MODIFY_DT
+		FROM
+			PS_SHIPPING_COMP
+		WHERE
+			PS_SHIPPING_COMP_ID = #{psShippingCompId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 택배사 설정 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.shippingcomp.vo.PolicyShippingCompVo" id="getPolicyShippingCompListMap">
+		<result column="PS_SHIPPING_COMP_ID"		property="psShippingCompId"  />
+		<result column="SHIPPING_COMP_NM"  			property="shippingCompNm"  />
+		<result column="TRACKING_URL" 				property="trackingUrl" />
+		<result column="HTTP_REQUEST_TP"			property="httpRequestTp" />
+		<result column="INVOICE_PARAM"				property="invoiceParam" />
+		<result column="USE_YN"						property="useYn" />
+		<collection column="PS_SHIPPING_COMP_ID"	property="shippingCompCodeList" 	javaType="java.util.ArrayList" select="getShippingCompCodeList"/>
+		<collection column="PS_SHIPPING_COMP_ID"	property="shippingCompOutmallList"	javaType="java.util.ArrayList" select="getShippingCompOutmallList"/>
+	</resultMap>
+	<select id="getPolicyShippingCompList" resultMap="getPolicyShippingCompListMap">
+		/*	PolicyShippingComp.getPolicyShippingCompList	*/
+		SELECT
+			PS_SHIPPING_COMP_ID
+			, SHIPPING_COMP_NM
+			, TRACKING_URL
+			, HTTP_REQUEST_TP
+			, INVOICE_PARAM
+			, USE_YN
+			, CREATE_ID
+			, CREATE_DT
+			, MODIFY_ID
+			, MODIFY_DT
+		FROM
+			PS_SHIPPING_COMP
+		WHERE
+			SHIPPING_COMP_NM like CONCAT(#{shippingCompNm},'%')
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+			AND USE_YN = #{useYn}
+		</if>
+		ORDER BY PS_SHIPPING_COMP_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 코드
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.shippingcomp.vo.PolicyShippingCompOutmallVo" id="getShippingCompOutmallListResultMap">
+		<result column="PS_SHIPPING_COMP_ID"		property="psShippingCompId"  />
+		<result column="OUTMALL_CD"					property="outmallCode" />
+		<result column="OUTMALL_SHIPPING_COMP_CD"	property="outmallShippingCompCode" />
+		<result column="OUTMALL_SHIPPING_COMP_NM"	property="outmallShippingCompName" />
+	</resultMap>
+	<select id="getShippingCompOutmallList" resultMap = "getShippingCompOutmallListResultMap">
+		/*	PolicyShippingComp.getShippingCompOutmallList	*/
+		SELECT
+			PS_SHIPPING_COMP_ID
+			, OUTMALL_CD
+			, OUTMALL_SHIPPING_COMP_CD
+			, OUTMALL_SHIPPING_COMP_NM
+		FROM
+			PS_SHIPPING_COMP_OUTMALL
+		WHERE
+			PS_SHIPPING_COMP_ID = #{psShippingCompId}
+		ORDER BY OUTMALL_CD
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 외부몰 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="hashMap" id="getShippingCompCodeListResultMap">
+		<result column="PS_SHIPPING_COMP_ID"	property="psShippingCompId"  />
+		<result column="SHIPPING_COMP_CD"		property="shippingCompCd" />
+	</resultMap>
+	<select id="getShippingCompCodeList" resultMap = "getShippingCompCodeListResultMap">
+		/*	PolicyShippingComp.getShippingCompCodeList	*/
+		SELECT
+			PS_SHIPPING_COMP_ID
+			, SHIPPING_COMP_CD
+		FROM
+			PS_SHIPPING_COMP_CODE
+		WHERE
+			PS_SHIPPING_COMP_ID = #{psShippingCompId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPolicyShippingComp">
+		/*	PolicyShippingComp.putPolicyShippingComp	*/
+		UPDATE PS_SHIPPING_COMP
+		SET
+			SHIPPING_COMP_NM = #{shippingCompNm}
+			, TRACKING_URL = #{trackingUrl}
+			, HTTP_REQUEST_TP = #{httpRequestTp}
+			, INVOICE_PARAM = #{invoiceParam}
+			, USE_YN = #{useYn}
+			, SHIPPING_COMP_TEL = #{shippingCompTel}
+			, MODIFY_ID =  #{userVo.userId}
+		WHERE PS_SHIPPING_COMP_ID = #{psShippingCompId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 정보 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delPolicyShippingComp">
+		/*	PolicyShippingComp.delPolicyShippingComp	*/
+		DELETE
+		FROM	PS_SHIPPING_COMP
+		WHERE	PS_SHIPPING_COMP_ID = #{psShippingCompId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 코드 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delPolicyShippingCompCode">
+		/*	PolicyShippingComp.delPolicyShippingCompCode	*/
+		DELETE
+		FROM	PS_SHIPPING_COMP_CODE
+		WHERE	PS_SHIPPING_COMP_ID = #{psShippingCompId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 코드 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delPolicyShippingCompOutmall">
+		/*	PolicyShippingComp.delPolicyShippingCompOutmall	*/
+		DELETE
+		FROM	PS_SHIPPING_COMP_OUTMALL
+		WHERE	PS_SHIPPING_COMP_ID = #{psShippingCompId}
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 정보 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPolicyShippingComp">
+        /*	PolicyShippingComp.addPolicyShippingComp	*/
+        INSERT INTO PS_SHIPPING_COMP (
+        	SHIPPING_COMP_NM
+        	, TRACKING_URL
+        	, HTTP_REQUEST_TP
+        	, INVOICE_PARAM
+			, USE_YN
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(shippingCompTel)">
+			, SHIPPING_COMP_TEL
+			</if>
+			, CREATE_ID
+		) VALUES (
+			 #{shippingCompNm}
+			, #{trackingUrl}
+			, #{httpRequestTp}
+			, #{invoiceParam}
+			, #{useYn}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(shippingCompTel)">
+			, #{shippingCompTel}
+			</if>
+			, #{userVo.userId}
+		)
+		<selectKey resultType="Long" keyProperty="psShippingCompId" keyColumn="PS_SHIPPING_COMP_ID" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 코드 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPolicyShippingCompCode">
+        /*	PolicyShippingComp.addPolicyShippingCompCode	*/
+        INSERT INTO PS_SHIPPING_COMP_CODE (
+        	PS_SHIPPING_COMP_ID
+        	, SHIPPING_COMP_CD
+        	, CREATE_ID
+		) VALUES
+		<foreach collection="shippingCompCodeList" item="list" separator=",">
+		(
+			 #{psShippingCompId}
+			, #{list.shippingCompCode}
+			, #{userVo.userId}
+		)
+		</foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 수집몰 코드 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPolicyShippingCompOutmall">
+        /*	PolicyShippingComp.addPolicyShippingCompOutmall	*/
+        INSERT INTO PS_SHIPPING_COMP_OUTMALL (
+        	PS_SHIPPING_COMP_ID
+			, OUTMALL_CD
+			, OUTMALL_SHIPPING_COMP_CD
+			, OUTMALL_SHIPPING_COMP_NM
+			, CREATE_ID
+		) VALUES(
+			 #{psShippingCompId}
+			, #{outmallCode}
+			, #{outmallShippingCompCode}
+			, #{outmallShippingCompName}
+			, #{userVo.userId}
+		)
+    </insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * dscription 		: 택배사 사용 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPolicyShippingCompUseAllList" resultType="kr.co.pulmuone.v1.policy.shippingcomp.dto.PolicyShippingCompUseAllDto">
+		/*	PolicyShippingComp.getPolicyShippingCompUseAllList	*/
+		SELECT
+			  T1.PS_SHIPPING_COMP_ID
+			, T1.SHIPPING_COMP_NM
+			, T1.TRACKING_URL
+			, T1.HTTP_REQUEST_TP
+			, T1.INVOICE_PARAM
+		FROM
+			PS_SHIPPING_COMP T1
+		WHERE
+			USE_YN = 'Y'
+		ORDER BY T1.PS_SHIPPING_COMP_ID ASC
+	</select>
+
+	<select id="getDropDownPolicyShippingCompList" resultType="kr.co.pulmuone.v1.policy.shippingcomp.dto.PolicyShippingCompUseAllDto">
+		/*	PolicyShippingComp.getDropDownPolicyShippingCompList	*/
+		SELECT
+			  PS_SHIPPING_COMP_ID
+			, SHIPPING_COMP_NM
+		FROM PS_SHIPPING_COMP
+		WHERE USE_YN = 'Y'
+		ORDER BY PS_SHIPPING_COMP_ID DESC
+	</select>
+
+</mapper>

@@ -1,0 +1,829 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.order.OrderOrderMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상품 구매수량 계산
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.13 	천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderGoodsBuyQty" resultType="int">
+		/*	orderOrder.getOrderGoodsBuyQty  */
+		SELECT
+			IFNULL(SUM(OOD.ORDER_CNT - OOD.CANCEL_CNT),0)
+		FROM
+			OD_ORDER OO
+			JOIN OD_ORDER_DETL OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+			JOIN IL_GOODS IG ON IG.IL_GOODS_ID = OOD.IL_GOODS_ID
+			JOIN OD_ORDER_DT OODATE ON OODATE.OD_ORDER_ID = OO.OD_ORDER_ID
+		WHERE
+			OO.UR_USER_ID = #{urUserId}
+			AND OO.ORDER_YN = 'Y'
+			AND OOD.IL_GOODS_ID = #{ilGoodsId}
+			AND OODATE.CREATE_DT
+				BETWEEN IF(IG.LIMIT_MAX_TP='PURCHASE_LIMIT_MAX_TP.1DAY', DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00'), DATE_SUB(NOW(), INTERVAL IG.LIMIT_MAX_DURATION DAY))
+				AND IF(IG.LIMIT_MAX_TP='PURCHASE_LIMIT_MAX_TP.1DAY', DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59'), NOW())
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일별 출고 한도 체크 가능 출고일자 리턴
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.14 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOverDeliveryLimitCntDateList" resultType="java.time.LocalDate">
+	/*	orderOrder.getOverDeliveryLimitCntDateList  */
+	SELECT
+		OWDS.SHIPPING_DT
+	FROM
+		OD_WAREHOUSE_DAILY_SHIPPING OWDS
+	WHERE
+		OWDS.UR_WAREHOUSE_ID = #{urWarehouseId}
+		AND OWDS.SHIPPING_DT IN
+		<foreach collection="scheduledDateList" item="scheduledDate" separator="," open="(" close=")">
+			#{scheduledDate.forwardingScheduledDate, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.LocalDateTypeHandler, jdbcType=DATE}
+		</foreach>
+		<choose>
+			<when test="isDawnDelivery">
+				AND OWDS.DAWN_DELIVERY_YN = 'Y'
+			</when>
+			<otherwise>
+				AND OWDS.DAWN_DELIVERY_YN = 'N'
+			</otherwise>
+		</choose>
+		AND OWDS.SHIPPING_CNT <![CDATA[ >= ]]> #{limitCnt}
+	</select>
+
+	<select id="getOrderCountByUser" resultType="int">
+		/*	orderOrder.getOrderCountByUser  */
+		  select 1
+	</select>
+
+
+	<select id="getOrderPriceByUser" resultType="int">
+		/*	orderOrder.getOrderPriceByUser  */
+		select 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 완료 가상계좌 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24 	천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getVirtualAccountResultMap" type="kr.co.pulmuone.v1.order.order.dto.VirtualAccountResponseDto" >
+		<result column="PAID_DUE_DT"    property="paidDueDate"  />
+		<result column="BANK_NM" 	   	property="bankName"  />
+		<result column="INFO"        	property="info"  />
+		<result column="PAID_HOLDER"    property="paidHolder"  />
+		<result column="PAYMENT_PRICE"     property="paymentPrice"  />
+		<result column="OD_ORDER_ID"    property="odOrderId"  />
+	</resultMap>
+	<select id="getVirtualAccount" resultMap="getVirtualAccountResultMap">
+		/*	orderOrder.getVirtualAccount  */
+		SELECT
+			OPM.PAID_DUE_DT
+			,OPM.BANK_NM
+			,OPM.VIRTUAL_ACCOUNT_NUMBER AS INFO
+			,OPM.PAID_HOLDER
+			,OPM.PAYMENT_PRICE
+			,OO.OD_ORDER_ID
+		FROM
+			OD_ORDER OO
+			JOIN OD_PAYMENT OP ON (OP.OD_ORDER_ID = OO.OD_ORDER_ID)
+			JOIN OD_PAYMENT_MASTER OPM ON (OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID)
+		WHERE
+			OO.ODID = #{odid}
+			AND OPM.TYPE = 'G'
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+					AND OO.UR_USER_ID = #{urUserId}
+				</when>
+				<otherwise>
+					AND OO.GUEST_CI = #{guestCi}
+				</otherwise>
+			</choose>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: odid와 주문자정보 일치여부 확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24 	천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderOdidCount" resultType="int">
+		/*	orderOrder.getOrderOdidCount  */
+		SELECT
+			COUNT(*)
+		FROM
+			OD_ORDER
+		WHERE
+			ODID = #{odid}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+					AND UR_USER_ID = #{urUserId}
+				</when>
+				<otherwise>
+					AND GUEST_CI = #{guestCi}
+				</otherwise>
+			</choose>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: odid 로 PG 승인을 위한 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPgApprovalOrderDataByOdidMap" type="kr.co.pulmuone.v1.order.order.dto.PgApprovalOrderDataDto" >
+		<result column="OD_ORDER_ID" property="odOrderId"  />
+		<result column="ODID" property="odid"  />
+		<result column="UR_USER_ID" property="urUserId"  />
+		<result column="ORIGIN_ORDER_PAYMENT_TYPE" property="originOrderPaymentType"  />
+		<result column="ORDER_PAYMENT_TYPE" property="orderPaymentType"  />
+		<result column="OD_PAYMENT_MASTER_ID" property="odPaymentMasterId"  />
+		<result column="STATUS" property="status"  />
+		<result column="PAYMENT_PRICE" property="paymentPrice"  />
+		<result column="TAXABLE_PRICE" property="taxablePrice"  />
+		<result column="NON_TAXABLE_PRICE" property="nonTaxablePrice"  />
+		<result column="POINT_PRICE" property="pointPrice"  />
+		<result column="PRESENT_YN" property="presentYn"  />
+		<result column="PRESENT_ID" property="presentId"  />
+		<result column="PRESENT_RECEIVE_NM" property="presentReceiveNm"  />
+		<result column="PRESENT_RECEIVE_HP" property="presentReceiveHp"  />
+		<result column="PRESENT_AUTH_CD" property="presentAuthCd"  />
+		<result column="PRESENT_EXPIRATION_DT" property="presentExpirationDt"  />
+		<result column="ORDER_YN" 			   property="orderYn"  />
+	</resultMap>
+	<select id="getPgApprovalOrderDataByOdid" resultMap="getPgApprovalOrderDataByOdidMap">
+		/*	orderOrder.getPgApprovalOrderDataByOdid  */
+		SELECT
+			OO.OD_ORDER_ID
+			,OO.ODID
+			,OO.UR_USER_ID
+			,OO.ORDER_PAYMENT_TYPE AS ORIGIN_ORDER_PAYMENT_TYPE
+			,OO.ORDER_PAYMENT_TYPE
+			,OPM.OD_PAYMENT_MASTER_ID
+			,OPM.STATUS
+			,OPM.PAYMENT_PRICE
+			,OPM.TAXABLE_PRICE
+			,OPM.NON_TAXABLE_PRICE
+			,OPM.POINT_PRICE
+			,OO.GIFT_YN AS PRESENT_YN
+			,OOP.PRESENT_ID
+			,FN_DECRYPT(OOP.PRESENT_RECEIVE_NM) AS PRESENT_RECEIVE_NM
+			,FN_DECRYPT(OOP.PRESENT_RECEIVE_HP) AS PRESENT_RECEIVE_HP
+			,OOP.PRESENT_AUTH_CD
+			,OOP.PRESENT_EXPIRATION_DT
+			,OO.ORDER_YN
+		FROM
+			OD_ORDER OO
+			JOIN OD_PAYMENT OP ON (OO.OD_ORDER_ID = OP.OD_ORDER_ID)
+			JOIN OD_PAYMENT_MASTER OPM ON (OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID)
+			LEFT JOIN OD_ORDER_PRESENT OOP ON (OOP.OD_ORDER_ID = OO.OD_ORDER_ID AND OO.GIFT_YN = 'Y')
+		WHERE
+			OO.ODID = #{odid}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: getPgApprovalOrderDataByOdPaymentMasterId 로 PG 승인을 위한 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.17 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPgApprovalOrderDataByOdPaymentMasterId" resultMap="getPgApprovalOrderDataByOdidMap">
+		/*	orderOrder.getPgApprovalOrderDataByOdPaymentMasterId  */
+		SELECT
+			OO.OD_ORDER_ID
+			,OO.ODID
+			,OO.UR_USER_ID
+			,OO.ORDER_PAYMENT_TYPE
+			,OPM.OD_PAYMENT_MASTER_ID
+			,OPM.STATUS
+			,OPM.PAYMENT_PRICE
+			,OPM.TAXABLE_PRICE
+			,OPM.NON_TAXABLE_PRICE
+			,OPM.POINT_PRICE
+		FROM
+			OD_ORDER OO
+			JOIN OD_PAYMENT OP ON (OO.OD_ORDER_ID = OP.OD_ORDER_ID)
+			JOIN OD_PAYMENT_MASTER OPM ON (OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID)
+		WHERE
+			OPM.OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: odid 로 PG 승인을 위한 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPgApprovalOrderCreateDataByOdidMap" type="kr.co.pulmuone.v1.order.order.dto.PgApprovalOrderDataDto" >
+		<result column="OD_ORDER_ID" property="odOrderId"  />
+		<result column="ODID" property="odid"  />
+		<result column="UR_USER_ID" property="urUserId"  />
+		<result column="ORDER_PAYMENT_TYPE" property="orderPaymentType"  />
+		<result column="OD_PAYMENT_MASTER_ID" property="odPaymentMasterId"  />
+		<result column="STATUS" property="status"  />
+		<result column="PAYMENT_PRICE" property="paymentPrice"  />
+		<result column="TAXABLE_PRICE" property="taxablePrice"  />
+		<result column="NON_TAXABLE_PRICE" property="nonTaxablePrice"  />
+		<result column="POINT_PRICE" property="pointPrice"  />
+	</resultMap>
+	<select id="getPgApprovalOrderCreateDataByOdid" resultMap="getPgApprovalOrderCreateDataByOdidMap">
+		/*	orderOrder.getPgApprovalOrderCreateDataByOdid  */
+		SELECT
+			OO.OD_ORDER_ID
+			,OO.ODID
+			,OO.UR_USER_ID
+			,OO.ORDER_PAYMENT_TYPE
+			,OPM.OD_PAYMENT_MASTER_ID
+			,OPM.STATUS
+			,SUM(OPM.PAYMENT_PRICE) AS PAYMENT_PRICE
+			,SUM(OPM.TAXABLE_PRICE) AS TAXABLE_PRICE
+			,SUM(OPM.NON_TAXABLE_PRICE) AS NON_TAXABLE_PRICE
+			,SUM(OPM.POINT_PRICE) AS POINT_PRICE
+		FROM
+			OD_ORDER OO
+			JOIN OD_PAYMENT OP ON (OO.OD_ORDER_ID = OP.OD_ORDER_ID)
+			JOIN OD_PAYMENT_MASTER OPM ON (OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID)
+		WHERE
+			OO.ODID IN
+			<foreach collection="odIdList" item="odid" separator="," open="(" close=")">
+				#{odid}
+			</foreach>
+		GROUP BY OO.UR_USER_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문에 사용된 PmCouponIssueId 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderUsePmCouponIssueIdList" resultType="Long">
+		/*	orderOrder.getOrderUsePmCouponIssueIdList  */
+		SELECT
+			OODD.PM_COUPON_ISSUE_ID
+		FROM
+			OD_ORDER_DETL_DISCOUNT OODD
+			JOIN OD_ORDER_DETL OOD ON (OOD.OD_ORDER_DETL_ID=OODD.OD_ORDER_DETL_ID)
+		WHERE
+			OODD.OD_ORDER_ID = #{odOrderId}
+			AND IFNULL(OODD.PM_COUPON_ISSUE_ID , 0) > 0
+		  	AND DISCOUNT_TP !='GOODS_DISCOUNT_TP.CART_COUPON'
+		GROUP BY OOD.OD_ORDER_DETL_PARENT_ID
+
+		UNION ALL
+
+		SELECT
+			OODD.PM_COUPON_ISSUE_ID
+		FROM
+			OD_ORDER_DETL_DISCOUNT OODD
+		WHERE
+			OODD.OD_ORDER_ID = #{odOrderId}
+		  	AND IFNULL(OODD.PM_COUPON_ISSUE_ID , 0) > 0
+		  	AND DISCOUNT_TP = 'GOODS_DISCOUNT_TP.CART_COUPON'
+		GROUP BY OODD.PM_COUPON_ISSUE_ID
+
+		UNION ALL
+
+		SELECT
+			OSP.PM_COUPON_ISSUE_ID
+		FROM
+			OD_ORDER_DETL OOD
+			JOIN OD_SHIPPING_PRICE OSP ON (OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID)
+		WHERE
+			OOD.OD_ORDER_ID = #{odOrderId}
+			AND IFNULL(OSP.PM_COUPON_ISSUE_ID , 0) > 0
+		GROUP BY OSP.OD_SHIPPING_PRICE_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고체크하기 위한 상품 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.04 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getStockCheckOrderDetailListMap" type="kr.co.pulmuone.v1.order.order.dto.StockCheckOrderDetailDto" >
+		<result column="OD_ORDER_DETL_ID" property="odOrderDetlId"  />
+		<result column="OD_SHIPPING_PRICE_ID" property="odShippingPriceId"  />
+		<result column="UR_WAREHOUSE_ID" property="urWarehouseId"  />
+		<result column="IL_GOODS_ID" property="ilGoodsId"  />
+		<result column="SALE_TP_CD"  property="saleType" />
+		<result column="GOODS_DELIVERY_TYPE" property="goodsDeliveryType"  />
+		<result column="ORDER_CNT" property="orderCnt"  />
+		<result column="GOODS_CYCLE_TP" property="goodsCycleTp"  />
+		<result column="SHIPPING_DT" property="shippingDt"  />
+		<result column="DELIVERY_DT" property="deliveryDt"  />
+		<result column="IL_GOODS_RESERVE_OPTN_ID"  property="ilGoodsReserveOptionId" />
+		<result column="UR_STORE_ID" property="urStoreId"  />
+		<result column="IL_ITEM_CD" property="ilItemCd"  />
+		<result column="UR_STORE_SCHEDULE_ID" property="urStoreScheduleId"  />
+		<result column="DAILY_BULK_YN" property="goodsDailyBulkYn"  />
+		<result column="MON_CNT" property="monCnt"  />
+		<result column="TUE_CNT" property="tueCnt"  />
+		<result column="WED_CNT" property="wedCnt"  />
+		<result column="THU_CNT" property="thuCnt"  />
+		<result column="FRI_CNT" property="friCnt"  />
+		<result column="PROMOTION_TP" property="promotionTp"  />
+	</resultMap>
+	<select id="getStockCheckOrderDetailList" resultMap="getStockCheckOrderDetailListMap">
+		/*	orderOrder.getStockCheckOrderDetailList  */
+		SELECT
+			OOD.OD_ORDER_DETL_ID
+			,OOD.OD_SHIPPING_PRICE_ID
+			,OOD.UR_WAREHOUSE_ID
+			,OOD.IL_GOODS_ID
+			,OOD.SALE_TP_CD
+			,OOD.GOODS_DELIVERY_TYPE
+			,OOD.ORDER_CNT
+			,OODD.GOODS_CYCLE_TP
+			,OOD.SHIPPING_DT
+			,OOD.DELIVERY_DT
+			,OOD.IL_GOODS_RESERVE_OPTN_ID
+			,OO.UR_STORE_ID
+			,OOD.IL_ITEM_CD
+			,OO.UR_STORE_SCHEDULE_ID
+			,OODD.DAILY_BULK_YN
+			,OODD.MON_CNT
+			,OODD.TUE_CNT
+			,OODD.WED_CNT
+			,OODD.THU_CNT
+			,OODD.FRI_CNT
+			,IFNULL(OOD.PROMOTION_TP,'') AS PROMOTION_TP
+		FROM
+			OD_ORDER_DETL OOD
+			JOIN OD_ORDER OO ON (OOD.OD_ORDER_ID = OO.OD_ORDER_ID)
+			LEFT JOIN OD_ORDER_DETL_DAILY OODD ON (OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID)
+		WHERE
+			OOD.OD_ORDER_ID = #{odOrderId}
+		ORDER BY OD_SHIPPING_PRICE_ID, OD_ORDER_DETL_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 도착 예정일자 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.04 	홍진영          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetailArrivalScheduledDate" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlVo">
+		/*	orderOrder.putOrderDetailArrivalScheduledDate  */
+		UPDATE OD_ORDER_DETL
+			SET  ORDER_IF_DT  = #{orderIfDt}
+				,SHIPPING_DT  = #{shippingDt}
+				,DELIVERY_DT  = #{deliveryDt}
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId};
+
+		UPDATE OD_ORDER_DETL_DAILY
+			SET  ORDER_IF_DT  = #{orderIfDt}
+				,DELIVERY_DT  = #{deliveryDt}
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문배송지PK로 주문상세 배송유형 변경
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.27      천혜현          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putOrderDetailGoodsDeliveryType">
+        /*  orderOrder.putOrderDetailGoodsDeliveryType  */
+        UPDATE OD_ORDER_DETL
+            SET GOODS_DELIVERY_TYPE = #{goodsDeliveryType}
+				, ORDER_STATUS_DELI_TP = #{orderStatusDetailType}
+        WHERE
+            OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+    </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문상세PK로 주문상세 배송유형 변경
+     * @
+     * @ 수정일                    수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.27      천혜현          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetailGoodsDeliveryTypeByOdOrderDetlId">
+		/*  orderOrder.putOrderDetailGoodsDeliveryTypeByOdOrderDetlId  */
+		UPDATE OD_ORDER_DETL
+		SET GOODS_DELIVERY_TYPE = #{goodsDeliveryType}
+		    , ORDER_STATUS_DELI_TP = #{orderStatusDetailType}
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 폐기 임박 상품 스케줄 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.22 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderDetailDisposalGoodsArrivalScheduledListMap" type="kr.co.pulmuone.v1.goods.goods.dto.ArrivalScheduledDateDto" >
+		<result column="ORDER_IF_DT" property="orderDate"  />
+		<result column="SHIPPING_DT" property="forwardingScheduledDate"  />
+		<result column="DELIVERY_DT" property="arrivalScheduledDate"  />
+	</resultMap>
+	<select id="getOrderDetailDisposalGoodsArrivalScheduledList" resultMap="getOrderDetailDisposalGoodsArrivalScheduledListMap">
+		/*	orderOrder.getOrderDetailDisposalGoodsArrivalScheduledList  */
+		SELECT
+			OOD.ORDER_IF_DT
+			,OOD.SHIPPING_DT
+			,OOD.DELIVERY_DT
+		FROM
+			OD_ORDER_DETL OOD
+		WHERE
+			OOD.OD_ORDER_DETL_ID IN
+			<foreach collection="odOrderDetlIds" item="odOrderDetlId" separator="," open="(" close=")">
+				#{odOrderDetlId}
+			</foreach>
+			AND OOD.GOODS_TP_CD = 'GOODS_TYPE.DISPOSAL'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고체크하기 위한 상품 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.04 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getStockCheckOrderDetailListByOdOrderDetlId" resultMap="getStockCheckOrderDetailListMap">
+		/*	orderOrder.getStockCheckOrderDetailListByOdOrderDetlId  */
+		SELECT
+			OOD.OD_ORDER_DETL_ID
+			 ,OOD.OD_SHIPPING_PRICE_ID
+			 ,OOD.UR_WAREHOUSE_ID
+			 ,OOD.IL_GOODS_ID
+			 ,OOD.SALE_TP_CD
+			 ,OOD.GOODS_DELIVERY_TYPE
+			 ,OOD.ORDER_CNT
+			 ,OODD.GOODS_CYCLE_TP
+			 ,OOD.SHIPPING_DT
+			 ,OOD.DELIVERY_DT
+			 ,OOD.IL_GOODS_RESERVE_OPTN_ID
+		FROM
+			OD_ORDER_DETL OOD
+				LEFT JOIN OD_ORDER_DETL_DAILY OODD ON (OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID)
+		WHERE
+			OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+		ORDER BY OD_SHIPPING_PRICE_ID, OD_ORDER_DETL_ID
+	</select>
+
+	<select id="isOrderDetailDailyDelivery" resultType="boolean">
+		/*	orderOrder.isOrderDetailDailyDelivery	*/
+		SELECT
+			IF(COUNT(*) > 0, TRUE, FALSE) AS result
+		FROM
+			OD_ORDER_DETL
+		WHERE
+			GOODS_TP_CD = 'GOODS_TYPE.DAILY'
+			AND GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.NORMAL'
+			AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+
+	<sql id="searchCashReceiptIssuedListItem">
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearch,'orderDate')">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND TBL.CREATE_DT BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearch,'paymentDate')">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND TBL.APPROVAL_DT BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</when>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(cashReceiptType,'proof')">
+				AND TBL.CASH_RECEIPT_TYPE = 'CASH_RECEIPT.PROOF'
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(cashReceiptType,'deduction')">
+				AND TBL.CASH_RECEIPT_TYPE = 'CASH_RECEIPT.DEDUCTION'
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(cashReceiptType,'user')">
+				AND TBL.CASH_RECEIPT_TYPE = 'CASH_RECEIPT.USER'
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(cashReceiptType,'notIssued')">
+				AND IFNULL(TBL.CASH_RECEIPT_NO,'') = ''
+			</when>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pgType,'kcp')">
+				AND TBL.PG_SERVICE LIKE '%KCP%'
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pgType,'inicis')">
+				AND TBL.PG_SERVICE LIKE '%INICIS%'
+			</when>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(payType,'virtualBank')">
+				AND TBL.PAY_TP = 'PAY_TP.VIRTUAL_BANK'
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(payType,'bank')">
+				AND TBL.PAY_TP = 'PAY_TP.BANK'
+			</when>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(issueType,'notIssued')">
+				AND IFNULL(TBL.CASH_RECEIPT_NO,'') = ''
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(issueType,'issueCompleted')">
+				AND IFNULL(TBL.CASH_RECEIPT_NO,'') != ''
+			</when>
+		</choose>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchWord)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'odid')">
+					AND TBL.ODID = #{searchWord}
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'cashReceiptNo')">
+					AND TBL.CASH_RECEIPT_NO = #{searchWord}
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'cashReceiptAuthNo')">
+					AND TBL.CASH_RECEIPT_AUTH_NO = #{searchWord}
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="getCashReceiptIssuedList" resultType="kr.co.pulmuone.v1.order.order.dto.CashReceiptIssuedDto">
+		/* orderOrder.getCashReceiptIssuedList */
+		SELECT
+			TBL.*
+		FROM(
+			SELECT
+				OO.ODID
+			    ,OO.OD_ORDER_ID
+				,OO.CREATE_DT
+				,OO.UR_USER_ID
+				,IFNULL(OO.GUEST_CI,'') AS GUEST_CI
+				,OS.STATUS_NM
+				,OPM.OD_PAYMENT_MASTER_ID
+				,OPM.PAY_TP
+				,IFNULL(OPM.PG_SERVICE,'') AS PG_SERVICE
+				,OPM.STATUS
+				,IFNULL(OOCR.CASH_PRICE, OPM.TAXABLE_PRICE) AS TAXABLE_PRICE
+				,OPM.NON_TAXABLE_PRICE
+				,IFNULL(OOCR.CASH_PRICE, OPM.PAYMENT_PRICE) AS PAYMENT_PRICE
+				,OPM.APPROVAL_DT
+				,IFNULL(OOCR.CASH_RECEIPT_NO,'') AS CASH_RECEIPT_NO
+				,IFNULL(OOCR.CASH_RECEIPT_AUTH_NO,'') AS CASH_RECEIPT_AUTH_NO
+				,IFNULL(OOCR.CASH_RECEIPT_TYPE,'') AS CASH_RECEIPT_TYPE
+		FROM
+				OD_ORDER OO
+				JOIN OD_PAYMENT OP ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+				JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID
+				JOIN OD_STATUS OS ON OPM.STATUS = OS.STATUS_CD
+				LEFT JOIN OD_ORDER_CASH_RECEIPT OOCR ON OO.OD_ORDER_ID = OOCR.OD_ORDER_ID
+			WHERE
+				OPM.PAY_TP IN ('PAY_TP.VIRTUAL_BANK','PAY_TP.BANK') /* 실시간계좌이체, 무통장입금 */
+				AND OPM.TYPE = 'G' /* G:결제 */
+				AND OPM.STATUS NOT IN ('IB','IR') /* IB : 입금전취소, IR : 입금대기중 */
+			ORDER BY OO.OD_ORDER_ID DESC
+		)TBL
+		<where>
+			<include refid="searchCashReceiptIssuedListItem" />
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				AND EXISTS ( SELECT 'X'
+				FROM UR_USER
+				WHERE UR_USER_ID = TBL.UR_USER_ID
+				AND UR_USER_ID = #{urUserId})
+			</if>
+		</where>
+		<include refid="_common.pageLimit" />
+	</select>
+
+	<select id="getCashReceiptIssuedListCount" resultType="long">
+	/* orderOrder.getCashReceiptIssuedListCount */
+	SELECT
+		COUNT(*)
+	FROM(
+		SELECT
+			OO.ODID
+			,OO.OD_ORDER_ID
+			,OO.CREATE_DT
+			,OO.UR_USER_ID
+			,IFNULL(OO.GUEST_CI,'') AS GUEST_CI
+			,OS.STATUS_NM
+			,OPM.OD_PAYMENT_MASTER_ID
+			,OPM.PAY_TP
+			,IFNULL(OPM.PG_SERVICE,'') AS PG_SERVICE
+			,OPM.STATUS
+			,IFNULL(OOCR.CASH_PRICE, OPM.TAXABLE_PRICE) AS TAXABLE_PRICE
+			,OPM.NON_TAXABLE_PRICE
+			,IFNULL(OOCR.CASH_PRICE, OPM.PAYMENT_PRICE) AS PAYMENT_PRICE
+			,OPM.APPROVAL_DT
+			,IFNULL(OOCR.CASH_RECEIPT_NO,'') AS CASH_RECEIPT_NO
+			,IFNULL(OOCR.CASH_RECEIPT_AUTH_NO,'') AS CASH_RECEIPT_AUTH_NO
+			,IFNULL(OOCR.CASH_RECEIPT_TYPE,'') AS CASH_RECEIPT_TYPE
+		FROM
+			OD_ORDER OO
+			JOIN OD_PAYMENT OP ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+			JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID
+			JOIN OD_STATUS OS ON OPM.STATUS = OS.STATUS_CD
+			LEFT JOIN OD_ORDER_CASH_RECEIPT OOCR ON OO.OD_ORDER_ID = OOCR.OD_ORDER_ID
+		WHERE
+			OPM.PAY_TP IN ('PAY_TP.VIRTUAL_BANK','PAY_TP.BANK')  /* 실시간계좌이체, 무통장입금 */
+			AND OPM.TYPE = 'G' /* G:결제 */
+			AND OPM.STATUS NOT IN ('IB','IR') /* IB : 입금전취소, IR : 입금대기중 */
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+			AND EXISTS ( SELECT 'X'
+			FROM UR_USER
+			WHERE UR_USER_ID = OO.UR_USER_ID
+			AND UR_USER_ID = #{urUserId})
+		</if>
+		ORDER BY OO.OD_ORDER_ID DESC
+	)TBL
+	<where>
+		<include refid="searchCashReceiptIssuedListItem" />
+	</where>
+	</select>
+
+	<select id="getCashReceiptIssuedListExportExcel" resultType="kr.co.pulmuone.v1.order.order.dto.CashReceiptIssuedDto">
+		/* orderOrder.getCashReceiptIssuedListExportExcel */
+		SELECT
+			TBL2.*
+		FROM(
+			SELECT
+				ROW_NUMBER () OVER () AS RNUM
+				,TBL.*
+			FROM(
+				SELECT
+					OO.ODID
+					,CASE IFNULL(OOCR.CASH_RECEIPT_TYPE,'') WHEN 'CASH_RECEIPT.DEDUCTION' THEN '소득공제'
+							WHEN 'CASH_RECEIPT.PROOF' THEN '지출증빙'
+							WHEN 'CASH_RECEIPT.USER' THEN '사용자발급'
+							ELSE '미발급'
+							END AS CASH_RECEIPT_TYPE
+					,OO.CREATE_DT
+					,CASE OPM.PAY_TP WHEN 'PAY_TP.VIRTUAL_BANK' THEN '실시간계좌이체'
+							WHEN 'PAY_TP.BANK' THEN '무통장입금'
+							ELSE '기타'
+							END AS PAY_TP
+					,CASE WHEN IFNULL(OPM.PG_SERVICE,'') LIKE '%KCP%' THEN 'KCP'
+							WHEN IFNULL(OPM.PG_SERVICE,'') LIKE '%INICIS%' THEN '이니시스'
+							ELSE '기타'
+							END AS PG_SERVICE
+					,OS.STATUS_NM
+					,IFNULL(OOCR.CASH_PRICE, OPM.TAXABLE_PRICE) AS TAXABLE_PRICE
+					,OPM.NON_TAXABLE_PRICE
+					,IFNULL(OOCR.CASH_PRICE, OPM.PAYMENT_PRICE) AS PAYMENT_PRICE
+					,IFNULL(OOCR.CASH_RECEIPT_NO,'') AS CASH_RECEIPT_NO
+					,IFNULL(OOCR.CASH_RECEIPT_AUTH_NO,'') AS CASH_RECEIPT_AUTH_NO
+				FROM
+					OD_ORDER OO
+					JOIN OD_PAYMENT OP ON OP.OD_ORDER_ID = OO.OD_ORDER_ID
+					JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OP.OD_PAYMENT_MASTER_ID
+					JOIN OD_STATUS OS ON OPM.STATUS = OS.STATUS_CD
+					LEFT JOIN OD_ORDER_CASH_RECEIPT OOCR ON OO.OD_ORDER_ID = OOCR.OD_ORDER_ID
+				WHERE
+					OPM.PAY_TP IN ('PAY_TP.VIRTUAL_BANK','PAY_TP.BANK') /* 실시간계좌이체, 무통장입금 */
+					AND OPM.TYPE = 'G' /* G:결제 */
+					AND OPM.STATUS NOT IN ('IB','IR') /* IB : 입금전취소, IR : 입금대기중 */
+			)TBL
+			<where>
+				<include refid="searchCashReceiptIssuedListItem"/>
+			</where>
+		)TBL2
+		ORDER BY TBL2.RNUM DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 출고처, 출고예정일자별 group list
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.04 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getWarehouseAndShippingDateGroupListMap" type="kr.co.pulmuone.v1.order.order.dto.vo.WareHouseDailyShippingVo" >
+		<result column="UR_WAREHOUSE_ID"    property="urWarehouseId"  />
+		<result column="SHIPPING_DT" 	   	property="shippingDate"  />
+		<result column="DAWN_DELIVERY_YN" 	property="dawnDeliveryYn"  />
+	</resultMap>
+	<select id="getWarehouseAndShippingDateGroupList" resultMap="getWarehouseAndShippingDateGroupListMap">
+		/*	orderOrder.getWarehouseAndShippingDateGroupList  */
+		SELECT
+			OOD.UR_WAREHOUSE_ID
+			,OOD.SHIPPING_DT
+			,IF(OOD.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN', 'Y', 'N') AS DAWN_DELIVERY_YN
+		FROM
+			OD_ORDER_DETL OOD
+		WHERE
+			OOD.OD_ORDER_ID IN
+			<foreach collection="odOrderIds" item="odOrderId" separator="," open="(" close=")">
+				#{odOrderId}
+			</foreach>
+			AND OOD.UR_WAREHOUSE_ID > 0
+			AND OOD.SHIPPING_DT IS NOT NULL
+		GROUP BY UR_WAREHOUSE_ID, SHIPPING_DT, DAWN_DELIVERY_YN
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 출고처, 출고예정일자별 출고예정수량 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.04 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderWarehouseDailyShippingCount" resultType="int">
+		/*	orderOrder.getOrderWarehouseDailyShippingCount  */
+		SELECT
+			COUNT(DISTINCT OOD.OD_SHIPPING_ZONE_ID) AS CNT
+		FROM
+			OD_ORDER_DETL OOD FORCE INDEX (OD_ORDER_DETL_SHIPPING_DT_UR_WAREHOUSE_ID_IDX)
+			JOIN OD_ORDER OO ON (OO.OD_ORDER_ID = OOD.OD_ORDER_ID AND OO.ORDER_YN = 'Y')
+		WHERE
+			OOD.ORDER_CNT - OOD.CANCEL_CNT > 0
+			AND OOD.SHIPPING_DT BETWEEN CONCAT(#{shippingDate, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.LocalDateTypeHandler, jdbcType=DATE}, ' 00:00:00')
+				AND CONCAT(#{shippingDate, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.LocalDateTypeHandler, jdbcType=DATE}, ' 23:59:59')
+			AND OOD.UR_WAREHOUSE_ID = #{urWarehouseId}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dawnDeliveryYn,'Y')">
+				AND OOD.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN'
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 출고처, 출고예정일자별 출고수량 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.04 	홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putWarehouseDailyShippingCount" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.WareHouseDailyShippingVo">
+		/*	orderOrder.putWarehouseDailyShippingCount  */
+		INSERT INTO OD_WAREHOUSE_DAILY_SHIPPING (UR_WAREHOUSE_ID, SHIPPING_DT, DAWN_DELIVERY_YN,  SHIPPING_CNT)
+        VALUES (#{urWarehouseId},
+                #{shippingDate},
+                #{dawnDeliveryYn},
+                #{shippingCount}) ON DUPLICATE KEY
+        UPDATE SHIPPING_CNT = #{shippingCount}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 결제 완료 상품 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.24 	문상필          최초생성
+	 * @ 2021.10.12		문상필		  결제 상품 단위 목록 조회
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPaymentInfoResultMap" type="kr.co.pulmuone.v1.order.order.dto.PaymentGoodsDetailInfoResponseDto" >
+		<result column="IL_GOODS_ID"    		property="goodsId"  />
+		<result column="GOODS_NM"       		property="goodsNm"  />
+		<result column="RECOMMENDED_PRICE"    	property="recommendedPrice"  />
+		<result column="PAID_PRICE"    			property="paidPrice"  />
+		<result column="ORDER_CNT"    			property="orderCnt"  />
+	</resultMap>
+	<select id="getPaymentInfo" resultMap="getPaymentInfoResultMap">
+		/*	orderOrder.getPaymentInfo  */
+		SELECT
+			OOD.IL_GOODS_ID
+			, OOD.GOODS_NM
+			, OOD.RECOMMENDED_PRICE
+			, OOD.PAID_PRICE
+			, OOD.ORDER_CNT
+		FROM OD_ORDER OO INNER JOIN OD_ORDER_DETL OOD ON OO.ODID = OOD.ODID AND OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+		WHERE OO.ODID = #{odid}
+		AND OO.ORDER_YN = 'Y'
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				AND OO.UR_USER_ID = #{urUserId}
+			</when>
+			<otherwise>
+				AND OO.GUEST_CI = #{guestCi}
+			</otherwise>
+		</choose>
+	</select>
+</mapper>

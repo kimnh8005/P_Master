@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.employee.ErpEmployeeMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 임직원정보 최근 업데이트 일자
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.16     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getLastUpdateDate" resultType="java.lang.String">
+    /* erpEmployee.getLastUpdateDate */
+    SELECT IFNULL( DATE_FORMAT(A.LAST_UPDATE_DATE, '%Y-%m-%d %H:%i:%s'), '') AS LAST_UPDATE_DATE
+      FROM (
+            SELECT IFNULL(MAX(MODIFY_DT), MAX(CREATE_DT)) AS LAST_UPDATE_DATE
+              FROM UR_ERP_EMPLOYEE
+             WHERE USE_YN = 'Y'
+         ) A
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 임직원정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.16     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getPulmuoneEmployeeListResultMap" type="kr.co.pulmuone.v1.user.employee.dto.vo.ErpEmployeeVo">
+        <result column="ERP_EMPLOYEE_NUMBER" property="erpEmployeeNumber" />
+        <result column="ERP_EMPLOYEE_NAME" property="erpEmployeeName" />
+        <result column="ERP_REGAL_NAME" property="erpRegalName" />
+        <result column="ERP_ORGANIZATION_NAME" property="erpOrganizationName" />
+        <result column="ERP_GRADE_NAME" property="erpGradeName" />
+        <result column="ERP_POSITION_NAME" property="erpPositionName" />
+        <result column="ERP_EMAIL" property="erpEmail" />
+        <result column="ERP_CELL_PHONE" property="erpCellPhone" />
+        <result column="STATUS" property="status" />
+        <result column="STATUS_NAME" property="statusName" />
+        <result column="ERP_STATUS_NAME" property="erpStatusName" />
+    </resultMap>
+
+    <!-- ERP 임직원정보 조회 -->
+    <select id="getPulmuoneEmployeeList" resultMap="getPulmuoneEmployeeListResultMap">
+        /* erpEmployee.getPulmuoneEmployeeList */
+        SELECT EE.UR_ERP_EMPLOYEE_CD AS ERP_EMPLOYEE_NUMBER /* 사번 */
+             , FN_DECRYPT(EE.ERP_NM) AS ERP_EMPLOYEE_NAME /* 직원명 */
+             , EE.ERP_REGAL_NM AS ERP_REGAL_NAME /* 법인정보명 */
+             , EE.ERP_ORGANIZATION_NM AS ERP_ORGANIZATION_NAME /* 조직명 */
+             , EE.ERP_GRADE_NM AS ERP_GRADE_NAME /* 직급명 */
+             , EE.ERP_POSITION_NM AS ERP_POSITION_NAME /* 직책명 */
+             , FN_DECRYPT(EE.ERP_EMAIL) AS ERP_EMAIL /* 이메일 */
+             , FN_DECRYPT(EE.ERP_PHONE) AS ERP_CELL_PHONE /* 휴대폰 */
+             , (SELECT E.STATUS_TP
+                  FROM UR_EMPLOYEE E
+                 WHERE E.UR_EMPLOYEE_CD = EE.UR_ERP_EMPLOYEE_CD) AS STATUS /* 상태코드 */
+             , FN_COMN_CODE_DIC((SELECT E.STATUS_TP
+                                   FROM UR_EMPLOYEE E
+                                  WHERE E.UR_EMPLOYEE_CD = EE.UR_ERP_EMPLOYEE_CD)) AS STATUS_NAME /* 상태명 */
+             , CASE WHEN EE.USE_YN = 'N'
+                    THEN '퇴사'
+               ELSE FN_COMN_CODE_DIC(EE.ERP_USER_STATUS)
+                END ERP_STATUS_NAME /* ERP 상태코드명 */
+          FROM UR_ERP_EMPLOYEE EE
+          <where>
+              <choose>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "EMPLOYEE_NAME")'>
+                      AND FN_DECRYPT(EE.ERP_NM) LIKE CONCAT('%', #{findKeyword}, '%')
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "EMPLOYEE_NUMBER")'>
+                      AND EE.UR_ERP_EMPLOYEE_CD =  #{findKeyword}
+                  </when>
+                  <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "REGAL_NAME")'>
+                      AND EE.ERP_REGAL_NM LIKE CONCAT('%', #{findKeyword}, '%')
+                  </when>
+              </choose>
+          </where>
+         ORDER BY EE.UR_ERP_EMPLOYEE_CD DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 임직원정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addErpEmployee">
+        /* erpEmployee.addErpEmployee */
+        INSERT INTO UR_ERP_EMPLOYEE
+        (
+          UR_ERP_EMPLOYEE_CD
+        , ERP_NM
+        , ERP_PHONE
+        , ERP_EMAIL
+        , ERP_REGAL_CD
+        , ERP_REGAL_NM
+        , ERP_ORGANIZATION_CD
+        , ERP_ORGANIZATION_NM
+        , ERP_GRADE_CD
+        , ERP_GRADE_NM
+        , ERP_POSITION_NM
+        , ERP_USER_STATUS
+        , USE_YN
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{erpEmployeeNumber}
+        , #{erpEmployeeName}
+        , #{erpCellPhone}
+        , #{erpEmail}
+        , #{erpRegalCode}
+        , #{erpRegalName}
+        , #{erpOrganizationCode}
+        , #{erpOrganizationName}
+        , #{erpGradeCode}
+        , #{erpGradeName}
+        , #{erpPositionName}
+        , #{erpStatusName}
+        , #{useYn}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 임직원정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putErpEmployee">
+        /* erpEmployee.putErpEmployee */
+        UPDATE UR_ERP_EMPLOYEE
+           SET MODIFY_DT = NOW()
+             , MODIFY_ID = #{createId}
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpEmployeeName)">
+             , ERP_NM = #{erpEmployeeName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpCellPhone)">
+             , ERP_PHONE = #{erpCellPhone}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpEmail)">
+             , ERP_EMAIL = #{erpEmail}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalCode)">
+             , ERP_REGAL_CD = #{erpRegalCode}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalName)">
+             , ERP_REGAL_NM = #{erpRegalName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpOrganizationCode)">
+             , ERP_ORGANIZATION_CD = #{erpOrganizationCode}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpOrganizationName)">
+             , ERP_ORGANIZATION_NM = #{erpOrganizationName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpGradeCode)">
+             , ERP_GRADE_CD = #{erpGradeCode}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpGradeName)">
+             , ERP_GRADE_NM = #{erpGradeName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpPositionName)">
+             , ERP_POSITION_NM = #{erpPositionName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpStatusName)">
+             , ERP_USER_STATUS = #{erpStatusName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+             , USE_YN = #{useYn}
+         </if>
+         WHERE UR_ERP_EMPLOYEE_CD = #{erpEmployeeNumber}
+    </update>
+</mapper>

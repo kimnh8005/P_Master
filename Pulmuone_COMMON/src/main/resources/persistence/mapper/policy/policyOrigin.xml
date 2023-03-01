@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.origin.PolicyOriginMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.30		박영후          최초생성
+	 * @ 2020.10.26         최윤지          리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOriginListMap" type="kr.co.pulmuone.v1.policy.origin.dto.vo.GetPolicyOriginListResultVo">
+		<result column="SYSTEM_COMMON_CODE_ID" property="systemCommonCodeId" />
+		<result column="ORIGIN_CODE" property="originCode" />
+		<result column="ORIGIN_TYPE" property="originType" />
+		<result column="GB_DICTIONARY_MASTER_ID" property="gbDictionaryMasterId" />
+		<result column="ORIGIN_NAME" property="originName" />
+	</resultMap>
+
+	<resultMap id="getOriginMap" type="kr.co.pulmuone.v1.policy.origin.dto.vo.GetPolicyOriginResultVo">
+		<result column="SYSTEM_COMMON_CODE_ID" property="systemCommonCodeId" />
+		<result column="ORIGIN_CODE" property="originCode" />
+		<result column="ORIGIN_TYPE" property="originType" />
+		<result column="GB_DICTIONARY_MASTER_ID" property="gbDictionaryMasterId" />
+		<result column="ORIGIN_NAME" property="originName" />
+	</resultMap>
+
+	<resultMap id="getOriginTypeMap" type="kr.co.pulmuone.v1.policy.origin.dto.vo.GetPolicyOriginTypeListResultVo">
+		<result column="ORIGIN_TYPE_CODE" property="originTypeCode" />
+		<result column="ORIGIN_TYPE_NAME" property="originTypeName" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 목록 리스트  조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.30		박영후          최초생성
+	 * @ 2020.10.26         최윤지          리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOriginList" resultMap="getOriginListMap">
+		/*	policyorigin.getOriginList  */
+	   SELECT
+              SCC1.ST_COMN_CODE_ID AS SYSTEM_COMMON_CODE_ID
+            , FN_DIC(SCC2.GB_DIC_MST_ID, #{gbLangId}) AS ORIGIN_TYPE
+            , SCC1.ST_COMN_CODE_CD AS ORIGIN_CODE
+            , SCC1.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+            , FN_DIC(SCC1.GB_DIC_MST_ID, #{gbLangId}) AS ORIGIN_NAME
+         FROM
+              ST_COMN_CODE SCC1
+              INNER JOIN ST_COMN_CODE SCC2
+               ON SCC1.ST_COMN_CODE_MST_CD = SCC2.ST_COMN_CODE_CD
+              LEFT OUTER JOIN GB_DIC_MST GDM
+               ON GDM.GB_DIC_MST_ID = SCC1.GB_DIC_MST_ID
+        WHERE
+              SCC1.USE_YN = 'Y'
+          AND SCC2.USE_YN = 'Y'
+          AND SCC2.ST_COMN_CODE_MST_CD = 'ORIGIN_TYPE'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(originTypes)">
+              AND SCC1.ST_COMN_CODE_MST_CD IN
+                <foreach collection="originTypeList" item="VAL" open="(" separator="," close=")">
+                    #{VAL}
+                </foreach>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValue)">
+                <choose>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ORIGIN_NAME')">
+                        AND GDM.DIC_MST_NM LIKE CONCAT('%',#{condiValue},'%')
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ORIGIN_CODE')">
+                        AND SCC1.ST_COMN_CODE_CD = #{condiValue}
+                    </when>
+                </choose>
+            </if>
+        ORDER BY SCC1.CREATE_DT DESC
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 구분 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @ 2020.10.26         최윤지          리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOriginTypeList" resultMap="getOriginTypeMap">
+		/*	policyorigin.getOriginTypeList	*/
+		SELECT
+			   SCC.ST_COMN_CODE_CD AS ORIGIN_TYPE_CODE
+             , GDM.DIC_MST_NM AS ORIGIN_TYPE_NAME
+		  FROM
+			   ST_COMN_CODE SCC
+			   INNER JOIN GB_DIC_MST GDM
+			   ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+		 WHERE
+			   SCC.USE_YN = 'Y'
+		   AND SCC.ST_COMN_CODE_MST_CD = 'ORIGIN_TYPE'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 목록 중복 검사
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		박영후          최초생성
+	 * @ 2020.10.26        최윤지           리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="duplicateOriginCount" resultType="int">
+		/*	policyorigin.duplicateOriginCount	*/
+		SELECT
+		       COUNT(*)
+		  FROM
+		       ST_COMN_CODE
+		 WHERE
+               ST_COMN_CODE_ID = #{systemCommonCodeId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 목록 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		박영후          최초생성
+	 * @ 2020.10.26         최윤지              리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrigin">
+		/*	policyorigin.addOrigin	*/
+		INSERT INTO ST_COMN_CODE
+		(
+		  ST_COMN_CODE_ID
+		, ST_COMN_CODE_MST_CD
+        , ST_COMN_CODE_CD
+        , GB_DIC_MST_ID
+        , COMMENT
+        , SORT
+        , USE_YN
+        , CREATE_DT
+        , CREATE_ID
+		)
+		VALUES
+		(
+          #{systemCommonCodeId}
+        , #{originType}
+        , #{originCode}
+        , #{gbDictionaryMasterId}
+        , ''
+        , 0
+        , 'Y'
+        , CURRENT_TIMESTAMP
+        , #{userVo.userId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 목록 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		박영후          최초생성
+	 * @ 2020.10.26         최윤지              리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrigin">
+		/*	policyorigin.putOrigin	*/
+		UPDATE
+               ST_COMN_CODE
+           SET
+			   GB_DIC_MST_ID = #{gbDictionaryMasterId}
+			 , MODIFY_DT = CURRENT_TIMESTAMP
+			 , MODIFY_ID = #{userVo.userId}
+		 WHERE
+			   ST_COMN_CODE_ID = #{systemCommonCodeId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 목록 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @ 2020.10.26         최윤지              리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="delOrigin">
+		/*	policyorigin.delOrigin	*/
+		DELETE FROM ST_COMN_CODE
+		 WHERE ST_COMN_CODE_ID = #{systemCommonCodeId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 목록 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		박영후          최초생성
+	 * @ 2020.10.26         최윤지              리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrigin" resultMap="getOriginMap">
+		/*	policyorigin.getOrigin	*/
+		SELECT
+			   ST_COMN_CODE_ID AS SYSTEM_COMMON_CODE_ID
+			 , ST_COMN_CODE_MST_CD AS ORIGIN_TYPE
+			 , ST_COMN_CODE_CD AS ORIGIN_CODE
+			 , GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+			 , FN_DIC(GB_DIC_MST_ID, #{gbLangId}) AS ORIGIN_NAME
+		  FROM
+			   ST_COMN_CODE
+		 WHERE
+			   ST_COMN_CODE_ID = #{systemCommonCodeId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 원산지 목록 조회 엑셀다운로드
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.12		박승현          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOriginListExportExcel" resultMap="getOriginListMap">
+		/*	policyorigin.getOriginListExportExcel  */
+	   SELECT
+	   		SCC1.ST_COMN_CODE_ID AS SYSTEM_COMMON_CODE_ID
+            , FN_DIC(SCC2.GB_DIC_MST_ID, #{gbLangId}) AS ORIGIN_TYPE
+            , SCC1.ST_COMN_CODE_CD AS ORIGIN_CODE
+            , SCC1.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+            , FN_DIC(SCC1.GB_DIC_MST_ID, #{gbLangId}) AS ORIGIN_NAME
+         FROM
+              ST_COMN_CODE SCC1
+              INNER JOIN ST_COMN_CODE SCC2
+               ON SCC1.ST_COMN_CODE_MST_CD = SCC2.ST_COMN_CODE_CD
+              LEFT OUTER JOIN GB_DIC_MST GDM
+               ON GDM.GB_DIC_MST_ID = SCC1.GB_DIC_MST_ID
+        WHERE
+              SCC1.USE_YN = 'Y'
+          AND SCC2.USE_YN = 'Y'
+          AND SCC2.ST_COMN_CODE_MST_CD = 'ORIGIN_TYPE'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(originTypes)">
+              AND SCC1.ST_COMN_CODE_MST_CD IN
+                <foreach collection="originTypeList" item="VAL" open="(" separator="," close=")">
+                    #{VAL}
+                </foreach>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValue)">
+                <choose>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ORIGIN_NAME')">
+                        AND GDM.DIC_MST_NM LIKE CONCAT('%',#{condiValue},'%')
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ORIGIN_CODE')">
+                        AND SCC1.ST_COMN_CODE_CD = #{condiValue}
+                    </when>
+                </choose>
+            </if>
+        ORDER BY SCC1.CREATE_DT DESC
+	</select>
+</mapper>
+

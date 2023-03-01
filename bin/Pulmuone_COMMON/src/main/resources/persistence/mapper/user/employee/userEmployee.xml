@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.employee.UserEmployeeMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : BOS계정관리 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.14     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getEmployeeListResultMap" type="kr.co.pulmuone.v1.user.employee.dto.vo.EmployeeVo">
+        <result column="EMPLOYEE_NUMBER" property="employeeNumber" />
+        <result column="USER_ID" property="userId" />
+        <result column="LOGIN_ID" property="loginId" />
+        <result column="COMPANY_ID" property="companyId" />
+        <result column="ADMIN_TYPE" property="adminType" />
+        <result column="ADMIN_TYPE_NAME" property="adminTypeName" />
+        <result column="USER_NAME" property="userName" />
+        <result column="EMAIL" property="email" />
+        <result column="MOBILE" property="mobile" />
+        <result column="USER_STATUS" property="userStatus" />
+        <result column="USER_STATUS_NAME" property="userStatusName" />
+        <result column="PERSONAL_INFO_ACCESS_YN" property="personalInfoAccessYn" />
+        <result column="CREATE_DATE" property="createDate" />
+        <result column="LAST_VISIT_DATE" property="lastVisitDate" />
+        <result column="USER_TYPE" property="userType" />
+        <result column="ORGANIZATION_NM" property="organizationName" />
+        <result column="COMP_NM" property="clientName" />
+    </resultMap>
+
+    <!-- BOS계정관리 조회 -->
+    <select id="getEmployeeList" resultMap="getEmployeeListResultMap">
+        /* userEmployee.getEmployeeList */
+        SELECT E.UR_EMPLOYEE_CD AS EMPLOYEE_NUMBER /* 사번 */
+             , E.UR_USER_ID AS USER_ID /* 회원 ID  */
+             , U.LOGIN_ID /* 로그인 ID */
+             , E.UR_COMPANY_ID AS COMPANY_ID /* 회사 ID */
+             , C.COMP_TP AS ADMIN_TYPE /* 관리자유형 */
+             , FN_COMN_CODE_DIC(C.COMP_TP) AS ADMIN_TYPE_NAME /* 관리자유형명 */
+             , FN_DECRYPT(U.USER_NM) AS USER_NAME /* 이름 */
+             , CASE WHEN C.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+                    THEN FN_DECRYPT(EE.ERP_EMAIL)
+               ELSE FN_DECRYPT(E.EMAIL)
+                END EMAIL /* 이메일 */
+             , CASE WHEN C.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+                    THEN FN_DECRYPT(EE.ERP_PHONE)
+               ELSE FN_DECRYPT(E.MOBILE)
+                END MOBILE /* 휴대폰번호 */
+             , E.STATUS_TP AS USER_STATUS /* 회원상태 */
+             , FN_COMN_CODE_DIC(E.STATUS_TP) AS USER_STATUS_NAME /* 회원상태명 */
+             , E.PERSONAL_INFO_ACCESS_YN AS PERSONAL_INFO_ACCESS_YN /* 개인정보 열람권한유무 */
+             , DATE_FORMAT(E.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DATE /* 등록일 */
+             , IFNULL((SELECT DATE_FORMAT(LAST_LOGIN_DT, '%Y-%m-%d %H:%i:%s')
+                         FROM UR_ACCOUNT
+                        WHERE UR_USER_ID = E.UR_USER_ID),'') AS LAST_VISIT_DATE /* 최근접속일 */
+             , U.USER_TP AS USER_TYPE /* 회원구분 */
+             , E.ORGANIZATION_NM
+             , C.COMP_NM
+          FROM UR_EMPLOYEE E
+     LEFT JOIN UR_ERP_EMPLOYEE EE
+            ON E.UR_EMPLOYEE_CD = EE.UR_ERP_EMPLOYEE_CD
+          JOIN UR_COMPANY C
+            ON C.UR_COMPANY_ID = E.UR_COMPANY_ID
+          JOIN UR_USER U
+            ON U.UR_USER_ID = E.UR_USER_ID
+         <where>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+                 <choose>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ID")'>
+                         AND U.LOGIN_ID = #{findKeyword}
+                     </when>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "NAME")'>
+                         AND FN_DECRYPT(U.USER_NM) LIKE CONCAT('%', #{findKeyword}, '%')
+                     </when>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "EMAIL")'>
+                         AND FN_DECRYPT(E.EMAIL) LIKE CONCAT('%', #{findKeyword}, '%')
+                     </when>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "MOBILE")'>
+                         AND E.MOBILE = FN_ENCRYPT(#{findKeyword})
+                     </when>
+                 </choose>
+             </if>
+             <if test="adminTypeList !=null and adminTypeList.size != 0">
+                 AND C.COMP_TP IN
+                 <foreach collection="adminTypeList" item="adminTypeCode" index="index" separator="," open="(" close=")">
+                     #{adminTypeCode}
+                 </foreach>
+             </if>
+             <if test="userStatusList !=null and userStatusList.size != 0">
+                 AND E.STATUS_TP IN
+                 <foreach collection="userStatusList" item="userStatusCode" index="index" separator="," open="(" close=")">
+                     #{userStatusCode}
+                 </foreach>
+             </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+                 <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+                     AND E.CREATE_DT BETWEEN #{createDateStart} AND (#{createDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                 </if>
+             </if>
+         </where>
+         ORDER BY E.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원상세정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.14     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getEmployeeInfoResultMap" type="kr.co.pulmuone.v1.user.employee.dto.vo.EmployeeVo">
+        <result column="ADMIN_TYPE" property="adminType" />
+        <result column="EMPLOYEE_NUMBER" property="employeeNumber" />
+        <result column="LOGIN_ID" property="loginId" />
+        <result column="USER_ID" property="userId" />
+        <result column="COMPANY_ID" property="companyId" />
+        <result column="CLIENT_NAME" property="clientName" />
+        <result column="FIRST_JOIN_DATE" property="firstJoinDate" />
+        <result column="LAST_VISIT_DATE" property="lastVisitDate" />
+        <result column="USER_STATUS" property="userStatus" />
+        <result column="USER_NAME" property="userName" />
+        <result column="EMAIL" property="email" />
+        <result column="REGAL_NAME" property="regalName" />
+        <result column="REGAL_CODE" property="regalCode" />
+        <result column="MOBILE" property="mobile" />
+        <result column="POSITION_NAME" property="positionName" />
+        <result column="ORGANIZATION_NAME" property="organizationName" />
+        <result column="ORGANIZATION_CODE" property="organizationCode" />
+        <result column="TEAM_LEADER_YN" property="teamLeaderYn" />
+        <result column="PERSONAL_INFO_ACCESS_YN" property="personalInfoAccessYn" />
+        <result column="ACCESS_AUTH_GRANT_DATE" property="accessAuthGrantDate" />
+        <result column="GRANT_AUTH_EMPLOYEE_NAME" property="grantAuthEmployeeName" />
+        <result column="GRANT_AUTH_EMPLOYEE_NUMBER" property="grantAuthEmployeeNumber" />
+        <result column="GRANT_AUTH_DATE_START" property="grantAuthDateStart" />
+        <result column="GRANT_AUTH_DATE_END" property="grantAuthDateEnd" />
+        <result column="GRANT_AUTH_STOP_YN" property="grantAuthStopYn" />
+        <result column="AUTH_SUPPLIER_ID" property="authSupplierId" />
+        <result column="AUTH_SUPPLIER_DATE" property="authSupplierDate" />
+        <result column="AUTH_SUPPLIER_USER_NAME" property="authSupplierUserName" />
+        <result column="AUTH_SUPPLIER_USER_LOGIN_ID" property="authSupplierUserLoginId" />
+        <result column="ERP_USER_STATUS" property="erpUserStatus" />
+        <result column="CREATE_DT" property="createDate" />
+    </resultMap>
+
+    <!-- 회원상세정보 조회 -->
+    <select id="getEmployeeInfo" resultMap="getEmployeeInfoResultMap">
+        /* userEmployee.getEmployeeInfo */
+        SELECT C.COMP_TP AS ADMIN_TYPE /* 관리자유형 */
+             , E.UR_EMPLOYEE_CD AS EMPLOYEE_NUMBER /* 사번 */
+             , U.LOGIN_ID /* 로그인 ID */
+             , E.UR_USER_ID AS USER_ID /* 회원 ID */
+             , E.UR_COMPANY_ID AS COMPANY_ID /* 회사ID */
+             , C.COMP_NM AS CLIENT_NAME /* 거래처명 */
+             , DATE_FORMAT(E.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS FIRST_JOIN_DATE /* 최초 가입일시 */
+             , (SELECT DATE_FORMAT(LAST_LOGIN_DT, '%Y-%m-%d %H:%i:%s')
+                  FROM UR_ACCOUNT
+                 WHERE UR_USER_ID = E.UR_USER_ID) AS LAST_VISIT_DATE /* 최근 접속일시 */
+             , E.STATUS_TP AS USER_STATUS /* 회원상태 */
+             , FN_DECRYPT(U.USER_NM) AS USER_NAME /* 이름 */
+             , CASE WHEN C.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+                    THEN FN_DECRYPT(EE.ERP_EMAIL)
+               ELSE FN_DECRYPT(E.EMAIL)
+                END EMAIL /* 이메일 주소 */
+             , E.REGAL_NM AS REGAL_NAME /* 법인정보 */
+             , CASE WHEN C.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+                    THEN FN_DECRYPT(EE.ERP_PHONE)
+               ELSE FN_DECRYPT(E.MOBILE)
+                END MOBILE /* 휴대폰 번호 */
+             , CASE WHEN C.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+                    THEN EE.ERP_POSITION_NM
+               ELSE E.POSITION_NM
+                END POSITION_NAME /* 직책 정보 */
+             , CASE WHEN C.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+                    THEN EE.ERP_ORGANIZATION_NM
+               ELSE E.ORGANIZATION_NM
+                END ORGANIZATION_NAME /* 조직 정보 */
+             , E.TEAM_LEADER_YN AS TEAM_LEADER_YN /* 조직장 여부 */
+             , E.PERSONAL_INFO_ACCESS_YN AS PERSONAL_INFO_ACCESS_YN /* 개인정보 열람권한 여부 */
+             , CASE WHEN E.PERSONAL_INFO_ACCESS_YN = 'Y' OR E.PERSONAL_INFO_ACCESS_YN = 'M'
+                    THEN DATE_FORMAT(E.PERSONAL_INFO_ACCESS_DT, '%Y-%m-%d %H:%i:%s')
+               ELSE ''
+                END AS ACCESS_AUTH_GRANT_DATE /* 열람권한 부여일시 */
+             , CASE WHEN E.GRANT_AUTH_EMPLOYEE_CD IS NOT NULL
+                    THEN (SELECT FN_DECRYPT(T2.USER_NM)
+                            FROM UR_EMPLOYEE T1
+                               , UR_USER T2
+                           WHERE T1.UR_EMPLOYEE_CD = E.GRANT_AUTH_EMPLOYEE_CD
+                             AND T1.UR_USER_ID = T2.UR_USER_ID)
+               ELSE ''
+                END AS GRANT_AUTH_EMPLOYEE_NAME /* 권한 위임정보 담당자명 */
+             , E.GRANT_AUTH_EMPLOYEE_CD AS GRANT_AUTH_EMPLOYEE_NUMBER /* 권한 위임정보 담당자 사번 */
+             , CASE WHEN E.GRANT_AUTH_START_DT
+                    THEN DATE_FORMAT(E.GRANT_AUTH_START_DT, '%Y-%m-%d')
+               ELSE NULL
+                END GRANT_AUTH_DATE_START /* 권한 위임기간 시작일자 */
+             , CASE WHEN E.GRANT_AUTH_END_DT
+                    THEN DATE_FORMAT(E.GRANT_AUTH_END_DT, '%Y-%m-%d')
+               ELSE NULL
+                END GRANT_AUTH_DATE_END /* 권한 위임기간 종료일자 */
+             , E.GRANT_AUTH_STOP_YN AS GRANT_AUTH_STOP_YN /* 권한 위임 중지 여부 */
+             , DATE_FORMAT(E.AUTH_SUPPLIER_DT, '%Y-%m-%d %H:%i:%s') AS AUTH_SUPPLIER_DATE /* 공급업체 권한 부여일시 */
+             , IFNULL(FN_DECRYPT(ASU.USER_NM), '') AS AUTH_SUPPLIER_USER_NAME /* 공급업체 권한 수정자명 */
+             , IFNULL(ASU.LOGIN_ID, '') AS AUTH_SUPPLIER_USER_LOGIN_ID /* 공급업체 권한 수정자 로그인 아이디 */
+             , EE.ERP_USER_STATUS /* ERP 임직원 재직상태 */
+             , DATE_FORMAT(U.CREATE_DT, '%Y-%m-%d') AS CREATE_DT /* 관리자 가입 일자 */
+          FROM UR_EMPLOYEE E
+     LEFT JOIN UR_ERP_EMPLOYEE EE
+            ON E.UR_EMPLOYEE_CD = EE.UR_ERP_EMPLOYEE_CD
+          JOIN UR_COMPANY C
+            ON E.UR_COMPANY_ID = C.UR_COMPANY_ID
+          JOIN UR_USER U
+            ON E.UR_USER_ID = U.UR_USER_ID
+          LEFT JOIN UR_USER ASU
+            ON E.AUTH_SUPPLIER_USER_ID = ASU.UR_USER_ID
+         WHERE E.UR_EMPLOYEE_CD = #{employeeNumber}
+         LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 임직원 정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.14     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getErpEmployeeInfo" resultMap="getEmployeeInfoResultMap">
+        /* userEmployee.getErpEmployeeInfo */
+        SELECT C.COMP_TP AS ADMIN_TYPE /* 관리자유형 */
+             , EE.UR_ERP_EMPLOYEE_CD AS EMPLOYEE_NUMBER /* 사번 */
+             , EE.UR_ERP_EMPLOYEE_CD AS LOGIN_ID /* 로그인 ID */
+             , C.UR_COMPANY_ID AS COMPANY_ID /* 회사ID */
+             , C.COMP_NM AS CLIENT_NAME /* 거래처명 */
+             , CASE WHEN EE.ERP_USER_STATUS = '휴직'
+                    THEN 'EMPLOYEE_STATUS.ADMINISTRATIVE_LEAVE'
+                    WHEN EE.USE_YN = 'N'
+                    THEN 'EMPLOYEE_STATUS.RESIGN'
+               ELSE 'EMPLOYEE_STATUS.NORMAL'
+                END AS USER_STATUS /* 회원상태 */
+             , FN_DECRYPT(EE.ERP_NM) AS USER_NAME /* 이름 */
+             , FN_DECRYPT(EE.ERP_EMAIL) AS EMAIL /* 이메일 주소 */
+             , EE.ERP_REGAL_NM AS REGAL_NAME /* 법인정보명 */
+             , EE.ERP_REGAL_CD AS REGAL_CODE /* 법인정보코드 */
+             , REPLACE(FN_DECRYPT(EE.ERP_PHONE), '-', '') AS MOBILE /* 휴대폰 번호 */
+             , EE.ERP_POSITION_NM AS POSITION_NAME /* 직책 정보 */
+             , EE.ERP_ORGANIZATION_NM AS ORGANIZATION_NAME /* 조직정보명 */
+             , EE.ERP_ORGANIZATION_CD AS ORGANIZATION_CODE /* 조직정보코드 */
+             , 'N' AS GRANT_AUTH_STOP_YN /* 권한 위임 중지 여부 */
+          FROM UR_ERP_EMPLOYEE EE
+          JOIN UR_COMPANY C
+            ON C.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+         WHERE EE.UR_ERP_EMPLOYEE_CD = #{employeeNumber}
+         LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 관리자회원 이메일 중복검사
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getEmailDuplocateCheck" resultType="boolean">
+        /* userEmployee.getEmailDuplocateCheck */
+        SELECT CASE WHEN COUNT(1) > 0
+                    THEN 1
+               ELSE 0
+                END
+          FROM UR_EMPLOYEE
+         WHERE EMAIL = FN_ENCRYPT(#{email})
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(employeeNumber)">
+            AND UR_EMPLOYEE_CD != #{employeeNumber}
+        </if>
+         LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 관리자회원 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addEmployee">
+	/* userEmployee.addEmployee */
+		INSERT INTO UR_EMPLOYEE
+		(
+			UR_EMPLOYEE_CD
+			, UR_USER_ID
+			, UR_COMPANY_ID
+			, STATUS_TP
+			, EMAIL
+			, MOBILE
+			, REGAL_NM
+			, POSITION_NM
+			, ORGANIZATION_NM
+			, TEAM_LEADER_YN
+			, PERSONAL_INFO_ACCESS_YN
+			, PERSONAL_INFO_ACCESS_DT
+			, GRANT_AUTH_EMPLOYEE_CD
+			, GRANT_AUTH_USER_ID
+			, GRANT_AUTH_START_DT
+			, GRANT_AUTH_END_DT
+			, GRANT_AUTH_STOP_YN
+			, AUTH_SUPPLIER_DT
+			, AUTH_SUPPLIER_USER_ID
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			#{employeeNumber} AS UR_EMPLOYEE_CD
+			, #{userId} AS UR_USER_ID
+			, #{companyId} AS UR_COMPANY_ID
+			, #{userStatus} AS STATUS_TP
+			, FN_ENCRYPT(#{email}) AS EMAIL
+			, FN_ENCRYPT(#{mobile}) AS MOBILE
+			, #{regalName} AS REGAL_NM
+			, #{positionName} AS POSITION_NM
+			, #{organizationName} AS ORGANIZATION_NM
+			, #{teamLeaderYn} AS TEAM_LEADER_YN
+			, #{personalInfoAccessYn} AS PERSONAL_INFO_ACCESS_YN
+			, (
+				CASE
+					WHEN #{personalInfoAccessYn} = 'Y' OR #{personalInfoAccessYn} = 'M' THEN NOW()
+					ELSE null
+				END
+			) AS PERSONAL_INFO_ACCESS_DT
+			, #{grantAuthEmployeeNumber} AS GRANT_AUTH_EMPLOYEE_CD
+			, (
+				SELECT
+					UR_USER_ID
+				FROM
+					UR_EMPLOYEE GUE
+				WHERE
+					GUE.UR_EMPLOYEE_CD = #{grantAuthEmployeeNumber}
+			) AS GRANT_AUTH_USER_ID
+			, STR_TO_DATE(#{grantAuthDateStart}, '%Y-%m-%d %H:%i:%s') AS GRANT_AUTH_START_DT
+			, STR_TO_DATE(#{grantAuthDateEnd}, '%Y-%m-%d %H:%i:%s') AS GRANT_AUTH_END_DT
+			, #{grantAuthStopYn} AS GRANT_AUTH_STOP_YN
+			, (
+				CASE
+					WHEN #{isAuthListChanged} = 'Y' THEN NOW()
+					ELSE null
+				END
+			) AS AUTH_SUPPLIER_DT
+			, (
+				CASE
+					WHEN #{isAuthListChanged} = 'Y' THEN #{createId}
+					ELSE null
+				END
+			) AS AUTH_SUPPLIER_USER_ID
+			, #{createId} AS CREATE_ID
+			, NOW() AS CREATE_DT
+	</insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원상세정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putEmployee">
+		/* userEmployee.putEmployee */
+		UPDATE
+			UR_EMPLOYEE UE
+			LEFT JOIN UR_EMPLOYEE GUE
+				ON GUE.UR_EMPLOYEE_CD = #{grantAuthEmployeeNumber}
+		SET
+			UE.MODIFY_DT = NOW()
+			, UE.MODIFY_ID = #{createId}
+			<if test="companyId != null">
+				, UE.UR_COMPANY_ID = #{companyId}
+			</if>
+			<if test="userStatus != null">
+				, UE.STATUS_TP = #{userStatus}
+			</if>
+			<if test="email != null">
+				, UE.EMAIL = FN_ENCRYPT(#{email})
+			</if>
+			<if test="mobile != null">
+				, UE.MOBILE = FN_ENCRYPT(#{mobile})
+			</if>
+			<if test="teamLeaderYn != null">
+				, UE.TEAM_LEADER_YN = #{teamLeaderYn}
+			</if>
+			<if test="personalInfoAccessYn != null">
+				, UE.PERSONAL_INFO_ACCESS_YN = #{personalInfoAccessYn}
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(personalInfoAccessYn, "Y") or @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(personalInfoAccessYn, "M")'>
+					, UE.PERSONAL_INFO_ACCESS_DT = NOW()
+				</if>
+			</if>
+			<if test="grantAuthEmployeeNumber != null">
+				, UE.GRANT_AUTH_EMPLOYEE_CD = #{grantAuthEmployeeNumber}
+				, UE.GRANT_AUTH_USER_ID = GUE.UR_USER_ID
+			</if>
+			<if test="grantAuthDateStart != null">
+				, UE.GRANT_AUTH_START_DT = STR_TO_DATE(#{grantAuthDateStart}, '%Y-%m-%d %H:%i:%s')
+			</if>
+			<if test="grantAuthDateEnd != null">
+				, UE.GRANT_AUTH_END_DT = STR_TO_DATE(#{grantAuthDateEnd}, '%Y-%m-%d %H:%i:%s')
+			</if>
+			<if test="grantAuthStopYn != null">
+				, UE.GRANT_AUTH_STOP_YN = #{grantAuthStopYn}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(isAuthListChanged) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(isAuthListChanged, 'Y')">
+				, UE.AUTH_SUPPLIER_DT = NOW()
+				, UE.AUTH_SUPPLIER_USER_ID = #{createId}
+			</if>
+			<if test="regalName != null">
+				, UE.REGAL_NM = #{regalName}
+			</if>
+		WHERE
+			UE.UR_EMPLOYEE_CD = #{employeeNumber}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 관리자 회원 공급처/출고처 권한 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.25     원종한          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addEmployeeAuth">
+		/* userEmployee.addEmployeeAuth */
+		INSERT INTO UR_EMPLOYEE_AUTH
+		(
+			UR_EMPLOYEE_CD
+			, AUTH_ID_TP
+			, AUTH_ID
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			#{urEmployeeCd} AS UR_EMPLOYEE_CD
+			, #{authIdTp} AS AUTH_ID_TP
+			, #{authId} AS AUTH_ID
+			, #{createId} AS CREATE_ID
+			, NOW() AS CREATE_DT
+		ON DUPLICATE KEY
+		UPDATE
+			UR_EMPLOYEE_CD = #{urEmployeeCd}
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 관리자 회원 공급처/출고처 권한 삭제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.25     원종한          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<delete id="delEmployeeAuth">
+		/* userEmployee.delEmployeeAuth */
+		DELETE FROM UR_EMPLOYEE_AUTH
+		WHERE
+			UR_EMPLOYEE_CD = #{urEmployeeCd}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(authIdTp)">
+				AND AUTH_ID_TP = #{authIdTp}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listExcludeAuthId) and listExcludeAuthId.size != 0">
+				AND AUTH_ID NOT IN
+				<foreach item="authId" index="index" collection="listExcludeAuthId" open="(" separator="," close=")">
+					#{authId}
+				</foreach>
+			</if>
+	</delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 관리자 회원 공급처/출고처 권한 조회 List
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.25     원종한          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getEmployeeAuthList" resultType="kr.co.pulmuone.v1.user.employee.dto.vo.EmployeeAuthVo">
+		/* userEmployee.delEmployeeAuth */
+		SELECT
+			UEA.UR_EMPLOYEE_AUTH_ID AS UR_EMPLOYEE_AUTH_ID
+			, UEA.UR_EMPLOYEE_CD AS UR_EMPLOYEE_CD
+			, UEA.AUTH_ID_TP AS AUTH_ID_TP
+			, UEA.AUTH_ID AS AUTH_ID
+			, IFNULL((
+				CASE
+					WHEN AUTH_ID_TP = 'S' THEN SC.COMP_NM
+					WHEN AUTH_ID_TP = 'W' THEN UW.WAREHOUSE_NM
+					ELSE ''
+				END
+			), '') AS AUTH_NAME
+			, UEA.CREATE_ID AS CREATE_ID
+			, UEA.CREATE_DT AS CREATE_DT
+		FROM UR_EMPLOYEE_AUTH UEA
+			LEFT JOIN UR_SUPPLIER US
+				ON UEA.AUTH_ID_TP = 'S'
+				AND US.UR_SUPPLIER_ID = UEA.AUTH_ID
+			LEFT JOIN UR_COMPANY SC
+				ON SC.UR_COMPANY_ID = US.UR_COMPANY_ID
+			LEFT JOIN UR_WAREHOUSE UW
+				ON UEA.AUTH_ID_TP = 'W'
+				AND UW.UR_WAREHOUSE_ID = UEA.AUTH_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urEmployeeCd)">
+				AND UEA.UR_EMPLOYEE_CD = #{urEmployeeCd}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(authIdTp)">
+				AND UEA.AUTH_ID_TP = #{authIdTp}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(authId)">
+				AND UEA.AUTH_ID = #{authId}
+			</if>
+		</where>
+	</select>
+
+</mapper>

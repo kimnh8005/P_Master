@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.shopconfig.SystemShopConfigMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상점별 세부정책
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.05.29		오영민          최초생성
+     * @ 2020.10.30     최성현          리펙토링
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.system.shopconfig.dto.vo.GetSystemShopConfigListResultVo"
+               id="getSystemShopConfigListResultMap">
+        <result column="ST_SHOP_ID" property="stShopId"/>
+        <result column="SHOP_NAME" property="shopName"/>
+        <result column="PS_GROUP_TYPE" property="psGroupType"/>
+        <result column="PS_GROUP_TYPE_DESC" property="psGroupTypeDesc"/>
+        <result column="PS_KEY" property="psKey"/>
+        <result column="PS_NM" property="psName"/>
+        <result column="PS_VAL" property="psValue"/>
+        <result column="USE_YN" property="useYn"/>
+        <result column="COMMENT" property="comment"/>
+        <result column="USE_YN_DESCRIPTION" property="useYnDescription"/>
+        <result column="ID" property="id"/>
+        <result column="PS_CONFIG_ID" property="psConfigId"/>
+    </resultMap>
+
+    <select id="getSystemShopConfigList" resultMap="getSystemShopConfigListResultMap">
+        /* SystemshopConfig.getShopConfigList */
+        SELECT B.ST_SHOP_ID        <!--상점고유번호-->
+                , A.SHOP_NM            <!--상점명-->
+                , B.PS_GRP_TP AS PS_GROUP_TYPE<!--정책그룹-->
+                , FN_COMN_CODE_DIC( B.PS_GRP_TP) AS PS_GROUP_TYPE_DESC    <!--정책그룹명-->
+                , B.PS_KEY            <!--정책KEY-->
+                , B.PS_NM        <!--정책명-->
+                , B.PS_VAL        <!--정책값-->
+                , B.USE_YN            <!--사용여부-->
+                , B.COMMENT AS COMMENT
+                , CASE WHEN B.USE_YN = 'Y' THEN FN_DIC(359, 1) ELSE FN_DIC(360, 1) END AS USE_YN_DESCRIPTION
+                , B.PS_CONFIG_ID AS ID
+                , B.PS_CONFIG_ID AS PS_CONFIG_ID
+        FROM ST_SHOP A INNER JOIN PS_CONFIG B
+        ON A.ST_SHOP_ID = B.ST_SHOP_ID
+        WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psGroupType)">
+            AND  B.PS_GRP_TP = #{psGroupType}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPsKeyName)">
+            AND ( B.PS_KEY LIKE CONCAT(#{searchPsKeyName},'%') OR B.PS_NM LIKE CONCAT(#{searchPsKeyName},'%'))
+        </if>
+        ORDER BY B.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상점별 세부정책
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.02		오영민          최초생성
+     * @ 2020.10.30     최성현          리펙토링
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSystemShopConfig">
+        /* systemshopConfig.addsystemShopConfig */
+        INSERT INTO PS_CONFIG(
+        ST_SHOP_ID        <!-- -->
+        ,PS_GRP_TP    <!-- -->
+        ,PS_KEY            <!-- -->
+        ,PS_NM        <!-- -->
+        ,PS_VAL        <!-- -->
+        ,COMMENT            <!-- -->
+        ,USE_YN            <!-- -->
+        ,CREATE_ID
+        )
+        VALUES
+        <foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+            (
+            #{insertData.stShopId}
+            ,#{insertData.psGroupType}
+            ,#{insertData.psKey}
+            ,#{insertData.psName}
+            ,#{insertData.psValue}
+            ,#{insertData.comment}
+            ,#{insertData.useYn}
+            ,#{insertData.userVo.userId}
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상점별 세부정책
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.02		오영민          최초생성
+     * @ 2020.10.30     최성현          리펙토링
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putSystemShopConfig">
+        /* systemshopConfig.putsystemShopConfig */
+        <foreach item="updateData" index="index" collection="list" separator=";">
+            UPDATE PS_CONFIG
+            SET
+            ST_SHOP_ID =#{updateData.stShopId}<!-- -->
+            ,PS_GRP_TP =#{updateData.psGroupType}<!-- -->
+            ,PS_KEY =#{updateData.psKey}<!-- -->
+            ,PS_NM =#{updateData.psName}<!-- -->
+            ,PS_VAL =#{updateData.psValue}<!-- -->
+            ,COMMENT =#{updateData.comment}<!-- -->
+            ,USE_YN =#{updateData.useYn}<!-- -->
+            ,MODIFY_ID =#{updateData.userVo.userId}
+            WHERE PS_CONFIG_ID = #{updateData.psConfigId}
+        </foreach>
+        ;
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상점별 세부정책
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.02		오영민          최초생성
+     * @ 2020.10.30     최성현          리펙토링
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delSystemShopConfig">
+        /* systemshopConfig.delSystemShopConfig */
+        <foreach item="deleteData" collection="list" separator=";">
+            DELETE FROM PS_CONFIG WHERE PS_CONFIG_ID =#{deleteData.psConfigId}
+        </foreach>
+        ;
+    </delete>
+
+</mapper>
+

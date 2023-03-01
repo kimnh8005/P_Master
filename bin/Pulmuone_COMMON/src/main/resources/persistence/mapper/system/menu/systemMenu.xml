@@ -1,0 +1,1052 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.menu.SystemMenuMapper">
+
+	<resultMap id="getMenuGroupListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuGroupListResultVo">
+		<result column="ST_MENU_GROUP_ID"  property="stMenuGroupId"/>
+		<result column="MENU_GROUP_NAME"  property="menuGroupName"/>
+		<result column="SORT"  property="sort"/>
+		<result column="USE_YN"  property="useYn"/>
+		<result column="PROGRAM_NAME"  property="programName"/>
+	</resultMap>
+
+	<select id="getMenuGroupList" resultMap="getMenuGroupListResultMap">
+	 /* menu.getMenuGroupList */
+		SELECT
+		  	A.ST_MENU_GRP_ID AS ST_MENU_GROUP_ID
+			,A.MENU_GRP_NM AS MENU_GROUP_NAME
+			,A.SORT
+			,A.USE_YN
+			,CASE WHEN B.ST_PROGRAM_ID IS NOT NULL THEN FN_DIC(B.GB_DIC_MST_ID, 1)   ELSE ' ' END AS PROGRAM_NAME
+		FROM ST_MENU_GRP  A LEFT OUTER JOIN ST_PROGRAM B
+			ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+		    AND A.ST_MENU_GRP_ID = #{inputStMenuGroupId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuGroupName)">
+		    AND (
+		    	A.MENU_GRP_NM LIKE CONCAT(#{menuGroupName},'%')
+		    )
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    AND A.USE_YN = #{useYn}
+		</if>
+		ORDER BY A.ST_MENU_GRP_ID DESC
+
+	</select>
+
+
+	<select id="getMenuGroupListCount" resultType="int">
+	 /* menu.getMenuGroupListCount */
+		SELECT COUNT(*) AS TOTAL
+		FROM ST_MENU_GRP A LEFT OUTER JOIN ST_PROGRAM B
+										ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+		    AND A.ST_MENU_GRP_ID = #{stMenuGroupId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuGroupName)">
+		    AND (
+		    	A.MENU_GRP_NM LIKE CONCAT(#{menuGroupName},'%')
+		    )
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    AND A.USE_YN = #{useYn}
+		</if>
+
+	</select>
+
+	<resultMap id="getMenuGroupResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuGroupResultVo">
+		<result column="INPUT_ST_MENU_GROUP_ID"  property="inputStMenuGroupId"/>
+		<result column="INPUT_MENU_GROUP_NAME"   property="inputMenuGroupName"/>
+		<result column="INPUT_SORT"              property="inputSort"/>
+		<result column="INPUT_USE_YN"            property="inputUseYn"/>
+		<result column="INPUT_PROGRAM_NAME"      property="inputProgramName"/>
+		<result column="INPUT_ST_PROGRAM_ID"     property="inputStProgramId"/>
+	</resultMap>
+
+	<select id="getMenuGroup" resultMap="getMenuGroupResultMap">
+	 /* menu.getMenuGroup */
+		SELECT
+		  	A.ST_MENU_GRP_ID AS INPUT_ST_MENU_GROUP_ID
+			,A.MENU_GRP_NM AS INPUT_MENU_GROUP_NAME
+			,A.SORT AS INPUT_SORT
+			,A.USE_YN AS INPUT_USE_YN
+			,CASE WHEN B.ST_PROGRAM_ID IS NOT NULL THEN FN_DIC(B.GB_DIC_MST_ID, 1)   ELSE ' ' END AS INPUT_PROGRAM_NAME
+			,A.ST_PROGRAM_ID AS  INPUT_ST_PROGRAM_ID
+		FROM ST_MENU_GRP  A LEFT OUTER JOIN ST_PROGRAM B
+			ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuGroupId)">
+		    AND A.ST_MENU_GRP_ID = #{stMenuGroupId}
+		</if>
+
+	</select>
+
+
+	<resultMap id="getMenuGroupNameListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuGroupNameListResultVo">
+		<result column="ST_MENU_GROUP_ID"  property="stMenuGroupId"/>
+		<result column="MENU_GROUP_NAME"  property="menuGroupName"/>
+	</resultMap>
+
+	<select id="getMenuGroupNameList" resultMap="getMenuGroupNameListResultMap">
+	 /* menu.getMenuGroupNameList */
+		SELECT
+		  	A.ST_MENU_GRP_ID AS ST_MENU_GROUP_ID
+			,A.MENU_GRP_NM AS MENU_GROUP_NAME
+			,A.SORT
+			,A.USE_YN
+			,CASE WHEN B.ST_PROGRAM_ID IS NOT NULL THEN FN_DIC(B.GB_DIC_MST_ID, 1)   ELSE ' ' END AS PROGRAM_NAME
+		FROM ST_MENU_GRP  A
+		LEFT OUTER JOIN ST_PROGRAM B
+			ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		WHERE A.USE_YN = 'Y'
+		ORDER BY A.SORT
+	</select>
+
+	<resultMap id="getRoleTypeMenuGroupNameListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuGroupNameListResultVo">
+		<result column="ST_MENU_GROUP_ID"  property="stMenuGroupId"/>
+		<result column="MENU_GROUP_NAME"  property="menuGroupName"/>
+		<result column="AUTH_MENU_COUNT"  property="authMenuCount"/>
+	</resultMap>
+
+	<select id="getRoleTypeMenuGroupNameList" resultMap="getRoleTypeMenuGroupNameListResultMap">
+	 /* menu.getRoleTypeMenuGroupNameList */
+		SELECT
+		  	A.ST_MENU_GRP_ID AS ST_MENU_GROUP_ID
+			,A.MENU_GRP_NM AS MENU_GROUP_NAME
+			,A.SORT
+			,A.USE_YN
+			,CASE WHEN B.ST_PROGRAM_ID IS NOT NULL THEN FN_DIC(B.GB_DIC_MST_ID, 1)   ELSE ' ' END AS PROGRAM_NAME
+			,(SELECT COUNT(DISTINCT SRMAM.ST_MENU_ID) FROM
+				ST_ROLE_MENU_AUTH_MAPPING SRMAM
+				JOIN ST_PROGRAM_AUTH SPA ON (SPA.ST_PROGRAM_AUTH_ID = SRMAM.ST_PROGRAM_AUTH_ID AND SPA.USE_YN = 'Y')
+				JOIN ST_MENU ST ON (ST.ST_MENU_ID = SRMAM.ST_MENU_ID AND ST.USE_YN='Y')
+				JOIN ST_PROGRAM SP ON (SP.ST_PROGRAM_ID = SPA.ST_PROGRAM_ID AND SP.ST_PROGRAM_ID = ST.ST_PROGRAM_ID AND SP.USE_YN = 'Y')
+				WHERE ST.ST_MENU_GRP_ID = A.ST_MENU_GRP_ID AND SRMAM.ST_ROLE_TP_ID = #{stRoleTypeId}) AS AUTH_MENU_COUNT
+		FROM ST_MENU_GRP  A
+		LEFT OUTER JOIN ST_PROGRAM B
+			ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		WHERE A.USE_YN = 'Y'
+		ORDER BY A.SORT
+	</select>
+
+	<select id="getMenuGroupNameListCount" resultType="int">
+	 /* menu.getMenuGroupNameListCount */
+		SELECT COUNT(*) AS TOTAL
+		FROM ST_MENU_GRP  A LEFT OUTER JOIN ST_PROGRAM B
+										ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(inputUseYn)">
+		    AND A.USE_YN = #{inputUseYn}
+		</if>
+
+	</select>
+
+
+	<select id="duplicateMenuGroupCount" resultType="int">
+	 /* menu.duplicateMenuGroupCount */
+		SELECT	COUNT(*)
+		FROM ST_MENU_GRP  A LEFT OUTER JOIN ST_PROGRAM B
+										ON A.ST_PROGRAM_ID = B.ST_PROGRAM_ID
+		WHERE 1=1
+					AND A.ST_MENU_GRP_ID != #{inputStMenuGroupId}
+				    AND (A.MENU_GRP_NM = #{inputMenuGroupName} OR A.ST_PROGRAM_ID = #{inputStProgramId})
+	</select>
+
+	<insert id="addMenuGroup">
+	 /* menu.addMenuGroup */
+			INSERT INTO ST_MENU_GRP(
+				MENU_GRP_NM
+				,ST_PROGRAM_ID
+				,SORT
+				,USE_YN
+				,CREATE_ID
+			)
+			VALUES(
+				#{inputMenuGroupName}
+				,#{inputStProgramId}
+				,#{inputSort}
+				,#{inputUseYn}
+				,#{userVo.userId}
+			)
+	</insert>
+
+	<update id="putMenuGroup">
+	 /* menu.putMenuGroup */
+			UPDATE ST_MENU_GRP
+		SET
+			MENU_GRP_NM	     = #{inputMenuGroupName}
+		    ,ST_PROGRAM_ID	 = #{inputStProgramId}
+			,SORT			 = #{inputSort}
+			,USE_YN			 = #{inputUseYn}
+			,MODIFY_ID       = #{userVo.userId}
+		WHERE ST_MENU_GRP_ID = #{inputStMenuGroupId}
+	</update>
+
+
+	<delete id="delMenuGroup">
+	 /* menu.delMenuGroup */
+		DELETE FROM ST_MENU_GRP
+		WHERE  ST_MENU_GRP_ID = #{inputStMenuGroupId}
+	</delete>
+
+
+	<resultMap id="getMenuListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuListResultVo">
+		<result column="ST_MENU_ID"  property="stMenuId"/>
+		<result column="MENU_NAME"  property="menuName"/>
+		<result column="MENU_TYPE"  property="menuType"/>
+		<result column="MENU_TYPE_NAME"  property="menuTypeName"/>
+		<result column="URL"  property="url"/>
+		<result column="PARENT_MENU_NAME"  property="parentMenuName"/>
+		<result column="PARENT_MENU_ID"  property="parentMenuId"/>
+		<result column="SORT"  property="sort"/>
+		<result column="POP_YN"  property="popYn"/>
+		<result column="USE_YN"  property="useYn"/>
+		<result column="TREE_MENU_NAME"  property="treeMenuName"/>
+		<result column="LEVEL"  property="level"/>
+	</resultMap>
+	<select id="getMenuList" resultMap="getMenuListResultMap">
+	 /* menu.getMenuList */
+		SELECT * FROM (
+		SELECT
+			CONCAT(REPEAT('    ', LV - 1), CAST( FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS CHAR)) AS TREE_MENU_NAME
+      		, FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS MENU_NAME
+			, M.ST_MENU_ID
+			, M.PRNTS_ST_MENU_ID AS PARENT_MENU_ID
+      		, FN_COMN_CODE_DIC(M.MENU_TP) AS MENU_TYPE_NAME
+			, M.ST_PROGRAM_ID
+			, M.MENU_TP AS MENU_TYPE
+			, LV AS LEVEL
+			, P.URL
+			, FN_DIC(P.GB_DIC_MST_ID, #{gbLangId}) AS PG_NAME
+			, FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS BASE_NAME
+      		, M.SORT
+      		, M.POP_YN
+      		, M.USE_YN
+      		, M.ST_MENU_GRP_ID
+      		, M.BIZ_TP AS BIZ_TYPE
+      		, M.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+      		,CASE WHEN FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) IS NULL THEN '' ELSE FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) END AS PARENT_MENU_NAME
+      		,M.COMMENT
+      		,M.ADD_AUTH_CHK_DATA
+		FROM(
+		  SELECT
+		  	FN_MENU_CONNECT_BY() AS id
+		  	, @level AS LV
+		  FROM(
+		      SELECT  @start_with := 0,
+		              @id := @start_with,
+		              @level := 0
+		      ) vars, ST_MENU
+		  WHERE   @id IS NOT NULL
+		  ) INNER_T
+				JOIN    ST_MENU M
+					ON	M.ST_MENU_ID = INNER_T.id
+    			JOIN    ST_PROGRAM P
+					ON	M.ST_PROGRAM_ID =  P.ST_PROGRAM_ID
+			    LEFT OUTER JOIN ST_MENU PM
+			    	ON	M.PRNTS_ST_MENU_ID = PM.ST_MENU_ID
+		) M
+		WHERE 1=1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuGroupId)">
+			    AND M.ST_MENU_GRP_ID = #{stMenuGroupId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+			    AND M.USE_YN = #{useYn}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popYn)">
+			    AND M.POP_YN = #{popYn}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuType)">
+			    AND M.MENU_TYPE = #{menuType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuName)">
+			    AND M.MENU_NAME LIKE CONCAT(#{menuName}, '%')
+			</if>
+	      ORDER BY
+              CASE  WHEN LEVEL = 1 THEN M.SORT
+                      WHEN LEVEL = 2 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID)
+                      WHEN LEVEL = 3 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID))
+                      WHEN LEVEL = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID)))
+                      WHEN LEVEL = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID))))
+                      ELSE 0
+                END
+              , CASE  WHEN LEVEL = 2 THEN M.SORT
+                      WHEN LEVEL = 3 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID)
+                      WHEN LEVEL = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID))
+                      WHEN LEVEL = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID)))
+                      ELSE 0
+                END
+              , CASE  WHEN LEVEL = 3 THEN M.SORT
+                      WHEN LEVEL = 4 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID)
+                      WHEN LEVEL = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = (SELECT PRNTS_ST_MENU_ID FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID))
+                      ELSE 0
+                END
+              , CASE  WHEN LEVEL = 4 THEN M.SORT
+                      WHEN LEVEL = 5 THEN (SELECT SORT FROM ST_MENU WHERE ST_MENU_ID = M.PARENT_MENU_ID)
+                      ELSE 0
+                END
+              , CASE  WHEN LEVEL = 5 THEN M.SORT
+                      ELSE 0
+                END
+	</select>
+
+	<select id="getMenuListCount" resultType="int">
+	 /* menu.getMenuListCount */
+		select count(*) as total
+		FROM(
+			SELECT FN_MENU_CONNECT_BY() AS id
+			, @level AS LV
+			FROM    (
+				SELECT @start_with := 0,
+			           @id := @start_with,
+			           @level := 0
+				) vars, ST_MENU
+			WHERE @id IS NOT NULL
+		) INNER_T
+		JOIN ST_MENU M
+		ON   M.ST_MENU_ID = INNER_T.id
+	    WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuGroupId)">
+		    AND M.ST_MENU_GRP_ID = #{stMenuGroupId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    AND M.USE_YN = #{useYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popYn)">
+		    AND M.POP_YN = #{popYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuType)">
+		    AND M.MENU_TP = #{menuType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuName)">
+		    AND M.MENU_NM LIKE CONCAT(#{menuName}, '%')
+		</if>
+	</select>
+
+
+	<resultMap id="getMenuResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuResultVo">
+		<!-- <result column="ID"  property="id"/> -->
+		<result column="ST_MENU_ID"  property="stMenuId"/>
+		<result column="MENU_NAME"  property="menuName"/>
+		<result column="MENU_TYPE"  property="menuType"/>
+		<result column="URL"  property="url"/>
+		<result column="PARENT_MENU_ID"  property="parentMenuId"/>
+		<result column="PARENT_MENU_NAME"  property="parentMenuName"/>
+		<result column="ST_PROGRAM_ID"  property="stProgramId"/>
+		<result column="SORT"  property="sort"/>
+		<result column="POP_YN"  property="popYn"/>
+		<result column="USE_YN"  property="useYn"/>
+		<result column="ADD_AUTH_CHK_DATA"  property="addAuthorizationCheckData"/>
+		<result column="GB_DICTIONARY_MASTER_ID"  property="gbDictionaryMasterId"/>
+		<result column="COMMENT"  property="comment"/>
+		<result column="BIZ_TYPE"  property="businessType"/>
+		<result column="ST_MENU_GRP_ID"  property="stMenuGroupId"/>
+		<result column="PROGRAM_NAME"  property="programName"/>
+	</resultMap>
+
+	<select id="getMenu" resultMap="getMenuResultMap">
+	 /* menu.getMenu */
+	 	SELECT
+      		FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS MENU_NAME
+			, M.ST_MENU_ID
+			, M.PRNTS_ST_MENU_ID AS PARENT_MENU_ID
+      		, FN_COMN_CODE_DIC(M.MENU_TP) AS MENU_TYPE_NAME
+			, M.ST_PROGRAM_ID
+			, M.MENU_TP AS MENU_TYPE
+			, P.URL
+			, FN_DIC(P.GB_DIC_MST_ID, #{gbLangId}) AS PROGRAM_NAME
+			, FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS BASE_NAME
+      		, M.SORT
+      		, M.POP_YN
+      		, M.USE_YN
+      		, M.ST_MENU_GRP_ID
+      		, M.BIZ_TP AS BIZ_TYPE
+      		, M.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+      		,CASE WHEN FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) IS NULL THEN '' ELSE FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) END AS PARENT_MENU_NAME
+      		,M.COMMENT
+      		,M.ADD_AUTH_CHK_DATA
+		FROM
+			ST_MENU M
+   			JOIN    ST_PROGRAM P
+				ON	M.ST_PROGRAM_ID =  P.ST_PROGRAM_ID
+		    LEFT OUTER JOIN ST_MENU PM
+		    	ON	M.PRNTS_ST_MENU_ID = PM.ST_MENU_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuId)">
+		    AND M.ST_MENU_ID = #{stMenuId}
+		</if>
+	</select>
+
+
+	<select id="duplicateMenuCount" resultType="int">
+	 /* menu.duplicateMenuCount */
+		SELECT	COUNT(*)
+		FROM(
+		  SELECT
+		  	FN_MENU_CONNECT_BY() AS id
+		  	, @level AS LV
+		  FROM(
+		      SELECT  @start_with := 0,
+		              @id := @start_with,
+		              @level := 0
+		      ) vars, ST_MENU
+		  WHERE   @id IS NOT NULL
+		  ) INNER_T
+				JOIN    ST_MENU M
+					ON	M.ST_MENU_ID = INNER_T.id
+    			JOIN    ST_PROGRAM P
+					ON	M.ST_PROGRAM_ID =  P.ST_PROGRAM_ID
+			    LEFT OUTER JOIN ST_MENU PM
+			    	ON	M.PRNTS_ST_MENU_ID = PM.ST_MENU_ID
+		WHERE 1=1
+					AND M.ST_MENU_ID != #{stMenuId}
+					AND M.ST_MENU_GRP_ID = #{stMenuGroupId}
+					AND FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) = #{menuName}
+					AND M.PRNTS_ST_MENU_ID = #{parentMenuId}
+					AND M.BIZ_TP = #{businessType}
+	</select>
+
+	<insert id="addMenu">
+	 	/* menu.addMenu */
+		INSERT INTO ST_MENU(
+			ST_PROGRAM_ID
+			,GB_DIC_MST_ID
+			,MENU_NM
+			,MENU_TP
+			,PRNTS_ST_MENU_ID
+			,BIZ_TP
+			,ST_MENU_GRP_ID
+			,SORT
+			,POP_YN
+			,USE_YN
+			,COMMENT
+			,ADD_AUTH_CHK_DATA
+			,CREATE_ID
+		)VALUES(
+			#{stProgramId}
+			,#{gbDictionaryMasterId}
+			,#{menuName}		<!--메뉴명 -->
+			,#{menuType}		<!--메뉴타입(폴더,메뉴) -->
+			,#{parentMenuId}		<!--상위메뉴아이디 -->
+			,#{businessType}		<!--업무그룹코드 -->
+			,#{stMenuGroupId}	<!--메뉴그룹아이디 -->
+			,#{sort}			<!--정렬 -->
+			,#{popYn}			<!-- -->
+			,#{useYn}			<!--사용여부 -->
+			,#{comment}
+			,#{addAuthorizationCheckData}
+			,#{userVo.userId}
+		)
+
+		<selectKey resultType="String" keyProperty="stMenuId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<update id="putMenu">
+	 /* menu.putMenu */
+		UPDATE ST_MENU SET
+			ST_PROGRAM_ID		=#{stProgramId}
+			,GB_DIC_MST_ID		=#{gbDictionaryMasterId}
+			,MENU_NM			=#{menuName}			<!--메뉴명 -->
+			,MENU_TP			=#{menuType}			<!--메뉴타입(폴더,메뉴) -->
+			,PRNTS_ST_MENU_ID	=#{parentMenuId}		<!--상위메뉴아이디 -->
+			,BIZ_TP				=#{businessType}		<!--업무그룹코드 -->
+			,ST_MENU_GRP_ID		=#{stMenuGroupId}		<!--메뉴그룹아이디 -->
+			,SORT				=#{sort}				<!--정렬 -->
+			,POP_YN				=#{popYn}				<!-- -->
+			,USE_YN				=#{useYn}				<!--사용여부 -->
+			,COMMENT			=#{comment}
+      		,ADD_AUTH_CHK_DATA	=#{addAuthorizationCheckData}
+      		,MODIFY_ID          =#{userVo.userId}
+      		,MODIFY_DT          =SYSDATE()
+		 WHERE  ST_MENU_ID = #{stMenuId}
+
+	</update>
+
+
+	<delete id="delMenu">
+	 /* menu.delMenu */
+		DELETE FROM ST_MENU
+		WHERE  ST_MENU_ID = #{stMenuId}
+	</delete>
+
+
+	<select id="getParentMenuListCount" resultType="int">
+	 /* menu.getParentMenuListCount */
+		SELECT COUNT(*) AS TOTAL
+		FROM(
+		SELECT
+			CONCAT(REPEAT('    ', LV - 1), CAST( FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS CHAR)) AS TREE_MENU_NAME
+      		, FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS MENU_NAME
+			, M.ST_MENU_ID AS ST_MENU_ID
+			, M.PRNTS_ST_MENU_ID AS PARENT_MENU_ID
+      		, FN_COMN_CODE_DIC(M.MENU_TP) AS MENU_TYPE_NAME
+			, M.ST_PROGRAM_ID
+			, M.MENU_TP AS MENU_TYPE
+			, LV AS LEVEL
+			, P.URL
+			, FN_DIC(P.GB_DIC_MST_ID, #{gbLangId}) AS PG_NAME
+			, FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS BASE_NAME
+      		, M.SORT
+      		, M.POP_YN
+      		, M.USE_YN
+      		, M.ST_MENU_GRP_ID AS ST_MENU_GROUP_ID
+      		, M.BIZ_TP
+      		, M.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+      		,CASE WHEN FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) IS NULL THEN '' ELSE FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) END AS PARENT_MENU_NAME
+      		,M.COMMENT
+      		,M.ADD_AUTH_CHK_DATA
+		FROM(
+		  SELECT
+		  	FN_MENU_CONNECT_BY() AS id
+		  	, @level AS LV
+		  FROM(
+		      SELECT  @start_with := 0,
+		              @id := @start_with,
+		              @level := 0
+		      ) vars, ST_MENU
+		  WHERE   @id IS NOT NULL
+		  ) INNER_T
+				JOIN    ST_MENU M
+					ON	M.ST_MENU_ID = INNER_T.id
+    			JOIN    ST_PROGRAM P
+					ON	M.ST_PROGRAM_ID =  P.ST_PROGRAM_ID
+			    LEFT OUTER JOIN ST_MENU PM
+			    	ON	M.PRNTS_ST_MENU_ID = PM.ST_MENU_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuGroupId)">
+		    AND M.ST_MENU_GRP_ID = #{stMenuGroupId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    AND M.USE_YN = #{useYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuName)">
+		    AND M.MENU_NM = #{menuName}
+		</if>
+		ORDER BY M.ST_MENU_ID
+		) M
+	</select>
+
+
+	<resultMap id="getParentMenuListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetParentMenuListResultVo">
+		<result column="ST_MENU_ID"  property="stMenuId"/>
+		<result column="MENU_NAME"  property="menuName"/>
+		<result column="ST_MENU_GROUP_ID"  property="stMenuGroupId"/>
+		<result column="MENU_GROUP_NAME"  property="menuGroupName"/>
+		<result column="PARENT_MENU_NAME"  property="parentMenuName"/>
+		<result column="PARENT_MENU_ID"  property="parentMenuId"/>
+		<result column="TREE_MENU_NAME"  property="treeMenuName"/>
+		<result column="LEVEL"  property="level"/>
+	</resultMap>
+	<select id="getParentMenuList" resultMap="getParentMenuListResultMap">
+	 /* menu.getParentMenuList */
+		SELECT * FROM (
+		SELECT
+			CONCAT(REPEAT('    ', LV - 1), CAST( FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS CHAR)) AS TREE_MENU_NAME
+      		, FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS MENU_NAME
+			, M.ST_MENU_ID
+			, M.PRNTS_ST_MENU_ID AS PARENT_MENU_ID
+      		, FN_COMN_CODE_DIC(M.MENU_TP) AS MENU_TYPE_NAME
+			, M.ST_PROGRAM_ID
+			, M.MENU_TP AS MENU_TYPE
+			, LV AS LEVEL
+			, P.URL
+			, FN_DIC(P.GB_DIC_MST_ID, #{gbLangId}) AS PG_NAME
+			, FN_DIC(M.GB_DIC_MST_ID, #{gbLangId}) AS BASE_NAME
+      		, M.SORT
+      		, M.POP_YN
+      		, M.USE_YN
+      		, M.ST_MENU_GRP_ID AS ST_MENU_GROUP_ID
+      		, M.BIZ_TP AS BIZ_TYPE
+      		, M.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+      		,CASE WHEN FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) IS NULL THEN '' ELSE FN_DIC(PM.GB_DIC_MST_ID, #{gbLangId}) END AS PARENT_MENU_NAME
+      		,M.COMMENT
+      		,M.ADD_AUTH_CHK_DATA
+      		,MG.MENU_GRP_NM  AS MENU_GROUP_NAME
+		FROM(
+		  SELECT
+		  	FN_MENU_CONNECT_BY() AS id
+		  	, @level AS LV
+		  FROM(
+		      SELECT  @start_with := 0,
+		              @id := @start_with,
+		              @level := 0
+		      ) vars, ST_MENU
+		  WHERE   @id IS NOT NULL
+		  ) INNER_T
+				JOIN    ST_MENU M
+					ON	M.ST_MENU_ID = INNER_T.id
+    			JOIN    ST_PROGRAM P
+					ON	M.ST_PROGRAM_ID =  P.ST_PROGRAM_ID
+				LEFT OUTER JOIN ST_MENU_GRP MG
+					ON MG.ST_MENU_GRP_ID = M.ST_MENU_GRP_ID
+			    LEFT OUTER JOIN ST_MENU PM
+			    	ON	M.PRNTS_ST_MENU_ID = PM.ST_MENU_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuGroupId)">
+		    AND M.ST_MENU_GRP_ID = #{stMenuGroupId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    AND M.USE_YN = #{useYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuName)">
+		    AND M.MENU_NM LIKE CONCAT(#{menuName},'%')
+		</if>
+		ORDER BY M.CREATE_DT DESC
+		) M
+
+	</select>
+
+
+
+
+
+
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 URL 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		hanmir    최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<sql id="includeGetSystemUrl">
+		FROM ST_MENU_URL
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(url)">
+			AND URL LIKE CONCAT(#{url}, '%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urlName)">
+			AND URL_NM LIKE CONCAT(#{urlName}, '%')
+		</if>
+	</sql>
+
+	<resultMap type="kr.co.pulmuone.v1.system.menu.dto.vo.GetSystemUrlListResultVo" id="getSystemUrlListResultMap">
+	<result column="ST_MENU_URL_ID"  property="id"/>						<!-- 접속ID -->
+	<result column="URL"  property="url"/>						<!-- URL -->
+	<result column="URL_NM"  property="urlName"/>				<!-- URL 명 -->
+	<result column="CONTENT"  property="content"/> 				<!-- 설명 -->
+	<result column="CREATE_DATE"  property="createDate"/>		<!-- 생성일자 -->
+	<result column="MODIFY_DATE"  property="modifyDate"/>		<!-- 수정일자 -->
+	</resultMap>
+
+	<select id="getSystemUrlList" resultMap="getSystemUrlListResultMap">
+	 /* menu.getSystemUrlList */
+		SELECT
+			  ST_MENU_URL_ID
+			, URL
+			, URL_NM
+			, CONTENT
+			, DATE_FORMAT(CREATE_DT , '%Y-%m-%d %H:%I:%S') AS CREATE_DATE
+			, DATE_FORMAT(MODIFY_DT, '%Y-%m-%d %H:%I:%S') AS MODIFY_DATE
+		<include refid="includeGetSystemUrl"/>
+		ORDER BY ST_MENU_URL_ID DESC
+	</select>
+
+	<select id="getSystemUrlListCount" resultType="int">
+	 /* menu.getSystemUrlListCount */
+		SELECT
+			COUNT(*) as total
+		<include refid="includeGetSystemUrl"/>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 URL 상세 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		hanmir    최초생성
+	 * @ 2020.11.10     최성현     개인정보 취급여부, 권한관리 추가
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.system.menu.dto.vo.GetSystemUrlResultVo" id="getSystemUrlResultMap">
+	<result column="ST_MENU_URL_ID"  property="id"/>				<!-- ID -->
+	<result column="URL"  property="inputUrl"/>						<!-- URL -->
+	<result column="URL_NM"  property="inputUrlName"/>				<!-- URL 명 -->
+	<result column="PRIVACY_LOG_YN"  property="inputUrlUsageYn"/>	<!-- 개인정보취급여부 -->
+	<result column="CRUD_TP"		property="inputAuthority"/>		<!--  권한관리 -->
+	<result column="CONTENT"  property="inputContent"/>				<!-- 설명 -->
+	</resultMap>
+
+	<select id="getSystemUrl" resultMap="getSystemUrlResultMap">
+	 /* menu.getSystemUrl */
+		SELECT
+			  ST_MENU_URL_ID
+			, URL
+			, URL_NM
+			, PRIVACY_LOG_YN
+			, CRUD_TP
+			, CONTENT
+		FROM ST_MENU_URL
+		WHERE
+			ST_MENU_URL_ID = #{id}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 URL 등록.
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		hanmir   최초생성
+	 * @ 2020.11.10     최성현    개인정보 취급여부, 권한관리 추가
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addSystemUrl">
+	 /* menu.addSystemUrl */
+		INSERT INTO ST_MENU_URL(
+			 URL
+			 , URL_NM
+			 , PRIVACY_LOG_YN
+			 , CRUD_TP
+			 , CONTENT
+			 , CREATE_ID
+		)VALUES(
+			 #{inputUrl}
+			 , #{inputUrlName}
+			 , #{inputUrlUsageYn}
+			 , #{inputAuthority}
+			 , #{inputContent}
+			 , #{userVo.userId}
+		)
+
+		<selectKey resultType="String" keyProperty="id" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 URL 메뉴정보 조회.
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.13		wjh   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+  <select id="getSystemUrlMenuInfo" resultType="int">
+    /* menu.getSystemUrlMenuInfo */
+    SELECT  COUNT(1)
+    FROM    ST_PROGRAM_AUTH_URL_MENU
+    WHERE   (ST_PROGRAM_ID, ST_PROGRAM_AUTH_ID, ST_MENU_URL_ID, ST_MENU_ID) IN
+            (
+            SELECT  P.ST_PROGRAM_ID
+                  , PA.ST_PROGRAM_AUTH_ID
+                  , M.ST_MENU_ID
+                  , (
+                    SELECT  ST_MENU_URL_ID
+                    FROM    ST_MENU_URL
+                    WHERE   URL = #{url}
+                    LIMIT 1
+                  ) AS ST_MENU_URL_ID
+            FROM    (
+                    SELECT  *
+                    FROM    ST_PROGRAM_AUTH
+                    WHERE   ST_PROGRAM_ID = #{stPrgramId}
+                      AND   PG_AUTH_CD = 'DEFAULT'
+                    ) PA
+                  , ST_PROGRAM P
+                  , ST_MENU M
+            WHERE   P.ST_PROGRAM_ID = PA.ST_PROGRAM_ID
+              AND   M.ST_PROGRAM_ID = P.ST_PROGRAM_ID
+            )
+
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 URL 메뉴정보 등록.
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.13		wjh   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+  <insert id="addSystemUrlMenuInfo">
+    /* menu.addSystemUrlMenuInfo */
+    INSERT INTO ST_PROGRAM_AUTH_URL_MENU (
+        ST_PROGRAM_ID
+      , ST_PROGRAM_AUTH_ID
+      , ST_MENU_URL_ID
+      , ST_MENU_ID
+      , MEMO
+      , CREATE_DT
+      , CREATE_ID
+      )
+      SELECT  P.ST_PROGRAM_ID
+            , PA.ST_PROGRAM_AUTH_ID
+            , M.ST_MENU_ID
+            , (
+              SELECT  ST_MENU_URL_ID
+              FROM    ST_MENU_URL
+              WHERE   URL = #{url}
+              LIMIT 1
+              ) AS ST_MENU_URL_ID
+            , #{memo}
+            , NOW()
+            , #{userVo.userId}
+      FROM    (
+              SELECT  *
+              FROM    ST_PROGRAM_AUTH
+              WHERE   ST_PROGRAM_ID = #{stPrgramId}
+                AND   PG_AUTH_CD = 'DEFAULT'
+              ) PA
+            , ST_PROGRAM P
+            , ST_MENU M
+      WHERE   P.ST_PROGRAM_ID = PA.ST_PROGRAM_ID
+        AND   M.ST_PROGRAM_ID = P.ST_PROGRAM_ID
+    <selectKey resultType="String" keyProperty="id" order="AFTER">
+      SELECT LAST_INSERT_ID()
+    </selectKey>
+  </insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 URL 수정.
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		hanmir   최초생성
+	 * @ 2020.11.10     최성현	개인정보 취급여부, 권한관리 추가
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putSystemUrl">
+	 /* menu.putSystemUrl */
+		UPDATE ST_MENU_URL
+		SET
+			URL = #{inputUrl}
+			, URL_NM = #{inputUrlName}
+			, PRIVACY_LOG_YN = #{inputUrlUsageYn}
+			, CRUD_TP = #{inputAuthority}
+			, CONTENT = #{inputContent}
+			, MODIFY_ID = #{userVo.userId}
+		WHERE
+			ST_MENU_URL_ID = #{id}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 URL 삭제.
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.03		hanmir   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delSystemUrl">
+	 /* menu.delSystemUrl */
+		DELETE FROM ST_MENU_URL
+		WHERE
+			ST_MENU_URL_ID = #{id}
+	</delete>
+
+	<select id="duplicateSystemUrlCount" resultType="int">
+	 /* menu.duplicateSystemUrlCount */
+		SELECT COUNT(*)
+		FROM (
+			SELECT *
+			FROM
+				ST_MENU_URL
+			WHERE
+				URL = #{inputUrl}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+					AND ST_MENU_URL_ID != #{id}
+				</if>
+			UNION
+			SELECT *
+			FROM
+				ST_MENU_URL
+			WHERE
+				URL_NM = #{inputUrlName}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+					AND ST_MENU_URL_ID != #{id}
+				</if>
+		) A
+	</select>
+
+
+
+	<resultMap id="getMenuUrlListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuUrlListResultVo">
+		<result column="ST_MENU_URL_ID"  property="stMenuUrlId"/>
+		<result column="URL"  property="url"/>
+		<result column="URL_NM"  property="urlName"/>
+	</resultMap>
+
+	<select id="getMenuUrlList" resultMap="getMenuUrlListResultMap">
+	 /* menu.getMenuUrlList */
+		SELECT ST_MENU_URL_ID
+		     , URL
+		     , URL_NM
+		  FROM ST_MENU_URL A
+     WHERE NOT EXISTS (SELECT 1 FROM ST_PROGRAM_AUTH_URL_MAPPING WHERE ST_MENU_URL_ID = A.ST_MENU_URL_ID AND ST_PROGRAM_AUTH_ID = #{stProgramAuthId});
+	</select>
+
+
+	<select id="getMenuUrlListCount" resultType="int">
+	 /* menu.getMenuUrlListCount */
+		SELECT count(*) as total
+		  FROM ST_MENU_URL A
+     WHERE NOT EXISTS (SELECT 1 FROM ST_PROGRAM_AUTH_URL_MAPPING WHERE ST_MENU_URL_ID = A.ST_MENU_URL_ID AND ST_PROGRAM_AUTH_ID = #{stProgramAuthId});
+	</select>
+
+
+
+	<resultMap id="getMenuAssignUrlListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuAssignUrlListResultVo">
+		<result column="ST_PROGRAM_AUTH_URL_MAPPING_ID"  property="stProgramAuthUrlMappingId"/>
+		<result column="ST_MENU_URL_ID"  property="stMenuUrlId"/>
+		<result column="URL"  property="url"/>
+		<result column="URL_NM"  property="urlName"/>
+	</resultMap>
+
+	<select id="getMenuAssignUrlList" resultMap="getMenuAssignUrlListResultMap">
+	 /* menu.getMenuAssignUrlList */
+		SELECT A.ST_MENU_URL_ID
+		     , C.URL
+		     , A.ST_PROGRAM_AUTH_URL_MAPPING_ID
+		  FROM ST_PROGRAM_AUTH_URL_MAPPING A
+		  INNER JOIN ST_MENU_URL C
+		    ON A.ST_MENU_URL_ID = C.ST_MENU_URL_ID
+		WHERE A.ST_PROGRAM_AUTH_ID = #{stProgramAuthId}
+	</select>
+
+	<select id="getMenuAssignUrlListCount" resultType="int">
+	 /* menu.getMenuAssignUrlListCount */
+		SELECT count(*) as total
+		  FROM ST_PROGRAM_AUTH_URL_MAPPING A
+		  INNER JOIN ST_MENU_URL C
+		    ON A.ST_MENU_URL_ID = C.ST_MENU_URL_ID
+		WHERE A.ST_PROGRAM_AUTH_ID = #{stProgramAuthId}
+	</select>
+
+
+	<delete id="delMenuAssigUrl">
+	 /* menu.delMenuAssigUrl */
+		DELETE FROM ST_PROGRAM_AUTH_URL_MAPPING
+		WHERE ST_PROGRAM_AUTH_URL_MAPPING_ID IN
+		<foreach item="deleteData" collection="list" open="(" separator="," close=")">
+			#{deleteData.stProgramAuthUrlMappingId}
+		</foreach>
+	</delete>
+
+
+	<insert id="saveMenuAssignUrl">
+	/* menu.saveMenuAssignUrl */
+		INSERT INTO ST_PROGRAM_AUTH_URL_MAPPING  (
+			ST_PROGRAM_AUTH_ID
+			,ST_MENU_URL_ID
+			,CREATE_ID
+		)
+		VALUES
+		<foreach item="insertData" collection="voList" open="" separator="," close="">
+		(
+			#{stProgramAuthId}
+			,#{insertData.stMenuUrlId}
+			,#{insertData.userVo.userId}
+		)
+		</foreach>
+	</insert>
+
+	<resultMap id="getMenuPopupListResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetMenuPopupListResultVo">
+		<result column="MENU_GROUP_NAME"  property="menuGroupName"/>
+		<result column="MENU_NAME"  property="menuName"/>
+		<result column="MENU_TYPE"  property="menuType"/>
+		<result column="ST_MENU_ID"  property="stMenuId"/>
+	</resultMap>
+
+	<select id="getMenuPopupList" resultMap="getMenuPopupListResultMap">
+		/* menu.getMenuPopupList */
+		SELECT * FROM (
+		SELECT
+			MG.MENU_GRP_NM AS MENU_GROUP_NAME
+			, M.ST_MENU_ID AS ST_MENU_ID
+			, M.MENU_NM AS MENU_NAME
+			, FN_COMN_CODE_DIC(M.MENU_TP) AS MENU_TYPE
+		FROM(
+		  SELECT
+		  	FN_MENU_CONNECT_BY() AS id
+		  	, @level AS LV
+		  FROM(
+		      SELECT  @start_with := 0,
+		              @id := @start_with,
+		              @level := 0
+		      ) vars, ST_MENU
+		  WHERE   @id IS NOT NULL
+		  ) INNER_T
+				JOIN	ST_MENU M
+					ON M.ST_MENU_ID = INNER_T.id
+    			JOIN	ST_MENU_GRP MG
+    				ON MG.ST_MENU_GRP_ID = M.ST_MENU_GRP_ID
+			WHERE
+			M.MENU_TP = #{menuType}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuGroupId)">
+			    AND M.ST_MENU_GRP_ID = #{stMenuGroupId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuName)">
+			    AND M.MENU_NM LIKE CONCAT(#{menuName},'%')
+			</if>
+			ORDER BY M.ST_MENU_ID
+		) M
+	</select>
+
+	<select id="getMenuPopupListCount" resultType="int">
+		/* menu.getMenuPopupListCount */
+		SELECT COUNT(*) FROM (
+		SELECT
+			MG.MENU_GRP_NM AS MENU_GROUP_NAME
+			, M.MENU_NM AS MENU_NAME
+			, FN_COMN_CODE_DIC(M.MENU_TP) AS MENU_TYPE
+		FROM(
+		  SELECT
+		  	FN_MENU_CONNECT_BY() AS id
+		  	, @level AS LV
+		  FROM(
+		      SELECT  @start_with := 0,
+		              @id := @start_with,
+		              @level := 0
+		      ) vars, ST_MENU
+		  WHERE   @id IS NOT NULL
+		  ) INNER_T
+				JOIN	ST_MENU M
+					ON M.ST_MENU_ID = INNER_T.id
+    			JOIN	ST_MENU_GRP MG
+    				ON MG.ST_MENU_GRP_ID = M.ST_MENU_GRP_ID
+			WHERE
+			M.MENU_TP = #{menuType}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stMenuGroupId)">
+			    AND M.ST_MENU_GRP_ID = #{stMenuGroupId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(menuName)">
+			    AND M.MENU_NM LIKE CONCAT(#{menuName},'%')
+			</if>
+			ORDER BY M.ST_MENU_ID
+		) M
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 권한 관리 .
+ 	 * @
+ 	 * @ 수정일			수정자          수정내용
+ 	 * @ ──────────────────────────────────────────────────────────────────────
+ 	 * @ 2020.11.10		최성현   최초생성
+ 	 * @
+	 ────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSystemAuthorityResultMap" type="kr.co.pulmuone.v1.system.menu.dto.vo.GetSystemAuthorityResultVo">
+		<result column="CODE" property="code" />
+		<result column="COMMENT" property="comment" />
+	</resultMap>
+
+	<select id="getSystemAuthority" resultMap="getSystemAuthorityResultMap">
+		/* menu.getSystemAuthority */
+		SELECT	COMNCODE.ST_COMN_CODE_ID AS CODE
+				,FN_DIC(COMNCODE.GB_DIC_MST_ID, NULL) AS COMMENT
+		FROM 	ST_COMN_CODE COMNCODE
+		WHERE 	1 = 1
+		AND ST_COMN_CODE_MST_CD = 'CRUD_TP'
+		AND USE_YN = UPPER('Y')
+	</select>
+
+</mapper>

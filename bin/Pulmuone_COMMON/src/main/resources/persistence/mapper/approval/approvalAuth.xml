@@ -1,0 +1,808 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.approval.auth.ApprovalAuthMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 승인관리 - 승인권한 설정, 업무별 승인권한 관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.14		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerList" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthManagerVo">
+		/*	approvalAuth.getApprovalAuthManagerList	*/
+		SELECT
+			UAA.UR_APPR_AUTH_ID, UAA.APPR_KIND_TP AS apprKindType, UAA.APPR_MANAGER_TP AS apprManagerType
+			, UAA.APPR_USER_ID, UAA.SORT, UAA.MEMO, UAA.CREATE_DT
+			, UU.LOGIN_ID AS APPR_LOGIN_ID, FN_DECRYPT(UU.USER_NM) AS APPR_USER_NAME
+			, UC.COMP_TP AS ADMIN_TYPE, FN_COMN_CODE_DIC(UC.COMP_TP) AS ADMIN_TYPE_NAME
+			, UE.STATUS_TP AS USER_STATUS, FN_COMN_CODE_DIC(UE.STATUS_TP) AS USER_STATUS_NAME
+			, CASE
+				WHEN UC.COMP_TP = 'COMPANY_TYPE.CLIENT'
+					THEN UC.COMP_NM
+				ELSE UE.ORGANIZATION_NM
+			 END AS ORGANIZATION_NAME
+			, UE.TEAM_LEADER_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, UE.GRANT_AUTH_STOP_YN
+			, GUU.LOGIN_ID AS GRANT_LOGIN_ID, FN_DECRYPT(GUU.USER_NM) AS GRANT_USER_NAME
+			, GUE.STATUS_TP AS GRANT_USER_STATUS, FN_COMN_CODE_DIC(GUE.STATUS_TP) AS GRANT_USER_STATUS_NAME
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN 'Y'
+				ELSE 'N'
+			 END AS grantAuthYn
+		FROM UR_APPR_AUTH UAA
+		LEFT OUTER JOIN UR_USER UU
+			ON UAA.APPR_USER_ID = UU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+		 	ON UAA.APPR_USER_ID = UE.UR_USER_ID
+		LEFT OUTER JOIN UR_COMPANY UC
+			ON UC.UR_COMPANY_ID = UE.UR_COMPANY_ID
+		LEFT OUTER JOIN UR_USER GUU
+			ON UE.GRANT_AUTH_USER_ID = GUU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE GUE
+			ON UE.GRANT_AUTH_USER_ID = GUE.UR_USER_ID
+		WHERE UAA.APPR_KIND_TP = #{apprKindType}
+		AND UAA.APPR_MANAGER_TP = #{apprManagerType}
+		ORDER BY UAA.SORT ASC, UU.CREATE_DT
+	</select>
+
+	<delete id="delApprovalAuthManager">
+		/*	approvalAuth.delApprovalAuthManager	*/
+		DELETE
+		FROM UR_APPR_AUTH
+		WHERE APPR_KIND_TP = #{apprKindType}
+		AND APPR_MANAGER_TP = #{apprManagerType}
+	</delete>
+
+	<insert id="addApprovalAuthManager" >
+		/* approvalAuth.addApprovalAuthManager */
+		INSERT INTO UR_APPR_AUTH
+			(	APPR_KIND_TP, APPR_USER_ID, APPR_MANAGER_TP, SORT, MEMO
+			, CREATE_ID, CREATE_DT
+			)
+		VALUES
+			(
+				#{apprKindType}, #{apprUserId}, #{apprManagerType}, #{sort}, #{memo}
+				, #{userVo.userId}
+				, NOW()
+			)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 업무별 승인처리 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.01		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessCouponInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+    	/*	approvalAuth.getApprovalProcessCouponInfo	*/
+    	SELECT
+			PC.PM_COUPON_ID	AS taskPk
+			, PC.COUPON_MASTER_STAT AS masterStat, PC.APPR_STAT AS apprStat
+			, PC.APPR_REQ_DT, PC.APPR_REQ_USER_ID
+			, PC.APPR_SUB_USER_ID, PC.APPR_SUB_CHG_USER_ID, PC.APPR_SUB_CHG_DT
+			, SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+			, SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+			, SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+			, CASE
+				WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+					THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_SUB_USER_STATUS
+			, PC.APPR_USER_ID, PC.APPR_CHG_USER_ID, PC.APPR_CHG_DT
+			, UE.STATUS_TP AS APPR_USER_STATUS
+			, UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_USER_STATUS
+		FROM PM_COUPON PC
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON PC.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+			ON PC.APPR_USER_ID = UE.UR_USER_ID
+		WHERE PC.PM_COUPON_ID = #{pmCouponId}
+    </select>
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 적립금 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessPointInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+    	/*	approvalAuth.getApprovalProcessPointInfo	*/
+    	SELECT
+			PP.PM_POINT_ID	AS taskPk
+			, PP.POINT_MASTER_STAT AS masterStat, PP.APPR_STAT AS apprStat
+			, PP.APPR_REQ_DT, PP.APPR_REQ_USER_ID
+			, PP.APPR_SUB_USER_ID, PP.APPR_SUB_CHG_USER_ID, PP.APPR_SUB_CHG_DT
+			, SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+			, SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+			, SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+			, CASE
+				WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+					THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_SUB_USER_STATUS
+			, PP.APPR_USER_ID, PP.APPR_CHG_USER_ID, PP.APPR_CHG_DT
+			, UE.STATUS_TP AS APPR_USER_STATUS
+			, UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_USER_STATUS
+		FROM PM_POINT PP
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON PP.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+			ON PP.APPR_USER_ID = UE.UR_USER_ID
+		WHERE PP.PM_POINT_ID = #{pmPointId}
+    </select>
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 기획전[골라담기(균일가), 증정행사] 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessExhibitInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+    	/*	approvalAuth.getApprovalProcessExhibitInfo	*/
+    	SELECT
+			EE.EV_EXHIBIT_ID	AS taskPk
+			, EE.EXHIBIT_STATUS AS masterStat, EE.APPR_STAT AS apprStat
+			, EE.APPR_REQ_DT, EE.APPR_REQ_USER_ID
+			, EE.APPR_SUB_USER_ID, EE.APPR_SUB_CHG_USER_ID, EE.APPR_SUB_CHG_DT
+			, SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+			, SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+			, SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+			, CASE
+				WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+					THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_SUB_USER_STATUS
+			, EE.APPR_USER_ID, EE.APPR_CHG_USER_ID, EE.APPR_CHG_DT
+			, UE.STATUS_TP AS APPR_USER_STATUS
+			, UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_USER_STATUS
+		FROM EV_EXHIBIT EE
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON EE.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+			ON EE.APPR_USER_ID = UE.UR_USER_ID
+		WHERE EE.EV_EXHIBIT_ID = #{evExhibitId}
+    </select>
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목등록 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessItemRegistInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+    	/*	approvalAuth.getApprovalProcessItemRegistInfo	*/
+    	SELECT
+			IIA.IL_ITEM_APPR_ID	AS taskPk
+			, IIA.APPR_STAT AS apprStat
+			, IIA.IL_ITEM_CD
+			, IIA.APPR_REQ_DT, IIA.APPR_REQ_USER_ID
+			, IIA.APPR_SUB_USER_ID, IIA.APPR_SUB_CHG_USER_ID, IIA.APPR_SUB_CHG_DT
+			, SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+			, SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+			, SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+			, CASE
+				WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+					THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_SUB_USER_STATUS
+			, IIA.APPR_USER_ID, IIA.APPR_CHG_USER_ID, IIA.APPR_CHG_DT
+			, UE.STATUS_TP AS APPR_USER_STATUS
+			, UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_USER_STATUS
+		FROM IL_ITEM_APPR IIA
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON IIA.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+			ON IIA.APPR_USER_ID = UE.UR_USER_ID
+		WHERE IIA.IL_ITEM_APPR_ID = #{ilItemApprId}
+    </select>
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품등록 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessGoodsRegistInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+    	/*	approvalAuth.getApprovalProcessGoodsRegistInfo	*/
+    	SELECT
+			IGA.IL_GOODS_APPR_ID AS taskPk
+			, IGA.APPR_STAT AS apprStat
+			, IGA.IL_GOODS_ID
+			, IGA.APPR_REQ_DT, IGA.APPR_REQ_USER_ID
+			, IGA.APPR_SUB_USER_ID, IGA.APPR_SUB_CHG_USER_ID, IGA.APPR_SUB_CHG_DT
+			, SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+			, SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+			, SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+			, CASE
+				WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+					THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_SUB_USER_STATUS
+			, IGA.APPR_USER_ID, IGA.APPR_CHG_USER_ID, IGA.APPR_CHG_DT
+			, UE.STATUS_TP AS APPR_USER_STATUS
+			, UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_USER_STATUS
+		FROM IL_GOODS_APPR IGA
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON IGA.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+			ON IGA.APPR_USER_ID = UE.UR_USER_ID
+		WHERE IGA.IL_GOODS_APPR_ID = #{ilGoodsApprId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목가격 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessItemPriceInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+    	/*	approvalAuth.getApprovalProcessItemPriceInfo	*/
+    	SELECT
+			IIPA.IL_ITEM_PRICE_APPR_ID	AS taskPk
+			, IIPA.APPR_STAT AS apprStat
+			, IIPA.IL_ITEM_CD
+			, IIPA.APPR_REQ_DT, IIPA.APPR_REQ_USER_ID
+			, IIPA.APPR_SUB_USER_ID, IIPA.APPR_SUB_CHG_USER_ID, IIPA.APPR_SUB_CHG_DT
+			, SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+			, SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+			, SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+			, CASE
+				WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+					THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_SUB_USER_STATUS
+			, IIPA.APPR_USER_ID, IIPA.APPR_CHG_USER_ID, IIPA.APPR_CHG_DT
+			, UE.STATUS_TP AS APPR_USER_STATUS
+			, UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_USER_STATUS
+    		, IIP.STANDARD_PRICE AS STANDARD_PRICE_CHG
+			, IIP.RECOMMENDED_PRICE AS RECOMMENDED_PRICE_CHG
+			, CASE
+					WHEN II.TAX_YN = 'Y' THEN ROUND(((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.1))) / IIP.RECOMMENDED_PRICE * 100, 0)
+					ELSE ROUND(((IIP.RECOMMENDED_PRICE - IIP.STANDARD_PRICE)) / IIP.RECOMMENDED_PRICE * 100, 0)
+				END AS MARGIN_RATE
+		FROM IL_ITEM_PRICE_APPR IIPA
+		INNER JOIN IL_ITEM II
+			ON II.IL_ITEM_CD = IIPA.IL_ITEM_CD
+		INNER JOIN IL_ITEM_PRICE IIP
+			ON IIP.IL_ITEM_CD = II.IL_ITEM_CD
+			AND IIP.START_DT <![CDATA[<=]]> NOW() AND IIP.END_DT <![CDATA[>=]]> NOW()
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON IIPA.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+			ON IIPA.APPR_USER_ID = UE.UR_USER_ID
+		WHERE IIPA.IL_ITEM_PRICE_APPR_ID = #{ilItemPriceApprId}
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품할인 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessGoodsDiscountInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+    	/*	approvalAuth.getApprovalProcessGoodsDiscountInfo	*/
+    	SELECT
+			IGA.IL_GOODS_DISCOUNT_APPR_ID AS taskPk
+			, IGA.APPR_STAT AS apprStat
+			, IGA.IL_GOODS_ID
+			, IGA.APPR_REQ_DT
+			, IGA.APPR_REQ_USER_ID
+			, IGA.APPR_SUB_USER_ID
+			, IGA.APPR_SUB_CHG_USER_ID
+			, IGA.APPR_SUB_CHG_DT
+			, IGA.DISCOUNT_TP
+			, SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+			, SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+			, SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+			, CASE
+				WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+					THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_SUB_USER_STATUS
+			, IGA.APPR_USER_ID, IGA.APPR_CHG_USER_ID, IGA.APPR_CHG_DT
+			, UE.STATUS_TP AS APPR_USER_STATUS
+			, UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+				ELSE ''
+			 END AS GRANT_USER_STATUS
+		FROM IL_GOODS_DISCOUNT_APPR IGA
+			LEFT JOIN UR_EMPLOYEE SUBUE
+				ON IGA.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+			LEFT JOIN UR_EMPLOYEE UE
+				ON IGA.APPR_USER_ID = UE.UR_USER_ID
+		WHERE IGA.IL_GOODS_DISCOUNT_APPR_ID = #{ilGoodsDiscountApprId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description         : CS환불 승인처리 정보
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalProcessCsRefundInfo" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthInfoVo">
+        /*    approvalAuth.getApprovalProcessCsRefundInfo    */
+        SELECT
+            OC.OD_CS_ID AS taskPk
+            , OC.CS_REFUND_APPROVE_CD AS masterStat, OC.APPR_STAT AS apprStat
+            , OC.APPR_REQ_DT, OC.APPR_REQ_USER_ID
+            , OC.APPR_SUB_USER_ID, OC.APPR_SUB_CHG_USER_ID, OC.APPR_SUB_CHG_DT
+            , SUBUE.STATUS_TP AS APPR_SUB_USER_STATUS
+            , SUBUE.GRANT_AUTH_USER_ID AS GRANT_SUB_AUTH_USER_ID, SUBUE.GRANT_AUTH_STOP_YN AS GRANT_SUB_AUTH_STOP_YN
+            , SUBUE.GRANT_AUTH_START_DT AS GRANT_SUB_AUTH_START_DT, SUBUE.GRANT_AUTH_END_DT AS GRANT_SUB_AUTH_END_DT
+            , CASE
+                WHEN SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+                AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+                AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+                THEN (SELECT GSUBUE.STATUS_TP FROM UR_EMPLOYEE GSUBUE WHERE GSUBUE.UR_USER_ID = SUBUE.GRANT_AUTH_USER_ID)
+                ELSE ''
+                END AS GRANT_SUB_USER_STATUS
+            , OC.APPR_USER_ID, OC.APPR_CHG_USER_ID, OC.APPR_CHG_DT
+            , UE.STATUS_TP AS APPR_USER_STATUS
+            , UE.GRANT_AUTH_USER_ID, UE.GRANT_AUTH_STOP_YN
+            , UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+            , CASE
+                WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+                AND UE.GRANT_AUTH_STOP_YN = 'N'
+                AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+                THEN (SELECT GUE.STATUS_TP FROM UR_EMPLOYEE GUE WHERE GUE.UR_USER_ID = UE.GRANT_AUTH_USER_ID)
+                ELSE ''
+                END AS GRANT_USER_STATUS
+        FROM OD_CS_INFO OC
+            LEFT OUTER JOIN UR_EMPLOYEE SUBUE ON OC.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+            LEFT OUTER JOIN UR_EMPLOYEE UE ON OC.APPR_USER_ID = UE.UR_USER_ID
+        WHERE OC.OD_CS_ID = #{odCsId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 업무별 직전 승인관리자 이력 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.15		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryCoupon" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryCoupon	*/
+		SELECT
+			CREATE_DT, CREATE_ID, APPR_STAT, APPR_SUB_USER_ID AS approvalSubUserId, APPR_USER_ID AS approvalUserId
+		FROM PM_COUPON_STATUS_HISTORY
+		WHERE APPR_STAT = 'APPR_STAT.REQUEST'
+		AND CREATE_ID = #{userId}
+		ORDER BY CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 적립금 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryPoint" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryPoint	*/
+		SELECT
+			CREATE_DT, CREATE_ID, APPR_STAT, APPR_SUB_USER_ID AS approvalSubUserId, APPR_USER_ID AS approvalUserId
+		FROM PM_POINT_STATUS_HISTORY
+		WHERE APPR_STAT = 'APPR_STAT.REQUEST'
+		AND CREATE_ID = #{userId}
+		ORDER BY CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 기획전[골라담기(균일가), 증정행사] 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryExhibit" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryExhibit	*/
+		SELECT
+			EESH.CREATE_DT, EESH.CREATE_ID, EESH.APPR_STAT, EESH.APPR_SUB_USER_ID AS approvalSubUserId, EESH.APPR_USER_ID AS approvalUserId
+		FROM EV_EXHIBIT_STATUS_HISTORY EESH
+				 INNER JOIN EV_EXHIBIT EE
+							ON EESH.EV_EXHIBIT_ID  = EE.EV_EXHIBIT_ID
+		WHERE EESH.APPR_STAT = 'APPR_STAT.REQUEST'
+		  AND EESH.CREATE_ID = #{userId}
+		  AND EE.EXHIBIT_TP = #{exhibitTp}
+		ORDER BY EESH.CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목등록 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryItem" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryItemRegist	*/
+		SELECT
+			IIA.APPR_KIND_TP, IIASH.CREATE_DT, IIASH.CREATE_ID, IIASH.APPR_STAT, IIASH.APPR_SUB_USER_ID AS approvalSubUserId, IIASH.APPR_USER_ID AS approvalUserId
+		FROM IL_ITEM_APPR_STATUS_HISTORY IIASH
+		INNER JOIN IL_ITEM_APPR IIA ON IIASH.IL_ITEM_APPR_ID = IIA.IL_ITEM_APPR_ID
+		WHERE IIASH.APPR_STAT = 'APPR_STAT.REQUEST'
+		AND IIASH.CREATE_ID = #{userId}
+		AND IIA.APPR_KIND_TP = #{apprKindTp}
+		ORDER BY IIASH.CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품등록 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryGoods" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryGoodsRegist	*/
+		SELECT
+			IGA.APPR_KIND_TP, IGASH.CREATE_DT, IGASH.CREATE_ID, IGASH.APPR_STAT, IGASH.APPR_SUB_USER_ID AS approvalSubUserId, IGASH.APPR_USER_ID AS approvalUserId
+		FROM IL_GOODS_APPR_STATUS_HISTORY IGASH
+		INNER JOIN IL_GOODS_APPR IGA ON IGASH.IL_GOODS_APPR_ID = IGA.IL_GOODS_APPR_ID
+		WHERE IGASH.APPR_STAT = 'APPR_STAT.REQUEST'
+		AND IGASH.CREATE_ID = #{userId}
+		AND IGA.APPR_KIND_TP = #{apprKindTp}
+		ORDER BY IGASH.CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목가격 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryItemPrice" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryItemPrice	*/
+		SELECT
+			IIPASH.CREATE_DT, IIPASH.CREATE_ID, IIPASH.APPR_STAT, IIPASH.APPR_SUB_USER_ID AS approvalSubUserId, IIPASH.APPR_USER_ID AS approvalUserId
+		FROM IL_ITEM_PRICE_APPR_STATUS_HISTORY IIPASH
+		WHERE IIPASH.APPR_STAT = 'APPR_STAT.REQUEST'
+		AND IIPASH.CREATE_ID = #{userId}
+		ORDER BY IIPASH.CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품할인 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryGoodsDiscount" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryGoodsDiscount	*/
+		SELECT
+			IGDASH.CREATE_DT, IGDASH.CREATE_ID, IGDASH.APPR_STAT, IGDASH.APPR_SUB_USER_ID AS approvalSubUserId, IGDASH.APPR_USER_ID AS approvalUserId
+		FROM IL_GOODS_DISCOUNT_APPR_STATUS_HISTORY IGDASH
+		WHERE IGDASH.APPR_STAT = 'APPR_STAT.REQUEST'
+		AND IGDASH.CREATE_ID = #{userId}
+		ORDER BY IGDASH.CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: CS환불 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalAuthManagerHistoryCsRefund" resultType="kr.co.pulmuone.v1.approval.auth.dto.ApprovalAuthManagerHistoryByTaskDto">
+		/*	approvalAuth.getApprovalAuthManagerHistoryCsRefund	*/
+		SELECT
+			OCISH.CREATE_DT, OCISH.CREATE_ID, OCISH.APPR_STAT, OCISH.APPR_SUB_USER_ID AS approvalSubUserId, OCISH.APPR_USER_ID AS approvalUserId
+		FROM OD_CS_INFO_STATUS_HISTORY OCISH
+		WHERE OCISH.APPR_STAT = 'APPR_STAT.REQUEST'
+		AND OCISH.CREATE_ID = #{userId}
+		ORDER BY OCISH.CREATE_DT DESC limit 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 업무별 승인내역 이력 목록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.24		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 쿠폰 승인내역 이력 목록
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalHistoryCoupon" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		/*	approvalAuth.getApprovalHistoryCoupon	*/
+		SELECT
+			PCSH.PM_COUPON_STATUS_HISTORY_ID AS STATUS_HISTORY_ID, PCSH.PM_COUPON_ID AS TASK_PK
+			, PCSH.PREV_COUPON_MASTER_STAT AS PREV_MASTER_STAT
+			, PCSH.PREV_APPR_STAT, FN_COMN_CODE_DIC(PCSH.PREV_APPR_STAT) AS PREV_APPR_STAT_NAME
+			, PCSH.COUPON_MASTER_STAT AS MASTER_STAT
+			, PCSH.APPR_STAT, FN_COMN_CODE_DIC(PCSH.APPR_STAT) AS APPR_STAT_NAME
+			, STATUS_CMNT AS STATUS_COMMENT
+			, PCSH.CREATE_DT AS CREATE_DATE
+			, CUU.LOGIN_ID AS CREATE_LOGIN_ID, FN_DECRYPT(CUU.USER_NM) AS CREATE_NAME
+			, REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+		FROM PM_COUPON_STATUS_HISTORY PCSH
+		LEFT OUTER JOIN UR_USER CUU
+			ON PCSH.CREATE_ID = CUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER REQUU
+			ON PCSH.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE PCSH.PM_COUPON_ID = #{pmCouponId}
+		ORDER BY PCSH.CREATE_DT DESC
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 적립금 승인내역 이력 목록
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalHistoryPoint" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		/*	approvalAuth.getApprovalHistoryPoint	*/
+		SELECT
+			PPSH.PM_POINT_STATUS_HISTORY_ID AS STATUS_HISTORY_ID, PPSH.PM_POINT_ID AS TASK_PK
+			, PPSH.PREV_POINT_MASTER_STAT AS PREV_MASTER_STAT
+			, PPSH.PREV_APPR_STAT, FN_COMN_CODE_DIC(PPSH.PREV_APPR_STAT) AS PREV_APPR_STAT_NAME
+			, PPSH.POINT_MASTER_STAT AS MASTER_STAT
+			, PPSH.APPR_STAT, FN_COMN_CODE_DIC(PPSH.APPR_STAT) AS APPR_STAT_NAME
+			, STATUS_CMNT AS STATUS_COMMENT
+			, PPSH.CREATE_DT AS CREATE_DATE
+			, CUU.LOGIN_ID AS CREATE_LOGIN_ID, FN_DECRYPT(CUU.USER_NM) AS CREATE_NAME
+			, REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+		FROM PM_POINT_STATUS_HISTORY PPSH
+		LEFT OUTER JOIN UR_USER CUU
+			ON PPSH.CREATE_ID = CUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER REQUU
+			ON PPSH.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE PPSH.PM_POINT_ID = #{pmPointId}
+		ORDER BY PPSH.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 기획전[골라담기(균일가), 증정행사] 직전 승인관리자 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalHistoryExhibit" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		/*	approvalAuth.getApprovalHistoryExhibit	*/
+		SELECT
+			EESH.EV_EXHIBIT_STATUS_HISTORY_ID AS STATUS_HISTORY_ID
+			 , EESH.EV_EXHIBIT_ID AS TASK_PK
+			 , EESH.PREV_EXHIBIT_STAT AS PREV_MASTER_STAT
+			 , EESH.PREV_APPR_STAT
+			 , FN_COMN_CODE_DIC(EESH.PREV_APPR_STAT) AS PREV_APPR_STAT_NAME
+			 , EESH.EXHIBIT_STAT AS MASTER_STAT
+			 , EESH.APPR_STAT
+			 , FN_COMN_CODE_DIC(EESH.APPR_STAT) AS APPR_STAT_NAME
+			 , STATUS_CMNT AS STATUS_COMMENT
+			 , EESH.CREATE_DT AS CREATE_DATE
+			 , CUU.LOGIN_ID AS CREATE_LOGIN_ID, FN_DECRYPT(CUU.USER_NM) AS CREATE_NAME
+			 , REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+		FROM EV_EXHIBIT_STATUS_HISTORY EESH
+				 INNER JOIN EV_EXHIBIT EE
+							ON EESH.EV_EXHIBIT_ID  = EE.EV_EXHIBIT_ID
+				 LEFT OUTER JOIN UR_USER CUU
+								 ON EESH.CREATE_ID = CUU.UR_USER_ID
+				 LEFT OUTER JOIN UR_USER REQUU
+								 ON EE.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE EESH.EV_EXHIBIT_ID = #{taskPk}
+		AND EE.EXHIBIT_TP = #{exhibitTp}
+		ORDER BY EESH.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 등록/수정 직전 승인 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalHistoryGoods" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		/*	approvalAuth.getApprovalHistoryGoods	*/
+		SELECT
+			IGASH.IL_GOODS_APPR_STATUS_HISTORY_ID AS STATUS_HISTORY_ID
+			 , IGASH.IL_GOODS_APPR_ID AS TASK_PK
+			 , IGASH.PREV_APPR_STAT AS PREV_MASTER_STAT
+			 , IGASH.PREV_APPR_STAT
+			 , FN_COMN_CODE_DIC(IGASH.PREV_APPR_STAT) AS PREV_APPR_STAT_NAME
+			 , IGASH.APPR_STAT AS MASTER_STAT
+			 , IGASH.APPR_STAT
+			 , FN_COMN_CODE_DIC(IGASH.APPR_STAT) AS APPR_STAT_NAME
+			 , STATUS_CMNT AS STATUS_COMMENT
+			 , IGASH.CREATE_DT AS CREATE_DATE
+			 , CUU.LOGIN_ID AS CREATE_LOGIN_ID, FN_DECRYPT(CUU.USER_NM) AS CREATE_NAME
+			 , REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+		FROM IL_GOODS_APPR_STATUS_HISTORY IGASH
+				 INNER JOIN IL_GOODS_APPR IGA
+							ON IGASH.IL_GOODS_APPR_ID = IGA.IL_GOODS_APPR_ID
+				 LEFT OUTER JOIN UR_USER CUU
+								 ON IGASH.CREATE_ID = CUU.UR_USER_ID
+				 LEFT OUTER JOIN UR_USER REQUU
+								 ON IGA.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE IGA.APPR_KIND_TP = #{apprKindTp}
+		AND IGA.IL_GOODS_APPR_ID = #{ilGoodsApprId}
+		ORDER BY IGASH.CREATE_DT DESC;
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목 등록/수정 직전 승인 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalHistoryItem" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		/*	approvalAuth.getApprovalHistoryItem	*/
+		SELECT
+			IIASH.IL_ITEM_APPR_STATUS_HISTORY_ID AS STATUS_HISTORY_ID
+			 , IIASH.IL_ITEM_APPR_ID AS TASK_PK
+			 , IIA.APPR_KIND_TP
+			 , IIASH.PREV_APPR_STAT AS PREV_MASTER_STAT
+			 , IIASH.PREV_APPR_STAT
+			 , FN_COMN_CODE_DIC(IIASH.PREV_APPR_STAT) AS PREV_APPR_STAT_NAME
+			 , IIASH.APPR_STAT AS MASTER_STAT
+			 , IIASH.APPR_STAT
+			 , FN_COMN_CODE_DIC(IIASH.APPR_STAT) AS APPR_STAT_NAME
+			 , STATUS_CMNT AS STATUS_COMMENT
+			 , IIASH.CREATE_DT AS CREATE_DATE
+			 , CUU.LOGIN_ID AS CREATE_LOGIN_ID, FN_DECRYPT(CUU.USER_NM) AS CREATE_NAME
+			 , REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+		FROM IL_ITEM_APPR_STATUS_HISTORY IIASH
+				 INNER JOIN IL_ITEM_APPR IIA
+							ON IIASH.IL_ITEM_APPR_ID = IIA.IL_ITEM_APPR_ID
+				 LEFT OUTER JOIN UR_USER CUU
+								 ON IIASH.CREATE_ID = CUU.UR_USER_ID
+				 LEFT OUTER JOIN UR_USER REQUU
+								 ON IIA.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE IIA.APPR_KIND_TP = #{apprKindTp}
+		AND IIASH.IL_ITEM_APPR_ID = #{ilItemApprId}
+		ORDER BY IIASH.CREATE_DT DESC;
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목 가격 직전 승인 이력 정보
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalHistoryItemPrice" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		/*	approvalAuth.getApprovalHistoryItem	*/
+		SELECT
+			IIPASH.IL_ITEM_PRICE_APPR_STATUS_HISTORY_ID AS STATUS_HISTORY_ID
+			 , IIPASH.IL_ITEM_PRICE_APPR_ID AS TASK_PK
+			 , IIPASH.PREV_APPR_STAT AS PREV_MASTER_STAT
+			 , IIPASH.PREV_APPR_STAT
+			 , FN_COMN_CODE_DIC(IIPASH.PREV_APPR_STAT) AS PREV_APPR_STAT_NAME
+			 , IIPASH.APPR_STAT AS MASTER_STAT
+			 , IIPASH.APPR_STAT
+			 , FN_COMN_CODE_DIC(IIPASH.APPR_STAT) AS APPR_STAT_NAME
+			 , STATUS_CMNT AS STATUS_COMMENT
+			 , IIPASH.CREATE_DT AS CREATE_DATE
+			 , CUU.LOGIN_ID AS CREATE_LOGIN_ID, FN_DECRYPT(CUU.USER_NM) AS CREATE_NAME
+			 , REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+		FROM IL_ITEM_PRICE_APPR_STATUS_HISTORY IIPASH
+				 INNER JOIN IL_ITEM_PRICE_APPR IIPA
+							ON IIPASH.IL_ITEM_PRICE_APPR_ID = IIPA.IL_ITEM_PRICE_APPR_ID
+				 LEFT OUTER JOIN UR_USER CUU
+								 ON IIPASH.CREATE_ID = CUU.UR_USER_ID
+				 LEFT OUTER JOIN UR_USER REQUU
+								 ON IIPA.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		AND IIPASH.IL_ITEM_PRICE_APPR_ID = #{ilItemPriceApprId}
+		ORDER BY IIPASH.CREATE_DT DESC;
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목 상품 등록 거래처 관련 중복 승인 정보 조회
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemApprItemCode" resultType="String">
+		/*	approvalAuth.getItemApprItemCode	*/
+		SELECT
+			IIA.IL_ITEM_CD
+		FROM
+			IL_ITEM_APPR IIA
+		AND IIA.IL_ITEM_APPR_ID = #{taskPk}
+	</select>
+
+	<select id="getGoodsApprItemCode" resultType="String">
+		/*	approvalAuth.getGoodsApprItemCode	*/
+		SELECT
+			IG.IL_ITEM_CD
+		FROM
+			IL_GOODS_APPR IGA
+		INNER JOIN IL_GOODS IG
+			ON IG.IL_GOODS_ID = IGA.IL_GOODS_ID
+		WHERE
+		    IGA.IL_GOODS_APPR_ID = #{taskPk}
+	</select>
+
+	<select id="getItemPriceApprItemCode" resultType="String">
+		/*	approvalAuth.getItemPriceApprItemCode	*/
+		SELECT
+			IIPA.IL_ITEM_CD
+		FROM
+			IL_ITEM_PRICE_APPR IIPA
+		AND IIPA.IL_ITEM_APPR_ID = #{taskPk}
+	</select>
+
+	<select id="getGoodsDiscountApprItemCode" resultType="String">
+		/*	approvalAuth.getGoodsDiscountApprItemCode	*/
+		SELECT
+			IG.IL_ITEM_CD
+		FROM
+			IL_GOODS_DISCOUNT_APPR IGDA
+		INNER JOIN IL_GOODS IG
+		ON IGDA.IL_GOODS_ID = IG.IL_GOODS_ID
+		AND IGDA.IL_GOODS_DISCOUNT_APPR_ID = #{taskPk}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목 상품 등록 거래처 관련 중복 승인 정보 조회
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateApprovalRegist" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalDuplicateRequestVo">
+		/*	approvalAuth.getDuplicateApprovalRequest	*/
+		SELECT
+			IIA.IL_ITEM_APPR_ID AS APPR_ID
+			, IIA.APPR_KIND_TP AS APPR_KIND_TP
+			, IIA.APPR_STAT AS APPR_STAT
+		FROM
+			IL_ITEM_APPR IIA
+		WHERE
+			IIA.IL_ITEM_CD = #{ilItemCode}
+			AND IIA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+		UNION ALL
+		SELECT
+			IGA.IL_GOODS_APPR_ID AS APPR_ID
+			, IGA.APPR_KIND_TP AS APPR_KIND_TP
+			, IGA.APPR_STAT AS APPR_STAT
+		FROM
+			IL_GOODS_APPR IGA
+		INNER JOIN IL_GOODS IG
+			ON IG.IL_GOODS_ID = IGA.IL_GOODS_ID
+		WHERE
+			IG.IL_ITEM_CD = #{ilItemCode}
+			AND IGA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 품목 상품 가격 할인 관련 중복 승인 정보 조회
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateApprovalPrice" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalDuplicateRequestVo">
+		/*	approvalAuth.getDuplicateApprovalPrice	*/
+		SELECT
+			IIPA.IL_ITEM_PRICE_APPR_ID AS APPR_ID
+			, "APPR_KIND_TP.ITEM_PRICE" AS APPR_KIND_TP
+			, IIPA.APPR_STAT AS APPR_STAT
+		FROM
+			IL_ITEM_PRICE_APPR IIPA
+		WHERE
+			IIPA.IL_ITEM_CD = #{ilItemCode}
+			AND IIPA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+			AND IIPA.APPR_DISPOSAL_YN = 'N'
+		UNION ALL
+		SELECT
+			IGDA.IL_GOODS_DISCOUNT_APPR_ID AS APPR_ID
+			, "APPR_KIND_TP.GOODS_DISCOUNT" AS APPR_KIND_TP
+			, IGDA.APPR_STAT AS APPR_STAT
+		FROM
+			IL_GOODS_DISCOUNT_APPR IGDA
+		INNER JOIN IL_GOODS IG
+			ON IG.IL_GOODS_ID = IGDA.IL_GOODS_ID
+		WHERE
+			IG.IL_ITEM_CD = #{ilItemCode}
+			AND IGDA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+			AND IGDA.APPR_DISPOSAL_YN = 'N'
+	</select>
+
+</mapper>

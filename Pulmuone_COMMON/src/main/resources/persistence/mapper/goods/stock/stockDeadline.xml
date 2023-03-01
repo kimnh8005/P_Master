@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.GoodsStockDeadlineMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한관리 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.10		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<!-- 재고 기한관리 검색 조건 공통 -->
+	<sql id="searchStockDeadlineList">
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+				AND ISD.UR_SUPPLIER_ID = #{searchUrSupplierId}				/* 공급처 PK */
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+				AND ISD.UR_WAREHOUSE_ID = #{searchUrWarehouseId}			/* 출고처 PK */
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDistributionPeriod)">
+				AND ISD.DISTRIBUTION_PERIOD = #{searchDistributionPeriod}	/* 유통기간 */
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDistributionPeriodStart) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDistributionPeriodEnd)">
+				AND ISD.DISTRIBUTION_PERIOD BETWEEN #{searchDistributionPeriodStart} AND #{searchDistributionPeriodEnd} 	/* 유통기간 */
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchImminent)">
+				<choose>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchImminentBelow, 'BELOW')">
+	                    AND ISD.IMMINENT <![CDATA[ <= ]]> #{searchImminent}		/* 임박기준(일)*/
+	                </when>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchImminentBelow, 'OVER')">
+	                    AND ISD.IMMINENT <![CDATA[ >= ]]> #{searchImminent}		/* 임박기준(일)*/
+	                </when>
+	            </choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDelivery)">
+				<choose>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDeliveryBelow, 'BELOW')">
+	                    AND ISD.DELIVERY <![CDATA[ <= ]]> #{searchDelivery}		/* 출고기준(일)*/
+	                </when>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDeliveryBelow, 'OVER')">
+	                    AND ISD.DELIVERY <![CDATA[ >= ]]> #{searchDelivery}		/* 출고기준(일)*/
+	                </when>
+	            </choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchTargetStockRatio)">
+				<choose>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTargetStockRatioBelow, 'BELOW')">
+	                    AND ISD.TARGET_STOCK_RATIO <![CDATA[ <= ]]> #{searchTargetStockRatio}		/* 목표재고(%)*/
+	                </when>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTargetStockRatioBelow, 'OVER')">
+	                    AND ISD.TARGET_STOCK_RATIO <![CDATA[ >= ]]> #{searchTargetStockRatio}		/* 목표재고(%)*/
+	                </when>
+	                <otherwise>
+	                    AND ISD.TARGET_STOCK_RATIO = #{searchTargetStockRatio}		/* 목표재고(%)*/
+	                </otherwise>
+	            </choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDate)">
+				<choose>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'imminent')">
+	                    AND ISD.IMMINENT = #{searchDate}		/* 임박기준(일)*/
+	                </when>
+	                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'delivery')">
+	                    AND ISD.DELIVERY = #{searchDate}		/* 출고기준(일)*/
+	                </when>
+	            </choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+				AND ISD.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(basicYn)">
+				AND ISD.BASIC_YN = #{basicYn}
+			</if>
+		</where>
+	</sql>
+
+
+	<!-- 재고 기한관리 목록 총 갯수 -->
+    <select id="getStockDeadlineListCount" resultType="int">
+        /* stockDeadline.getStockDeadlineListCount */
+        SELECT
+        		COUNT(1)
+        FROM 	IL_STOCK_DEADLINE ISD
+        <include refid="searchStockDeadlineList" />
+    </select>
+
+	<!-- 재고 기한관리 목록 조회 -->
+	<select id="getStockDeadlineList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockDeadlineResultVo">
+	 	/* stockDeadline.getStockDeadlineList */
+		SELECT  (@rownum := @rownum + 1) AS NO /* 순번 */
+	        	,A.*
+	    FROM (
+			SELECT   ISD.IL_STOCK_DEADLINE_ID		 /* SEQ */
+					,ISD.UR_SUPPLIER_ID				 /* 공급처 PK */
+					,ISD.UR_WAREHOUSE_ID			 /* 출고처 PK */
+					,ISD.DISTRIBUTION_PERIOD		 /* 유통기간 */
+					,ISD.IMMINENT					 /* 임박기준(일) */
+					,ISD.DELIVERY					 /* 출고기준(일) */
+					,CONCAT(ROUND((ISD.IMMINENT/ISD.DISTRIBUTION_PERIOD)*100),'%') AS IMMINENT_PER /* 임박기준% */
+					,CONCAT(ROUND((ISD.DELIVERY/ISD.DISTRIBUTION_PERIOD)*100),'%') AS DELIVERY_PER /* 출고기준% */
+					,ISD.TARGET_STOCK_RATIO			 /* 목표재고(%) */
+					,ISD.BASIC_YN                    /* 기본설정 */
+					,UC.COMP_NM  AS COMP_NAME		 /* 공급처 명 */
+					,IFNULL(UW.WAREHOUSE_NM,'-') WAREHOUSE_NAME	/* 출고처 명 */
+					/*,ISD.CREATE_ID
+					,ISD.CREATE_DT
+					,ISD.MODIFY_ID
+					,ISD.MODIFY_DT*/
+	        FROM IL_STOCK_DEADLINE ISD
+	      	LEFT JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = ISD.UR_SUPPLIER_ID
+			LEFT JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+			/* LEFT JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = ISD.UR_WAREHOUSE_ID	 출고처정보 받기위함 -> 공급처별 출고자 연결 제외 처리 20201113*/
+			LEFT JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = ISD.UR_WAREHOUSE_ID
+	        <include refid="searchStockDeadlineList" />
+	        ORDER BY ISD.DISTRIBUTION_PERIOD ASC
+		) A
+		INNER JOIN (SELECT @rownum := 0) R
+		ORDER BY NO DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한관리 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<select id="getStockDeadline" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockDeadlineResultVo">
+	 	/* stockDeadline.getStockDeadline */
+		SELECT   ISD.IL_STOCK_DEADLINE_ID		 /* SEQ */
+				,ISD.UR_SUPPLIER_ID				 /* 공급처 PK */
+				,ISD.UR_WAREHOUSE_ID			 /* 출고처 PK */
+				,ISD.DISTRIBUTION_PERIOD		 /* 유통기간 */
+				,ISD.IMMINENT					 /* 임박기준(일) */
+				,ISD.DELIVERY					 /* 출고기준(일) */
+				,ISD.TARGET_STOCK_RATIO			 /* 목표재고(%) */
+				,ISD.BASIC_YN AS POP_BASIC_YN    /* 기본설정 */
+				,ISD.CREATE_ID					 /* 등록자 */
+				,ISD.CREATE_DT AS CREATE_DATE	 /* 등록일 */
+				,ISD.MODIFY_ID					 /* 수정자 */
+				,ISD.MODIFY_DT AS MODIFY_DATE	 /* 등록일 */
+				,UC.COMP_NM  AS COMP_NAME		 /* 공급처 명 */
+				,IFNULL(UW.WAREHOUSE_NM,'-') WAREHOUSE_NAME	/* 출고처 명 */
+        FROM IL_STOCK_DEADLINE ISD
+        LEFT JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = ISD.UR_SUPPLIER_ID
+		LEFT JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+		/*LEFT JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = ISD.UR_WAREHOUSE_ID		 출고처정보 받기위함 -> 공급처별 출고자 연결 제외 처리 20201113*/
+		LEFT JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = ISD.UR_WAREHOUSE_ID
+      	WHERE
+      			IL_STOCK_DEADLINE_ID = #{ilStockDeadlineId}
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한관리 체크 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.13		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<select id="getStockDeadlineForCheck" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockDeadlineResultVo">
+	 	/* stockDeadline.getStockDeadlineForCheck */
+		SELECT
+				 ISD.IL_STOCK_DEADLINE_ID		 /* SEQ */
+				,ISD.UR_SUPPLIER_ID				 /* 공급처 PK */
+				,ISD.UR_WAREHOUSE_ID			 /* 출고처 PK */
+				,ISD.DISTRIBUTION_PERIOD		 /* 유통기간 */
+				,ISD.IMMINENT					 /* 임박기준(일) */
+				,ISD.DELIVERY					 /* 출고기준(일) */
+				,ISD.TARGET_STOCK_RATIO			 /* 목표재고(%) */
+				,ISD.CREATE_ID					 /* 등록자 */
+				,ISD.CREATE_DT AS CREATE_DATE	 /* 등록일 */
+				,ISD.MODIFY_ID					 /* 수정자 */
+				,ISD.MODIFY_DT AS MODIFY_DATE	 /* 등록일 */
+        FROM IL_STOCK_DEADLINE ISD
+      	WHERE
+      			UR_SUPPLIER_ID	=	#{urSupplierId}
+      		AND UR_WAREHOUSE_ID	=	#{urWarehouseId}
+      		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(distributionPeriod)">
+      		AND DISTRIBUTION_PERIOD	=	#{distributionPeriod}
+      		</if>
+      		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(distributionPeriodStart) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(distributionPeriodEnd) ">
+      		AND DISTRIBUTION_PERIOD	BETWEEN #{distributionPeriodStart} AND #{distributionPeriodEnd}
+      		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 유통기간에 의한 재고 기한관리 수량 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.14		원종한          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<select id="getStockDeadlineCheckCountByPeriod" resultType="HashMap">
+	 	/* stockDeadline.getStockDeadlineCheckCountByPeriod */
+		SELECT
+            IFNULL(SUM(1), 0) AS totalCount
+            , IFNULL(SUM(IF(BASIC_YN = 'Y', 1, 0)), 0) AS totalYesCount
+        FROM IL_STOCK_DEADLINE ISD
+      	WHERE
+      			UR_SUPPLIER_ID	=	#{urSupplierId}
+      		AND UR_WAREHOUSE_ID	=	#{urWarehouseId}
+       <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(distributionPeriod)">
+      		     AND DISTRIBUTION_PERIOD	=	#{distributionPeriod}
+            </when>
+            <otherwise>
+      		     AND 1 = 2
+            </otherwise>
+       </choose>
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한관리 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<insert id="addStockDeadline">
+		/* stockDeadline.addStockDeadline */
+		INSERT INTO
+	    IL_STOCK_DEADLINE (
+			 UR_SUPPLIER_ID
+			,UR_WAREHOUSE_ID
+			,DISTRIBUTION_PERIOD
+			,IMMINENT
+			,DELIVERY
+			,TARGET_STOCK_RATIO
+			,BASIC_YN
+			,CREATE_ID
+			,CREATE_DT
+	   )
+	   VALUES (
+	     	 #{urSupplierId}
+			,#{urWarehouseId}
+			,#{distributionPeriod}
+			,#{imminent}
+			,#{delivery}
+			,#{targetStockRatio}
+			,#{popBasicYn}
+			,#{createId}
+			,NOW()
+	   )
+	   	<selectKey resultType="int" keyProperty="ilStockDeadlineId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한 히스토리 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<insert id="addStockDeadlineHist">
+		/* stockDeadline.addStockDeadlineHist */
+		INSERT INTO
+	    IL_STOCK_DEADLINE_HIST (
+	    	 HIST_TP
+			,IL_STOCK_DEADLINE_ID
+		    ,UR_SUPPLIER_ID
+			,UR_WAREHOUSE_ID
+			,DISTRIBUTION_PERIOD
+			,IMMINENT
+			,DELIVERY
+			,TARGET_STOCK_RATIO
+			,BASIC_YN
+			,ORIG_CREATE_ID
+			,ORIG_CREATE_DT
+			,ORIG_MODIFY_ID
+			,ORIG_MODIFY_DT
+			,CREATE_ID
+			,CREATE_DT
+	   )
+	   VALUES (
+	   		 #{histTp}
+	     	,#{ilStockDeadlineId}
+	     	,#{urSupplierId}
+			,#{urWarehouseId}
+			,#{distributionPeriod}
+			,#{imminent}
+			,#{delivery}
+			,#{targetStockRatio}
+			,#{basicYn}
+			,#{origCreateId}
+			,#{origCreateDate}
+			,#{origModifyId}
+			,#{origModifyDate}
+			,#{createId}
+			,NOW()
+	   )
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한관리 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.13		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<update id="putStockDeadline">
+		/* stockDeadline.putStockDeadline */
+		UPDATE IL_STOCK_DEADLINE
+		SET
+			 IMMINENT			=	#{imminent}
+			,DELIVERY			=	#{delivery}
+			,TARGET_STOCK_RATIO	=	#{targetStockRatio}
+			,BASIC_YN           =   #{popBasicYn}
+			,MODIFY_ID			=	#{modifyId}
+			,MODIFY_DT			=	NOW()
+		WHERE
+			 	IL_STOCK_DEADLINE_ID	=	#{ilStockDeadlineId}
+      	<selectKey resultType="kr.co.pulmuone.v1.goods.stock.dto.StockDeadlineRequestDto" keyProperty="ilStockDeadlineId,origCreateId,origCreateDate,origModifyId,origModifyDate" order="AFTER">
+	        SELECT
+	        		 IL_STOCK_DEADLINE_ID
+	        		,CREATE_ID AS ORIG_CREATE_ID
+	        		,CREATE_DT AS ORIG_CREATE_DATE
+	        		,MODIFY_ID AS ORIG_MODIFY_ID
+	        		,MODIFY_DT AS ORIG_MODIFY_DATE
+
+	        FROM   IL_STOCK_DEADLINE
+	        WHERE
+			 	IL_STOCK_DEADLINE_ID	=	#{ilStockDeadlineId}
+	    </selectKey>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한관리 기본설정 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.28		이성준          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<update id="putStockDeadlineBasicYn">
+		/* stockDeadline.putStockDeadlineBasicYn */
+		UPDATE IL_STOCK_DEADLINE
+		SET
+			 BASIC_YN           =   'N'
+			,MODIFY_ID			=	#{modifyId}
+			,MODIFY_DT			=	NOW()
+		WHERE
+			 	UR_SUPPLIER_ID	=	#{urSupplierId}
+			AND	UR_WAREHOUSE_ID =	#{urWarehouseId}
+      		AND DISTRIBUTION_PERIOD	=	#{distributionPeriod}
+      		AND BASIC_YN	=	'Y'
+	</update>
+
+    <!-- 재고 기한관리 기본설정 Y인 건수 -->
+    <select id="getStockDeadlineBasicYnCount" resultType="int">
+        /* stockDeadline.getStockDeadlineBasicYnCount */
+        SELECT COUNT(1)
+          FROM IL_STOCK_DEADLINE
+		 WHERE
+			   UR_SUPPLIER_ID  = #{urSupplierId}
+		   AND UR_WAREHOUSE_ID = #{urWarehouseId}
+		   AND BASIC_YN        = 'Y'
+    </select>
+
+    <!-- 재고 기한관리 기본설정 Y값 체크 -->
+    <select id="getStockDeadlineBasicYnCheck" resultType="String">
+        /* stockDeadline.getStockDeadlineBasicYnCheck */
+        SELECT BASIC_YN
+          FROM IL_STOCK_DEADLINE
+		 WHERE
+			   UR_SUPPLIER_ID      = #{urSupplierId}
+		   AND UR_WAREHOUSE_ID     = #{urWarehouseId}
+		   AND DISTRIBUTION_PERIOD = #{distributionPeriod}
+    </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재고 기한관리 이력 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.13		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<!-- 재고 기한관리 이력 목록 총 갯수 -->
+    <select id="getStockDeadlineHistListCount" resultType="int">
+        /* stockDeadline.getStockDeadlineHistListCount */
+        SELECT
+        		COUNT(1)
+        FROM 	IL_STOCK_DEADLINE_HIST ISD
+        <include refid="searchStockDeadlineList" />
+    </select>
+
+	<!-- 재고 기한관리 이력 목록 조회 -->
+	<select id="getStockDeadlineHistList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockDeadlineHistResultVo">
+	 	/* stockDeadline.getStockDeadlineHistList */
+		SELECT   (@rownum := @rownum + 1) AS NO /* 순번 */
+        		,ISD.IL_STOCK_DEADLINE_HIST_ID	 /* SEQ */
+        		,ISD.HIST_TP					 /* 타입 */
+				,ISD.DISTRIBUTION_PERIOD		 /* 유통기간 */
+				,ISD.IMMINENT					 /* 임박기준(일) */
+				,ISD.DELIVERY					 /* 출고기준(일) */
+				,ISD.TARGET_STOCK_RATIO			 /* 목표재고(%) */
+				,ISD.BASIC_YN                    /* 기본설정 */
+				,UC.COMP_NM  AS COMP_NAME		 /* 공급처 명 */
+				,IFNULL(UW.WAREHOUSE_NM,'-') WAREHOUSE_NAME	/* 출고처 명 */
+				,UU.LOGIN_ID AS LOGIN_ID
+				,ISD.CREATE_DT	AS CREATE_DATE	/* 등록일 */
+				,FN_DECRYPT(UU.USER_NM) CREATE_NAME /* 이름 (암호화) */
+        FROM IL_STOCK_DEADLINE_HIST ISD
+      	LEFT JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = ISD.UR_SUPPLIER_ID
+		LEFT JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+		/* LEFT JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = ISD.UR_WAREHOUSE_ID	 출고처정보 받기위함 -> 공급처별 출고자 연결 제외 처리 20201113*/
+		LEFT JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = ISD.UR_WAREHOUSE_ID
+		INNER JOIN UR_USER UU ON UU.UR_USER_ID = ISD.CREATE_ID
+		INNER JOIN (SELECT @rownum := 0) R
+        <include refid="searchStockDeadlineList" />
+         ORDER BY NO DESC
+	</select>
+
+</mapper>
+

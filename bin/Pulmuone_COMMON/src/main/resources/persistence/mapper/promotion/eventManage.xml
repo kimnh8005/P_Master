@@ -1,0 +1,3683 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.manage.EventManageMapper">
+
+
+
+  <!-- #################################################################### -->
+  <!-- 조회 - 이벤트 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.11   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.selectEventList*/
+      SELECT  T.EV_EVENT_ID
+            , T.EVENT_TP
+            , T.MALL_DIV
+            , T.USE_YN
+            , T.DEL_YN
+            , T.DISP_YN
+            , T.TITLE
+            , T.DESCRIPTION
+            , T.DISP_WEB_PC_YN
+            , T.DISP_WEB_MOBILE_YN
+            , T.DISP_APP_YN
+            , T.EV_EMPLOYEE_TP
+            , T.START_DT
+            , T.END_DT
+            , T.TIME_OVER_CLOSE_YN
+            , T.BNR_IMG_PATH_PC
+            , T.BNR_IMG_ORIGIN_NM_PC
+            , T.BNR_IMG_PATH_MO
+            , T.BNR_IMG_ORIGIN_NM_MO
+            , T.DETL_HTML_PC
+            , T.DETL_HTML_MO
+            , T.WINNER_NOTICE
+            , T.WINNER_INFOR
+            , T.WINNER_INFOR_DT
+            , T.EMPLOYEE_JOIN_YN
+            , T.EVENT_JOIN_TP
+            , T.EVENT_DRAW_TP
+            , T.CREATE_ID
+            , T.CREATE_DT
+            , T.MODIFY_ID
+            , T.MODIFY_DT
+            , T.STATUS_NM
+            , T.STATUS_SE
+            , T.USER_NM
+            , T.CREATE_LOGIN_ID
+            , T.MODIFY_NM
+            , T.MODIFY_LOGIN_ID
+            , T.EVENT_TP_NM
+            , T.MALL_DIV_NM
+            , T.DISP_WEB_PC_YN_NM
+            , T.DISP_WEB_MOBILE_YN_NM
+            , T.DISP_APP_YN_NM
+            , T.EV_EMPLOYEE_TP_NM
+            , T.EVENT_JOIN_TP_NM
+            , T.EVENT_DRAW_TP_NM
+      FROM    (
+              SELECT  E.EV_EVENT_ID
+                    , E.EVENT_TP
+                    , E.MALL_DIV
+                    , E.USE_YN
+                    , E.DEL_YN
+                    , E.DISP_YN
+                    , E.TITLE
+                    , E.DESCRIPTION
+                    , E.DISP_WEB_PC_YN
+                    , E.DISP_WEB_MOBILE_YN
+                    , E.DISP_APP_YN
+                    , E.EV_EMPLOYEE_TP
+                    , E.START_DT
+                    , E.END_DT
+                    , E.TIME_OVER_CLOSE_YN
+                    , E.BNR_IMG_PATH_PC
+                    , E.BNR_IMG_ORIGIN_NM_PC
+                    , E.BNR_IMG_PATH_MO
+                    , E.BNR_IMG_ORIGIN_NM_MO
+                    , E.DETL_HTML_PC
+                    , E.DETL_HTML_MO
+                    , E.WINNER_NOTICE
+                    , E.WINNER_INFOR
+                    , E.WINNER_INFOR_DT
+                    , E.EMPLOYEE_JOIN_YN
+                    , E.EVENT_JOIN_TP
+                    , E.EVENT_DRAW_TP
+                    , E.CREATE_ID
+                    , E.CREATE_DT
+                    , E.MODIFY_ID
+                    , E.MODIFY_DT
+                    , CASE WHEN E.EVENT_TP = 'EVENT_TP.EXPERIENCE'
+                           THEN CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                     WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                     WHEN (EE.SELECT_START_DT <![CDATA[<=]]> NOW() AND EE.SELECT_END_DT <![CDATA[>=]]> NOW()) THEN '당첨자선정'
+                                     WHEN (EE.FEEDBACK_START_DT <![CDATA[<=]]> NOW() AND EE.FEEDBACK_END_DT <![CDATA[>=]]> NOW()) THEN '후기작성'
+                                     WHEN EE.FEEDBACK_END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                     ELSE ''
+                                END
+                           ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                     WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                     WHEN E.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                     ELSE ''
+                                END
+                      END                                 AS STATUS_NM
+                    , CASE WHEN E.EVENT_TP = 'EVENT_TP.EXPERIENCE'
+                           THEN CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                     WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                     WHEN (EE.SELECT_START_DT <![CDATA[<=]]> NOW() AND EE.SELECT_END_DT <![CDATA[>=]]> NOW()) THEN 'SEL'
+                                     WHEN (EE.FEEDBACK_START_DT <![CDATA[<=]]> NOW() AND EE.FEEDBACK_END_DT <![CDATA[>=]]> NOW()) THEN 'FED'
+                                     WHEN EE.FEEDBACK_END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                     ELSE ''
+                                END
+                           ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                     WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                     WHEN E.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                     ELSE ''
+                                END
+                      END                                 AS STATUS_SE
+                    , IFNULL(FN_DECRYPT(U.USER_NM) , '')  AS USER_NM
+                    , IFNULL(U.LOGIN_ID, '')              AS CREATE_LOGIN_ID
+                    , IFNULL(FN_DECRYPT(U2.USER_NM), '')  AS MODIFY_NM
+                    , IFNULL(U2.LOGIN_ID, '')             AS MODIFY_LOGIN_ID
+                    , IFNULL(C1.NAME, '')                 AS EVENT_TP_NM
+                    , IFNULL(C2.NAME, '')                 AS MALL_DIV_NM
+                    , CASE WHEN E.DISP_WEB_PC_YN = 'Y'     THEN C31.NAME ELSE '' END AS DISP_WEB_PC_YN_NM
+                    , CASE WHEN E.DISP_WEB_MOBILE_YN = 'Y' THEN C32.NAME ELSE '' END AS DISP_WEB_MOBILE_YN_NM
+                    , CASE WHEN E.DISP_APP_YN = 'Y'        THEN C33.NAME ELSE '' END AS DISP_APP_YN_NM
+                    , IFNULL(C4.NAME, '')                 AS EV_EMPLOYEE_TP_NM
+                    , IFNULL(C6.NAME, '')                 AS EVENT_JOIN_TP_NM
+                    , IFNULL(C7.NAME, '')                 AS EVENT_DRAW_TP_NM
+              FROM    EV_EVENT E
+                          LEFT OUTER  JOIN  EV_EVENT_EXPERIENCE EE
+                                      ON    EE.EV_EVENT_ID = E.EV_EVENT_ID
+                          LEFT OUTER  JOIN  UR_USER U
+                                      ON    U.UR_USER_ID = E.CREATE_ID
+                          LEFT OUTER  JOIN  UR_USER U2
+                                      ON    U2.UR_USER_ID = E.MODIFY_ID
+                          LEFT OUTER  JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C1
+                                      ON    C1.CODE  = E.EVENT_TP
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'MALL_DIV'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C2
+                                      ON    C2.CODE  = E.MALL_DIV
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C31
+                                      ON    C31.CODE  = 'GOODS_DISPLAY_TYPE.WEB_PC'
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C32
+                                      ON    C32.CODE  = 'GOODS_DISPLAY_TYPE.WEB_MOBILE'
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C33
+                                      ON    C33.CODE  = 'GOODS_DISPLAY_TYPE.APP'
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EV_EMPLOYEE_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C4
+                                      ON    C4.CODE  = E.EV_EMPLOYEE_TP
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_JOIN_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C6
+                                      ON    C6.CODE  = E.EVENT_JOIN_TP
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_DRAW_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C7
+                                      ON    C7.CODE  = E.EVENT_DRAW_TP
+            <where>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEventId)'>
+                AND   E.EV_EVENT_ID = #{evEventId}
+              </if>
+                AND   E.TITLE LIKE CONCAT('%', IFNULL(#{title}, ''), '%')
+          <!-- 체험단이벤트의 경우 eventTpList.add(EVENT_TP.EXPERIENCE) 필수 Set -->
+          <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(eventTpList)'>
+              <if test='eventTpList.size() > 0'>
+                AND   E.EVENT_TP IN <foreach collection="eventTpList" item="eventTp" index="index" separator="," open="(" close=")">
+                                      #{eventTp}
+                                    </foreach>
+              </if>
+            </when>
+            <otherwise>
+                AND   E.EVENT_TP != 'EVENT_TP.EXPERIENCE'
+            </otherwise>
+          </choose>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDivList) and mallDivList.size() > 0'>
+                AND   E.MALL_DIV IN <foreach collection="mallDivList" item="mallDiv" index="index" separator="," open="(" close=")">
+                                      #{mallDiv}
+                                    </foreach>
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)'>
+                AND   E.USE_YN = #{useYn}
+              </if>
+                AND   E.DEL_YN = 'N'
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dispYn)'>
+                AND   E.DISP_YN = #{dispYn}
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDisplayTypeList) and goodsDisplayTypeList.size() > 0'>
+                AND   (
+                  <foreach collection="goodsDisplayTypeList" item="goodsDisplayType" index="index" separator=" OR " open="" close="">
+                    <choose>
+                      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsDisplayType, "GOODS_DISPLAY_TYPE.WEB_PC")'>
+                        E.DISP_WEB_PC_YN = 'Y'
+                      </when>
+                      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsDisplayType, "GOODS_DISPLAY_TYPE.WEB_MOBILE")'>
+                        E.DISP_WEB_MOBILE_YN = 'Y'
+                      </when>
+                      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsDisplayType, "GOODS_DISPLAY_TYPE.APP")'>
+                        E.DISP_APP_YN = 'Y'
+                      </when>
+                    </choose>
+                  </foreach>
+                      )
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEmployeeTpList) and evEmployeeTpList.size() > 0'>
+                AND   E.EV_EMPLOYEE_TP  IN  <foreach collection="evEmployeeTpList" item="evEmployeeTp" index="index" separator="," open="(" close=")">
+                                              #{evEmployeeTp}
+                                            </foreach>
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userGroupIdList) and userGroupIdList.size() > 0'>
+                AND   E.EV_EVENT_ID IN  (
+                                        SELECT  EV_EVENT_ID
+                                        FROM    EV_EVENT_USER_GROUP EUG
+                                        WHERE   UR_GROUP_ID IN  <foreach collection="userGroupIdList" item="userGroupId" index="index" separator="," open="(" close=")">
+                                                                  #{userGroupId}
+                                                                </foreach>
+                                        GROUP BY EV_EVENT_ID
+                                        )
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startBeginDt)'>
+                AND   E.START_DT <![CDATA[>=]]> STR_TO_DATE(#{startBeginDt}, '%Y%m%d%H%i%s')
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startFinishDt)'>
+                AND   E.START_DT <![CDATA[<=]]> STR_TO_DATE(#{startFinishDt}, '%Y%m%d%H%i%s')
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endBeginDt)'>
+                AND   E.START_DT <![CDATA[>=]]> STR_TO_DATE(#{endBeginDt}, '%Y%m%d%H%i%s')
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endFinishDt)'>
+                AND   E.START_DT <![CDATA[<=]]> STR_TO_DATE(#{endFinishDt}, '%Y%m%d%H%i%s')
+              </if>
+             </where>
+              ) T
+      <where>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusSeList) and statusSeList.size() > 0'>
+        AND    T.STATUS_SE IN <foreach collection="statusSeList" item="statusSe" index="index" separator="," open="(" close=")">
+                                #{statusSe}
+                              </foreach>
+        </if>
+      </where>
+      ORDER BY T.CREATE_DT DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 접근권한정보 리스트조회 (리스트용)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventUserGroupListForList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EvUserGroupVo">
+      /*eventManage.selectEventUserGroupListForList*/
+      SELECT  EUG.UR_GROUP_ID
+            , UGM.GROUP_MASTER_NM AS GROUP_MASTER_NAME
+            , UG.GROUP_NM         AS GROUP_NAME
+      FROM    EV_EVENT_USER_GROUP EUG
+            , UR_GROUP UG
+            , UR_GROUP_MASTER UGM
+      WHERE   EUG.EV_EVENT_ID         = #{evEventId}
+        AND   UG.UR_GROUP_ID          = EUG.UR_GROUP_ID
+        AND   UGM.UR_GROUP_MASTER_ID  = UG.UR_GROUP_MASTER_ID
+      ORDER BY CAST(UG.UR_GROUP_MASTER_ID AS SIGNED) DESC, CAST(UG.UR_GROUP_ID AS SIGNED) ASC
+    </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 상세조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventInfo" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.selectEventInfo*/
+      SELECT  E.EV_EVENT_ID
+            , E.EVENT_TP
+            , E.MALL_DIV
+            , E.USE_YN
+            , E.DEL_YN
+            , E.DISP_YN
+            , E.TITLE
+            , E.DESCRIPTION
+            , E.DISP_WEB_PC_YN
+            , E.DISP_WEB_MOBILE_YN
+            , E.DISP_APP_YN
+            , E.EV_EMPLOYEE_TP
+            , E.START_DT
+            , E.END_DT
+            , E.TIME_OVER_CLOSE_YN
+            , E.BNR_IMG_PATH_PC
+            , E.BNR_IMG_ORIGIN_NM_PC
+            , E.BNR_IMG_PATH_MO
+            , E.BNR_IMG_ORIGIN_NM_MO
+            , E.DETL_HTML_PC
+            , E.DETL_HTML_MO
+            , E.DETL_HTML_PC2
+            , E.DETL_HTML_MO2
+            , E.WINNER_NOTICE
+            , E.WINNER_INFOR
+            , E.WINNER_INFOR_DT
+            , E.EMPLOYEE_JOIN_YN
+            , E.EVENT_JOIN_TP
+            , E.EVENT_DRAW_TP
+            , E.CREATE_ID
+            , E.CREATE_DT
+            , E.MODIFY_ID
+            , E.MODIFY_DT
+            , CASE WHEN E.EVENT_TP = 'EVENT_TP.EXPERIENCE'
+                   THEN CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                             WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                             WHEN (EE.SELECT_START_DT <![CDATA[<=]]> NOW() AND EE.SELECT_END_DT <![CDATA[>=]]> NOW()) THEN '당첨자선정'
+                             WHEN (EE.FEEDBACK_START_DT <![CDATA[<=]]> NOW() AND EE.FEEDBACK_END_DT <![CDATA[>=]]> NOW()) THEN '후기작성'
+                             WHEN EE.FEEDBACK_END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                             ELSE ''
+                        END
+                   ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                             WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                             WHEN E.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                             ELSE ''
+                        END
+              END                                 AS STATUS_NM
+            , CASE WHEN E.EVENT_TP = 'EVENT_TP.EXPERIENCE'
+                   THEN CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                             WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                             WHEN (EE.SELECT_START_DT <![CDATA[<=]]> NOW() AND EE.SELECT_END_DT <![CDATA[>=]]> NOW()) THEN 'SEL'
+                             WHEN (EE.FEEDBACK_START_DT <![CDATA[<=]]> NOW() AND EE.FEEDBACK_END_DT <![CDATA[>=]]> NOW()) THEN 'FED'
+                             WHEN EE.FEEDBACK_END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                             ELSE ''
+                        END
+                   ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                             WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                             WHEN E.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                             ELSE ''
+                        END
+              END                                 AS STATUS_SE
+            , IFNULL(FN_DECRYPT(U.USER_NM) , '')  AS USER_NM
+            , IFNULL(U.LOGIN_ID, '')              AS CREATE_LOGIN_ID
+            , IFNULL(FN_DECRYPT(U2.USER_NM), '')  AS MODIFY_NM
+            , IFNULL(U2.LOGIN_ID, '')             AS MODIFY_LOGIN_ID
+            , IFNULL(C1.NAME, '')                 AS EVENT_TP_NM
+            , IFNULL(C2.NAME, '')                 AS MALL_DIV_NM
+            , CASE WHEN E.DISP_WEB_PC_YN = 'Y'     THEN C31.NAME ELSE '' END AS DISP_WEB_PC_YN_NM
+            , CASE WHEN E.DISP_WEB_MOBILE_YN = 'Y' THEN C32.NAME ELSE '' END AS DISP_WEB_MOBILE_YN_NM
+            , CASE WHEN E.DISP_APP_YN = 'Y'        THEN C33.NAME ELSE '' END AS DISP_APP_YN_NM
+            , IFNULL(C4.NAME, '')                 AS EV_EMPLOYEE_TP_NM
+            , IFNULL(C6.NAME, '')                 AS EVENT_JOIN_TP_NM
+            , IFNULL(C7.NAME, '')                 AS EVENT_DRAW_TP_NM
+            , E.STYLE_ID
+            , E.CHECK_NEW_USER_YN
+      FROM    EV_EVENT E
+                  LEFT OUTER  JOIN  EV_EVENT_EXPERIENCE EE
+                              ON    EE.EV_EVENT_ID = E.EV_EVENT_ID
+                  LEFT OUTER  JOIN  UR_USER U
+                              ON    U.UR_USER_ID = E.CREATE_ID
+                  LEFT OUTER  JOIN  UR_USER U2
+                              ON    U2.UR_USER_ID = E.MODIFY_ID
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = E.EVENT_TP
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'MALL_DIV'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C2
+                              ON    C2.CODE  = E.MALL_DIV
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C31
+                              ON    C31.CODE  = 'GOODS_DISPLAY_TYPE.WEB_PC'
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C32
+                              ON    C32.CODE  = 'GOODS_DISPLAY_TYPE.WEB_MOBILE'
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C33
+                              ON    C33.CODE  = 'GOODS_DISPLAY_TYPE.APP'
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EV_EMPLOYEE_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C4
+                              ON    C4.CODE  = E.EV_EMPLOYEE_TP
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_JOIN_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C6
+                              ON    C6.CODE  = E.EVENT_JOIN_TP
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_DRAW_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C7
+                              ON    C7.CODE  = E.EVENT_DRAW_TP
+      WHERE   E.EV_EVENT_ID = #{evEventId}
+        AND   E.DEL_YN      = 'N'
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 이벤트 상세조회 - 그룹리스트
+     * @ param        : evEventId
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.23   oyj79oyj  최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectfEventGroupList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventGroupVo">
+        /*eventManage.selectfEventGroupList*/
+        SELECT  EG.EV_EVENT_GROUP_ID
+             , EG.EV_EVENT_ID
+             , IFNULL(EG.GROUP_NM, '')   AS GROUP_NM
+             , EG.TEXT_COLOR
+             , EG.USE_YN AS GROUP_USE_YN
+             , EG.EVENT_IMG_TP
+             , EG.BG_CD
+             , EG.DESCRIPTION
+             , EG.DISP_CNT
+             , EG.GROUP_SORT
+             , IFNULL(C1.NAME, '')       AS EVENT_IMG_TP_NM
+        FROM    EV_EVENT_GROUP EG
+                    LEFT OUTER   JOIN (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD
+               , GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_IMG_TP'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C1
+                                      ON    C1.CODE  = EG.EVENT_IMG_TP
+        WHERE   EG.EV_EVENT_ID = #{evEventId}
+        ORDER BY CAST(EG.GROUP_SORT AS SIGNED) ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 이벤트 상세조회 - 그룹상품리스트
+     * @ param        : evEventGroupId
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.23   oyj79oyj    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectfEventGroupGoodsList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventGroupVo">
+        /*eventManage.selectfEventGroupGoodsList*/
+        SELECT  T1.EV_EVENT_GROUP_DETL_ID
+             , T1.EV_EVENT_GROUP_ID
+             , T1.GOODS_SORT
+             , T1.IL_GOODS_ID
+             , T1.GOODS_TP
+             , IFNULL(T1.GOODS_NM, '') AS GOODS_NM
+             , T1.GOODS_IMAGE_PATH
+             , T1.STANDARD_PRICE
+             , T1.RECOMMENDED_PRICE
+             , T1.SALE_PRICE
+             , T1.DISCOUNT_TP
+             , T1.SALE_STATUS
+             , T1.UR_WAREHOUSE_ID
+             , IFNULL(T1.WAREHOUSE_NM, '') AS WAREHOUSE_NM
+             , T1.IL_SHIPPING_TMPL_ID
+             , T1.SHIPPING_TEMPLATE_NAME
+             , T1.BUNDLE_YN
+             , IFNULL(C1.NAME, '')     AS GOODS_TP_NM
+             , IFNULL(C2.NAME, '')     AS DISCOUNT_TP_NM
+             , IFNULL(C3.NAME, '')     AS SALE_STATUS_NM
+        FROM    (
+                    SELECT  D.EV_EVENT_GROUP_DETL_ID
+                         , D.EV_EVENT_GROUP_ID
+                         , D.GOODS_SORT
+                         , D.IL_GOODS_ID
+                         , G.GOODS_TP
+                         , G.GOODS_NM
+                         , G.SALE_STATUS
+                         , G.UR_WAREHOUSE_ID
+                         , II.C_IMG            AS GOODS_IMAGE_PATH
+                         , GP.STANDARD_PRICE
+                         , GP.RECOMMENDED_PRICE
+                         , GP.SALE_PRICE
+                         , GP.DISCOUNT_TP
+                         , W.WAREHOUSE_NM
+                         , HH.IL_SHIPPING_TMPL_ID
+                         , HH.NAME             AS SHIPPING_TEMPLATE_NAME
+                         , HH.BUNDLE_YN
+                    FROM    EV_EVENT_GROUP_DETL D
+                       , IL_GOODS G
+                             LEFT OUTER  JOIN  IL_ITEM_IMG II
+                                               ON    II.IL_ITEM_CD = G.IL_ITEM_CD
+                                                   AND   II.BASIC_YN = 'Y'
+                             LEFT OUTER  JOIN  IL_GOODS_PRICE GP
+                                               ON    GP.IL_GOODS_ID = G.IL_GOODS_ID
+                                                   AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT
+                                                   AND   GP.USE_YN = 'Y'
+                             LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                               ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                             LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                               ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                                   AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                             LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                               ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                                   AND   HH.DEL_YN = 'N'
+                    WHERE   D.EV_EVENT_GROUP_ID = #{evEventGroupId}
+                      AND   G.IL_GOODS_ID = D.IL_GOODS_ID
+                ) T1
+                    LEFT OUTER  JOIN  (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD
+               , GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C1
+                                      ON    C1.CODE  = T1.GOODS_TP
+                    LEFT OUTER  JOIN  (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD
+               , GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISCOUNT_TP'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C2
+                                      ON    C2.CODE  = T1.DISCOUNT_TP
+                    LEFT OUTER  JOIN  (
+            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                 , DC.DIC_NM          AS NAME
+            FROM    ST_COMN_CODE CD
+               , GB_DIC DC
+            WHERE   CD.ST_COMN_CODE_MST_CD  = 'SALE_STATUS'
+              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+              AND   DC.GB_LANG_ID           = '1'
+        ) C3
+                                      ON    C3.CODE  = T1.SALE_STATUS
+        ORDER BY CAST(T1.GOODS_SORT AS SIGNED) ASC, CAST(T1.IL_GOODS_ID AS SIGNED) DESC
+    </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 접근권한리스트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventUserGroupList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EvUserGroupVo">
+      /*eventManage.selectEventUserGroupList*/
+      SELECT  EG.EV_EVENT_USER_GROUP_ID
+            , EG.EV_EVENT_ID
+            , EG.UR_GROUP_ID
+            , UG.GROUP_NM         AS GROUP_NAME
+            , UM.GROUP_MASTER_NM  AS GROUP_MASTER_NAME
+      FROM    EV_EVENT_USER_GROUP EG
+                LEFT OUTER  JOIN  UR_GROUP UG
+                              ON  UG.UR_GROUP_ID = EG.UR_GROUP_ID
+                LEFT OUTER  JOIN  UR_GROUP_MASTER UM
+                              ON  UM.UR_GROUP_MASTER_ID = UG.UR_GROUP_MASTER_ID
+      WHERE   EG.EV_EVENT_ID = #{evEventId}
+      ORDER BY CAST(EG.EV_EVENT_USER_GROUP_ID AS SIGNED) ASC
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 적용범위 조회
+     * @
+     * @ 수정일			 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.12      정동훈         최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getCoverageListResultMap" type="kr.co.pulmuone.v1.promotion.event.dto.vo.CoverageVo">
+        <result column="INCLUDE_YN"  property="includeYn"/>
+        <result column="COVERAGE_ID"  property="coverageId"/>
+        <result column="COVERAGE_TP"  property="coverageType"/>
+        <result column="COVERAGE_NAME"  property="coverageName"/>
+        <result column="DISP_YN"  property="goodsDisplayYn"/>
+        <result column="SALE_STATUS_CODE_NAME"  property="saleStatusCodeName"/>
+        <result column="IL_CATEGORY_NAME"  property="ilCategoryName"/>
+    </resultMap>
+    <select id="getCoverageList" resultMap="getCoverageListResultMap">
+        /* eventManage.getCoverageList */
+        SELECT EC.COVERAGE_TP
+        , EC.COVERAGE_ID
+        , EC.INCLUDE_YN
+        , CASE WHEN EC.COVERAGE_TP = 'APPLYCOVERAGE.WAREHOUSE' THEN (SELECT UW.WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE UW.UR_WAREHOUSE_ID = EC.COVERAGE_ID )
+        WHEN EC.COVERAGE_TP = 'APPLYCOVERAGE.BRAND' THEN (SELECT DB.DP_BRAND_NM FROM DP_BRAND DB WHERE DB.DP_BRAND_ID = EC.COVERAGE_ID )
+        WHEN EC.COVERAGE_TP = 'APPLYCOVERAGE.DISPLAY_CATEGORY' THEN (SELECT FN_CTGRY_FULL_NAME(EC.COVERAGE_ID)  FROM DUAL)
+        ELSE  (SELECT GOODS_NM FROM IL_GOODS WHERE IL_GOODS_ID = EC.COVERAGE_ID )
+        END
+        AS COVERAGE_NAME
+        , CASE WHEN IG.DISP_YN = 'Y' THEN '가능'
+        ELSE '불가능'
+        END AS DISP_YN
+        , FN_COMN_CODE_DIC(IG.SALE_STATUS) AS SALE_STATUS_CODE_NAME
+        <!-- , CASE WHEN CA.PRODUCT4_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5)
+               WHEN CA.PRODUCT3_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5, ' / 중분류 : ', CA.CATEGORY4)
+               WHEN CA.PRODUCT2_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5, ' / 중분류 : ', CA.CATEGORY4, ' / 소분류 : ', CA.CATEGORY3)
+               WHEN CA.PRODUCT1_ID = 0 THEN CONCAT('대분류 : ' ,CA.CATEGORY5, ' / 중분류 : ', CA.CATEGORY4, ' / 소분류 : ', CA.CATEGORY3, ' / 세분류 :' , CA.CATEGORY2)
+               ELSE ''
+          END AS IL_CATEGORY_NAME -->
+        , CASE WHEN (LENGTH(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>',''))) = 0 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 1), '>', -1))
+        WHEN (LENGTH(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>',''))) = 1 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 1), '>', -1), ' / 중분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 2), '>', -1))
+        WHEN (LENGTH(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>',''))) = 2 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 1), '>', -1), ' / 중분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 2), '>', -1), ' / 소분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 3), '>', -1))
+        WHEN (LENGTH(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID)) - LENGTH(REPLACE(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>',''))) = 3 THEN CONCAT('대분류 : ' ,SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 1), '>', -1), ' / 중분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 2), '>', -1), ' / 소분류 : ', SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 3), '>', -1), ' / 세분류 :' , SUBSTRING_INDEX(SUBSTRING_INDEX(FN_CTGRY_FULL_NAME(EC.COVERAGE_ID), '>', 4), '>', -1))
+        ELSE ''
+        END AS IL_CATEGORY_NAME
+        FROM EV_EVENT_COVERAGE EC
+        INNER JOIN EV_EVENT EE ON EE.EV_EVENT_ID  = EC.EV_EVENT_ID
+        LEFT JOIN IL_GOODS IG ON IG.IL_GOODS_ID = EC.COVERAGE_ID AND EC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS'
+        <!-- 			LEFT JOIN (
+                                SELECT
+                                            P5.PRNTS_CTGRY_ID AS PRODUCT1_ID,
+                                            P5.CTGRY_NM AS CATEGORY1,
+                                            P4.PRNTS_CTGRY_ID AS PRODUCT2_ID,
+                                            P4.CTGRY_NM AS CATEGORY2,
+                                            P3.PRNTS_CTGRY_ID AS PRODUCT3_ID,
+                                            P3.CTGRY_NM AS CATEGORY3,
+                                            P2.PRNTS_CTGRY_ID AS PRODUCT4_ID,
+                                            P2.CTGRY_NM  AS CATEGORY4,
+                                            P1.PRNTS_CTGRY_ID AS PARENT_ID,
+                                            P1.IL_CTGRY_ID AS PRODUCT5_ID,
+                                            P1.CTGRY_NM AS CATEGORY5
+                                FROM        IL_CTGRY P1
+                                LEFT JOIN   IL_CTGRY P2 ON P2.IL_CTGRY_ID = P1.PRNTS_CTGRY_ID
+                                LEFT JOIN   IL_CTGRY P3 ON P3.IL_CTGRY_ID = P2.PRNTS_CTGRY_ID
+                                LEFT JOIN   IL_CTGRY P4 ON P4.IL_CTGRY_ID = P3.PRNTS_CTGRY_ID
+                                LEFT JOIN   IL_CTGRY P5 ON P5.IL_CTGRY_ID = P4.PRNTS_CTGRY_ID
+                    ) AS CA ON CA.PRODUCT5_ID = EC.COVERAGE_ID -->
+        WHERE EC.EV_EVENT_ID = #{evEventId}
+    </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 일반이벤트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventNormal" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventNormalVo">
+      /*eventManage.selectEventNormal*/
+      SELECT  EN.EV_EVENT_NORMAL_ID
+            , EN.EV_EVENT_ID
+            , EN.COMMENT_YN
+            , EN.COMMENT_CODE_YN
+            , EN.EVENT_BENEFIT_TP
+            , EN.PM_POINT_ID
+            , EN.BENEFIT_NM
+            , EN.NORMAL_EVENT_TP
+            , EN.TOTAL_WIN_CNT
+            , EN.JOIN_CONDITION
+            , EN.EVENT_STAMP_ORDER_TP
+            , EN.ORDER_CNT
+            , EN.ORDER_PRICE
+            , EN.GOODS_DELIVERY_TYPE AS GOODS_DELIVERY_TP
+            , EN.AWARD_RT
+            , EN.EXPECT_JOIN_USER_CNT
+            , P.POINT_NM
+            , P.ISSUE_VAL
+            , P.POINT_TP
+            , O.UR_ERP_ORGANIZATION_CD
+            , O.UR_ERP_ORGANIZATION_NM
+            , C1.NAME             AS EVENT_BENEFIT_TP_NM
+            , C2.NAME             AS POINT_TP_NM
+            , CONCAT(DATE_FORMAT(P.ISSUE_START_DT,'%Y-%m-%d')  ,'~', DATE_FORMAT(P.ISSUE_END_DT,'%Y-%m-%d') ) AS ISSUE_DATE
+            , P.VALIDITY_TP
+      FROM    EV_EVENT_NORMAL EN
+                LEFT OUTER  JOIN  PM_POINT P
+                              ON  P.PM_POINT_ID = EN.PM_POINT_ID
+                LEFT OUTER  JOIN  PM_COUPON_POINT_SHARE_ORGANIZATION O
+                              ON  O.PM_POINT_ID = P.PM_POINT_ID
+                LEFT OUTER  JOIN  (
+                                  SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                        , DC.DIC_NM          AS NAME
+                                  FROM    ST_COMN_CODE CD
+                                        , GB_DIC DC
+                                  WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_BENEFIT_TP'
+                                    AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                    AND   DC.GB_LANG_ID           = '1'
+                                  ) C1
+                            ON    C1.CODE  = EN.EVENT_BENEFIT_TP
+                LEFT OUTER  JOIN  (
+                                  SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                        , DC.DIC_NM          AS NAME
+                                  FROM    ST_COMN_CODE CD
+                                        , GB_DIC DC
+                                  WHERE   CD.ST_COMN_CODE_MST_CD  = 'POINT_TYPE'
+                                    AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                    AND   DC.GB_LANG_ID           = '1'
+                                  ) C2
+                            ON    C2.CODE  = P.POINT_TP
+      WHERE   EN.EV_EVENT_ID = #{evEventId}
+  </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 설문
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventSurvey" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyVo">
+      /*eventManage.selectEventSurvey*/
+      SELECT  ES.EV_EVENT_SURVEY_ID
+            , ES.EV_EVENT_ID
+            , ES.BTN_COLOR_CD
+            , ES.EVENT_BENEFIT_TP
+            , ES.PM_POINT_ID
+            , ES.BENEFIT_NM
+            , P.POINT_NM
+            , P.ISSUE_VAL
+            , P.POINT_TP
+            , O.UR_ERP_ORGANIZATION_CD
+            , O.UR_ERP_ORGANIZATION_NM
+            , C1.NAME             AS EVENT_BENEFIT_TP_NM
+            , C2.NAME             AS POINT_TP_NM
+      FROM    EV_EVENT_SURVEY ES
+                LEFT OUTER  JOIN  PM_POINT P
+                              ON  P.PM_POINT_ID = ES.PM_POINT_ID
+                LEFT OUTER  JOIN  PM_COUPON_POINT_SHARE_ORGANIZATION O
+                              ON  O.PM_POINT_ID = P.PM_POINT_ID
+                LEFT OUTER  JOIN  (
+                                  SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                        , DC.DIC_NM          AS NAME
+                                  FROM    ST_COMN_CODE CD
+                                        , GB_DIC DC
+                                  WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_BENEFIT_TP'
+                                    AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                    AND   DC.GB_LANG_ID           = '1'
+                                  ) C1
+                            ON    C1.CODE  = ES.EVENT_BENEFIT_TP
+                LEFT OUTER  JOIN  (
+                                  SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                        , DC.DIC_NM          AS NAME
+                                  FROM    ST_COMN_CODE CD
+                                        , GB_DIC DC
+                                  WHERE   CD.ST_COMN_CODE_MST_CD  = 'POINT_TYPE'
+                                    AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                    AND   DC.GB_LANG_ID           = '1'
+                                  ) C2
+                            ON    C2.CODE  = P.POINT_TP
+      WHERE   ES.EV_EVENT_ID = #{evEventId}
+  </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+   * description    : 설문항목리스트조회 - 설문
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventSurveyQuestionList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyVo">
+      /*eventManage.selectEventSurveyQuestionList*/
+      SELECT  EQ.EV_EVENT_SURVEY_QUESTION_ID
+            , EQ.EV_EVENT_ID
+            , EQ.SORT
+            , EQ.TITLE
+            , EQ.EVENT_SURVEY_TP
+            , C1.NAME             AS EVENT_SURVEY_TP_NM
+      FROM    EV_EVENT_SURVEY_QUESTION EQ
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_SURVEY_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = EQ.EVENT_SURVEY_TP
+      WHERE   EQ.EV_EVENT_ID = #{evEventId}
+      ORDER BY CAST(EQ.SORT AS SIGNED) ASC
+  </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+   * description    : 설문항목아이템리스트조회 - 설문
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventSurveyItemList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyItemVo">
+      /*eventManage.selectEventSurveyItemList*/
+      SELECT  EI.EV_EVENT_SURVEY_ITEM_ID
+            , EI.EV_EVENT_SURVEY_QUESTION_ID
+            , EI.SORT
+            , EI.ITEM
+            , EI.DIRECT_INPUT_YN
+      FROM    EV_EVENT_SURVEY_ITEM EI
+      WHERE   EI.EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}
+      ORDER BY CAST(EI.SORT AS SIGNED) ASC
+  </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+   * description    : 설문항목아이템첨부파일리스트조회 - 설문
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventSurveyItemAttcList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyItemAttcVo">
+      /*eventManage.selectEventSurveyItemAttcList*/
+      SELECT  EA.EV_EVENT_SURVEY_ITEM_ATTC_ID
+            , EA.EV_EVENT_SURVEY_ITEM_ID
+            , EA.IMG_PATH
+            , EA.IMG_ORIGIN_NM
+      FROM    EV_EVENT_SURVEY_ITEM_ATTC EA
+      WHERE   EA.EV_EVENT_SURVEY_ITEM_ID = #{evEventSurveyItemId}
+      ORDER BY CAST(EA.EV_EVENT_SURVEY_ITEM_ATTC_ID AS SIGNED) ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 스탬프(출석)/스탬프(미션)/스탬프(구매)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.18   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventStamp" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventStampVo">
+      /*eventManage.selectEventStamp*/
+      SELECT  ES.EV_EVENT_STAMP_ID
+            , ES.EV_EVENT_ID
+            , ES.BTN_COLOR_CD
+            , ES.DEFAULT_PATH
+            , ES.DEFAULT_ORIGIN_NM
+            , ES.CHECK_PATH
+            , ES.CHECK_ORIGIN_NM
+            , ES.BG_PATH
+            , ES.BG_ORIGIN_NM
+            , ES.STAMP_CNT1
+            , ES.STAMP_CNT2
+            , ES.ORDER_PRICE
+            , ES.EVENT_STAMP_ORDER_TP
+            , ES.STAMP_UPDATE_DT
+            , OS.STATUS_NM      AS EVENT_STAMP_ORDER_TP_NM
+      FROM    EV_EVENT_STAMP ES
+                LEFT OUTER  JOIN  OD_STATUS OS
+                            ON    OS.SEARCH_GRP LIKE '%P%'
+                            AND   OS.STATUS_CD = ES.EVENT_STAMP_ORDER_TP
+      WHERE   ES.EV_EVENT_ID = #{evEventId}
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트스탬프상세리스트 - 스탬프(출석)/스탬프(미션)/스탬프(구매)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.18   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventStampDetlList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventStampVo">
+      /*eventManage.selectEventStampDetlList*/
+      SELECT  SD.EV_EVENT_STAMP_DETL_ID
+            , SD.EV_EVENT_STAMP_ID
+            , SD.STAMP_CNT
+            , SD.DEFAULT_PATH
+            , SD.DEFAULT_ORIGIN_NM
+            , SD.CHECK_PATH
+            , SD.CHECK_ORIGIN_NM
+            , SD.ICON_PATH
+            , SD.ICON_ORIGIN_NM
+            , SD.EVENT_BENEFIT_TP
+            , SD.BENEFIT_ID
+            , SD.BENEFIT_ID AS PM_POINT_ID
+            , SD.BENEFIT_NM
+            , SD.STAMP_URL
+            , P.POINT_NM
+            , P.ISSUE_VAL
+            , P.POINT_TP
+            , O.UR_ERP_ORGANIZATION_CD
+            , O.UR_ERP_ORGANIZATION_NM
+            , IFNULL(C1.NAME, '') AS EVENT_BENEFIT_TP_NM
+            , C2.NAME             AS POINT_TP_NM
+      FROM    EV_EVENT_STAMP_DETL SD
+                  LEFT OUTER  JOIN  PM_POINT P
+                              ON    P.PM_POINT_ID = SD.BENEFIT_ID
+                              AND   SD.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'
+                  LEFT OUTER  JOIN  PM_COUPON_POINT_SHARE_ORGANIZATION O
+                              ON    O.PM_POINT_ID = SD.BENEFIT_ID
+                              AND   SD.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_BENEFIT_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = SD.EVENT_BENEFIT_TP
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'POINT_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C2
+                              ON    C2.CODE  = P.POINT_TP
+      WHERE   SD.EV_EVENT_STAMP_ID = #{evEventStampId}
+      ORDER BY CAST(SD.STAMP_CNT AS SIGNED) ASC
+  </select>
+
+   <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 룰렛
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.25   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventRoulette" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventRouletteVo">
+      /*eventManage.selectEventRoulette*/
+      SELECT  ER.EV_EVENT_ROULETTE_ID
+            , ER.EV_EVENT_ID
+            , ER.START_BTN_PATH
+            , ER.START_BTN_ORIGIN_NM
+            , ER.ARROW_PATH
+            , ER.ARROW_ORIGIN_NM
+            , ER.BG_PATH
+            , ER.BG_ORIGIN_NM
+            , ER.ROULETTE_CNT
+            , ER.EXCEPTION_USER_ROULETTE_CNT
+            , ER.ROULETTE_PATH
+            , ER.ROULETTE_ORIGIN_NM
+            , ER.EXPECT_JOIN_USER_CNT
+      FROM    EV_EVENT_ROULETTE ER
+      WHERE   ER.EV_EVENT_ID = #{evEventId}
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 룰렛이벤트아이템리스트 - 룰렛
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.25   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventRouletteItemList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventRouletteVo">
+      /*eventManage.selectEventRouletteItemList*/
+      SELECT  RI.EV_EVENT_ROULETTE_ITEM_ID
+            , RI.EV_EVENT_ROULETTE_ID
+            , RI.EVENT_BENEFIT_TP
+            , RI.BENEFIT_ID
+            , RI.BENEFIT_NM
+            , RI.AWARD_RT
+            , RI.AWARD_MAX_CNT
+            , P.POINT_NM
+            , P.ISSUE_VAL
+            , P.POINT_TP
+            , O.UR_ERP_ORGANIZATION_CD
+            , O.UR_ERP_ORGANIZATION_NM
+            , C1.NAME             AS EVENT_BENEFIT_TP_NM
+            , C2.NAME             AS POINT_TP_NM
+      FROM    EV_EVENT_ROULETTE_ITEM RI
+                    LEFT OUTER  JOIN  PM_POINT P
+                                ON    P.PM_POINT_ID = RI.BENEFIT_ID
+                                AND   RI.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'
+                    LEFT OUTER  JOIN  PM_COUPON_POINT_SHARE_ORGANIZATION O
+                                ON    O.PM_POINT_ID = RI.BENEFIT_ID
+                                AND   RI.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                              , DC.DIC_NM          AS NAME
+                                      FROM    ST_COMN_CODE CD
+                                              , GB_DIC DC
+                                      WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_BENEFIT_TP'
+                                        AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                        AND   DC.GB_LANG_ID           = '1'
+                                      ) C1
+                                ON    C1.CODE  = RI.EVENT_BENEFIT_TP
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                            , DC.DIC_NM          AS NAME
+                                      FROM    ST_COMN_CODE CD
+                                            , GB_DIC DC
+                                      WHERE   CD.ST_COMN_CODE_MST_CD  = 'POINT_TYPE'
+                                        AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                        AND   DC.GB_LANG_ID           = '1'
+                                      ) C2
+                                ON    C2.CODE  = P.POINT_TP
+      WHERE   RI.EV_EVENT_ROULETTE_ID = #{evEventRouletteId}
+      ORDER BY CAST(RI.EV_EVENT_ROULETTE_ITEM_ID AS SIGNED) ASC
+</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+         * description    : 등록된 룰렛아이템리스트
+         * @
+         * @ 수정일       수정자    수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.10.27   acy    최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRouletteItemList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventRouletteVo">
+        SELECT * FROM EV_EVENT_ROULETTE_ITEM
+        WHERE EV_EVENT_ROULETTE_ID = (SELECT EV_EVENT_ROULETTE_ID FROM EV_EVENT_ROULETTE WHERE EV_EVENT_ID = #{evEventId})
+    </select>
+
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 체험단이벤트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventExperience" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventExperienceVo">
+      /*eventManage.selectEventExperience*/
+      SELECT  T.EV_EVENT_EXPERIENCE_ID
+            , T.EV_EVENT_ID
+            , T.SELECT_START_DT
+            , T.SELECT_END_DT
+            , T.FEEDBACK_START_DT
+            , T.FEEDBACK_END_DT
+            , T.RECRUIT_CLOSE_YN
+            , T.FIRST_COME_CNT
+            , T.FIRST_COME_CLOSE_YN
+            , T.COMMENT_CODE_YN
+            , T.BTN_COLOR_CD
+            , T.PM_COUPON_ID
+            , IFNULL(T.BOS_COUPON_NM, '')     AS BOS_COUPON_NM
+            , IFNULL(T.DISPLAY_COUPON_NM, '') AS DISPLAY_COUPON_NM
+            , T.IL_GOODS_ID
+            , T.GOODS_TP
+            , T.GOODS_NM
+            , T.UR_WAREHOUSE_ID
+            , T.WAREHOUSE_NM
+            , T.IL_GOODS_PRICE_ID
+            , T.GOODS_IMAGE_PATH
+            , P.STANDARD_PRICE
+            , P.RECOMMENDED_PRICE
+            , P.SALE_PRICE
+            , C1.NAME             AS GOODS_TP_NM
+      FROM    (
+              SELECT  EE.EV_EVENT_EXPERIENCE_ID
+                    , EE.EV_EVENT_ID
+                    , EE.SELECT_START_DT
+                    , EE.SELECT_END_DT
+                    , EE.FEEDBACK_START_DT
+                    , EE.FEEDBACK_END_DT
+                    , EE.RECRUIT_CLOSE_YN
+                    , EE.FIRST_COME_CNT
+                    , EE.FIRST_COME_CLOSE_YN
+                    , EE.COMMENT_CODE_YN
+                    , EE.BTN_COLOR_CD
+                    , EE.PM_COUPON_ID
+                    , EE.IL_GOODS_ID
+                    , C.BOS_COUPON_NM
+                    , C.DISPLAY_COUPON_NM
+                    , G.GOODS_TP
+                    , G.GOODS_NM
+                    , G.UR_WAREHOUSE_ID
+                    , W.WAREHOUSE_NM
+                    , (
+                      SELECT  IL_GOODS_PRICE_ID
+                      FROM    IL_GOODS_PRICE
+                      WHERE   IL_GOODS_ID = G.IL_GOODS_ID
+                        AND   NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+                      ORDER BY IL_GOODS_PRICE_ID DESC
+                      LIMIT 1
+                      ) AS  IL_GOODS_PRICE_ID
+                    , (
+                      SELECT  II.C_IMG
+                      FROM    IL_ITEM_IMG II
+                      WHERE   II.IL_ITEM_CD = G.IL_ITEM_CD
+                        AND   II.BASIC_YN = 'Y'
+                      LIMIT 1
+                      ) AS GOODS_IMAGE_PATH
+              FROM    EV_EVENT_EXPERIENCE EE
+                          LEFT OUTER  JOIN  IL_GOODS G
+                                      ON    G.IL_GOODS_ID = EE.IL_GOODS_ID
+                          LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                      ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                          LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                      ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                      AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                          LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                      ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                      AND   HH.DEL_YN = 'N'
+                          LEFT OUTER  JOIN  PM_COUPON C
+                                      ON    C.PM_COUPON_ID = EE.PM_COUPON_ID
+              WHERE   EE.EV_EVENT_ID = #{evEventId}
+              ) T
+                  LEFT OUTER  JOIN  IL_GOODS_PRICE P
+                               ON    P.IL_GOODS_PRICE_ID = T.IL_GOODS_PRICE_ID
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = T.GOODS_TP
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트댓글구분리스트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventCommentCodeList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.selectEventCommentCodeList*/
+      SELECT  EC.EV_EVENT_COMMENT_CODE_ID
+            , EC.EV_EVENT_ID
+            , EC.COMMENT_VALUE
+      FROM    EV_EVENT_COMMENT_CODE EC
+      WHERE   EC.EV_EVENT_ID = #{evEventId}
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트쿠폰리스트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventCouponList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.selectEventCouponList*/
+      SELECT  EC.EV_EVENT_COUPON_ID
+            , EC.EV_EVENT_ID
+            , EC.EV_EVENT_DETL_ID
+            , EC.PM_COUPON_ID
+            , EC.COUPON_CNT
+            , EC.COUPON_TOTAL_CNT
+            , PC.DISPLAY_COUPON_NM
+            , PC.BOS_COUPON_NM
+            , PC.DISCOUNT_TP
+            , CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT'
+                        THEN '판매가지정'
+                   WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE'
+                        THEN CONCAT(FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT , 0),' 원')
+                   WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+                        THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',FORMAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT , 0) ,'원')
+                                  ELSE CONCAT(FORMAT(PC.DISCOUNT_VAL , 0),' 원')
+                             END
+              END   AS DISCOUNT_VALUE
+            , CASE WHEN PC.VALIDITY_START_DT IS NULL THEN CONCAT('발급 후 ',PC.VALIDITY_DAY,' 일 간')
+                   ELSE CONCAT(DATE_FORMAT(PC.VALIDITY_START_DT,'%Y-%m-%d') ,'~', DATE_FORMAT(PC.VALIDITY_END_DT,'%Y-%m-%d') )
+              END   AS VALIDITY_CONTS
+            , O.UR_ERP_ORGANIZATION_CD
+            , O.UR_ERP_ORGANIZATION_NM
+            , C1.NAME AS DISCOUNT_TP_NM
+            , PC.VALIDITY_TP
+            , CONCAT(DATE_FORMAT(PC.ISSUE_START_DT,'%Y-%m-%d') ,'~', DATE_FORMAT(PC.ISSUE_END_DT,'%Y-%m-%d') )AS ISSUE_DT
+      FROM    EV_EVENT_COUPON EC
+                  LEFT OUTER  JOIN  PM_COUPON PC
+                              ON    PC.PM_COUPON_ID = EC.PM_COUPON_ID
+                  LEFT OUTER  JOIN  PM_COUPON_POINT_SHARE_ORGANIZATION O
+                              ON  O.PM_COUPON_ID = PC.PM_COUPON_ID
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'COUPON_DISCOUNT_STATUS'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = PC.DISCOUNT_TP
+      WHERE   EC.EV_EVENT_ID      = #{evEventId}
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEventStampDetlId)'>
+        AND   EC.EV_EVENT_DETL_ID = #{evEventStampDetlId}
+      </if>
+      ORDER BY CAST(EC.EV_EVENT_COUPON_ID AS SIGNED) ASC
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+         * description    : 등록된 쿠폰리스트
+         * @
+         * @ 수정일       수정자    수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.10.22   acy    최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+     <select id="getEventCouponList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+         /* eventManage.getEventCouponList*/
+         SELECT * FROM EV_EVENT_COUPON
+         WHERE EV_EVENT_ID = #{evEventId}
+     </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+         * description    : 등록된 쿠폰리스트(룰렛이벤트)
+         * @
+         * @ 수정일       수정자    수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.10.22   acy    최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRouletteEventCouponList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+        /* eventManage.getRouletteEventCouponList*/
+        SELECT * FROM EV_EVENT_COUPON
+        WHERE EV_EVENT_ID = #{evEventId}
+        AND EV_EVENT_DETL_ID = #{evEventRouletteItemId}
+    </select>
+
+
+
+
+
+
+   <!-- #################################################################### -->
+  <!-- 조회 - 이벤트참여 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.13   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectEventJoinList*/
+      SELECT  T.EV_EVENT_JOIN_ID
+            , T.EV_EVENT_ID
+            , T.TITLE
+            , IFNULL(C2.NAME, '') AS EVENT_TP_NM
+            , T.LOGIN_ID
+            , T.USER_NM
+            , T.GROUP_NM
+            , IF(IFNULL(T.UR_ERP_EMPLOYEE_CD, '') = '','','임직원') AS EMPLOYEE_YN_NM
+            , IFNULL(T.EVENT_JOIN_YN, '')         AS EVENT_JOIN_YN
+            , DATE_FORMAT(T.REG_DT, '%Y-%m-%d') AS REG_DT
+            , IFNULL(FN_DECRYPT(T.MOBILE) , '')   AS MOBILE
+            , IFNULL(FN_DECRYPT(T.RECEIVER_ZIP_CD),'') RECEIVER_ZIP_CD
+            , IFNULL(FN_DECRYPT(T.RECEIVER_ADDR1),'') RECEIVER_ADDR1
+            , IFNULL(FN_DECRYPT(T.RECEIVER_ADDR2),'') RECEIVER_ADDR2
+            , DATE_FORMAT(T.REQ_DT, '%Y-%m-%d') AS REQ_DE
+            , CASE WHEN T.EVENT_TP = 'EVENT_TP.NORMAL'      THEN IFNULL(T.COMMENT_VALUE, '')
+              WHEN T.EVENT_TP = 'EVENT_TP.SURVEY'      THEN '통계정보 참조'
+              WHEN T.EVENT_TP = 'EVENT_TP.ATTEND'      THEN T.STAMP_CNT
+              WHEN T.EVENT_TP = 'EVENT_TP.MISSION'     THEN T.STAMP_CNT
+              WHEN T.EVENT_TP = 'EVENT_TP.PURCHASE'    THEN T.STAMP_CNT
+              WHEN T.EVENT_TP = 'EVENT_TP.ROULETTE'    THEN T.STAMP_CNT
+              WHEN T.EVENT_TP = 'EVENT_TP.EXPERIENCE'  THEN IFNULL(T.COMMENT_VALUE, '')
+              ELSE ''
+            END AS REQ_CONTS_1                                  <!-- 신청내용1:엑셀용 -->
+            , CASE WHEN T.EVENT_TP = 'EVENT_TP.NORMAL'      THEN IFNULL(T.COMMENT, '')
+              WHEN T.EVENT_TP = 'EVENT_TP.SURVEY'      THEN ''
+              WHEN T.EVENT_TP = 'EVENT_TP.ATTEND'      THEN ''
+              WHEN T.EVENT_TP = 'EVENT_TP.MISSION'     THEN ''
+              WHEN T.EVENT_TP = 'EVENT_TP.PURCHASE'    THEN ''
+              WHEN T.EVENT_TP = 'EVENT_TP.ROULETTE'    THEN ''
+              WHEN T.EVENT_TP = 'EVENT_TP.EXPERIENCE'  THEN IFNULL(T.COMMENT, '')
+              ELSE ''
+            END AS REQ_CONTS_2                                  <!-- 신청내용2:엑셀용 -->
+            , T.WINNER_YN
+            , IFNULL(T.HANDWRITTEN_LOTTERY_NAME, '') AS HANDWRITTEN_LOTTERY_NAME
+            , IFNULL(C1.NAME, '')   AS WINNER_CONTS_ONLY          <!-- 당첨종류:엑셀용 -->
+            , CASE WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON'  THEN IFNULL(T.BOS_COUPON_NM,'')
+              WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'   THEN FORMAT(IFNULL(T.ISSUE_VAL, 0), 0)
+              WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.GIFT'    THEN IFNULL(T.BENEFIT_NM,'')
+              WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.ENTER'   THEN IFNULL(T.BENEFIT_NM,'')
+              WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.NONE'    THEN IFNULL(T.BENEFIT_NM,'')
+              ELSE ''
+            END AS WINNER_CONTS_MEMO                            <!-- 당첨내용:엑셀용 -->
+          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+            , T.UR_USER_ID
+            , T.WINNER_EXIST_YN
+            , T.LOTTERY_DT
+            , T.LOTTERY_ID
+            , T.EVENT_BENEFIT_TP
+            , T.COMMENT_VALUE
+            , T.COMMENT
+            , T.ADMIN_SECRET_YN
+            , T.ADMIN_SECRET_YN_CHNG_DT
+            , T.PM_POINT_ID
+            , T.BENEFIT_NM
+            , T.EV_EVENT_ROULETTE_ITEM_ID
+            , T.STAMP_CNT
+            , T.REQ_DT
+            , T.EVENT_TP
+            , T.MALL_DIV
+            , T.USE_YN
+            , T.DEL_YN
+            , T.DESCRIPTION
+            , T.DISP_WEB_PC_YN
+            , T.DISP_WEB_MOBILE_YN
+            , T.DISP_APP_YN
+            , T.EV_EMPLOYEE_TP
+            , T.START_DT
+            , T.END_DT
+            , T.TIME_OVER_CLOSE_YN
+            , T.BNR_IMG_PATH_PC
+            , T.BNR_IMG_ORIGIN_NM_PC
+            , T.BNR_IMG_PATH_MO
+            , T.BNR_IMG_ORIGIN_NM_MO
+            , T.DETL_HTML_PC
+            , T.DETL_HTML_MO
+            , T.WINNER_NOTICE
+            , T.WINNER_INFOR
+            , T.WINNER_INFOR_DT
+            , T.EMPLOYEE_JOIN_YN
+            , T.EVENT_JOIN_TP
+            , T.EVENT_DRAW_TP
+            , T.CREATE_ID
+            , T.CREATE_DT
+            , T.MODIFY_ID
+            , T.MODIFY_DT
+            , T.UR_BUYER_ID
+            , T.UR_ERP_EMPLOYEE_CD
+            , IF(IFNULL(T.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+            , IFNULL(FN_DECRYPT(T.MAIL) , '')     AS MAIL
+            <!-- , T.UR_GROUP_TP -->
+            , CASE WHEN T.EVENT_TP = 'EVENT_TP.NORMAL'      THEN CASE WHEN T.COMMENT_CODE_YN = 'N' THEN T.COMMENT
+													                  ELSE CONCAT('[', T.COMMENT_VALUE, '] ', IFNULL(T.COMMENT, ''))
+													             END
+                   WHEN T.EVENT_TP = 'EVENT_TP.SURVEY'      THEN '화면참조'
+                   WHEN T.EVENT_TP = 'EVENT_TP.ATTEND'      THEN T.STAMP_CNT
+                   WHEN T.EVENT_TP = 'EVENT_TP.MISSION'     THEN T.STAMP_CNT
+                   WHEN T.EVENT_TP = 'EVENT_TP.PURCHASE'    THEN T.STAMP_CNT
+                   WHEN T.EVENT_TP = 'EVENT_TP.ROULETTE'    THEN T.STAMP_CNT
+                   WHEN T.EVENT_TP = 'EVENT_TP.EXPERIENCE'  THEN CASE WHEN T.COMMENT_CODE_YN = 'N' THEN T.COMMENT
+													                  ELSE CONCAT('[', T.COMMENT_VALUE, '] ', IFNULL(T.COMMENT, ''))
+													             END
+                   ELSE ''
+              END AS REQ_CONTS                                    <!-- 신청내용:화면용 -->
+            , CASE WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON'  THEN  CASE WHEN IFNULL(T.BENEFIT_NM, '') = '' THEN ''
+                                                                                   ELSE CONCAT('[', IFNULL(C1.NAME, ''), '] ', T.BENEFIT_NM)
+                                                                              END
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'   THEN  CASE WHEN IFNULL(T.ISSUE_VAL, '') = ''     THEN ''
+                                                                                   ELSE CONCAT('[', IFNULL(C1.NAME, ''), '] ', T.BENEFIT_NM)
+                                                                        END
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.GIFT'    THEN  CASE WHEN IFNULL(T.BENEFIT_NM, '') = ''    THEN ''
+                                                                                   ELSE CONCAT('[', IFNULL(C1.NAME, ''), '] ', T.BENEFIT_NM)
+                                                                              END
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.ENTER'   THEN  CASE WHEN IFNULL(T.BENEFIT_NM, '') = ''    THEN ''
+                                                                                   ELSE CONCAT('[', IFNULL(C1.NAME, ''), '] ', T.BENEFIT_NM)
+                                                                              END
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.NONE'    THEN  IFNULL(T.BENEFIT_NM, '')
+                   ELSE ''
+              END                   AS WINNER_CONTS               <!-- 당첨내용:화면용 -->
+            , T.POINT_TP
+            , T.POINT_NM
+            , T.ISSUE_VAL
+            , T.BOS_COUPON_NM
+            , T.DISPLAY_COUPON_NM
+            , IFNULL(C1.NAME, '') AS EVENT_BENEFIT_TP_NM
+            , IFNULL(C3.NAME, '') AS MALL_DIV_NM
+            , IFNULL(C4.NAME, '') AS EV_EMPLOYEE_TP_NM
+            , IFNULL(C6.NAME, '') AS EVENT_JOIN_TP_NM
+            , IFNULL(C7.NAME, '') AS EVENT_DRAW_TP_NM
+            , T.HANDWRITTEN_LOTTERY_TP
+            , T.NORMAL_EVENT_TP
+          </if>
+      FROM    (
+              SELECT  J.EV_EVENT_JOIN_ID
+                    , J.EV_EVENT_ID
+                    , E.TITLE
+                    , U.LOGIN_ID
+                    , IFNULL(FN_DECRYPT(U.USER_NM) , '')  AS USER_NM
+                    , G.GROUP_NM
+                    , B.UR_ERP_EMPLOYEE_CD
+                    , B.EVENT_JOIN_YN
+                    , U.CREATE_DT                         AS REG_DT
+                    , B.MOBILE
+                    , USA.RECEIVER_ZIP_CD
+                    , USA.RECEIVER_ADDR1
+                    , USA.RECEIVER_ADDR2
+                    , J.CREATE_DT                   AS REQ_DT
+                    , E.EVENT_TP
+                    , J.COMMENT_VALUE
+                    , J.COMMENT
+                    , J.STAMP_CNT
+                    , J.WINNER_YN
+                    , IFNULL(HANDWRITTEN_LOTTERY_TP.DIC_MST_NM, '') AS HANDWRITTEN_LOTTERY_NAME
+                    <!-- 당첨이 아닌 경우 현재기준 등록된 혜택 적용 -->
+                    , CASE  WHEN  J.WINNER_YN = 'Y' THEN J.EVENT_BENEFIT_TP
+                      ELSE  CASE  WHEN E.EVENT_TP = 'EVENT_TP.NORMAL'     THEN EN.EVENT_BENEFIT_TP
+                          WHEN E.EVENT_TP = 'EVENT_TP.SURVEY'     THEN ER.EVENT_BENEFIT_TP
+                          WHEN E.EVENT_TP = 'EVENT_TP.ATTEND'     THEN ED.EVENT_BENEFIT_TP
+                          WHEN E.EVENT_TP = 'EVENT_TP.MISSION'    THEN ED.EVENT_BENEFIT_TP
+                          WHEN E.EVENT_TP = 'EVENT_TP.PURCHASE'   THEN ED.EVENT_BENEFIT_TP
+                          WHEN E.EVENT_TP = 'EVENT_TP.ROULETTE'   THEN ERI.EVENT_BENEFIT_TP
+                          WHEN E.EVENT_TP = 'EVENT_TP.EXPERIENCE' THEN 'EVENT_BENEFIT_TP.COUPON'
+                          ELSE ''
+                      END
+                    END  AS EVENT_BENEFIT_TP
+                    , C.BOS_COUPON_NM
+                    , J.BENEFIT_NM
+                    , P.ISSUE_VAL
+                    , E.EVENT_JOIN_TP
+                    , E.EVENT_DRAW_TP
+                    , E.EV_EMPLOYEE_TP
+                    , E.MALL_DIV
+                  <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+                    , J.UR_USER_ID
+                    , J.WINNER_EXIST_YN
+                    , J.LOTTERY_DT
+                    , J.LOTTERY_ID
+                    , J.ADMIN_SECRET_YN
+                    , J.ADMIN_SECRET_YN_CHNG_DT
+                    , CASE  WHEN  J.WINNER_YN = 'Y' THEN J.PM_POINT_ID
+                            ELSE  CASE  WHEN E.EVENT_TP = 'EVENT_TP.NORMAL'     THEN EN.PM_POINT_ID
+                                        WHEN E.EVENT_TP = 'EVENT_TP.SURVEY'     THEN ER.PM_POINT_ID
+                                        WHEN E.EVENT_TP = 'EVENT_TP.ATTEND'     THEN ED.BENEFIT_ID
+                                        WHEN E.EVENT_TP = 'EVENT_TP.MISSION'    THEN ED.BENEFIT_ID
+                                        WHEN E.EVENT_TP = 'EVENT_TP.PURCHASE'   THEN ED.BENEFIT_ID
+                                        WHEN E.EVENT_TP = 'EVENT_TP.ROULETTE'   THEN ERI.BENEFIT_ID
+                                        WHEN E.EVENT_TP = 'EVENT_TP.EXPERIENCE' THEN ''
+                                        ELSE ''
+                                  END
+                      END  AS    PM_POINT_ID
+                    , J.EV_EVENT_ROULETTE_ITEM_ID
+                    , E.USE_YN
+                    , E.DEL_YN
+                    , E.DESCRIPTION
+                    , E.DISP_WEB_PC_YN
+                    , E.DISP_WEB_MOBILE_YN
+                    , E.DISP_APP_YN
+                    , E.START_DT
+                    , E.END_DT
+                    , E.TIME_OVER_CLOSE_YN
+                    , E.BNR_IMG_PATH_PC
+                    , E.BNR_IMG_ORIGIN_NM_PC
+                    , E.BNR_IMG_PATH_MO
+                    , E.BNR_IMG_ORIGIN_NM_MO
+                    , E.DETL_HTML_PC
+                    , E.DETL_HTML_MO
+                    , E.WINNER_NOTICE
+                    , E.WINNER_INFOR
+                    , E.WINNER_INFOR_DT
+                    , E.EMPLOYEE_JOIN_YN
+                    , E.CREATE_ID
+                    , E.CREATE_DT
+                    , E.MODIFY_ID
+                    , E.MODIFY_DT
+                    , B.UR_BUYER_ID
+                    , B.MAIL
+                    <!-- , G.UR_GROUP_TP -->
+                    , P.POINT_TP
+                    , P.POINT_NM
+                    , C.DISPLAY_COUPON_NM
+                    , (CASE  WHEN E.EVENT_TP = 'EVENT_TP.NORMAL' THEN EN.COMMENT_CODE_YN
+                        WHEN E.EVENT_TP = 'EVENT_TP.EXPERIENCE' THEN EE.COMMENT_CODE_YN
+                        END ) AS COMMENT_CODE_YN
+                    , J.HANDWRITTEN_LOTTERY_TP
+                    , EN.NORMAL_EVENT_TP
+                  </if>
+              FROM    EV_EVENT_JOIN J
+                         INNER JOIN EV_EVENT E ON E.EV_EVENT_ID = J.EV_EVENT_ID
+                         INNER JOIN UR_USER U ON U.UR_USER_ID = J.UR_USER_ID
+                         INNER JOIN UR_BUYER B ON B.UR_USER_ID = U.UR_USER_ID
+                         LEFT OUTER JOIN UR_GROUP G ON G.UR_GROUP_ID = B.UR_GROUP_ID
+                         LEFT OUTER JOIN UR_SHIPPING_ADDR USA ON USA.UR_USER_ID = J.UR_USER_ID AND USA.DEFAULT_YN = 'Y'
+                         LEFT OUTER JOIN  PM_POINT P
+                                    ON    J.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'
+                                    AND   P.PM_POINT_ID = J.PM_POINT_ID
+                         LEFT OUTER JOIN  EV_EVENT_JOIN_COUPON JC
+                                    ON    J.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON'
+                                    AND   JC.EV_EVENT_JOIN_ID = J.EV_EVENT_JOIN_ID
+                                    AND   JC.SORT = 1
+                         LEFT OUTER JOIN  PM_COUPON C
+                                    ON    C.PM_COUPON_ID = JC.PM_COUPON_ID
+                         LEFT OUTER  JOIN  EV_EVENT_NORMAL EN
+                                     ON    EN.EV_EVENT_ID = J.EV_EVENT_ID
+                         LEFT OUTER  JOIN  EV_EVENT_SURVEY ER
+                                     ON    ER.EV_EVENT_ID = J.EV_EVENT_ID
+                         LEFT OUTER  JOIN  EV_EVENT_STAMP ES
+                                     ON    ES.EV_EVENT_ID = J.EV_EVENT_ID
+                         LEFT OUTER  JOIN  EV_EVENT_STAMP_DETL ED
+                                     ON    ED.EV_EVENT_STAMP_ID = ES.EV_EVENT_STAMP_ID
+                                     AND   ED.STAMP_CNT = J.STAMP_CNT
+                         LEFT OUTER  JOIN  EV_EVENT_ROULETTE ERR
+                                     ON    ERR.EV_EVENT_ID = J.EV_EVENT_ID
+                         LEFT OUTER  JOIN  EV_EVENT_ROULETTE_ITEM ERI
+                                     ON    ERI.EV_EVENT_ROULETTE_ID = ERR.EV_EVENT_ROULETTE_ID
+                                     AND   ERI.EV_EVENT_ROULETTE_ITEM_ID = J.EV_EVENT_ROULETTE_ITEM_ID
+                         LEFT OUTER  JOIN  EV_EVENT_EXPERIENCE EE
+                                     ON    EE.EV_EVENT_ID = J.EV_EVENT_ID
+                         LEFT JOIN (
+                                      SELECT
+                                              SCC.ST_COMN_CODE_ID, GDM.DIC_MST_NM
+                                      FROM ST_COMN_CODE SCC
+                                      INNER JOIN GB_DIC_MST GDM
+                                      ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+                                      WHERE
+                                      SCC.ST_COMN_CODE_MST_CD = 'HANDWRITTEN_LOTTERY_TP'
+                                      ) HANDWRITTEN_LOTTERY_TP
+                                      ON HANDWRITTEN_LOTTERY_TP.ST_COMN_CODE_ID = J.HANDWRITTEN_LOTTERY_TP
+              WHERE   J.EV_EVENT_ID = #{evEventId}
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(winnerYn)'>
+                AND   J.WINNER_YN = #{winnerYn}
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(loginId)'>
+                AND   U.LOGIN_ID LIKE CONCAT(#{loginId}, '%')
+              </if>
+            <!--
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(employeeExceptYn)'>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(employeeExceptYn, "Y")'>
+                /* 임직원제외 : B.UR_ERP_EMPLOYEE_CD 값이 있으면 임직원임 */
+                AND   (B.UR_ERP_EMPLOYEE_CD IS NULL OR B.UR_ERP_EMPLOYEE_CD = '')
+              </if>
+            </if>
+            -->
+            <!--
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(eventJoinYn)'>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(eventJoinYn, "Y")'>
+                /* EVENT_JOIN_YN : Y -> 참여제한 */
+                AND   (B.EVENT_JOIN_YN = 'N' OR B.EVENT_JOIN_YN = '' OR B.EVENT_JOIN_YN IS NULL)
+              </if>
+            </if>
+             -->
+              ) T
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_BENEFIT_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C1
+                                    ON    C1.CODE  = T.EVENT_BENEFIT_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C2
+                                    ON    C2.CODE  = T.EVENT_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'MALL_DIV'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C3
+                                    ON    C3.CODE  = T.MALL_DIV
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'EV_EMPLOYEE_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C4
+                                    ON    C4.CODE  = T.EV_EMPLOYEE_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_JOIN_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C6
+                                    ON    C6.CODE  = T.EVENT_JOIN_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_DRAW_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C7
+                                    ON    C7.CODE  = T.EVENT_DRAW_TP
+      ORDER BY T.REQ_DT DESC, T.USER_NM ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 직접입력 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.27   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinDirectJoinList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectEventJoinDirectJoinList*/
+      SELECT  T.EV_EVENT_SURVEY_QUESTION_ID
+            , T.SORT
+            , T.TITLE
+            , T.EVENT_SURVEY_TP
+            , T.EV_EVENT_JOIN_SURVEY_ID
+            , T.EV_EVENT_SURVEY_ITEM_ID
+            , IFNULL(T.OTHER_CMNT, '')  AS OTHER_CMNT
+            , T.EV_EVENT_JOIN_ID
+            , T.EV_EVENT_ID
+            , T.EVENT_TITLE
+            , T.EVENT_TP
+            , IFNULL(C2.NAME, '')       AS EVENT_TP_NM
+            , T.UR_USER_ID
+            , T.WINNER_YN
+            , T.WINNER_EXIST_YN
+            , T.LOTTERY_DT
+            , T.LOTTERY_ID
+            , T.EVENT_BENEFIT_TP
+            , T.COMMENT_VALUE
+            , T.COMMENT
+            , T.ADMIN_SECRET_YN
+            , T.ADMIN_SECRET_YN_CHNG_DT
+            , T.PM_POINT_ID
+            , T.BENEFIT_NM
+            , T.EV_EVENT_ROULETTE_ITEM_ID
+            , T.STAMP_CNT
+            , T.REQ_DT
+            , T.LOGIN_ID
+            , T.USER_NM
+            , T.REG_DT
+            , T.UR_BUYER_ID
+            , T.UR_ERP_EMPLOYEE_CD
+            , IFNULL(T.EVENT_JOIN_YN, '')         AS EVENT_JOIN_YN
+            , IFNULL(FN_DECRYPT(T.MAIL) , '')     AS MAIL
+            , IFNULL(FN_DECRYPT(T.MOBILE) , '')   AS MOBILE
+            <!-- , T.UR_GROUP_TP -->
+            , T.GROUP_NM
+            , IFNULL(C1.NAME, '')   AS WINNER_CONTS_ONLY
+            , CASE WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON'  THEN T.BOS_COUPON_NM
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'   THEN FORMAT(IFNULL(T.ISSUE_VAL, 0), 0)
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.GIFT'    THEN T.BENEFIT_NM
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.ENTER'   THEN T.BENEFIT_NM
+                   WHEN T.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.NONE'    THEN T.BENEFIT_NM
+                   ELSE ''
+              END AS WINNER_CONTS_MEMO
+      FROM    (
+              SELECT  Q.EV_EVENT_SURVEY_QUESTION_ID
+                    , Q.SORT
+                    , Q.TITLE
+                    , Q.EVENT_SURVEY_TP
+                    , S.EV_EVENT_JOIN_SURVEY_ID
+                    , S.EV_EVENT_SURVEY_ITEM_ID
+                    , S.OTHER_CMNT
+                    , J.EV_EVENT_JOIN_ID
+                    , J.EV_EVENT_ID
+                    , J.UR_USER_ID
+                    , J.WINNER_YN
+                    , J.WINNER_EXIST_YN
+                    , J.LOTTERY_DT
+                    , J.LOTTERY_ID
+                    , J.EVENT_BENEFIT_TP
+                    , J.COMMENT_VALUE
+                    , J.COMMENT
+                    , J.ADMIN_SECRET_YN
+                    , J.ADMIN_SECRET_YN_CHNG_DT
+                    , J.PM_POINT_ID
+                    , J.BENEFIT_NM
+                    , J.EV_EVENT_ROULETTE_ITEM_ID
+                    , J.STAMP_CNT
+                    , J.CREATE_DT                   AS REQ_DT
+                    , E.TITLE                       AS EVENT_TITLE
+                    , E.EVENT_TP
+                    , U.LOGIN_ID
+                    , IFNULL(FN_DECRYPT(U.USER_NM) , '')  AS USER_NM
+                    , U.CREATE_DT                         AS REG_DT
+                    , B.UR_BUYER_ID
+                    , B.UR_ERP_EMPLOYEE_CD
+                    , B.EVENT_JOIN_YN
+                    , B.MAIL
+                    , B.MOBILE
+                    <!-- , G.UR_GROUP_TP -->
+                    , G.GROUP_NM
+                    , C.BOS_COUPON_NM
+                    , P.ISSUE_VAL
+              FROM    EV_EVENT_SURVEY_QUESTION Q
+                    , EV_EVENT_SURVEY_ITEM I
+                    , EV_EVENT_JOIN_SURVEY S
+                    , EV_EVENT_JOIN J
+                          LEFT OUTER  JOIN  PM_POINT P
+                                      ON    J.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT'
+                                      AND   P.PM_POINT_ID = J.PM_POINT_ID
+                          LEFT OUTER  JOIN  EV_EVENT_JOIN_COUPON JC
+                                      ON    J.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON'
+                                      AND   JC.EV_EVENT_JOIN_ID = J.EV_EVENT_JOIN_ID
+                                      AND   JC.SORT = 1
+                          LEFT OUTER  JOIN  PM_COUPON C
+                                      ON    C.PM_COUPON_ID = JC.PM_COUPON_ID
+                    , EV_EVENT E
+                    , UR_USER U
+                    , UR_BUYER B
+                          LEFT OUTER  JOIN  UR_GROUP G
+                                      ON    G.UR_GROUP_ID = B.UR_GROUP_ID
+              WHERE   Q.EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}
+                AND   I.EV_EVENT_SURVEY_QUESTION_ID = Q.EV_EVENT_SURVEY_QUESTION_ID
+                AND   I.DIRECT_INPUT_YN             = 'Y'
+                AND   S.EV_EVENT_SURVEY_ITEM_ID     = I.EV_EVENT_SURVEY_ITEM_ID
+                AND   J.EV_EVENT_JOIN_ID            = S.EV_EVENT_JOIN_ID
+                AND   U.UR_USER_ID                  = J.UR_USER_ID
+                AND   B.UR_USER_ID                  = U.UR_USER_ID
+                AND   E.EV_EVENT_ID                 = Q.EV_EVENT_ID
+              ) T
+                              LEFT OUTER  JOIN  (
+                                                SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                      , DC.DIC_NM          AS NAME
+                                                FROM    ST_COMN_CODE CD
+                                                      , GB_DIC DC
+                                                WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_BENEFIT_TP'
+                                                  AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                                  AND   DC.GB_LANG_ID           = '1'
+                                                ) C1
+                                          ON    C1.CODE  = T.EVENT_BENEFIT_TP
+                              LEFT OUTER  JOIN  (
+                                                SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                      , DC.DIC_NM          AS NAME
+                                                FROM    ST_COMN_CODE CD
+                                                      , GB_DIC DC
+                                                WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_TP'
+                                                  AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                                  AND   DC.GB_LANG_ID           = '1'
+                                                ) C2
+                                          ON    C2.CODE  = T.EVENT_TP
+      ORDER BY T.REQ_DT DESC, T.USER_NM ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 설문항목 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.20   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinSurveyQuestionList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyVo">
+      /*eventManage.selectEventJoinSurveyQuestionList*/
+      SELECT  Q.EV_EVENT_SURVEY_QUESTION_ID
+            , Q.EV_EVENT_ID
+            , Q.SORT
+            , Q.TITLE
+            , Q.EVENT_SURVEY_TP
+            , IFNULL(C1.NAME, '') AS EVENT_SURVEY_TP_NM
+      FROM    EV_EVENT_SURVEY_QUESTION Q
+                  LEFT OUTER   JOIN (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EVENT_SURVEY_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = Q.EVENT_SURVEY_TP
+      WHERE   Q.EV_EVENT_ID = #{evEventId}
+      ORDER BY CAST(Q.SORT AS SIGNED)
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 설문아이템 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.20   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinSurveyItemList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyItemVo">
+      /*eventManage.selectEventJoinSurveyItemList*/
+      SELECT  I.EV_EVENT_SURVEY_ITEM_ID
+            , I.EV_EVENT_SURVEY_QUESTION_ID
+            , I.SORT
+            , I.ITEM
+            , I.DIRECT_INPUT_YN
+            , S.ITEM_SUM
+            , S.ITEM_TOTAL_SUM
+            , CONCAT(S.ITEM_RATE) AS ITEM_RATE        <!-- 문자로 반환 -->
+      FROM    EV_EVENT_SURVEY_ITEM I
+                LEFT OUTER  JOIN  (
+                                  <!-- 집계정보 -->
+                                  SELECT  T1.EV_EVENT_SURVEY_QUESTION_ID
+                                        , T1.EV_EVENT_SURVEY_ITEM_ID
+                                        , T1.ITEM_SUM
+                                        , T2.ITEM_TOTAL_SUM
+                                        , ROUND((T1.ITEM_SUM/T2.ITEM_TOTAL_SUM) * 100, 1) AS ITEM_RATE
+                                  FROM    (
+                                          /*설문+아이템별 집계*/
+                                          SELECT  T.EV_EVENT_SURVEY_QUESTION_ID
+                                                , T.EV_EVENT_SURVEY_ITEM_ID
+                                                , SUM(CNT)    AS ITEM_SUM
+                                          FROM    (
+                                                  SELECT  Q.EV_EVENT_SURVEY_QUESTION_ID
+                                                        , I.EV_EVENT_SURVEY_ITEM_ID
+                                                        , CASE WHEN IFNULL(J.EV_EVENT_SURVEY_ITEM_ID, 0) = 0 THEN 0 ELSE 1 END AS CNT
+                                                  FROM    EV_EVENT_SURVEY_QUESTION Q
+                                                        , EV_EVENT_SURVEY_ITEM I
+                                                              LEFT OUTER  JOIN  (
+                                                                                SELECT  S.EV_EVENT_SURVEY_ITEM_ID
+                                                                                      , S.EV_EVENT_JOIN_SURVEY_ID
+                                                                                      , S.EV_EVENT_JOIN_ID
+                                                                                      , S.EV_EVENT_SURVEY_QUESTION_ID
+                                                                                      , S.OTHER_CMNT
+                                                                                FROM    EV_EVENT_SURVEY_QUESTION Q
+                                                                                      , EV_EVENT_JOIN_SURVEY S
+                                                                                WHERE   Q.EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}
+                                                                                  AND   S.EV_EVENT_SURVEY_QUESTION_ID = Q.EV_EVENT_SURVEY_QUESTION_ID
+                                                                                ) J
+                                                                          ON    J.EV_EVENT_SURVEY_ITEM_ID = I.EV_EVENT_SURVEY_ITEM_ID
+
+                                                  WHERE   Q.EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}
+                                                    AND   I.EV_EVENT_SURVEY_QUESTION_ID = Q.EV_EVENT_SURVEY_QUESTION_ID
+                                                  ) T
+                                          GROUP BY T.EV_EVENT_SURVEY_QUESTION_ID, T.EV_EVENT_SURVEY_ITEM_ID
+                                          ) T1
+                                                LEFT OUTER  JOIN  (
+                                                                  /*설문별 집계*/
+                                                                  SELECT  S.EV_EVENT_SURVEY_QUESTION_ID
+                                                                        , COUNT(1) AS ITEM_TOTAL_SUM
+                                                                  FROM    EV_EVENT_SURVEY_QUESTION Q
+                                                                        , EV_EVENT_JOIN_SURVEY S
+                                                                  WHERE   Q.EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}
+                                                                    AND   S.EV_EVENT_SURVEY_QUESTION_ID = Q.EV_EVENT_SURVEY_QUESTION_ID
+                                                                  GROUP BY S.EV_EVENT_SURVEY_QUESTION_ID
+                                                                  ) T2
+                                                            ON    T2.EV_EVENT_SURVEY_QUESTION_ID = T1.EV_EVENT_SURVEY_QUESTION_ID
+
+                                  ) S
+                            ON    S.EV_EVENT_SURVEY_QUESTION_ID = I.EV_EVENT_SURVEY_QUESTION_ID
+                            AND   S.EV_EVENT_SURVEY_ITEM_ID     = I.EV_EVENT_SURVEY_ITEM_ID
+      WHERE   I.EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}
+      ORDER BY CAST(I.SORT AS SIGNED)
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 설문아이템참여 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.25   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinSurveyItemJoinList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyItemVo">
+      /*eventManage.selectEventJoinSurveyItemJoinList*/
+      SELECT  J.EV_EVENT_SURVEY_QUESTION_ID
+            , J.EV_EVENT_SURVEY_ITEM_ID
+            , J.EV_EVENT_JOIN_SURVEY_ID
+            , J.EV_EVENT_JOIN_ID
+            , Q.EV_EVENT_ID
+            , Q.TITLE
+            , I.ITEM
+            , I.DIRECT_INPUT_YN
+            , J.OTHER_CMNT
+            , Q.SORT AS Q_SORT
+            , I.SORT AS SORT
+      FROM    EV_EVENT_JOIN_SURVEY J
+            , EV_EVENT_SURVEY_ITEM I
+            , EV_EVENT_SURVEY_QUESTION Q
+      WHERE   J.EV_EVENT_JOIN_ID            = #{evEventJoinId}                <!-- 참여PK -->
+        AND   I.EV_EVENT_SURVEY_ITEM_ID     = J.EV_EVENT_SURVEY_ITEM_ID
+        AND   Q.EV_EVENT_SURVEY_QUESTION_ID = I.EV_EVENT_SURVEY_QUESTION_ID
+        AND   Q.EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}      <!-- 설문PK -->
+      ORDER BY CAST(Q.SORT AS SIGNED), CAST(I.SORT AS SIGNED)
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 설문아이템첨부파일 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.20   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinSurveyItemAttcList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyItemAttcVo">
+      /*eventManage.selectEventJoinSurveyItemAttcList*/
+      SELECT  A.EV_EVENT_SURVEY_ITEM_ATTC_ID
+            , A.EV_EVENT_SURVEY_ITEM_ID
+            , A.IMG_PATH
+            , A.IMG_ORIGIN_NM
+      FROM    EV_EVENT_SURVEY_ITEM_ATTC A
+      WHERE   A.EV_EVENT_SURVEY_ITEM_ID = #{evEventSurveyItemId}
+      ORDER BY CAST(A.EV_EVENT_SURVEY_ITEM_ATTC_ID AS SIGNED)
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 직접선택 대상자자 조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.20   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectJoinWinnerDirectTarget" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectJoinWinnerDirectTarget*/
+      SELECT  UR_USER_ID
+            , MIN(EV_EVENT_JOIN_ID) AS EV_EVENT_JOIN_ID <!-- 가장 앞선 참여건 -->
+            , MAX(WINNER_YN)        AS WINNER_YN
+            , COUNT(1)              AS CNT
+      FROM    EV_EVENT_JOIN
+      WHERE   EV_EVENT_ID       =   #{evEventId}    <!-- 안전장치 조건 -->
+        AND   EV_EVENT_JOIN_ID  IN  <foreach collection="evEventJoinIdList" item="evEventJoinId" index="index" separator="," open="(" close=")">
+                                      #{evEventJoinId}
+                                    </foreach>
+      GROUP BY UR_USER_ID
+      HAVING MAX(WINNER_YN) != 'Y'    <!-- 이벤트내 당첨이 존재하는 사용자 제외 -->
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 랜덤 당첨 대상자자 조회
+   * @                1. 동일 이벤트 내의 기 당첨자 제외
+   * @                2. 참여자 기준으로 첫번째 참여건 선택
+   * @                3. 화면에서 설정한 임직원제외, 이벤트참여제한 조건 적용
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.19   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectJoinWinnerRandomTarget" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectJoinWinnerRandomTarget*/
+      SELECT  T.UR_USER_ID
+            , T.EV_EVENT_ID
+            , T.EVENT_TP
+            , T.EVENT_BENEFIT_TP
+            , T.BENEFIT_NM
+            , MIN(T.EV_EVENT_JOIN_ID) AS EV_EVENT_JOIN_ID
+            , #{randomBenefitName} RANDOM_BENEFIT_NAME
+      FROM    (
+              SELECT  J.EV_EVENT_JOIN_ID
+                    , J.EV_EVENT_ID
+                    , J.UR_USER_ID
+                    , E.EVENT_TP
+                    , CASE  WHEN  E.EVENT_TP = 'EVENT_TP.NORMAL'      THEN EN.EVENT_BENEFIT_TP
+                            WHEN  E.EVENT_TP = 'EVENT_TP.SURVEY'      THEN ER.EVENT_BENEFIT_TP
+                            WHEN  E.EVENT_TP = 'EVENT_TP.PURCHASE'    THEN ED.EVENT_BENEFIT_TP
+                            WHEN  E.EVENT_TP = 'EVENT_TP.EXPERIENCE'  THEN 'EVENT_BENEFIT_TP.COUPON'
+                            ELSE  ''
+                      END   AS  EVENT_BENEFIT_TP
+                    , CASE  WHEN  E.EVENT_TP = 'EVENT_TP.NORMAL'      THEN EN.BENEFIT_NM
+                            WHEN  E.EVENT_TP = 'EVENT_TP.SURVEY'      THEN ER.BENEFIT_NM
+                            WHEN  E.EVENT_TP = 'EVENT_TP.PURCHASE'    THEN ED.BENEFIT_NM
+                            WHEN  E.EVENT_TP = 'EVENT_TP.EXPERIENCE'  THEN ''
+                            ELSE  ''
+                      END   AS  BENEFIT_NM
+              FROM    EV_EVENT_JOIN J
+                          LEFT OUTER  JOIN  EV_EVENT_NORMAL EN
+                                      ON    EN.EV_EVENT_ID = J.EV_EVENT_ID
+                          LEFT OUTER  JOIN  EV_EVENT_SURVEY ER
+                                      ON    ER.EV_EVENT_ID = J.EV_EVENT_ID
+                          LEFT OUTER  JOIN  EV_EVENT_STAMP ES
+                                      ON    ES.EV_EVENT_ID = J.EV_EVENT_ID
+                          LEFT OUTER  JOIN  EV_EVENT_STAMP_DETL ED
+                                      ON    ED.EV_EVENT_STAMP_ID = ES.EV_EVENT_STAMP_ID
+                                      AND   ED.STAMP_CNT = J.STAMP_CNT
+                          LEFT OUTER  JOIN  EV_EVENT_EXPERIENCE EE
+                                      ON    EE.EV_EVENT_ID = J.EV_EVENT_ID
+                    , EV_EVENT E
+                    , UR_USER U
+                    , UR_BUYER B
+              WHERE   J.EV_EVENT_ID = #{evEventId}
+                AND   J.UR_USER_ID  NOT IN  (
+                                            SELECT UR_USER_ID
+                                            FROM   EV_EVENT_JOIN
+                                            WHERE  EV_EVENT_ID = #{evEventId}
+                                              AND  WINNER_YN   = 'Y'
+                                            GROUP BY UR_USER_ID
+                                            )
+                AND   J.WINNER_YN   != 'Y'
+                AND   E.EV_EVENT_ID = J.EV_EVENT_ID
+                AND   U.UR_USER_ID  = J.UR_USER_ID
+                AND   B.UR_USER_ID  = U.UR_USER_ID
+                AND   'Y' = FN_AVAILABLE_EVENT_ORDER_INFO(EN.JOIN_CONDITION,DATE_FORMAT(E.START_DT, '%Y-%m-%d'),DATE_FORMAT(E.END_DT, '%Y-%m-%d'),J.UR_USER_ID,EN.ORDER_PRICE,EN.ORDER_CNT,E.EV_EVENT_ID) /* 이벤트 주문 조건 가능 대상 확인 함수 */
+                AND   (
+                      (IFNULL(#{employeeExceptYn}, '') = 'Y' AND IFNULL(B.UR_ERP_EMPLOYEE_CD, '') = '')
+                      OR
+                      (IFNULL(#{employeeExceptYn}, '') != 'Y')
+                      )
+                AND   (
+                      (IFNULL(#{eventJoinYn}, '') = 'Y' AND IFNULL(B.EVENT_JOIN_YN, '') != 'Y')
+                      OR
+                      (IFNULL(#{eventJoinYn}, '') != 'Y')
+                      )
+              ) T
+      GROUP BY T.UR_USER_ID
+      ORDER BY RAND()
+      LIMIT #{winnerCnt}
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨혜택 쿠폰리스트 조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinBenefitCouponList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectEventJoinBenefitCouponList*/
+      SELECT  C.PM_COUPON_ID
+            , C.COUPON_CNT
+            , J.EV_EVENT_JOIN_ID
+            , J.EV_EVENT_ID
+            , PC.DISPLAY_COUPON_NM
+            , PC.BOS_COUPON_NM
+      FROM    EV_EVENT_JOIN J
+            , EV_EVENT_COUPON C
+            , PM_COUPON PC
+      WHERE   J.EV_EVENT_JOIN_ID  = #{evEventJoinId}
+        AND   J.EV_EVENT_ID       = #{evEventId}      <!-- 안전장치 -->
+        AND   J.UR_USER_ID        = #{urUserId}       <!-- 안전장치 -->
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stampCnt)'>
+        AND   J.STAMP_CNT         = #{stampCnt}
+      </if>
+        AND   C.EV_EVENT_ID  = J.EV_EVENT_ID
+        AND   PC.PM_COUPON_ID     = C.PM_COUPON_ID
+      ORDER BY C.EV_EVENT_COUPON_ID ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨혜택 쿠폰리스트 조회 : 체험단용
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinBenefitCouponByExperienceList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectEventJoinBenefitCouponByExperienceList*/
+      SELECT  C.PM_COUPON_ID
+            , 1 AS COUPON_CNT
+            , J.EV_EVENT_JOIN_ID
+            , J.EV_EVENT_ID
+            , C.DISPLAY_COUPON_NM
+            , C.BOS_COUPON_NM
+      FROM    EV_EVENT_JOIN J
+            , EV_EVENT_EXPERIENCE P
+            , PM_COUPON C
+      WHERE   J.EV_EVENT_JOIN_ID  = #{evEventJoinId}
+        AND   J.EV_EVENT_ID       = #{evEventId}      <!-- 안전장치 -->
+        AND   J.UR_USER_ID        = #{urUserId}       <!-- 안전장치 -->
+        AND   P.EV_EVENT_ID   = J.EV_EVENT_ID
+        AND   C.PM_COUPON_ID  = P.PM_COUPON_ID
+      ORDER BY CAST(P.PM_COUPON_ID AS SIGNED)
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨혜택 포인트리스트 조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinBenefitPointList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectEventJoinBenefitPointList*/
+      SELECT  P.PM_POINT_ID
+            , P.POINT_NM
+            , P.POINT_TP
+            , J.EV_EVENT_JOIN_ID
+            , J.EV_EVENT_ID
+            , J.UR_USER_ID
+      FROM    EV_EVENT_JOIN J
+            , EV_EVENT_NORMAL N
+            , PM_POINT P
+      WHERE   J.EV_EVENT_JOIN_ID  = #{evEventJoinId}
+        AND   J.EV_EVENT_ID       = #{evEventId}      <!-- 안전장치 -->
+        AND   J.UR_USER_ID        = #{urUserId}       <!-- 안전장치 -->
+      <!--  AND   P.PM_POINT_ID       = J.PM_POINT_ID-->
+        AND   N.PM_POINT_ID  = P.PM_POINT_ID
+        AND   N.EV_EVENT_ID  = J.EV_EVENT_ID
+      ORDER BY CAST(P.PM_POINT_ID AS SIGNED)
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨혜택 경품응모정보 조회
+   * @                - 일반이벤트/설문이벤트/스탬프(구매)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectEventJoinBenefitGiftEnterInfo" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.selectEventJoinBenefitGiftEnterInfo*/
+      SELECT  J.EV_EVENT_JOIN_ID
+            , J.EV_EVENT_ID
+            , E.EVENT_TP
+            , J.UR_USER_ID
+            , CASE  WHEN  E.EVENT_TP = 'EVENT_TP.NORMAL'      THEN EN.EVENT_BENEFIT_TP
+                    WHEN  E.EVENT_TP = 'EVENT_TP.SURVEY'      THEN ER.EVENT_BENEFIT_TP
+                    WHEN  E.EVENT_TP = 'EVENT_TP.PURCHASE'    THEN ED.EVENT_BENEFIT_TP
+                    ELSE  ''
+              END   AS  EVENT_BENEFIT_TP
+            , CASE  WHEN  E.EVENT_TP = 'EVENT_TP.NORMAL'   AND E.EVENT_DRAW_TP = 'EVENT_DRAW_TP.ADMIN'  THEN ' '
+                    WHEN  E.EVENT_TP = 'EVENT_TP.NORMAL'   AND E.EVENT_DRAW_TP <![CDATA[<>]]> 'EVENT_DRAW_TP.ADMIN'  THEN EN.BENEFIT_NM
+                    WHEN  E.EVENT_TP = 'EVENT_TP.SURVEY'      THEN ER.BENEFIT_NM
+                    WHEN  E.EVENT_TP = 'EVENT_TP.PURCHASE'    THEN ED.BENEFIT_NM
+                    ELSE  ''
+              END   AS  BENEFIT_NM
+      FROM    EV_EVENT_JOIN J
+                LEFT OUTER  JOIN  EV_EVENT_NORMAL EN
+                            ON    EN.EV_EVENT_ID = J.EV_EVENT_ID
+                LEFT OUTER  JOIN  EV_EVENT_SURVEY ER
+                            ON    ER.EV_EVENT_ID = J.EV_EVENT_ID
+                LEFT OUTER  JOIN  EV_EVENT_STAMP ES
+                            ON    ES.EV_EVENT_ID = J.EV_EVENT_ID
+                LEFT OUTER  JOIN  EV_EVENT_STAMP_DETL ED
+                            ON    ED.EV_EVENT_STAMP_ID = ES.EV_EVENT_STAMP_ID
+                            AND   ED.STAMP_CNT = #{stampCnt}
+                LEFT OUTER  JOIN  EV_EVENT_EXPERIENCE EE
+                            ON    EE.EV_EVENT_ID = J.EV_EVENT_ID
+            , EV_EVENT E
+      WHERE   J.EV_EVENT_JOIN_ID  = #{evEventJoinId}
+        AND   J.EV_EVENT_ID       = #{evEventId}      <!-- 안전장치 -->
+        AND   J.UR_USER_ID        = #{urUserId}       <!-- 안전장치 -->
+        AND   E.EV_EVENT_ID       = J.EV_EVENT_ID
+  </select>
+
+  <!-- #################################################################### -->
+  <!-- 등록 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEvent" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.addEvent*/
+      INSERT INTO EV_EVENT (
+          EVENT_TP
+        , MALL_DIV
+        , USE_YN
+        , DEL_YN
+        , DISP_YN
+        , TITLE
+        , DESCRIPTION
+        , DISP_WEB_PC_YN
+        , DISP_WEB_MOBILE_YN
+        , DISP_APP_YN
+        , EV_EMPLOYEE_TP
+        , START_DT
+        , END_DT
+        , TIME_OVER_CLOSE_YN
+        , BNR_IMG_PATH_PC
+        , BNR_IMG_ORIGIN_NM_PC
+        , BNR_IMG_PATH_MO
+        , BNR_IMG_ORIGIN_NM_MO
+        , DETL_HTML_PC
+        , DETL_HTML_MO
+        , DETL_HTML_PC2
+        , DETL_HTML_MO2
+        , WINNER_NOTICE
+        , WINNER_INFOR
+        , WINNER_INFOR_DT
+        , EMPLOYEE_JOIN_YN
+        , EVENT_JOIN_TP
+        , EVENT_DRAW_TP
+        , STYLE_ID
+        , CREATE_ID
+        , CREATE_DT
+        , MODIFY_ID
+        , MODIFY_DT
+        , COVERAGE_TP
+        , CHECK_NEW_USER_YN
+      )
+      VALUES (
+          #{eventTp}
+        , #{mallDiv}
+        , #{useYn}
+        , #{delYn}
+        , #{dispYn}
+        , #{title}
+        , #{description}
+        , #{dispWebPcYn}
+        , #{dispWebMobileYn}
+        , #{dispAppYn}
+        , #{evEmployeeTp}
+        , #{startDt}
+        , #{endDt}
+        , #{timeOverCloseYn}
+        , #{bnrImgPathPc}
+        , #{bnrImgOriginNmPc}
+        , #{bnrImgPathMo}
+        , #{bnrImgOriginNmMo}
+        , #{detlHtmlPc}
+        , #{detlHtmlMo}
+        , #{detlHtmlPc2}
+        , #{detlHtmlMo2}
+        , #{winnerNotice}
+        , #{winnerInfor}
+        , CASE WHEN IFNULL(#{winnerInfor}, '') = '' THEN NULL ELSE NOW() END
+        , #{employeeJoinYn}
+        , #{eventJoinTp}
+        , #{eventDrawTp}
+        , #{styleId}
+        , #{createId}
+        , NOW()
+        , #{modifyId}
+        , NOW()
+        , IFNULL(#{coverageType},'')
+        , #{checkNewUserYn}
+      )
+      <selectKey keyProperty="evEventId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : *이벤트상세 - 일반이벤트 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventNormal" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventNormalVo">
+      /*eventManage.addEventNormal*/
+      INSERT INTO EV_EVENT_NORMAL (
+          EV_EVENT_ID
+        , COMMENT_YN
+        , COMMENT_CODE_YN
+        , EVENT_BENEFIT_TP
+        , PM_POINT_ID
+        , BENEFIT_NM
+        , NORMAL_EVENT_TP
+        , AWARD_RT
+        , EXPECT_JOIN_USER_CNT
+        , JOIN_CONDITION
+        , EVENT_STAMP_ORDER_TP
+        , ORDER_CNT
+        , ORDER_PRICE
+        , GOODS_DELIVERY_TYPE
+        , TOTAL_WIN_CNT
+      )
+      VALUES (
+          #{evEventId}
+        , #{commentYn}
+        , #{commentCodeYn}
+        , #{eventBenefitTp}
+        , #{pmPointId}
+        , #{benefitNm}
+        , #{normalEventTp}
+        , CASE WHEN #{awardRt} = '' THEN NULL ELSE #{awardRt} END
+        , CASE WHEN #{expectJoinUserCnt} = '' THEN NULL ELSE #{expectJoinUserCnt} END
+        , #{joinCondition}
+        , #{eventStampOrderTp}
+        , #{orderCnt}
+        , #{orderPrice}
+        , #{goodsDeliveryTp}
+        , #{totalWinCnt}
+      )
+      <selectKey keyProperty="evEventNormalId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : *이벤트상세 - 설문이벤트 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventSurvey" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyVo">
+      /*eventManage.addEventSurvey*/
+      INSERT INTO EV_EVENT_SURVEY (
+          EV_EVENT_ID
+        , BTN_COLOR_CD
+        , EVENT_BENEFIT_TP
+        , PM_POINT_ID
+        , BENEFIT_NM
+      )
+      VALUES (
+          #{evEventId}
+        , #{btnColorCd}
+        , #{eventBenefitTp}
+        , #{pmPointId}
+        , #{benefitNm}
+      )
+      <selectKey keyProperty="evEventSurveyId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 설문항목정보 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventSurveyQuestion" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyVo">
+      /*eventManage.addEventSurveyQuestion*/
+      INSERT INTO EV_EVENT_SURVEY_QUESTION (
+          EV_EVENT_ID
+        , SORT
+        , TITLE
+        , EVENT_SURVEY_TP
+      )
+      VALUES (
+          #{evEventId}
+        , #{sort}
+        , #{title}
+        , #{eventSurveyTp}
+      )
+      <selectKey keyProperty="evEventSurveyQuestionId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 설문아이템정보 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventSurveyItem" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyItemVo">
+      /*eventManage.addEventSurveyItem*/
+      INSERT INTO EV_EVENT_SURVEY_ITEM (
+          EV_EVENT_SURVEY_QUESTION_ID
+        , SORT
+        , ITEM
+        , DIRECT_INPUT_YN
+      )
+      VALUES (
+          #{evEventSurveyQuestionId}
+        , #{sort}
+      <choose>
+          <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(item) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(directInputYn, 'Y')">
+              , '직접입력'
+          </when>
+          <otherwise>
+              , #{item}
+          </otherwise>
+      </choose>
+      , #{directInputYn}
+      )
+      <selectKey keyProperty="evEventSurveyItemId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 설문아이템첨부파일 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventSurveyItemAttc" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventSurveyItemAttcVo">
+      /*eventManage.addEventSurveyItemAttc*/
+      INSERT INTO EV_EVENT_SURVEY_ITEM_ATTC (
+          EV_EVENT_SURVEY_ITEM_ID
+        , IMG_PATH
+        , IMG_ORIGIN_NM
+      )
+      VALUES (
+          #{evEventSurveyItemId}
+        , #{imgPath}
+        , #{imgOriginNm}
+      )
+      <selectKey keyProperty="evEventSurveyItemAttcId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : *이벤트상세 - 스탬프이벤트 등록
+   * @                - 출석/미션/구매 공통
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventStamp" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventStampVo">
+      /*eventManage.addEventStamp*/
+      INSERT INTO EV_EVENT_STAMP (
+          EV_EVENT_ID
+        , BTN_COLOR_CD
+        , DEFAULT_PATH
+        , DEFAULT_ORIGIN_NM
+        , CHECK_PATH
+        , CHECK_ORIGIN_NM
+        , BG_PATH
+        , BG_ORIGIN_NM
+        , STAMP_CNT1
+        , STAMP_CNT2
+        , ORDER_PRICE
+        , EVENT_STAMP_ORDER_TP
+        , STAMP_UPDATE_DT
+      )
+      VALUES (
+          #{evEventId}
+        , #{btnColorCd}
+        , #{defaultPath}
+        , #{defaultOriginNm}
+        , #{checkPath}
+        , #{checkOriginNm}
+        , #{bgPath}
+        , #{bgOriginNm}
+        , #{stampCnt1}
+        , #{stampCnt2}
+        , #{orderPrice}
+        , #{eventStampOrderTp}
+        , #{stampUpdateDt}
+      )
+      <selectKey keyProperty="evEventStampId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세 - 스탬프이벤트상세 등록
+   * @                - 출석/미션/구매 공통
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventStampDetl" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventStampVo">
+      /*eventManage.addEventStampDetl*/
+      INSERT INTO EV_EVENT_STAMP_DETL (
+          EV_EVENT_STAMP_ID
+        , STAMP_CNT
+        , DEFAULT_PATH
+        , DEFAULT_ORIGIN_NM
+        , CHECK_PATH
+        , CHECK_ORIGIN_NM
+        , ICON_PATH
+        , ICON_ORIGIN_NM
+        , EVENT_BENEFIT_TP
+        , BENEFIT_ID
+        , BENEFIT_NM
+        , STAMP_URL
+      )
+      VALUES (
+          #{evEventStampId}
+        , #{stampCnt}
+        , #{defaultPath}
+        , #{defaultOriginNm}
+        , #{checkPath}
+        , #{checkOriginNm}
+        , #{iconPath}
+        , #{iconOriginNm}
+        , #{eventBenefitTp}
+        , #{benefitId}
+        , #{benefitNm}
+        , #{stampUrl}
+      )
+      <selectKey keyProperty="evEventStampDetlId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : *이벤트상세 - 룰렛이벤트 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventRoulette" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventRouletteVo">
+      /*eventManage.addEventRoulette*/
+      INSERT INTO EV_EVENT_ROULETTE (
+          EV_EVENT_ID
+        , START_BTN_PATH
+        , START_BTN_ORIGIN_NM
+        , ARROW_PATH
+        , ARROW_ORIGIN_NM
+        , BG_PATH
+        , BG_ORIGIN_NM
+        , ROULETTE_CNT
+        , EXCEPTION_USER_ROULETTE_CNT
+        , ROULETTE_PATH
+        , ROULETTE_ORIGIN_NM
+        , EXPECT_JOIN_USER_CNT
+      )
+      VALUES (
+          #{evEventId}
+        , #{startBtnPath}
+        , #{startBtnOriginNm}
+        , #{arrowPath}
+        , #{arrowOriginNm}
+        , #{bgPath}
+        , #{bgOriginNm}
+        , #{rouletteCnt}
+        , #{exceptionUserRouletteCnt}
+        , #{roulettePath}
+        , #{rouletteOriginNm}
+        , #{expectJoinUserCntRoulette}
+      )
+      <selectKey keyProperty="evEventRouletteId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : *이벤트상세 - 룰렛이벤트아이템 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventRouletteItem" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventRouletteVo">
+      /*eventManage.addEventRouletteItem*/
+      INSERT INTO EV_EVENT_ROULETTE_ITEM (
+          EV_EVENT_ROULETTE_ID
+        , EVENT_BENEFIT_TP
+        , BENEFIT_ID
+        , BENEFIT_NM
+        , AWARD_RT
+        , AWARD_MAX_CNT
+      )
+      VALUES (
+          #{evEventRouletteId}
+        , #{eventBenefitTp}
+        , #{benefitId}
+        , #{benefitNm}
+        , #{awardRt}
+        , #{awardMaxCnt}
+      )
+      <selectKey keyProperty="evEventRouletteItemId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 룰렛이벤트 아이템 수정
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.27   acy    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putEventRouletteItem" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+        /*eventManage.putEventRouletteItem*/
+        UPDATE  EV_EVENT_ROULETTE_ITEM
+        SET     AWARD_RT        = #{awardRt}
+        , AWARD_MAX_CNT         = #{awardMaxCnt}
+        WHERE   EV_EVENT_ROULETTE_ITEM_ID           = #{evEventRouletteItemId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 룰렛이벤트 아이템 쿠폰 정보 수정
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.27   acy    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putRouletteItemEventCoupon" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+        /*eventManage.putRouletteItemEventCoupon*/
+        UPDATE  EV_EVENT_COUPON
+        SET     COUPON_CNT        = #{couponCnt}
+        WHERE   EV_EVENT_COUPON_ID           = #{evEventCouponId}
+    </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : *이벤트상세 - 체험단이벤트 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventExperience" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventExperienceVo">
+      /*eventManage.addEventExperience*/
+      INSERT INTO EV_EVENT_EXPERIENCE (
+          EV_EVENT_ID
+        , SELECT_START_DT
+        , SELECT_END_DT
+        , FEEDBACK_START_DT
+        , FEEDBACK_END_DT
+        , RECRUIT_CLOSE_YN
+        , FIRST_COME_CNT
+        , FIRST_COME_CLOSE_YN
+        , COMMENT_CODE_YN
+        , BTN_COLOR_CD
+        , PM_COUPON_ID
+        , IL_GOODS_ID
+      )
+      VALUES (
+          #{evEventId}
+        , #{selectStartDt}
+        , #{selectEndDt}
+        , #{feedbackStartDt}
+        , #{feedbackEndDt}
+        , #{recruitCloseYn}
+        , #{firstComeCnt}
+        , #{firstComeCloseYn}
+        , #{commentCodeYn}
+        , #{btnColorCd}
+        , #{pmCouponId}
+        , #{ilGoodsId}
+      )
+      <selectKey keyProperty="evEventExperienceId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트쿠폰 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventCoupon" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.addEventCoupon*/
+      INSERT INTO EV_EVENT_COUPON (
+          EV_EVENT_ID
+        , EV_EVENT_DETL_ID
+        , PM_COUPON_ID
+        , COUPON_CNT
+        , COUPON_TOTAL_CNT
+      )
+      VALUES (
+          #{evEventId}
+        , #{evEventDetlId}
+        , #{pmCouponId}
+        , #{couponCnt}
+        , #{couponTotalCnt}
+      )
+      <selectKey keyProperty="evEventCouponId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트댓글구분 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventCommentCode" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.addEventCommentCode*/
+      INSERT INTO EV_EVENT_COMMENT_CODE (
+          EV_EVENT_ID
+        , COMMENT_VALUE
+      )
+      VALUES (
+          #{evEventId}
+        , #{commentValue}
+      )
+      <selectKey keyProperty="evEventCommentCodeId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트접근권한정보 등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.06   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventUserGroup" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EvUserGroupVo">
+      /*eventManage.addEventUserGroup*/
+      INSERT INTO EV_EVENT_USER_GROUP (
+          EV_EVENT_ID
+        , UR_GROUP_ID
+      )
+      VALUES (
+          #{evEventId}
+        , #{urGroupId}
+      )
+      <selectKey keyProperty="evEventUserGroupId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+    * description 		:  적용범위 등록
+    * @
+    * @ 수정일			 수정자          수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.08.11      정동훈         최초생성
+    * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventCoverage">
+    /*	eventManage.addEventCoverage */
+    INSERT INTO EV_EVENT_COVERAGE
+    (
+    EV_EVENT_ID
+    , COVERAGE_TP
+    , COVERAGE_ID
+    , INCLUDE_YN
+    , CREATE_DT
+    , CREATE_ID
+    )
+    VALUES
+    <foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+        (
+        #{insertData.evEventId}
+        ,#{insertData.coverageType}
+        ,#{insertData.coverageId}
+        ,#{insertData.includeYn}
+        ,NOW()
+        ,#{insertData.userId}
+        )
+    </foreach>
+
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description 		:  적용범위 정보 삭제
+   * @
+   * @ 수정일			 수정자          수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.08.11      정동훈         최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="removeEventCoverage">
+    /* coupon.removeEventCoverage */
+    DELETE
+    FROM 	EV_EVENT_COVERAGE
+    WHERE  	EV_EVENT_ID = #{evEventId}
+  </delete>
+
+
+  <!-- #################################################################### -->
+  <!-- 수정 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 수정
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putEvent" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.putEvent*/
+      UPDATE  EV_EVENT
+      SET     MALL_DIV              = #{mallDiv}
+            , USE_YN                = #{useYn}
+            , DISP_YN               = #{dispYn}
+            , TITLE                 = #{title}
+            , DESCRIPTION           = #{description}
+            , DISP_WEB_PC_YN        = #{dispWebPcYn}
+            , DISP_WEB_MOBILE_YN    = #{dispWebMobileYn}
+            , DISP_APP_YN           = #{dispAppYn}
+            , EV_EMPLOYEE_TP        = #{evEmployeeTp}
+          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(statusSe, "BEF")'>
+            , START_DT              = #{startDt}
+            , END_DT                = #{endDt}
+          </if>
+            , TIME_OVER_CLOSE_YN    = #{timeOverCloseYn}
+            , BNR_IMG_PATH_PC       = #{bnrImgPathPc}
+            , BNR_IMG_ORIGIN_NM_PC  = #{bnrImgOriginNmPc}
+            , BNR_IMG_PATH_MO       = #{bnrImgPathMo}
+            , BNR_IMG_ORIGIN_NM_MO  = #{bnrImgOriginNmMo}
+            , DETL_HTML_PC          = #{detlHtmlPc}
+            , DETL_HTML_MO          = #{detlHtmlMo}
+            , DETL_HTML_PC2         = #{detlHtmlPc2}
+            , DETL_HTML_MO2         = #{detlHtmlMo2}
+            , WINNER_NOTICE         = #{winnerNotice}
+            , WINNER_INFOR          = #{winnerInfor}
+            , WINNER_INFOR_DT       = CASE WHEN IFNULL(#{winnerNotice}, '') = '' THEN WINNER_INFOR_DT
+                                           ELSE CASE WHEN IFNULL(WINNER_INFOR_DT, '') = '' THEN NOW() ELSE WINNER_INFOR_DT END
+                                      END
+            , EMPLOYEE_JOIN_YN      = #{employeeJoinYn}
+            , EVENT_JOIN_TP         = #{eventJoinTp}
+            , EVENT_DRAW_TP         = #{eventDrawTp}
+            , STYLE_ID              = #{styleId}
+            , MODIFY_ID             = #{modifyId}
+            , MODIFY_DT             = NOW()
+            , COVERAGE_TP           = IFNULL(#{coverageType},'')
+            , CHECK_NEW_USER_YN     = #{checkNewUserYn}
+      WHERE   EV_EVENT_ID           = #{evEventId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 당첨자공지사항 수정
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.17   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putEventWinnerNotice" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventVo">
+      /*eventManage.putEventWinnerNotice*/
+      UPDATE  EV_EVENT
+      SET     WINNER_NOTICE         = #{winnerNotice}
+            , WINNER_INFOR_DT       = CASE WHEN IFNULL(WINNER_INFOR_DT, '') = '' THEN NOW() ELSE WINNER_INFOR_DT END
+            , MODIFY_ID             = #{modifyId}
+            , MODIFY_DT             = NOW()
+      WHERE   EV_EVENT_ID           = #{evEventId}
+  </update>
+
+  <!-- #################################################################### -->
+  <!-- 수정 - 이벤트참여 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨 등록/해제 - 개별
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putWinnerLotteryInfo" >
+      /*eventManage.putWinnerLotteryInfo*/
+      UPDATE  EV_EVENT_JOIN
+      SET     WINNER_YN         = #{winnerYn}
+            , LOTTERY_DT        = NOW()
+            , LOTTERY_ID        = #{lotteryId}
+            , BENEFIT_NM        = #{benefitNm}
+            , EVENT_BENEFIT_TP  = #{eventBenefitTp}
+            , HANDWRITTEN_LOTTERY_TP = #{handwrittenLotteryTp}
+          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmPointId)'>
+            , PM_POINT_ID       = #{pmPointId}
+          </if>
+      WHERE   EV_EVENT_ID       = #{evEventId}        <!-- 안전장치 조건 -->
+        AND   EV_EVENT_JOIN_ID  = #{evEventJoinId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨 등록/해제 - 개별
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addEventJoinCoupon" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventJoinVo">
+      /*eventManage.addEventJoinCoupon*/
+      INSERT INTO EV_EVENT_JOIN_COUPON (
+          EV_EVENT_JOIN_ID
+        , PM_COUPON_ID
+        , COUPON_CNT
+        , SORT
+      )
+      VALUES (
+          #{evEventJoinId}
+        , #{pmCouponId}
+        , #{couponCnt}
+        , #{sort}
+      )
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨 존재여부 UPDATE
+   * @                동일이벤트 + 동일참여자
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putWinnerExistYn" >
+      /*eventManage.putWinnerExistYn*/
+      UPDATE  EV_EVENT_JOIN
+      SET     WINNER_EXIST_YN = #{winnerExistYn}
+      WHERE   EV_EVENT_ID     = #{evEventId}
+        AND   UR_USER_ID      = #{urUserId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 당첨 등록/해제 - 직접선택
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.19   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putWinnerLottery" >
+      /*eventManage.putWinnerLottery*/
+      UPDATE  EV_EVENT_JOIN J
+                LEFT OUTER  JOIN  (
+                                  SELECT  UR_USER_ID
+                                        , MIN(EV_EVENT_JOIN_ID) AS EV_EVENT_JOIN_ID <!-- 가장 앞선 참여건 -->
+                                        , MAX(WINNER_YN)        AS WINNER_YN
+                                        , COUNT(1)              AS CNT
+                                  FROM    EV_EVENT_JOIN
+                                  WHERE   EV_EVENT_ID       =   #{evEventId}    <!-- 안전장치 조건 -->
+                                    AND   EV_EVENT_JOIN_ID  IN  <foreach collection="evEventJoinIdList" item="evEventJoinId" index="index" separator="," open="(" close=")">
+                                                                  #{evEventJoinId}
+                                                                </foreach>
+                                  GROUP BY UR_USER_ID
+                                  HAVING MAX(WINNER_YN) != 'Y'    <!-- 이벤트내 당첨이 존재하는 사용자 제외 -->
+                                  ) W
+                            ON    W.UR_USER_ID  = J.UR_USER_ID
+      SET     J.WINNER_YN       = CASE WHEN J.EV_EVENT_JOIN_ID = W.EV_EVENT_JOIN_ID THEN 'Y' ELSE J.WINNER_YN END
+            , J.WINNER_EXIST_YN = CASE WHEN J.UR_USER_ID = W.UR_USER_ID THEN 'Y'          ELSE J.WINNER_EXIST_YN END
+            , J.LOTTERY_DT      = CASE WHEN J.UR_USER_ID = W.UR_USER_ID THEN NOW()        ELSE J.LOTTERY_DT END
+            , J.LOTTERY_ID      = CASE WHEN J.UR_USER_ID = W.UR_USER_ID THEN #{lotteryId} ELSE J.LOTTERY_ID END
+      WHERE   J.EV_EVENT_ID = #{evEventId}        <!-- 안전장치 조건 -->
+        AND   J.WINNER_YN != 'Y'
+        AND   EXISTS  (
+                      SELECT  T.UR_USER_ID
+                      FROM    (
+                              SELECT  UR_USER_ID
+                                    , MIN(EV_EVENT_JOIN_ID) AS EV_EVENT_JOIN_ID <!-- 가장 앞선 참여건 -->
+                                    , MAX(WINNER_YN)        AS WINNER_YN
+                                    , COUNT(1)              AS CNT
+                              FROM    EV_EVENT_JOIN
+                              WHERE   EV_EVENT_ID       =   #{evEventId}    <!-- 안전장치 조건 -->
+                                AND   EV_EVENT_JOIN_ID  IN  <foreach collection="evEventJoinIdList" item="evEventJoinId" index="index" separator="," open="(" close=")">
+                                                              #{evEventJoinId}
+                                                            </foreach>
+                              GROUP BY UR_USER_ID
+                              HAVING MAX(WINNER_YN) != 'Y'    <!-- 이벤트내 당첨이 존재하는 사용자 제외 -->
+                              ) T
+                      )
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트참여 댓글 차단/차단해제
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.21   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putAdminSecretYn" >
+      /*eventManage.putAdminSecretYn*/
+      UPDATE  EV_EVENT_JOIN
+      SET     ADMIN_SECRET_YN = #{adminSecretYn}      <!-- Y:차단, N:차단해제 -->
+            , ADMIN_SECRET_YN_CHNG_DT = NOW()
+      WHERE   EV_EVENT_JOIN_ID  = #{evEventJoinId}
+        AND   EV_EVENT_ID       = #{evEventId}        <!-- 안전장치 조건 -->
+  </update>
+
+  <!--
+  <update id="putWinnerLottery" >
+      /*eventManage.putWinnerLottery*/
+      UPDATE  EV_EVENT_JOIN
+      SET     WINNER_YN         = #{winnerYn}
+            , LOTTERY_DT        = NOW()
+            , LOTTERY_ID        = #{lotteryId}
+      WHERE   EV_EVENT_JOIN_ID  IN  <foreach collection="evEventJoinIdList" item="evEventJoinId" index="index" separator="," open="(" close=")">
+                                      #{evEventJoinId}
+                                    </foreach>
+  </update>
+  -->
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 상품정보리스트조회(엑셀용)
+     *                  popupCommon.getGoodsList 와 동일
+     * @ param        :
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.28   oyj79oyj    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="selectGoodsInfoList" resultType="kr.co.pulmuone.v1.base.dto.vo.GoodsSearchVo">
+        /*eventManage.selectGoodsInfoList*/
+        SELECT  A.GOODS_ID                  /* 상품 ID */
+        , A.GOODS_NAME                /* 상품명 */
+        , A.ITEM_CODE                 /* 품목코드 */
+        , A.ITEM_NAME                 /* 품목명 */
+        , A.ITEM_BARCODE              /* 품목바코드 */
+        , A.WAREHOUSE_ID              /* 출고처 ID */
+        , A.WAREHOUSE_NAME            /* 출고처명 */
+        , A.SUPPLIER_ID               /* 공급처 ID */
+        , A.SUPPLIER_COMPANY_ID       /* 공급처 회사 ID */
+        , A.SUPPLIER_NAME             /* 공급처명 */
+        , A.BRAND_ID                  /* 브랜드 ID */
+        , A.BRAND_NAME                /* 브랜드명 */
+        , A.DP_BRAND_NAME             /* 전시 브랜드명 */
+        , A.CATEGORY_STANDARD_ID      /* 표준카테고리 ID */
+        , FN_CTGRY_STD_FULL_NAME(A.CATEGORY_STANDARD_ID) AS CATEGORY_STANDARD_DEPTH_NAME /* 표준카테고리 DEPTH */
+        , A.CATEGORY_ID               /* 전시카테고리 */
+        , (
+        CASE  WHEN A.CATEGORY_ID IS NULL
+        THEN ''
+        ELSE FN_CTGRY_FULL_NAME(A.CATEGORY_ID)
+        END
+        ) AS CATEGORY_DEPTH_NAME    /* 전시카테고리 DEPTH */
+        , A.GOODS_TYPE_CODE           /* 상품유형코드 */
+        , FN_COMN_CODE_DIC(A.GOODS_TYPE_CODE) AS GOODS_TP_NM /* 상품유형명 */
+        , FN_COMN_CODE_DIC(A.GOODS_TYPE_CODE) AS GOODS_TYPE_NAME /* 상품유형명 */
+        , A.SALE_TYPE_CODE            /* 판매유형코드 */
+        , A.ITEM_TYPE_CODE            /* 품목유형코드 */
+        , A.PACKAGE_UNIT_DISPLAY_YN   /* 포장용량 구성정보 노출여부 */
+        , A.PURCHASE_MEMBER_YN        /* 회원 구매여부 */
+        , A.PURCHASE_EMPLOYEE_YN      /* 임직원 구매여부 */
+        , A.PURCHASE_NONMEMBER_YN     /* 비회원 구매여부 */
+        , A.DISPLAY_WEB_PC_YN         /* WEB PC 전시여부 */
+        , A.DISPLAY_WEB_MOBILE_YN     /* WEB 모바일 전시여부 */
+        , A.DISPLAY_APP_YN            /* APP 전시여부 */
+        , A.SALE_START_DATE           /* 판매 시작일 */
+        , A.SALE_END_DATE             /* 판매 종료일 */
+        , A.GOODS_DISPLAY_YN          /* 상품 전시여부 */
+        , A.SALE_STATUS_CODE          /* 상품 판매상태 공통코드 */
+        , FN_COMN_CODE_DIC(A.SALE_STATUS_CODE) AS SALE_STATUS_CODE_NAME
+        , A.ITEM_GROUP                /* 품목 그룹 */
+        , A.STORAGE_METHOD_TYPE_CODE  /* 보관방법 공통코드 */
+        , FN_COMN_CODE_DIC(A.STORAGE_METHOD_TYPE_CODE) AS STORAGE_METHOD_TYPE_NAME /* 보관방법명 */
+        , A.PLACE_ORDER_ID            /* 발주유형 ID */
+        , A.ITEM_IMAGE_PATH           /* 상품 이미지 경로 */
+        , A.IL_SHIPPING_TMPL_ID
+        , A.UNDELIVERABLE_AREA_TP
+        , GP.IL_GOODS_PRICE_ID        /* 가격정보 ID */
+        , GP.STANDARD_PRICE           /* 원가 */
+        , GP.RECOMMENDED_PRICE        /* 정상가 */
+        , GP.SALE_PRICE               /* 판매가 */
+        , GP.DISCOUNT_TP
+        , FN_COMN_CODE_DIC(GP.DISCOUNT_TP) AS DISCOUNT_TP_NAME
+        , A.NAME                      /* 배송정책 */
+        , CASE  WHEN UNDELIVERABLE_AREA_TP = 'UNDELIVERABLE_AREA_TP.NONE' AND STORE_YN = 'N'
+        THEN A.AREA_SHIPPING_DELIVERY_YN
+        ELSE '불가'
+        END AS AREA_SHIPPING_DELIVERY_YN
+        FROM  (
+        SELECT  G.IL_GOODS_ID AS GOODS_ID
+        , G.GOODS_NM AS GOODS_NAME
+        , I.IL_ITEM_CD AS ITEM_CODE
+        , I.ITEM_NM AS ITEM_NAME
+        , IFNULL(I.ITEM_BARCODE, '') AS ITEM_BARCODE
+        , G.UR_WAREHOUSE_ID AS WAREHOUSE_ID
+        , W.WAREHOUSE_NM AS WAREHOUSE_NAME
+        , I.UR_SUPPLIER_ID AS SUPPLIER_ID
+        , S.UR_COMPANY_ID AS SUPPLIER_COMPANY_ID
+        , C.COMP_NM AS SUPPLIER_NAME
+        , I.UR_BRAND_ID AS BRAND_ID
+        , B.BRAND_NM AS BRAND_NAME
+        , I.DP_BRAND_ID
+        , I.UNDELIVERABLE_AREA_TP
+        , DP.DP_BRAND_NM AS DP_BRAND_NAME
+        , I.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID
+        , (
+        SELECT  T1.IL_CTGRY_ID
+        FROM    IL_CTGRY_PRNTS_INFO T1
+        JOIN IL_GOODS_CTGRY T2
+        ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+        JOIN IL_CTGRY T3
+        ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+        WHERE   T3.USE_YN = 'Y'
+        AND   T3.DEL_YN = 'N'
+        AND   T2.IL_GOODS_ID = G.IL_GOODS_ID
+        AND   T3.MALL_DIV = 'MALL_DIV.PULMUONE'
+        AND   T2.BASIC_YN = 'Y'
+        LIMIT 1
+        ) AS CATEGORY_ID
+        , G.GOODS_TP AS GOODS_TYPE_CODE
+        , G.SALE_TP AS SALE_TYPE_CODE
+        , I.ITEM_TP AS ITEM_TYPE_CODE
+        , G.PACKAGE_UNIT_DISP_YN AS PACKAGE_UNIT_DISPLAY_YN
+        , G.PURCHASE_MEMBER_YN
+        , G.PURCHASE_EMPLOYEE_YN
+        , G.PURCHASE_NONMEMBER_YN
+        , G.DISP_WEB_PC_YN AS DISPLAY_WEB_PC_YN
+        , G.DISP_WEB_MOBILE_YN AS DISPLAY_WEB_MOBILE_YN
+        , G.DISP_APP_YN AS DISPLAY_APP_YN
+        , DATE_FORMAT(G.SALE_START_DT, '%Y-%m-%d %H:%i:%s') AS SALE_START_DATE
+        , DATE_FORMAT(G.SALE_END_DT, '%Y-%m-%d %H:%i:%s') AS SALE_END_DATE
+        , G.DISP_YN AS GOODS_DISPLAY_YN
+        , G.SALE_STATUS AS SALE_STATUS_CODE
+        , I.ITEM_GRP AS ITEM_GROUP
+        , I.STORAGE_METHOD_TP AS STORAGE_METHOD_TYPE_CODE
+        , IIW.IL_PO_TP_ID AS PLACE_ORDER_ID
+        , (
+        SELECT  II.C_IMG
+        FROM    IL_ITEM_IMG II
+        WHERE   II.IL_ITEM_CD = I.IL_ITEM_CD
+        AND II.BASIC_YN = 'Y'
+        LIMIT 1
+        ) AS ITEM_IMAGE_PATH
+        , G.CREATE_DT
+        , (
+        SELECT  IL_GOODS_PRICE_ID
+        FROM    IL_GOODS_PRICE
+        WHERE   IL_GOODS_ID = G.IL_GOODS_ID
+        AND   NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+        ORDER BY IL_GOODS_PRICE_ID DESC
+        LIMIT 1
+        ) AS GOODS_PRICE_ID
+        , W.STORE_YN
+        , SP.IL_SHIPPING_TMPL_ID
+        , SP.AREA_SHIPPING_DELIVERY_YN
+        , SP.NAME
+        FROM    IL_GOODS G
+        JOIN  IL_ITEM I
+        ON    I.IL_ITEM_CD = G.IL_ITEM_CD
+        LEFT OUTER  JOIN  UR_WAREHOUSE W
+        ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+        LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+        ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+        AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+        LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+        ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+        AND   HH.DEL_YN = 'N'
+        JOIN  UR_SUPPLIER S
+        ON    S.UR_SUPPLIER_ID = I.UR_SUPPLIER_ID
+        JOIN  UR_SUPPLIER_WAREHOUSE USW
+        ON    USW.UR_SUPPLIER_ID = S.UR_SUPPLIER_ID
+        AND   USW.UR_WAREHOUSE_ID = W.UR_WAREHOUSE_ID
+        JOIN  IL_ITEM_WAREHOUSE IIW
+        ON    IIW.IL_ITEM_CD = I.IL_ITEM_CD
+        AND   IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+        JOIN  UR_COMPANY C
+        ON    C.UR_COMPANY_ID = S.UR_COMPANY_ID
+        JOIN  UR_BRAND B
+        ON    B.UR_BRAND_ID = I.UR_BRAND_ID
+        JOIN  DP_BRAND DP
+        ON    DP.DP_BRAND_ID = I.DP_BRAND_ID
+        LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE GDSP
+        ON    G.IL_GOODS_ID = GDSP.IL_GOODS_ID
+        AND   G.UR_WAREHOUSE_ID = GDSP.UR_WAREHOUSE_ID
+        LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE SP
+        ON    GDSP.ORIG_IL_SHIPPING_TMPL_ID = SP.ORIG_IL_SHIPPING_TMPL_ID
+        AND   SP.DEL_YN  = 'N'
+        <where>
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsIdList) and ilGoodsIdList.size() > 0'>
+                AND   G.IL_GOODS_ID IN  <foreach collection="ilGoodsIdList" item="ilGoodsId" index="index" separator="," open="(" close=")">
+                #{ilGoodsId}
+            </foreach>
+            </if>
+        </where>
+        ) A
+        JOIN IL_GOODS_PRICE GP
+        ON GP.IL_GOODS_PRICE_ID = A.GOODS_PRICE_ID
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsIdList) and ilGoodsIdList.size() > 0'>
+            ORDER BY FIELD (A.GOODS_ID   <foreach collection="ilGoodsIdList" item="goodsId" index="index" separator="," open="," close=")">
+            #{goodsId}
+        </foreach>
+        </if>
+    </select>
+
+  <!-- #################################################################### -->
+  <!-- 삭제 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트 삭제
+   * @                - 이벤트 메인 테이블만 DEL_YN = 'Y' 처리
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.20   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="delEvent" >
+      /* eventManage.delEvent */
+      UPDATE  EV_EVENT
+      SET     MODIFY_DT     = NOW()
+            , MODIFY_ID     = #{modifyId}
+            , DEL_YN        = #{delYn}
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세삭제 - 일반이벤트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventNormal" >
+      /* eventManage.delEventNormal */
+      DELETE  FROM EV_EVENT_NORMAL
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세삭제 - 설문이벤트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventSurvey" >
+      /* eventManage.delEventSurvey */
+      DELETE  FROM EV_EVENT_SURVEY
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 설문항목정보 삭제
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventSurveyQuestion" >
+      /* eventManage.delEventSurveyQuestion */
+      DELETE  FROM EV_EVENT_SURVEY_QUESTION
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 설문항목아이템정보 삭제
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventSurveyItem" >
+      /* eventManage.delEventSurveyItem */
+      DELETE  FROM EV_EVENT_SURVEY_ITEM
+      WHERE   EV_EVENT_SURVEY_QUESTION_ID IN  (
+                                              SELECT  EV_EVENT_SURVEY_QUESTION_ID
+                                              FROM    EV_EVENT_SURVEY_QUESTION
+                                              WHERE   EV_EVENT_ID   = #{evEventId}
+                                              )
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 설문항목아이템정보점푸파일 삭제
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventSurveyItemAttc" >
+      /* eventManage.delEventSurveyItemAttc */
+      DELETE  FROM EV_EVENT_SURVEY_ITEM_ATTC
+      WHERE   EV_EVENT_SURVEY_ITEM_ID IN  (
+                                          SELECT  EV_EVENT_SURVEY_ITEM_ID
+                                          FROM    EV_EVENT_SURVEY_ITEM
+                                          WHERE   EV_EVENT_SURVEY_QUESTION_ID IN  (
+                                                                                  SELECT  EV_EVENT_SURVEY_QUESTION_ID
+                                                                                  FROM    EV_EVENT_SURVEY_QUESTION
+                                                                                  WHERE   EV_EVENT_ID   = #{evEventId}
+                                                                                  )
+                                          )
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세삭제 - 스탬프(출석)/스탬프(미션)/스탬프(구매)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventStamp" >
+      /* eventManage.delEventStamp */
+      DELETE  FROM EV_EVENT_STAMP
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트스탬프상세삭제 - 스탬프(출석)/스탬프(미션)/스탬프(구매)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.18   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventStampDetl" >
+      /* eventManage.delEventStampDetl */
+      DELETE  FROM EV_EVENT_STAMP_DETL
+      WHERE   EV_EVENT_STAMP_ID IN  (
+                                    SELECT  EV_EVENT_STAMP_ID
+                                    FROM    EV_EVENT_STAMP
+                                    WHERE   EV_EVENT_ID = #{evEventId}
+                                    )
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세삭제 - 룰렛이벤트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventRoulette" >
+      /* eventManage.delEventRoulette */
+      DELETE  FROM EV_EVENT_ROULETTE
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 룰렛이벤트아이템삭제 - 룰렛이벤트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.25   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventRouletteItem" >
+      /* eventManage.delEventRouletteItem */
+      DELETE  FROM EV_EVENT_ROULETTE_ITEM
+      WHERE   EV_EVENT_ROULETTE_ID IN (
+                                      SELECT  EV_EVENT_ROULETTE_ID
+                                      FROM    EV_EVENT_ROULETTE
+                                      WHERE   EV_EVENT_ID = #{evEventId}
+                                      )
+  </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 룰렛이벤트아이템삭제 - 룰렛이벤트 (수정)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.27   acy    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEventRouletteItemModify" >
+        /* eventManage.delEventRouletteItemModify */
+        DELETE  FROM EV_EVENT_ROULETTE_ITEM
+        WHERE   EV_EVENT_ROULETTE_ID = #{evEventRouletteId}
+    </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트상세삭제 - 체험단이벤트
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventExperience" >
+      /* eventManage.delEventExperience */
+      DELETE  FROM EV_EVENT_EXPERIENCE
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트접근권한삭제
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventUserGroup" >
+      /* eventManage.delEventUserGroup */
+      DELETE  FROM EV_EVENT_USER_GROUP
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트댓글삭제
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventCommentCode" >
+      /* eventManage.delEventCommentCode */
+      DELETE  FROM EV_EVENT_COMMENT_CODE
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 이벤트쿠폰삭제
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.02.16   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delEventCoupon" >
+      /* eventManage.delEventCoupon */
+      DELETE  FROM EV_EVENT_COUPON
+      WHERE   EV_EVENT_ID   = #{evEventId}
+  </delete>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description    : 이벤트쿠폰삭제
+ * @
+ * @ 수정일       수정자    수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.10.22   acy    최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEventPmCouponId" >
+        /* eventManage.delEventPmCouponId */
+        DELETE  FROM EV_EVENT_COUPON
+        WHERE   EV_EVENT_ID   = #{evEventId}
+        AND PM_COUPON_ID = #{pmCouponId}
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 룰렛 이벤트쿠폰삭제
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.27   acy    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delRouletteEventPmCouponId" >
+        /* eventManage.delRouletteEventPmCouponId */
+        DELETE  FROM EV_EVENT_COUPON
+        WHERE   EV_EVENT_ID   = #{evEventId}
+        AND PM_COUPON_ID = #{pmCouponId}
+        AND EV_EVENT_DETL_ID = #{evEventDetlId}
+    </delete>
+
+
+
+  <!-- #################################################################### -->
+  <!-- 전체건수 -->
+  <!-- #################################################################### -->
+  <select id="selectTotalCount" resultType="int">
+    /* eventManage.selectTotalCount */
+    SELECT FOUND_ROWS()
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 이벤트 참여 정보 삭제
+    * @
+    * @ 수정일       수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.05.24   이원호    최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEventBenefitCount" >
+        /* eventManage.delEventBenefitCount */
+        DELETE  FROM EV_EVENT_BENEFIT_CNT
+        WHERE   EV_EVENT_ID = #{evEventId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여 정보 저장
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.24		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEventBenefitCount">
+        /* eventManage.addEventBenefitCount */
+        INSERT INTO EV_EVENT_BENEFIT_CNT(
+            EV_EVENT_ID, EV_EVENT_ROULETTE_ITEM_ID, AWARD_MAX_CNT, CREATE_ID
+        )VALUES(
+            #{evEventId}, #{evEventRouletteItemId}, #{awardMaxCount}, #{createId}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+   * description    : 그룹 삭제 - 이벤트ID기준 (실제 삭제)
+   * @                일반(그룹)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.07.26   oyj79oyj    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEventGroupByEvEventId" parameterType="java.lang.String">
+        /*eventManage.delEventGroupByEvEventId*/
+        DELETE FROM EV_EVENT_GROUP
+        WHERE  EV_EVENT_ID = #{evEventId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹 삭제 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.26   oyj79oyj    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEventGroup" parameterType="java.lang.String">
+        /*eventManage.delEventGroup*/
+        DELETE FROM EV_EVENT_GROUP
+        WHERE  EV_EVENT_GROUP_ID = #{evEventGroupId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹상세 삭제 - 이벤트ID기준 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.23   oyj79oyj    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEventGroupDetlByEvEventId" parameterType="java.lang.String">
+        /*eventManage.delEventGroupDetlByEvEventId*/
+        DELETE FROM EV_EVENT_GROUP_DETL
+        WHERE  EV_EVENT_GROUP_ID  IN  (
+            SELECT  EV_EVENT_GROUP_ID
+            FROM    EV_EVENT_GROUP
+            WHERE   EV_EVENT_ID = #{evEventId}
+        )
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 그룹상세 삭제 (실제 삭제)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.23   oyj79oyj    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEventGroupDetl" parameterType="java.lang.String">
+        /*eventManage.delEventGroupDetl*/
+        DELETE FROM EV_EVENT_GROUP_DETL
+        WHERE  EV_EVENT_GROUP_DETL_ID = #{evEventGroupDetlId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 일반이벤트 - 그룹정보 등록
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.23   oyj79oyj    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEventGroup" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventGroupVo">
+        /*eventManage.addEventGroup*/
+        INSERT INTO EV_EVENT_GROUP(
+            EV_EVENT_ID
+            , GROUP_NM
+            , TEXT_COLOR
+            , USE_YN
+            , EVENT_IMG_TP
+            , BG_CD
+            , DESCRIPTION
+            , DISP_CNT
+            , GROUP_SORT
+        )
+        VALUES(
+            #{evEventId}
+            , #{groupNm}
+            , #{textColor}
+            , #{useYn}
+            , #{eventImgTp}
+            , #{bgCd}
+            , #{groupDesc}
+            , #{dispCnt}
+            , #{groupSort}
+        )
+        <selectKey keyProperty="evEventGroupId" resultType="String" order="AFTER">
+            SELECT CONCAT(LAST_INSERT_ID())
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 일반이벤트 - 그룹상세 등록 (상품)
+     * @                일반(그룹)
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.23   oyj79oyj    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEventGroupDetl" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EventGroupDetlVo">
+        /*eventManage.addEventGroupDetl*/
+        INSERT INTO EV_EVENT_GROUP_DETL(
+            EV_EVENT_GROUP_ID
+            , GOODS_SORT
+            , IL_GOODS_ID
+        )
+        VALUES(
+            #{evEventGroupId}
+            , #{goodsSort}
+            , #{ilGoodsId}
+        )
+        <selectKey keyProperty="evEventGroupDetlId" resultType="String" order="AFTER">
+            SELECT CONCAT(LAST_INSERT_ID())
+        </selectKey>
+    </insert>
+
+</mapper>

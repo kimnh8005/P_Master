@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.advertising.LinkPriceAdvertisingMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 링크프라이스 외부 광고
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.19      최용호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="insertLinkPriceByOrder" parameterType="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceDto">
+        INSERT INTO PM_AD_LINK_PRICE (
+            ORDER_ID,
+            LPINFO,
+            USER_AGENT,
+            IP,
+            DEVICE_TYPE,
+            USER_NAME,
+            FINAL_PAID_PRICE,
+            PAID_YMD,
+            CREATE_DATE
+        ) VALUES (
+            #{orderId},
+            #{lpinfo},
+            #{userAgent},
+            #{ip},
+            #{deviceType},
+            FN_ENCRYPT(#{urUserName}),
+            #{finalPaidPrice},
+            #{paidYmd},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <resultMap id="getLinkPriceListMap" type="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceResultVo">
+        <result column="STATUS" property="status" />
+        <result column="ORDER_ID" property="ordNo" />
+        <result column="IC_DT" property="paidDt" />
+        <result column="PAID_PRICE" property="ordTotalPrice" />
+        <result column="CAN_PAID_PRICE" property="cnclTotalPrice" />
+        <result column="POINT_PRICE" property="ordPointPrice" />
+        <result column="LPINFO" property="lpinfo" />
+    </resultMap>
+
+    <select id="getLinkPriceList" resultMap="getLinkPriceListMap">
+        /* linkPriceAdvertising.getLinkPriceList [링크프라이스 내역조회 - BOS 목록 조회용.] */
+        SELECT
+            AA.ORDER_ID
+            , AA.IC_DT
+            , AA.LPINFO
+            , SUM(AA.PAID_PRICE) PAID_PRICE
+            , SUM(AA.CAN_PAID_PRICE) CAN_PAID_PRICE
+            , (
+                SELECT
+                    POINT_PRICE
+                FROM
+                    OD_PAYMENT
+                WHERE
+                        OD_ORDER_ID = AA.OD_ORDER_ID
+                    AND OD_CLAIM_ID = 0
+                ORDER BY OD_PAYMENT_ID DESC
+                LIMIT 1
+            ) POINT_PRICE
+        FROM (
+            SELECT
+                A.ORDER_ID
+                , B.OD_ORDER_ID
+                , D.OD_ORDER_DETL_ID
+                , C.IC_DT
+                , A.LPINFO
+                , MAX(IF(E.DISCOUNT_TP IS NULL AND F.DELIVERY_TYPE IS NULL AND G.UR_BRAND_ID IS NULL, D.PAID_PRICE, 0)) PAID_PRICE
+                , SUM(IF(E.DISCOUNT_TP IS NULL AND F.DELIVERY_TYPE IS NULL AND G.UR_BRAND_ID IS NULL, IFNULL(I.PAID_PRICE-I.CART_COUPON_PRICE-I.GOODS_COUPON_PRICE, 0), 0)) CAN_PAID_PRICE
+            FROM
+                PM_AD_LINK_PRICE A
+                INNER JOIN OD_ORDER B ON (B.ODID = A.ORDER_ID)
+                INNER JOIN OD_ORDER_DT C ON (C.OD_ORDER_ID = B.OD_ORDER_ID)
+                INNER JOIN OD_ORDER_DETL D ON (D.OD_ORDER_ID = B.OD_ORDER_ID)
+                LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT E ON (E.OD_ORDER_ID = D.OD_ORDER_ID AND E.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID AND E.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+                LEFT OUTER JOIN OD_SHIPPING_ZONE F ON (F.OD_SHIPPING_ZONE_ID = D.OD_SHIPPING_ZONE_ID AND F.DELIVERY_TYPE IN ('DELIVERY_TYPE.DAILY', 'DELIVERY_TYPE.REGULAR'))
+                LEFT OUTER JOIN IL_ITEM G ON (G.IL_ITEM_CD = D.IL_ITEM_CD AND G.UR_BRAND_ID IN ('95','99','129','130','161','105','106','162'))
+                LEFT OUTER JOIN OD_CLAIM H ON (H.OD_ORDER_ID = B.OD_ORDER_ID AND H.CLAIM_STATUS_TP IN ('CLAIM_STATUS_TP.CANCEL', 'CLAIM_STATUS_TP.RETURN') AND H.CLAIM_YN = 'Y')
+                LEFT OUTER JOIN OD_CLAIM_DETL I ON (I.OD_CLAIM_ID = H.OD_CLAIM_ID AND I.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID)
+            WHERE
+                B.ORDER_YN = 'Y'
+                AND A.SUCCESS_YN = 'Y'
+                AND D.OD_ORDER_DETL_DEPTH_ID IN (1, 2)
+                AND C.IC_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')	/* 결제완료 일자 */
+            GROUP BY A.ORDER_ID, B.OD_ORDER_ID, C.IC_DT, D.OD_ORDER_DETL_ID, A.LPINFO
+        ) AA
+        GROUP BY AA.ORDER_ID, AA.IC_DT
+        ORDER BY AA.ORDER_ID DESC
+    </select>
+
+    <resultMap id="getLinkPriceListExcelMap" type="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceExcelResultVo">
+        <result column="ORDER_ID" property="ordNo" />
+        <result column="IC_DT" property="paidDt" />
+        <result column="IL_GOODS_ID" property="ilGoodsId" />
+        <result column="GOODS_NM" property="goodsNm" />
+        <result column="IS_EMP" property="isEmpDiscount" />
+        <result column="IS_NOT_DLV" property="isNotDlv" />
+        <result column="IS_NOT_BRAND" property="isNotBrand" />
+        <result column="ORDER_CNT" property="orderCnt" />
+        <result column="PAID_PRICE" property="ordTotalPrice" />
+        <result column="CLAIM_CNT" property="claimCnt" />
+        <result column="CAN_PAID_PRICE" property="cnclTotalPrice" />
+        <result column="POINT_PRICE" property="ordPointPrice" />
+    </resultMap>
+    <select id="getLinkPriceListExcel" resultMap="getLinkPriceListExcelMap">
+        /* linkPriceAdvertising.getLinkPriceListExcel [링크프라이스 내역조회 엑셀 다운로드] */
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(downType, "DTL")'>
+                SELECT
+                    A.ORDER_ID
+                    , C.IC_DT
+                    , A.LPINFO
+                    , D.IL_GOODS_ID
+                    , D.GOODS_NM
+                    , IF(E.DISCOUNT_TP IS NULL, 0, 1) IS_EMP
+                    , IF(F.DELIVERY_TYPE IS NULL, 0, 1) IS_NOT_DLV
+                    , IF(G.UR_BRAND_ID IS NULL, 0, 1) IS_NOT_BRAND
+                    , MAX(D.ORDER_CNT) ORDER_CNT
+                    , MAX(D.PAID_PRICE) PAID_PRICE
+                    , SUM(IFNULL(I.CLAIM_CNT, 0)) CLAIM_CNT
+                    , SUM(IFNULL(I.PAID_PRICE-I.CART_COUPON_PRICE-I.GOODS_COUPON_PRICE, 0)) CAN_PAID_PRICE
+                    , IF(MIN(D.OD_ORDER_DETL_ID) OVER (PARTITION BY B.OD_ORDER_ID) = D.OD_ORDER_DETL_ID
+                        , (
+                            SELECT
+                                POINT_PRICE
+                            FROM
+                                OD_PAYMENT
+                            WHERE
+                                OD_ORDER_ID = B.OD_ORDER_ID
+                                AND OD_CLAIM_ID = 0
+                            ORDER BY OD_PAYMENT_ID DESC
+                            LIMIT 1
+                        )
+                        , 0
+                        ) POINT_PRICE
+                FROM
+                    PM_AD_LINK_PRICE A
+                    INNER JOIN OD_ORDER B ON (B.ODID = A.ORDER_ID)
+                    INNER JOIN OD_ORDER_DT C ON (C.OD_ORDER_ID = B.OD_ORDER_ID)
+                    INNER JOIN OD_ORDER_DETL D ON (D.OD_ORDER_ID = B.OD_ORDER_ID)
+                    LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT E ON (E.OD_ORDER_ID = D.OD_ORDER_ID AND E.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID AND E.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+                    LEFT OUTER JOIN OD_SHIPPING_ZONE F ON (F.OD_SHIPPING_ZONE_ID = D.OD_SHIPPING_ZONE_ID AND F.DELIVERY_TYPE IN ('DELIVERY_TYPE.DAILY', 'DELIVERY_TYPE.REGULAR'))
+                    LEFT OUTER JOIN IL_ITEM G ON (G.IL_ITEM_CD = D.IL_ITEM_CD AND G.UR_BRAND_ID IN ('95','99','129','130','161','105','106','162'))
+                    LEFT OUTER JOIN OD_CLAIM H ON (H.OD_ORDER_ID = B.OD_ORDER_ID AND H.CLAIM_STATUS_TP IN ('CLAIM_STATUS_TP.CANCEL', 'CLAIM_STATUS_TP.RETURN') AND H.CLAIM_YN = 'Y')
+                    LEFT OUTER JOIN OD_CLAIM_DETL I ON (I.OD_CLAIM_ID = H.OD_CLAIM_ID AND I.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID)
+                WHERE
+                    B.ORDER_YN = 'Y'
+                    AND A.SUCCESS_YN = 'Y'
+                    AND D.OD_ORDER_DETL_DEPTH_ID IN (1, 2)
+                    AND C.IC_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')	/* 결제완료 일자 */
+                GROUP BY A.ORDER_ID, B.OD_ORDER_ID, C.IC_DT, D.OD_ORDER_DETL_ID, A.LPINFO
+                ORDER BY B.OD_ORDER_ID, D.OD_ORDER_DETL_ID ASC
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(downType, "NOR")'>
+                SELECT
+                    AA.ORDER_ID
+                    , AA.IC_DT
+                    , AA.LPINFO
+                    , '' AS IL_GOODS_ID
+                    , '' AS GOODS_NM
+                    , '' AS IS_EMP
+                    , '' AS IS_NOT_DLV
+                    , '' AS IS_NOT_BRAND
+                    , '' AS ORDER_CNT
+                    , SUM(AA.PAID_PRICE) PAID_PRICE
+                    , SUM(AA.CAN_PAID_PRICE) CAN_PAID_PRICE
+                    , (
+                        SELECT
+                            POINT_PRICE
+                        FROM
+                            OD_PAYMENT
+                        WHERE
+                            OD_ORDER_ID = AA.OD_ORDER_ID
+                            AND OD_CLAIM_ID = 0
+                        ORDER BY OD_PAYMENT_ID DESC
+                        LIMIT 1
+                    ) POINT_PRICE
+                FROM (
+                    SELECT
+                        A.ORDER_ID
+                        , B.OD_ORDER_ID
+                        , D.OD_ORDER_DETL_ID
+                        , C.IC_DT
+                        , A.LPINFO
+                        , MAX(IF(E.DISCOUNT_TP IS NULL AND F.DELIVERY_TYPE IS NULL AND G.UR_BRAND_ID IS NULL, D.PAID_PRICE, 0)) PAID_PRICE
+                        , SUM(IF(E.DISCOUNT_TP IS NULL AND F.DELIVERY_TYPE IS NULL AND G.UR_BRAND_ID IS NULL, IFNULL(I.PAID_PRICE-I.CART_COUPON_PRICE-I.GOODS_COUPON_PRICE, 0), 0)) CAN_PAID_PRICE
+                    FROM
+                        PM_AD_LINK_PRICE A
+                        INNER JOIN OD_ORDER B ON (B.ODID = A.ORDER_ID)
+                        INNER JOIN OD_ORDER_DT C ON (C.OD_ORDER_ID = B.OD_ORDER_ID)
+                        INNER JOIN OD_ORDER_DETL D ON (D.OD_ORDER_ID = B.OD_ORDER_ID)
+                        LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT E ON (E.OD_ORDER_ID = D.OD_ORDER_ID AND E.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID AND E.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+                        LEFT OUTER JOIN OD_SHIPPING_ZONE F ON (F.OD_SHIPPING_ZONE_ID = D.OD_SHIPPING_ZONE_ID AND F.DELIVERY_TYPE IN ('DELIVERY_TYPE.DAILY', 'DELIVERY_TYPE.REGULAR'))
+                        LEFT OUTER JOIN IL_ITEM G ON (G.IL_ITEM_CD = D.IL_ITEM_CD AND G.UR_BRAND_ID IN ('95','99','129','130','161','105','106','162'))
+                        LEFT OUTER JOIN OD_CLAIM H ON (H.OD_ORDER_ID = B.OD_ORDER_ID AND H.CLAIM_STATUS_TP IN ('CLAIM_STATUS_TP.CANCEL', 'CLAIM_STATUS_TP.RETURN') AND H.CLAIM_YN = 'Y')
+                        LEFT OUTER JOIN OD_CLAIM_DETL I ON (I.OD_CLAIM_ID = H.OD_CLAIM_ID AND I.OD_ORDER_DETL_ID = D.OD_ORDER_DETL_ID)
+                    WHERE
+                        B.ORDER_YN = 'Y'
+                        AND A.SUCCESS_YN = 'Y'
+                        AND D.OD_ORDER_DETL_DEPTH_ID IN (1, 2)
+                        AND C.IC_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')	/* 결제완료 일자 */
+                    GROUP BY A.ORDER_ID, B.OD_ORDER_ID, C.IC_DT, D.OD_ORDER_DETL_ID, A.LPINFO
+                ) AA
+                GROUP BY AA.ORDER_ID, AA.IC_DT
+                ORDER BY AA.ORDER_ID DESC
+            </when>
+        </choose>
+    </select>
+
+    <select id="getLinkPriceListTotal" resultType="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceTotalResultVo">
+        /* linkPriceAdvertising.getLinkPriceListTotal [링크프라이스 내역조회 Total data 조회] - 사용안하기로함. */
+        SELECT
+            IFNULL(SUM(AAA.ORDER_CNT), 0) AS TOT_ORD_CNT
+            , IFNULL(SUM(AAA.TOTAL_PAYMENT_PRICE), 0) AS TOT_ORD_PRICE
+            , IFNULL(SUM(AAA.TOTAL_CLAIM_CNT), 0) AS TOT_CNCL_CNT
+            , IFNULL(SUM(AAA.TOTAL_CLAIM_PRICE), 0) AS TOT_CNCL_PRICE
+        FROM (
+            SELECT
+                AA.ORDER_CNT
+                , (
+                    SELECT
+                        PAYMENT_PRICE
+                    FROM
+                        OD_PAYMENT
+                    WHERE
+                            OD_ORDER_ID = AA.OD_ORDER_ID
+                        AND OD_CLAIM_ID = 0
+                    LIMIT 1
+                    ) TOTAL_PAYMENT_PRICE
+                , (
+                    SELECT
+                        IFNULL(SUM(C2.CLAIM_CNT), 0) CLAIM_CNT
+                    FROM
+                        OD_CLAIM C1
+                        INNER JOIN OD_CLAIM_DETL C2 ON (C1.OD_CLAIM_ID = C2.OD_CLAIM_ID)
+                    WHERE
+                            C1.OD_ORDER_ID = AA.OD_ORDER_ID
+                        AND C1.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CANCEL'
+                    LIMIT 1
+                    ) TOTAL_CLAIM_CNT
+                , (
+                    SELECT
+                        IFNULL(SUM(P1.PAYMENT_PRICE), 0) PAYMENT_PRICE
+                    FROM
+                        OD_CLAIM C1
+                        INNER JOIN OD_PAYMENT P1 ON (P1.OD_ORDER_ID = C1.OD_ORDER_ID AND P1.OD_CLAIM_ID = C1.OD_CLAIM_ID)
+                    WHERE
+                        C1.OD_ORDER_ID = AA.OD_ORDER_ID
+                        AND C1.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CANCEL'
+                        LIMIT 1
+                    ) TOTAL_CLAIM_PRICE
+            FROM (
+                SELECT
+                    A.OD_ORDER_ID
+                    , SUM(A.ORDER_CNT) ORDER_CNT
+                    , (
+                        SELECT COUNT(*)
+                        FROM OD_CLAIM
+                        WHERE OD_ORDER_ID = B.OD_ORDER_ID AND CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CANCEL'
+                    ) CLAIM_CNT
+                    , (
+                        SELECT COUNT(*)
+                        FROM OD_ORDER_DETL_DISCOUNT
+                        WHERE OD_ORDER_ID = A.OD_ORDER_ID AND OD_ORDER_DETL_ID = A.OD_ORDER_DETL_ID AND DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                    ) EMP_DIS_CNT
+                    , (
+                        SELECT COUNT(*)
+                        FROM OD_SHIPPING_ZONE
+                        WHERE OD_ORDER_ID = B.OD_ORDER_ID AND DELIVERY_TYPE IN ('DELIVERY_TYPE.DAILY', 'DELIVERY_TYPE.REGULAR')
+                    ) NOT_DELV_CNT
+                    , (
+                        SELECT COUNT(*)
+                        FROM IL_ITEM
+                        WHERE IL_ITEM_CD = A.IL_ITEM_CD AND UR_BRAND_ID IN ('95','99','129','130','161','105','106','162')
+                    ) NOT_BRAND_CNT
+                FROM
+                    PM_AD_LINK_PRICE P1
+                    INNER JOIN OD_ORDER_DETL A ON (A.ODID = P1.ORDER_ID)
+                    INNER JOIN OD_ORDER B ON (B.OD_ORDER_ID = A.OD_ORDER_ID)
+                    INNER JOIN OD_ORDER_DT C ON (C.OD_ORDER_ID = B.OD_ORDER_ID)
+                WHERE
+                    A.OD_ORDER_DETL_DEPTH_ID IN (1,2)
+                    AND B.ORDER_YN = 'Y'
+                    AND C.IC_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')	/* 결제완료 일자 */
+                GROUP BY OD_ORDER_ID
+            ) AA
+            WHERE 1=1
+                <if test='statusGubun.equals("CLAIM")'>
+                    AND AA.CLAIM_CNT > 0
+                </if>
+                <if test="calculateObjectType.equals('TARGET')">
+                    AND (AA.EMP_DIS_CNT = 0 AND AA.NOT_DELV_CNT = 0 AND AA.NOT_BRAND_CNT = 0)
+                </if>
+                <if test="calculateObjectType.equals('NON_TARGET')">
+                    AND (AA.EMP_DIS_CNT > 0 OR AA.NOT_DELV_CNT > 0 OR AA.NOT_BRAND_CNT > 0)
+                </if>
+        ) AAA
+    </select>
+
+
+    <resultMap id="getLinkPriceOrderDetailListMap" type="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceOrderDetailVo" >
+        <result column="ODID" property="odid"  />
+        <result column="OD_ORDER_ID" property="odOrderId"  />
+        <result column="OD_ORDER_DETL_ID" property="odOrderDetlId"  />
+        <result column="OD_ORDER_DETL_SEQ" property="odOrderDetlSeq"  />
+        <result column="UR_USER_ID"  property="urUserId" />
+        <result column="UR_USER_NAME" property="urUserName"  />
+        <result column="ORDER_STATUS_CD" property="orderStatusCd"  />
+        <result column="IL_GOODS_ID" property="ilGoodsId"  />
+        <result column="IL_ITEM_CD" property="ilItemCd"  />
+        <result column="GOODS_NM" property="goodsNm"  />
+        <result column="ORDER_CNT" property="orderCnt"  />
+        <result column="PAID_PRICE"  property="paidPrice" />
+        <result column="PAID_DT" property="paidDt"  />
+        <result column="CATE_CODE" property="categoryCode"  />
+        <result column="CATE_NAME" property="categoryName"  />
+        <result column="UR_BRAND_ID" property="urBrandId"  />
+        <result column="DISCOUNT_TP" property="discountTp"  />
+        <result column="DELIVERY_TYPE" property="deliveryType"  />
+        <result column="LPINFO" property="lpinfo"  />
+        <result column="USER_AGENT" property="userAgent"  />
+        <result column="IP" property="ip"  />
+        <result column="DEVICE_TYPE" property="deviceType"  />
+    </resultMap>
+    <select id="getLinkPriceOrderDetailList" resultMap="getLinkPriceOrderDetailListMap">
+		/* linkPriceAdvertising.getLinkPriceOrderDetailList [링크프라이스 주문 내역조회] */
+		SELECT oo.ODID
+            , oo.OD_ORDER_ID
+            , ood.OD_ORDER_DETL_ID
+            , ood.OD_ORDER_DETL_SEQ
+            , oo.UR_USER_ID
+            , FN_DECRYPT(oo.BUYER_NM) AS UR_USER_NAME
+            , ood.ORDER_STATUS_CD
+            , ood.IL_GOODS_ID
+            , ood.IL_ITEM_CD
+            , ig.GOODS_NM
+            , ood.ORDER_CNT
+            , ood.PAID_PRICE
+            , ood2.IC_DT AS PAID_DT	/* 결제완료 일자 */
+            , F.IL_GOODS_CTGRY_ID AS CATE_CODE
+            , G.UR_BRAND_ID
+            , (
+                    SELECT
+                        CONCAT(IFNULL(SE.CTGRY_NM, ''),'___', IFNULL(SD.CTGRY_NM, ''),'___', IFNULL(SC.CTGRY_NM, ''))
+                    FROM
+                        IL_GOODS_CTGRY SB
+                        LEFT OUTER JOIN IL_CTGRY SC ON (SC.IL_CTGRY_ID = SB.IL_CTGRY_ID AND SC.DEPTH > 0)
+                        LEFT OUTER JOIN IL_CTGRY SD ON (SD.IL_CTGRY_ID = SC.PRNTS_CTGRY_ID AND SD.DEPTH > 0)
+                        LEFT OUTER JOIN IL_CTGRY SE ON (SE.IL_CTGRY_ID = SD.PRNTS_CTGRY_ID AND SE.DEPTH > 0)
+                    WHERE
+                        SB.IL_GOODS_ID = ood.IL_GOODS_ID
+                        AND SB.MALL_DIV = 'MALL_DIV.PULMUONE'
+                        AND SB.BASIC_YN = 'Y'
+                    LIMIT 1
+                ) AS CATE_NAME
+            , IFNULL(OODD.DISCOUNT_TP,'') AS DISCOUNT_TP
+		    , IFNULL(OSZ.DELIVERY_TYPE,'') AS DELIVERY_TYPE
+		    , '' AS LPINFO
+            , '' AS USER_AGENT
+            , '' AS IP
+            , '' AS DEVICE_TYPE
+        FROM OD_ORDER_DETL ood
+            INNER JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+            INNER JOIN OD_ORDER_DT ood2 ON (oo.OD_ORDER_ID = ood2.OD_ORDER_ID)
+            INNER JOIN IL_GOODS ig ON (ood.IL_GOODS_ID = ig.IL_GOODS_ID)
+            LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT OODD ON (OODD.OD_ORDER_ID = ood.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID AND OODD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+            LEFT OUTER JOIN OD_SHIPPING_ZONE OSZ ON (OSZ.OD_ORDER_ID = ood.OD_ORDER_ID and OSZ.OD_SHIPPING_ZONE_ID = ood.OD_SHIPPING_ZONE_ID)
+            LEFT OUTER JOIN IL_GOODS_CTGRY F ON (ood.IL_GOODS_ID = F.IL_GOODS_ID AND F.BASIC_YN = 'Y' AND F.MALL_DIV = 'MALL_DIV.PULMUONE')
+            LEFT OUTER JOIN IL_ITEM G ON (G.IL_ITEM_CD = ood.IL_ITEM_CD)
+        WHERE
+            ood.OD_ORDER_ID = #{odOrderId}
+        ORDER BY ood.OD_ORDER_DETL_ID, ood.OD_ORDER_DETL_SEQ
+	</select>
+
+    <update id="updateLinkPrice" parameterType="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceDto">
+        UPDATE PM_AD_LINK_PRICE
+        SET UPDATE_DATE = CURRENT_TIMESTAMP
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sendYn)'>
+            , SEND_YN = #{sendYn}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(successYn)'>
+            , SUCCESS_YN = #{successYn}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sendData)'>
+            , SEND_DATA = #{sendData}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(returnData)'>
+            , RETURN_DATA = #{returnData}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(paidYmd)'>
+            , PAID_YMD = #{paidYmd}
+        </if>
+        WHERE ORDER_ID = #{orderId}
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(lpinfo)'>
+              AND LPINFO = #{lpinfo}
+            </if>
+    </update>
+
+    <resultMap id="getLinkPriceOrderListForApiMap" type="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceOrderListAPIResponseDto">
+        <collection property="linkprice" ofType="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceOrderListDeviceDto">
+            <result column="IP" property="remote_addr"  />
+            <result column="LPINFO" property="lpinfo"  />
+            <result column="DEVICE_TYPE" property="device_type"  />
+            <result column="USER_AGENT" property="user_agent"  />
+        </collection>
+        <collection property="order" ofType="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceOrderListOrderDto">
+            <result column="USER_NAME" property="user_name"  />
+            <result column="TOT_PAID_PRICE" property="final_paid_price"  />
+            <result column="ORDER_ID" property="order_id"  />
+            <result column="OD_ORDER_ID" property="od_order_id"  />
+        </collection>
+        <collection property="products" column="{od_order_id=OD_ORDER_ID, req_type=REQ_TYPE}" javaType="java.util.ArrayList" ofType="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceOrderListProductsDto" select="getLinkPriceOrderListProductsForApi" />
+    </resultMap>
+    <resultMap id="getLinkPriceOrderListProductsForApiMap" type="kr.co.pulmuone.v1.promotion.linkprice.dto.LinkPriceOrderListProductsDto">
+        <result column="PAID_PRICE" property="product_final_price"  />
+        <result column="CREATE_DT" property="paid_at"  />
+        <result column="ORDER_CNT" property="quantity"  />
+        <result column="CTGRY_NM" property="category_name" jdbcType="VARCHAR" typeHandler="kr.co.pulmuone.v1.comm.base.mybatis.hanlder.StringSplitTypeHandler" />
+        <result column="IL_CTGRY_STD_ID" property="category_code"  />
+        <result column="CANCEL_AT" property="canceled_at"  />
+        <result column="IL_GOODS_ID" property="product_id"  />
+        <result column="CONFIRMED_AT" property="confirmed_at"  />
+        <result column="GOODS_NM" property="product_name"  />
+        <result column="DISCOUNT_TP" property="discount_tp"  />
+        <result column="DELIVERY_TYPE" property="delivery_type"  />
+        <result column="UR_BRAND_ID" property="ur_brand_id"  />
+        <result column="POINT_PRICE" property="point_price"  />
+    </resultMap>
+    <select id="getLinkPriceOrderListForPaid" resultMap="getLinkPriceOrderListForApiMap">
+		/* linkPriceAdvertising.getLinkPriceOrderListForPaid */
+        SELECT
+            A.IP
+            , A.LPINFO
+            , A.DEVICE_TYPE
+            , A.USER_AGENT
+            , FN_DECRYPT(B.BUYER_NM) USER_NAME
+            , A.ORDER_ID
+            , B.OD_ORDER_ID
+            , SUM(C.PAID_PRICE) TOT_PAID_PRICE
+            , #{type} AS REQ_TYPE
+        FROM
+            PM_AD_LINK_PRICE A
+            INNER JOIN OD_ORDER B ON (A.ORDER_ID = B.ODID)
+            INNER JOIN OD_ORDER_DETL C ON (B.OD_ORDER_ID = C.OD_ORDER_ID)
+            INNER JOIN OD_ORDER_DT BD ON (BD.OD_ORDER_ID = B.OD_ORDER_ID)
+        WHERE
+            C.SALE_PRICE <![CDATA[ > ]]> 0      -- 증정품 제외
+            AND C.OD_ORDER_DETL_DEPTH_ID IN (1,2)           -- 재배송 제외
+            AND BD.IC_DT <![CDATA[ >= ]]> CAST(CONCAT(#{ymd}, '000000') AS DATETIME)
+            AND BD.IC_DT <![CDATA[ <= ]]> CAST(CONCAT(#{ymd}, '235959') AS DATETIME)
+        GROUP BY
+            A.IP
+            , A.LPINFO
+            , A.DEVICE_TYPE
+            , A.USER_AGENT
+            , B.BUYER_NM
+            , A.ORDER_ID
+	</select>
+    <select id="getLinkPriceOrderListForCanceled" resultMap="getLinkPriceOrderListForApiMap">
+	</select>
+    <select id="getLinkPriceOrderListProductsForApi" parameterType="java.util.Map" resultMap="getLinkPriceOrderListProductsForApiMap">
+        /* linkPriceAdvertising.getLinkPriceOrderListProductsForApi */
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(req_type, "PAID")'>
+                /* linkPriceAdvertising.getLinkPriceOrderListProductsForApi >> PAID */
+                SELECT
+                    A.PAID_PRICE
+                    , BD.IC_DT AS CREATE_DT
+                    , A.ORDER_CNT
+                    , #{req_type} AS req_type
+                    , (
+                        SELECT
+                            SUBSTRING(CONCAT(IFNULL(CONCAT('^', SE.CTGRY_NM), ''), IFNULL(CONCAT('^', SD.CTGRY_NM), ''), IFNULL(CONCAT('^', SC.CTGRY_NM), '')), 2)
+                        FROM
+                            IL_GOODS_CTGRY SB
+                            LEFT OUTER JOIN IL_CTGRY SC ON (SC.IL_CTGRY_ID = SB.IL_CTGRY_ID AND SC.DEPTH > 0)
+                            LEFT OUTER JOIN IL_CTGRY SD ON (SD.IL_CTGRY_ID = SC.PRNTS_CTGRY_ID AND SD.DEPTH > 0)
+                            LEFT OUTER JOIN IL_CTGRY SE ON (SE.IL_CTGRY_ID = SD.PRNTS_CTGRY_ID AND SE.DEPTH > 0)
+                        WHERE
+                            SB.IL_GOODS_ID = A.IL_GOODS_ID
+                            AND SB.MALL_DIV = 'MALL_DIV.PULMUONE'
+                            AND SB.BASIC_YN = 'Y'
+                        LIMIT 1
+                    ) AS CTGRY_NM
+                    , G.IL_GOODS_CTGRY_ID AS IL_CTGRY_STD_ID
+                    , '' AS CANCEL_AT
+                    , A.IL_GOODS_ID
+                    , '' AS CONFIRMED_AT
+                    , A.GOODS_NM
+                    , IFNULL(C.DISCOUNT_TP, '') DISCOUNT_TP
+                    , D.DELIVERY_TYPE
+                    , E.UR_BRAND_ID
+                    , 0 AS POINT_PRICE
+                FROM
+                    OD_ORDER_DETL A
+                    INNER JOIN OD_ORDER B ON (B.OD_ORDER_ID = A.OD_ORDER_ID)
+                    INNER JOIN OD_ORDER_DT BD ON (BD.OD_ORDER_ID = B.OD_ORDER_ID)
+                    LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT C ON (A.OD_ORDER_ID = C.OD_ORDER_ID AND C.OD_ORDER_DETL_ID = A.OD_ORDER_DETL_ID AND C.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+                    LEFT OUTER JOIN OD_SHIPPING_ZONE D ON (D.OD_SHIPPING_ZONE_ID = A.OD_SHIPPING_ZONE_ID)
+                    LEFT OUTER JOIN IL_ITEM E ON (E.IL_ITEM_CD = A.IL_ITEM_CD)
+                    LEFT OUTER JOIN IL_GOODS_CTGRY G ON (G.IL_GOODS_ID = A.IL_GOODS_ID)
+                WHERE
+                    A.OD_ORDER_ID = #{od_order_id}
+                    AND A.SALE_PRICE <![CDATA[ > ]]> 0
+                    AND A.OD_ORDER_DETL_DEPTH_ID IN (1,2)
+                    AND G.MALL_DIV = 'MALL_DIV.PULMUONE'
+                    AND G.BASIC_YN = 'Y'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(req_type, "CANCELED")'>
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(req_type, "CONFIRMED")'>
+            </when>
+        </choose>
+	</select>
+
+    <select id="getVirtualBankLinkPriceOrderDetailList" resultMap="getLinkPriceOrderDetailListMap">
+		/* linkPriceAdvertising.getVirtualBankLinkPriceOrderDetailList [가상계좌 링크프라이스 주문 내역조회] */
+		SELECT oo.ODID
+            , oo.OD_ORDER_ID
+            , ood.OD_ORDER_DETL_ID
+            , ood.OD_ORDER_DETL_SEQ
+            , oo.UR_USER_ID
+            , FN_DECRYPT(oo.BUYER_NM) AS UR_USER_NAME
+            , ood.ORDER_STATUS_CD
+            , ood.IL_GOODS_ID
+            , ood.IL_ITEM_CD
+            , ig.GOODS_NM
+            , ood.ORDER_CNT
+            , ood.PAID_PRICE
+            , ood2.IC_DT AS PAID_DT	/* 결제완료 일자 */
+            , F.IL_GOODS_CTGRY_ID AS CATE_CODE
+            , G.UR_BRAND_ID
+            , (
+                    SELECT
+                        CONCAT(IFNULL(SE.CTGRY_NM, ''),'___', IFNULL(SD.CTGRY_NM, ''),'___', IFNULL(SC.CTGRY_NM, ''))
+                    FROM
+                        IL_GOODS_CTGRY SB
+                        LEFT OUTER JOIN IL_CTGRY SC ON (SC.IL_CTGRY_ID = SB.IL_CTGRY_ID AND SC.DEPTH > 0)
+                        LEFT OUTER JOIN IL_CTGRY SD ON (SD.IL_CTGRY_ID = SC.PRNTS_CTGRY_ID AND SD.DEPTH > 0)
+                        LEFT OUTER JOIN IL_CTGRY SE ON (SE.IL_CTGRY_ID = SD.PRNTS_CTGRY_ID AND SE.DEPTH > 0)
+                    WHERE
+                        SB.IL_GOODS_ID = ood.IL_GOODS_ID
+                        AND SB.MALL_DIV = 'MALL_DIV.PULMUONE'
+                        AND SB.BASIC_YN = 'Y'
+                    LIMIT 1
+                ) AS CATE_NAME
+            , IFNULL(OODD.DISCOUNT_TP,'') AS DISCOUNT_TP
+		    , IFNULL(OSZ.DELIVERY_TYPE,'') AS DELIVERY_TYPE
+		    , palp.LPINFO
+            , palp.USER_AGENT
+            , palp.IP
+            , palp.DEVICE_TYPE
+        FROM PM_AD_LINK_PRICE palp
+            INNER JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.ODID = palp.ORDER_ID)
+            INNER JOIN OD_ORDER_DETL ood ON (oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+            INNER JOIN OD_ORDER_DT ood2 ON (oo.OD_ORDER_ID = ood2.OD_ORDER_ID)
+            INNER JOIN IL_GOODS ig ON (ood.IL_GOODS_ID = ig.IL_GOODS_ID)
+            LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT OODD ON (OODD.OD_ORDER_ID = ood.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID AND OODD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE')
+            LEFT OUTER JOIN OD_SHIPPING_ZONE OSZ ON (OSZ.OD_ORDER_ID = ood.OD_ORDER_ID and OSZ.OD_SHIPPING_ZONE_ID = ood.OD_SHIPPING_ZONE_ID)
+            LEFT OUTER JOIN IL_GOODS_CTGRY F ON (ood.IL_GOODS_ID = F.IL_GOODS_ID AND F.BASIC_YN = 'Y' AND F.MALL_DIV = 'MALL_DIV.PULMUONE')
+            LEFT OUTER JOIN IL_ITEM G ON (G.IL_ITEM_CD = ood.IL_ITEM_CD)
+        WHERE
+            palp.ORDER_ID = #{orderId}
+        ORDER BY ood.OD_ORDER_DETL_ID, ood.OD_ORDER_DETL_SEQ
+	</select>
+</mapper>

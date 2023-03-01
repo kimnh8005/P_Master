@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.shopsetting.PolicyShopSettingMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 설정 데이터 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @ 2020.10.26     최성현            리펙토링
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.shoppingsetting.dto.vo.GetPolicyShopSettingListResultVo" id="getPolicyShopSettingListResultMap">
+		<result column="PS_KEY" property="psKey" />
+		<result column="PS_VALUE" property="psValue" />
+	</resultMap>
+	<select id="getPolicyShopSettingList" resultMap="getPolicyShopSettingListResultMap">
+		/* policyShopSetting.getPolicyShopSettingList */
+		SELECT
+			C.PS_KEY AS PS_KEY
+			, C.PS_VAL AS PS_VALUE
+		FROM ST_SHOP S
+		INNER JOIN PS_CONFIG C
+			ON C.ST_SHOP_ID = S.ST_SHOP_ID
+		WHERE 1=1
+		    AND C.USE_YN = 'Y'
+		    AND C.ST_SHOP_ID = #{stShopId}
+		ORDER BY C.PS_GRP_TP,C.PS_NM;
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 설정 데이터 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르          최초생성
+	 * @ 2020.10.26     최성현            리펙토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPolicyShopSetting">
+		/* policyShopSetting.putPolicyShopSetting */
+		<foreach item="updateData" index="index" collection="list"  separator=";">
+			UPDATE PS_CONFIG C
+			SET
+				C.PS_VAL = #{updateData.psValue}
+			WHERE
+				C.PS_KEY = #{updateData.psKey}
+		</foreach>
+		;
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 파비콘 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		이한미르         최초생성
+	 * @ 2020.10.26     최성현		   리팩토링 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPolicyShopSettingFavicon">
+		/* policyShopSetting.putPolicyShopSettingFavicon */
+		UPDATE PS_CONFIG C
+		SET
+			C.PS_VAL = #{psValue}
+		WHERE
+			C.PS_KEY = #{psKey}
+	</update>
+
+</mapper>

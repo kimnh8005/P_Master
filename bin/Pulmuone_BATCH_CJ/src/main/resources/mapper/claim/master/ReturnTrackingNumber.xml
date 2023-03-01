@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.batch.cj.infra.mapper.claim.master.ReturnTrackingNumberMapper">
+
+    <!-- 대상 리스트 조회 -->
+    <select id="selectTargetList" resultType="String">
+        /* returnTrackingNumber.selectTargetList */
+        SELECT
+            T1.OD_CLAIM_DETL_ID
+        FROM
+            OD_CLAIM_DETL T1
+            LEFT OUTER JOIN OD_RETURN_TRACKING_NUMBER T2 ON T1.OD_CLAIM_DETL_ID = T2.OD_CLAIM_DETL_ID
+        WHERE
+                T1.CLAIM_STATUS_CD = 'RI'
+            AND T2.OD_CLAIM_DETL_ID IS NULL
+    </select>
+
+
+    <!-- 회수 송장번호 등록 -->
+    <insert id="addReturnTrackingNumber">
+	/* returnTrackingNumber.claimProcess.addReturnTrackingNumber */
+		INSERT INTO OD_RETURN_TRACKING_NUMBER
+		(OD_CLAIM_DETL_ID, PS_SHIPPING_COMP_ID, TRACKING_NO, TAK_CODE, SORT, CREATE_ID, CREATE_DT)
+		VALUES(#{odClaimDetlId}, IFNULL((SELECT PS_KEY FROM PS_CONFIG WHERE PS_GRP_TP = 'DELIVERY_TRACKING_SEARCH' AND PS_VAL = #{logisticsCd} LIMIT 1), ''), #{INVC_NO}, '', 1, 0, NOW())
+	</insert>
+</mapper>

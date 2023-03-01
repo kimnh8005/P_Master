@@ -1,0 +1,797 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsShopListMapper">
+
+ <!-- 상품목록 resultMap -->
+    <resultMap id="getGoodsShopListResultMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsShopListVo">
+        <result column="GOODS_ID" property="goodsId" />
+        <result column="ITEM_CD" property="itemCd" />
+        <result column="ITEM_BARCODE" property="itemBarcode" />
+        <result column="GOODS_NM" property="goodsNm" />
+        <result column="GOODS_TP" property="goodsTp" />
+        <result column="GOODS_TP_NM" property="goodsTpNm" />
+        <result column="PROMOTION_NAME" property="promotionName" />
+        <result column="SALE_TP" property="saleTp" />
+        <result column="SALE_TP_NM" property="saleTpNm" />
+        <result column="GOODS_PRICE_ID" property="goodsPriceId" />
+        <result column="GOODS_CREATE_DATE" property="goodsCreateDate" />
+        <result column="GOODS_MODIFY_DATE" property="goodsModifyDate" />
+        <result column="CATEGORY_STANDARD_ID" property="categoryStandardId" />
+        <result column="CATEGORY_ID" property="categoryId" />
+        <result column="SALE_STATUS" property="saleStatus" />
+        <result column="SALE_STATUS_NAME" property="saleStatusName" />
+        <result column="DISP_YN" property="dispYn" />
+        <result column="CATEGORY_STANDARD_DEPTH_NAME" property="categoryStandardDepthName" />
+        <result column="CATEGORY_DEPTH_NAME" property="categoryDepthName" />
+        <result column="ITEM_PRICE_ID" property="itemPriceId" />
+        <result column="GOODS_DISCOUNT_ID" property="goodsDiscountId" />
+        <result column="STANDARD_PRICE" property="standardPrice" />
+        <result column="RECOMMENDED_PRICE" property="recommendedPrice" />
+        <result column="SALE_PRICE" property="salePrice" />
+        <result column="STANDARD_PRICE_STR" property="standardPriceStr" />
+        <result column="RECOMMENDED_PRICE_STR" property="recommendedPriceStr" />
+        <result column="SALE_PRICE_STR" property="salePriceStr" />
+        <result column="DISCOUNT_TYPE_CODE" property="discountTypeCode" />
+        <result column="DISCOUNT_TYPE_NAME" property="discountTypeName" />
+		<result column="GOODS_IMAGE_PATH" property="goodsImagePath" />
+    </resultMap>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 매장 상품목록 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.26    정형진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsShopList" resultMap="getGoodsShopListResultMap">
+		SELECT
+			GOODS.*,
+			FN_CTGRY_STD_FULL_NAME(GOODS.CATEGORY_STANDARD_ID) AS CATEGORY_STANDARD_DEPTH_NAME,
+			(CASE WHEN GOODS.CATEGORY_ID IS NULL
+				THEN ''
+				ELSE FN_CTGRY_FULL_NAME(GOODS.CATEGORY_ID)
+			END) AS CATEGORY_DEPTH_NAME,
+			GOODS_PRICE.IL_ITEM_PRICE_ID AS ITEM_PRICE_ID,
+			GOODS_PRICE.IL_GOODS_DISCOUNT_ID AS GOODS_DISCOUNT_ID,
+			GOODS_PRICE.STANDARD_PRICE,
+			GOODS_PRICE.RECOMMENDED_PRICE,
+			GOODS_PRICE.SALE_PRICE,
+			GOODS_PRICE.DISCOUNT_TP AS DISCOUNT_TYPE_CODE,
+			FN_COMN_CODE_DIC(GOODS_PRICE.DISCOUNT_TP) AS DISCOUNT_TYPE_NAME
+		FROM (
+		SELECT
+			ITEM.IL_ITEM_CD AS ITEM_CD,
+			ITEM.ITEM_BARCODE,
+			GOODS.IL_GOODS_ID AS GOODS_ID,
+			GOODS.UR_WAREHOUSE_ID,
+			GOODS.GOODS_TP,
+			FN_COMN_CODE_DIC(GOODS.GOODS_TP) AS GOODS_TP_NM,
+			GOODS.GOODS_NM,
+			CASE WHEN (NOW() BETWEEN GOODS.PROMOTION_NM_START_DT AND GOODS.PROMOTION_NM_END_DT)
+		                THEN GOODS.PROMOTION_NM
+			ELSE ''
+			END PROMOTION_NAME,
+			GOODS.SALE_TP ,
+			FN_COMN_CODE_DIC(GOODS.SALE_TP) AS SALE_TP_NM,
+			(
+				SELECT
+					IL_GOODS_PRICE_ID
+				FROM IL_GOODS_PRICE
+				WHERE IL_GOODS_ID = GOODS.IL_GOODS_ID
+				AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+				ORDER BY IL_GOODS_PRICE_ID DESC
+				LIMIT 1
+			) AS GOODS_PRICE_ID,
+			GOODS.CREATE_DT,
+			GOODS.MODIFY_DT,
+			DATE_FORMAT(GOODS.SALE_START_DT, '%Y-%m-%d %H:%i:%s') AS SALE_START_DATE,
+			DATE_FORMAT(GOODS.SALE_END_DT, '%Y-%m-%d %H:%i:%s') AS SALE_END_DATE,
+			DATE_FORMAT(GOODS.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS GOODS_CREATE_DATE,
+		    DATE_FORMAT(GOODS.MODIFY_DT, '%Y-%m-%d %H:%i:%s') AS GOODS_MODIFY_DATE,
+		    ITEM.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID,
+		    (
+		    	SELECT
+			    	T1.IL_CTGRY_ID
+				FROM IL_CTGRY_PRNTS_INFO T1
+				JOIN IL_GOODS_CTGRY T2
+					ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				JOIN IL_CTGRY T3
+					ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				WHERE T3.USE_YN = 'Y'
+				AND T3.DEL_YN = 'N'
+				AND T2.IL_GOODS_ID = GOODS.IL_GOODS_ID
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(categoryType, "CATEGORY_STANDARD")'> <!-- 표준카테고리 -->
+						AND T3.MALL_DIV = 'MALL_DIV.PULMUONE'
+						AND T2.BASIC_YN = 'Y'
+					</when>
+					<otherwise> <!-- 전시카테고리, 몰인몰(올가), 몰인몰(베이비밀), 몰인몰(잇슬림) -->
+						AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+												THEN 'MALL_DIV.PULMUONE'
+                                                WHEN 'CATEGORY_ORGA' = #{categoryType}
+                                                THEN 'MALL_DIV.ORGA'
+                                                WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+                                                THEN 'MALL_DIV.BABYMEAL'
+                                                WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+                                                THEN 'MALL_DIV.EATSLIM'
+                                           ELSE 'MALL_DIV.PULMUONE'
+											END)
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth4)">
+									AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+                                    AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+                                    AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3}
+                                    AND T1.CTGRY_ID_DEPTH4 = #{categoryDepth4} /* 전시카테고리 세분류 */
+								</when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth3)">
+                                	AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+									AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+									AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3} /* 전시카테고리 소분류 */
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth2)">
+									AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+									AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2} /* 전시카테고리 중분류 */
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth1)">
+									AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1} /* 전시카테고리 대분류 */
+                                </when>
+                                <otherwise>
+                                	AND T2.BASIC_YN = 'Y'
+								</otherwise>
+							</choose>
+					</otherwise>
+				</choose>
+				LIMIT 1
+			) AS CATEGORY_ID,
+			GOODS.SALE_STATUS,
+			FN_COMN_CODE_DIC(GOODS.SALE_STATUS) AS SALE_STATUS_NAME ,
+			GOODS.DISP_YN
+			, (SELECT II.C_IMG
+			     FROM IL_ITEM_IMG II
+			    WHERE II.IL_ITEM_CD = ITEM.IL_ITEM_CD
+			      AND II.BASIC_YN = 'Y'
+			    LIMIT 1
+			) AS GOODS_IMAGE_PATH /* 상품이미지경로 */
+		FROM IL_GOODS GOODS
+		INNER JOIN IL_ITEM ITEM
+		ON GOODS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+		WHERE 1=1
+		AND GOODS.GOODS_TP = 'GOODS_TYPE.SHOP_ONLY'
+		) GOODS
+		JOIN IL_GOODS_PRICE GOODS_PRICE
+			ON GOODS_PRICE.IL_GOODS_PRICE_ID = GOODS.GOODS_PRICE_ID
+		JOIN IL_ITEM I
+			ON I.IL_ITEM_CD = GOODS.ITEM_CD
+		JOIN UR_WAREHOUSE W
+			ON W.UR_WAREHOUSE_ID = GOODS.UR_WAREHOUSE_ID
+		JOIN UR_SUPPLIER S
+			ON S.UR_SUPPLIER_ID = I.UR_SUPPLIER_ID
+		JOIN UR_COMPANY C
+			ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+		JOIN UR_BRAND B
+			ON B.UR_BRAND_ID = I.UR_BRAND_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'single') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'goodsCode') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsCodeArray)">
+					AND GOODS.GOODS_ID IN
+			               <foreach item="data" index="index" collection="goodsCodeArray" open="(" separator="," close=")">
+			                   #{data}
+			               </foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'itemCd') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsCodeArray)">
+					AND GOODS.ITEM_CD IN
+			               <foreach item="data" index="index" collection="goodsCodeArray" open="(" separator="," close=")">
+			                   #{data}
+			               </foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'itemBarcode') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsCodeArray)">
+					AND GOODS.ITEM_BARCODE IN
+			               <foreach item="data" index="index" collection="goodsCodeArray" open="(" separator="," close=")">
+			                   #{data}
+			               </foreach>
+				</if>
+			</if>
+
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'multi') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsName)"> <!-- 상품명 -->
+				AND GOODS.GOODS_NM LIKE CONCAT('%', #{goodsName}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId)"> <!-- 공급업체 -->
+				AND I.UR_SUPPLIER_ID = #{supplierId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)"> <!-- 출고처그룹코드 -->
+				AND W.WAREHOUSE_GRP_CD = #{warehouseGroup}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)"> <!-- 출고처그룹기준 출고처 -->
+				AND GOODS.UR_WAREHOUSE_ID = #{warehouseId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(brandId)"> <!--표준 브랜드 -->
+				AND I.UR_BRAND_ID = #{brandId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)"> <!--전시 브랜드 -->
+				AND I.DP_BRAND_ID = #{dpBrandId}
+			</if>
+
+			<choose>
+				<when test='categoryType.equalsIgnoreCase("CATEGORY_STANDARD")'> <!-- 표준카테고리 -->
+					<choose>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth4)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T1.CTGRY_STD_ID_DEPTH2 = #{categoryStandardDepth2}
+							AND T1.CTGRY_STD_ID_DEPTH3 = #{categoryStandardDepth3}
+							AND T1.CTGRY_STD_ID_DEPTH4 = #{categoryStandardDepth4}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 세분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth3)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T1.CTGRY_STD_ID_DEPTH2 = #{categoryStandardDepth2}
+							AND T1.CTGRY_STD_ID_DEPTH3 = #{categoryStandardDepth3}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 소분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth2)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T1.CTGRY_STD_ID_DEPTH2 = #{categoryStandardDepth2}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 중분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth1)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 대분류 */
+						</when>
+					</choose>
+				</when>
+				<otherwise> <!-- 전시카테고리, 몰인몰(올가), 몰인몰(베이비밀), 몰인몰(잇슬림) -->
+					<choose>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth4)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+							AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3}
+							AND T1.CTGRY_ID_DEPTH4 = #{categoryDepth4}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 세분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth3)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+							AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 소분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth2)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 중분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth1)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 대분류 */
+						</when>
+					</choose>
+				</otherwise>
+			</choose>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)"> <!-- 기간검색 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+					<choose>
+						<when
+							test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CREATE_DATE")'> <!-- 등록일 -->
+							AND GOODS.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						</when>
+						<when
+							test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "MODIFY_DATE")'> <!-- 최근 수정일 -->
+							AND GOODS.MODIFY_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						</when>
+						<when
+							test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "SALE_DATE")'> <!-- 판매기간 -->
+							AND GOODS.SALE_START_DT <![CDATA[ <= ]]> (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+							AND GOODS.SALE_END_DT <![CDATA[ >= ]]> #{dateSearchStart}
+						</when>
+					</choose>
+				</if>
+			</if>
+
+			 <if test="saleStatusList.size() > 0"> <!-- 판매상태 -->
+				AND GOODS.SALE_STATUS IN
+				<foreach collection="saleStatusList" item="saleStatusCode" index="index" separator="," open="(" close=")">
+					#{saleStatusCode}
+				</foreach>
+			</if>
+
+		</if>
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+			AND I.UR_SUPPLIER_ID IN
+			<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+           		#{data}
+       		</foreach>
+		</if>
+
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 매장 상품목록 조회 - 엑셀 다운로드
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.26    정형진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsShopListExcel" resultMap="getGoodsShopListResultMap">
+		SELECT
+			GOODS.*,
+			FN_CTGRY_STD_FULL_NAME(GOODS.CATEGORY_STANDARD_ID) AS CATEGORY_STANDARD_DEPTH_NAME,
+			(CASE WHEN GOODS.CATEGORY_ID IS NULL
+				THEN ''
+				ELSE FN_CTGRY_FULL_NAME(GOODS.CATEGORY_ID)
+			END) AS CATEGORY_DEPTH_NAME,
+			GOODS_PRICE.IL_ITEM_PRICE_ID AS ITEM_PRICE_ID,
+			GOODS_PRICE.IL_GOODS_DISCOUNT_ID AS GOODS_DISCOUNT_ID,
+			GOODS_PRICE.STANDARD_PRICE AS STANDARD_PRICE_STR,
+			GOODS_PRICE.RECOMMENDED_PRICE AS RECOMMENDED_PRICE_STR,
+			GOODS_PRICE.SALE_PRICE AS SALE_PRICE_STR,
+			GOODS_PRICE.DISCOUNT_TP AS DISCOUNT_TYPE_CODE,
+			FN_COMN_CODE_DIC(GOODS_PRICE.DISCOUNT_TP) AS DISCOUNT_TYPE_NAME
+		FROM (
+		SELECT
+			ITEM.IL_ITEM_CD AS ITEM_CD,
+			ITEM.ITEM_BARCODE,
+			GOODS.IL_GOODS_ID AS GOODS_ID,
+			GOODS.UR_WAREHOUSE_ID,
+			GOODS.GOODS_TP,
+			FN_COMN_CODE_DIC(GOODS.GOODS_TP) AS GOODS_TP_NM,
+			GOODS.GOODS_NM,
+			CASE WHEN (NOW() BETWEEN GOODS.PROMOTION_NM_START_DT AND GOODS.PROMOTION_NM_END_DT)
+		                THEN GOODS.PROMOTION_NM
+			ELSE ''
+			END PROMOTION_NAME,
+			GOODS.SALE_TP ,
+			FN_COMN_CODE_DIC(GOODS.SALE_TP) AS SALE_TP_NM,
+			(
+				SELECT
+					IL_GOODS_PRICE_ID
+				FROM IL_GOODS_PRICE
+				WHERE IL_GOODS_ID = GOODS.IL_GOODS_ID
+				AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+				ORDER BY IL_GOODS_PRICE_ID DESC
+				LIMIT 1
+			) AS GOODS_PRICE_ID,
+			GOODS.CREATE_DT,
+			GOODS.MODIFY_DT,
+			DATE_FORMAT(GOODS.SALE_START_DT, '%Y-%m-%d %H:%i:%s') AS SALE_START_DATE,
+			DATE_FORMAT(GOODS.SALE_END_DT, '%Y-%m-%d %H:%i:%s') AS SALE_END_DATE,
+			DATE_FORMAT(GOODS.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS GOODS_CREATE_DATE,
+		    DATE_FORMAT(GOODS.MODIFY_DT, '%Y-%m-%d %H:%i:%s') AS GOODS_MODIFY_DATE,
+		    ITEM.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID,
+		    (
+		    	SELECT
+			    	T1.IL_CTGRY_ID
+				FROM IL_CTGRY_PRNTS_INFO T1
+				JOIN IL_GOODS_CTGRY T2
+					ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				JOIN IL_CTGRY T3
+					ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+				WHERE T3.USE_YN = 'Y'
+				AND T3.DEL_YN = 'N'
+				AND T2.IL_GOODS_ID = GOODS.IL_GOODS_ID
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(categoryType, "CATEGORY_STANDARD")'> <!-- 표준카테고리 -->
+						AND T3.MALL_DIV = 'MALL_DIV.PULMUONE'
+						AND T2.BASIC_YN = 'Y'
+					</when>
+					<otherwise> <!-- 전시카테고리, 몰인몰(올가), 몰인몰(베이비밀), 몰인몰(잇슬림) -->
+						AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+												THEN 'MALL_DIV.PULMUONE'
+                                                WHEN 'CATEGORY_ORGA' = #{categoryType}
+                                                THEN 'MALL_DIV.ORGA'
+                                                WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+                                                THEN 'MALL_DIV.BABYMEAL'
+                                                WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+                                                THEN 'MALL_DIV.EATSLIM'
+                                           ELSE 'MALL_DIV.PULMUONE'
+											END)
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth4)">
+									AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+                                    AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+                                    AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3}
+                                    AND T1.CTGRY_ID_DEPTH4 = #{categoryDepth4} /* 전시카테고리 세분류 */
+								</when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth3)">
+                                	AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+									AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+									AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3} /* 전시카테고리 소분류 */
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth2)">
+									AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+									AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2} /* 전시카테고리 중분류 */
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth1)">
+									AND T1.CTGRY_ID_DEPTH1 = #{categoryDepth1} /* 전시카테고리 대분류 */
+                                </when>
+                                <otherwise>
+                                	AND T2.BASIC_YN = 'Y'
+								</otherwise>
+							</choose>
+					</otherwise>
+				</choose>
+				LIMIT 1
+			) AS CATEGORY_ID,
+			GOODS.SALE_STATUS,
+			FN_COMN_CODE_DIC(GOODS.SALE_STATUS) AS SALE_STATUS_NAME ,
+			IF(GOODS.DISP_YN = 'Y','전시','미전시') AS DISP_YN
+
+		FROM IL_GOODS GOODS
+		INNER JOIN IL_ITEM ITEM
+		ON GOODS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+		WHERE 1=1
+		AND GOODS.GOODS_TP = 'GOODS_TYPE.SHOP_ONLY'
+		) GOODS
+		JOIN IL_GOODS_PRICE GOODS_PRICE
+			ON GOODS_PRICE.IL_GOODS_PRICE_ID = GOODS.GOODS_PRICE_ID
+		JOIN IL_ITEM I
+			ON I.IL_ITEM_CD = GOODS.ITEM_CD
+		JOIN UR_WAREHOUSE W
+			ON W.UR_WAREHOUSE_ID = GOODS.UR_WAREHOUSE_ID
+		JOIN UR_SUPPLIER S
+			ON S.UR_SUPPLIER_ID = I.UR_SUPPLIER_ID
+		JOIN UR_COMPANY C
+			ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+		JOIN UR_BRAND B
+			ON B.UR_BRAND_ID = I.UR_BRAND_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'single') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'goodsCode') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsCodeArray)">
+					AND GOODS.GOODS_ID IN
+			               <foreach item="data" index="index" collection="goodsCodeArray" open="(" separator="," close=")">
+			                   #{data}
+			               </foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'itemCd') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsCodeArray)">
+					AND GOODS.ITEM_CD IN
+			               <foreach item="data" index="index" collection="goodsCodeArray" open="(" separator="," close=")">
+			                   #{data}
+			               </foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(codeType,'itemBarcode') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsCodeArray)">
+					AND GOODS.ITEM_BARCODE IN
+			               <foreach item="data" index="index" collection="goodsCodeArray" open="(" separator="," close=")">
+			                   #{data}
+			               </foreach>
+				</if>
+			</if>
+
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'multi') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsName)"> <!-- 상품명 -->
+				AND GOODS.GOODS_NM LIKE CONCAT('%', #{goodsName}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId)"> <!-- 공급업체 -->
+				AND I.UR_SUPPLIER_ID = #{supplierId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)"> <!-- 출고처그룹코드 -->
+				AND W.WAREHOUSE_GRP_CD = #{warehouseGroup}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)"> <!-- 출고처그룹기준 출고처 -->
+				AND GOODS.UR_WAREHOUSE_ID = #{warehouseId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(brandId)"> <!--표준 브랜드 -->
+				AND I.UR_BRAND_ID = #{brandId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)"> <!--전시 브랜드 -->
+				AND I.DP_BRAND_ID = #{dpBrandId}
+			</if>
+
+			<choose>
+				<when test='categoryType.equalsIgnoreCase("CATEGORY_STANDARD")'> <!-- 표준카테고리 -->
+					<choose>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth4)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T1.CTGRY_STD_ID_DEPTH2 = #{categoryStandardDepth2}
+							AND T1.CTGRY_STD_ID_DEPTH3 = #{categoryStandardDepth3}
+							AND T1.CTGRY_STD_ID_DEPTH4 = #{categoryStandardDepth4}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 세분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth3)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T1.CTGRY_STD_ID_DEPTH2 = #{categoryStandardDepth2}
+							AND T1.CTGRY_STD_ID_DEPTH3 = #{categoryStandardDepth3}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 소분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth2)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T1.CTGRY_STD_ID_DEPTH2 = #{categoryStandardDepth2}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 중분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth1)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_STD_PRNTS_INFO T1
+							JOIN IL_CTGRY_STD T2
+							ON T2.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID
+							WHERE T1.CTGRY_STD_ID_DEPTH1 = #{categoryStandardDepth1}
+							AND T2.USE_YN = 'Y'
+							AND T2.DEL_YN = 'N'
+							AND T1.IL_CTGRY_STD_ID = I.IL_CTGRY_STD_ID) /* 표준카테고리 대분류 */
+						</when>
+					</choose>
+				</when>
+				<otherwise> <!-- 전시카테고리, 몰인몰(올가), 몰인몰(베이비밀), 몰인몰(잇슬림) -->
+					<choose>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth4)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+							AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3}
+							AND T1.CTGRY_ID_DEPTH4 = #{categoryDepth4}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 세분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth3)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+							AND T1.CTGRY_ID_DEPTH3 = #{categoryDepth3}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 소분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth2)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T1.CTGRY_ID_DEPTH2 = #{categoryDepth2}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 중분류 */
+						</when>
+						<when
+							test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth1)">
+							AND EXISTS (SELECT 1
+							FROM IL_CTGRY_PRNTS_INFO T1
+							JOIN IL_GOODS_CTGRY T2
+							ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							JOIN IL_CTGRY T3
+							ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+							WHERE T1.CTGRY_ID_DEPTH1 = #{categoryDepth1}
+							AND T3.USE_YN = 'Y'
+							AND T3.DEL_YN = 'N'
+							AND T3.MALL_DIV = (CASE WHEN 'CATEGORY_PULMUONE' = #{categoryType}
+							THEN 'MALL_DIV.PULMUONE'
+							WHEN 'CATEGORY_ORGA' = #{categoryType}
+							THEN 'MALL_DIV.ORGA'
+							WHEN 'CATEGORY_BABYMEAL' = #{categoryType}
+							THEN 'MALL_DIV.BABYMEAL'
+							WHEN 'CATEGORY_EATSLIM' = #{categoryType}
+							THEN 'MALL_DIV.EATSLIM'
+							ELSE 'MALL_DIV.PULMUONE'
+							END)
+							AND T2.IL_GOODS_ID = GOODS.GOODS_ID) /* 전시카테고리 대분류 */
+						</when>
+					</choose>
+				</otherwise>
+			</choose>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)"> <!-- 기간검색 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+					<choose>
+						<when
+							test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CREATE_DATE")'> <!-- 등록일 -->
+							AND GOODS.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						</when>
+						<when
+							test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "MODIFY_DATE")'> <!-- 최근 수정일 -->
+							AND GOODS.MODIFY_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						</when>
+						<when
+							test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "SALE_DATE")'> <!-- 판매기간 -->
+							AND GOODS.SALE_START_DT <![CDATA[ <= ]]> (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+							AND GOODS.SALE_END_DT <![CDATA[ >= ]]> #{dateSearchStart}
+						</when>
+					</choose>
+				</if>
+			</if>
+
+			 <if test="saleStatusList.size() > 0"> <!-- 판매상태 -->
+				AND GOODS.SALE_STATUS IN
+				<foreach collection="saleStatusList" item="saleStatusCode" index="index" separator="," open="(" close=")">
+					#{saleStatusCode}
+				</foreach>
+			</if>
+
+		</if>
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+			AND I.UR_SUPPLIER_ID IN
+			<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+           		#{data}
+       		</foreach>
+		</if>
+
+    </select>
+
+
+</mapper>
+

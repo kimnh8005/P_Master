@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.OrderFrontBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 판매수량 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.order.front.dto.vo.OrderCountVo" id="getOrderCountResultMap">
+        <result column="IL_GOODS_ID"  property="ilGoodsId" />
+        <result column="ORDER_CNT_SUM"  property="orderCountSum"  />
+        <result column="PULMUONE_CATEGORY_ID"  property="pulmuoneCategoryId" />
+        <result column="ORGA_CATEGORY_ID"  property="orgaCategoryId"  />
+        <result column="EATSLIM_CATEGORY_ID"  property="eatslimCategoryId" />
+        <result column="BABYMEAL_CATEGORY_ID"  property="babymealCategoryId"  />
+    </resultMap>
+
+    <select id="getOrderCountGoodsList" resultMap="getOrderCountResultMap">
+        /* orderFrontBatch.getOrderCountGoodsList */
+        SELECT *
+        FROM (
+        SELECT G.IL_GOODS_ID,
+            IFNULL(SUM(G1.ORDER_CNT_SUM), 0) AS ORDER_CNT_SUM,
+            IFNULL(T12.CTGRY_ID_DEPTH1, 0) AS PULMUONE_CATEGORY_ID,
+            IFNULL(T22.CTGRY_ID_DEPTH1, 0) AS ORGA_CATEGORY_ID,
+            IFNULL(T32.CTGRY_ID_DEPTH1, 0) AS EATSLIM_CATEGORY_ID,
+            IFNULL(T42.CTGRY_ID_DEPTH1, 0) AS BABYMEAL_CATEGORY_ID,
+            G.CREATE_DT
+        FROM
+        	IL_GOODS G
+            LEFT JOIN (
+                SELECT IL_GOODS_ID, SUM(ORDER_CNT_SUM) AS ORDER_CNT_SUM
+                FROM  (
+                    /* 묶음상품 제외 단품 수량 */
+                    SELECT OD.IL_GOODS_ID,
+                        SUM(OD.ORDER_CNT - OD.CANCEL_CNT) AS ORDER_CNT_SUM
+                    FROM OD_ORDER_DETL OD
+                        INNER JOIN OD_ORDER OO ON OD.OD_ORDER_ID = OO.OD_ORDER_ID
+                        INNER JOIN OD_ORDER_DT OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+                    WHERE OOD.IC_DT BETWEEN #{startDateTime} AND #{endDateTime}
+                        AND OD.ORDER_STATUS_CD IN ('IC', 'DR', 'DI', 'DC', 'BF')
+                        AND OD.OD_ORDER_DETL_PARENT_ID NOT IN (SELECT DP.OD_ORDER_DETL_ID FROM OD_ORDER_DETL_PACK DP)
+                        AND OO.ORDER_YN = 'Y'
+                        AND (OD.ORDER_CNT - OD.CANCEL_CNT) <![CDATA[>]]> 0
+                    GROUP BY OD.IL_GOODS_ID
+                    UNION
+                    /* 묶음상품 수량 */
+                    SELECT A.IL_GOODS_ID, SUM(A.ORDER_CNT) AS ORDER_CNT_SUM
+                    FROM (
+                        SELECT DP.IL_GOODS_ID, DP.ORDER_CNT
+                        FROM OD_ORDER_DETL OD
+                            INNER JOIN OD_ORDER_DETL_PACK DP ON OD.OD_ORDER_ID = DP.OD_ORDER_ID AND OD.OD_ORDER_DETL_PARENT_ID = DP.OD_ORDER_DETL_ID
+                            INNER JOIN OD_ORDER_DT DT ON OD.OD_ORDER_ID = DT.OD_ORDER_ID
+                            INNER JOIN OD_ORDER OO ON OD.OD_ORDER_ID = OO.OD_ORDER_ID
+                        WHERE DT.IC_DT BETWEEN #{startDateTime} AND #{endDateTime}
+                            AND OD.ORDER_STATUS_CD IN ('IC', 'DR', 'DI', 'DC', 'BF')
+                            AND OO.ORDER_YN = 'Y'
+                            AND (OD.ORDER_CNT - OD.CANCEL_CNT) <![CDATA[>]]> 0
+                        GROUP BY DP.IL_GOODS_ID, DP.OD_ORDER_ID
+                    ) AS A
+                    GROUP BY A.IL_GOODS_ID
+                ) G_PACK
+            GROUP BY G_PACK.IL_GOODS_ID
+            ) G1 ON (G.IL_GOODS_ID = G1.IL_GOODS_ID)
+            LEFT OUTER JOIN IL_GOODS_CTGRY T11 ON G.IL_GOODS_ID = T11.IL_GOODS_ID AND T11.BASIC_YN = 'Y' AND T11.MALL_DIV = 'MALL_DIV.PULMUONE'
+            LEFT OUTER JOIN IL_CTGRY_PRNTS_INFO T12 ON T11.IL_CTGRY_ID = T12.IL_CTGRY_ID
+            LEFT OUTER JOIN IL_GOODS_CTGRY T21 ON G.IL_GOODS_ID = T21.IL_GOODS_ID AND T21.BASIC_YN = 'Y' AND T21.MALL_DIV = 'MALL_DIV.ORGA'
+            LEFT OUTER JOIN IL_CTGRY_PRNTS_INFO T22 ON T21.IL_CTGRY_ID = T22.IL_CTGRY_ID
+            LEFT OUTER JOIN IL_GOODS_CTGRY T31 ON G.IL_GOODS_ID = T31.IL_GOODS_ID AND T31.BASIC_YN = 'Y' AND T31.MALL_DIV = 'MALL_DIV.EATSLIM'
+            LEFT OUTER JOIN IL_CTGRY_PRNTS_INFO T32 ON T31.IL_CTGRY_ID = T32.IL_CTGRY_ID
+            LEFT OUTER JOIN IL_GOODS_CTGRY T41 ON G.IL_GOODS_ID = T41.IL_GOODS_ID AND T41.BASIC_YN = 'Y' AND T41.MALL_DIV = 'MALL_DIV.BABYMEAL'
+            LEFT OUTER JOIN IL_CTGRY_PRNTS_INFO T42 ON T41.IL_CTGRY_ID = T42.IL_CTGRY_ID
+        WHERE G.DISP_YN = 'Y'
+            AND G.DEL_YN = 'N'
+            AND NOW() BETWEEN G.SALE_START_DT AND G.SALE_END_DT
+            AND G.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.GIFT_FOOD_MARKETING')
+        GROUP BY G.IL_GOODS_ID
+        ) GR
+        WHERE GR.PULMUONE_CATEGORY_ID != #{lohasCategoryId}
+        ORDER BY GR.ORDER_CNT_SUM DESC, CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 판매수량 정보 조회 - 로하스
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.10		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderCountLohasGoodsList" resultMap="getOrderCountResultMap">
+        /* orderFrontBatch.getOrderCountLohasGoodsList */
+        SELECT *
+        FROM (
+            SELECT G.IL_GOODS_ID,
+                IFNULL(SUM(G1.ORDER_CNT_SUM), 0) AS ORDER_CNT_SUM,
+                IFNULL(T12.CTGRY_ID_DEPTH1, 0) AS PULMUONE_CATEGORY_ID,
+                G.CREATE_DT
+            FROM IL_GOODS G
+                LEFT JOIN (
+                    SELECT IL_GOODS_ID, SUM(ORDER_CNT_SUM) AS ORDER_CNT_SUM
+                    FROM  (
+                        /* 묶음상품 제외 단품 수량 */
+                        SELECT OD.IL_GOODS_ID,
+                            SUM(OD.ORDER_CNT - OD.CANCEL_CNT) AS ORDER_CNT_SUM
+                        FROM OD_ORDER_DETL OD
+                            INNER JOIN OD_ORDER OO ON OD.OD_ORDER_ID = OO.OD_ORDER_ID
+                            INNER JOIN OD_ORDER_DT OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+                        WHERE OOD.IC_DT BETWEEN #{startDateTime} AND #{endDateTime}
+                            AND OD.ORDER_STATUS_CD IN ('IC', 'DR', 'DI', 'DC', 'BF')
+                            AND OD.OD_ORDER_DETL_PARENT_ID NOT IN (SELECT DP.OD_ORDER_DETL_ID FROM OD_ORDER_DETL_PACK DP)
+                            AND OO.ORDER_YN = 'Y'
+                            AND (OD.ORDER_CNT - OD.CANCEL_CNT) <![CDATA[>]]> 0
+                        GROUP BY OD.IL_GOODS_ID
+                        UNION
+                        /* 묶음상품 수량 */
+                        SELECT A.IL_GOODS_ID, SUM(A.ORDER_CNT) AS ORDER_CNT_SUM
+                        FROM (
+                            SELECT DP.IL_GOODS_ID, DP.ORDER_CNT
+                            FROM OD_ORDER_DETL OD
+                                INNER JOIN OD_ORDER_DETL_PACK DP ON OD.OD_ORDER_ID = DP.OD_ORDER_ID AND OD.OD_ORDER_DETL_PARENT_ID = DP.OD_ORDER_DETL_ID
+                                INNER JOIN OD_ORDER_DT DT ON OD.OD_ORDER_ID = DT.OD_ORDER_ID
+                                INNER JOIN OD_ORDER OO ON OD.OD_ORDER_ID = OO.OD_ORDER_ID
+                            WHERE DT.IC_DT BETWEEN #{startDateTime} AND #{endDateTime}
+                                AND OD.ORDER_STATUS_CD IN ('IC', 'DR', 'DI', 'DC', 'BF')
+                                AND OO.ORDER_YN = 'Y'
+                                AND (OD.ORDER_CNT - OD.CANCEL_CNT) <![CDATA[>]]> 0
+                            GROUP BY DP.IL_GOODS_ID, DP.OD_ORDER_ID
+                        ) AS A
+                    GROUP BY A.IL_GOODS_ID
+                    ) G_PACK
+                GROUP BY G_PACK.IL_GOODS_ID
+                ) G1 ON (G.IL_GOODS_ID = G1.IL_GOODS_ID)
+                INNER JOIN IL_GOODS_CTGRY T11 ON G.IL_GOODS_ID = T11.IL_GOODS_ID AND T11.MALL_DIV = 'MALL_DIV.PULMUONE'
+                INNER JOIN IL_CTGRY_PRNTS_INFO T12 ON T11.IL_CTGRY_ID = T12.IL_CTGRY_ID
+            WHERE G.DISP_YN = 'Y'
+                AND G.DEL_YN = 'N'
+                AND NOW() BETWEEN G.SALE_START_DT AND G.SALE_END_DT
+                AND G.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                AND T12.CTGRY_ID_DEPTH1 = #{lohasCategoryId}
+            GROUP BY G.IL_GOODS_ID
+        ) GR
+        ORDER BY GR.ORDER_CNT_SUM DESC, CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 정보 조회 - 스탬프 구매 이벤트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.30		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.order.front.dto.vo.OrderInfoFromStampPurchaseBatchVo" id="stampPurchaseResultMap">
+        <result column="UR_USER_ID"  property="urUserId" />
+        <result column="ORDER_CNT"  property="orderCount"  />
+    </resultMap>
+
+    <select id="getOrderInfoFromStampPurchase" resultMap="stampPurchaseResultMap">
+        /* orderFrontBatch.getOrderInfoFromStampPurchase */
+        SELECT OO.UR_USER_ID,
+            COUNT(G1.OD_ORDER_ID) AS ORDER_CNT
+        FROM (
+                SELECT OO.OD_ORDER_ID, SUM(OD.PAID_PRICE) AS PAID_PRICE_SUM
+                FROM OD_ORDER OO
+                    INNER JOIN OD_ORDER_DT OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+                    INNER JOIN OD_ORDER_DETL OD ON OO.OD_ORDER_ID = OD.OD_ORDER_ID
+                WHERE OO.UR_USER_ID IN
+                    <foreach collection="userIdList" item="urUserId" index="index" separator="," open="(" close=")">
+                        #{urUserId}
+                    </foreach>
+                    AND OD.ORDER_STATUS_CD IN ('IC', 'DR', 'DI', 'DC', 'BF')
+                    AND OOD.IC_DT BETWEEN #{startDateTime} AND #{endDateTime}
+                    AND OO.ORDER_YN = 'Y'
+                    AND (OD.ORDER_CNT - OD.CANCEL_CNT) <![CDATA[>]]> 0
+                GROUP BY OO.OD_ORDER_ID
+            ) G1
+            INNER JOIN OD_ORDER OO ON G1.OD_ORDER_ID = OO.OD_ORDER_ID
+        WHERE G1.PAID_PRICE_SUM <![CDATA[>=]]> #{orderPrice}
+        GROUP BY OO.UR_USER_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문정보 조회 - 등급
+	 * CASE 반영 : 주문 한건에 출고일이 다른 두개의 상품이 있을경우 - 첫번째 상품의 출고일로 집계 진행
+	 *
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.28 	이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="orderInfoFromUserGroupVoResultMap" type="kr.co.pulmuone.v1.batch.order.front.dto.vo.OrderInfoFromUserGroupBatchVo">
+        <result column="UR_USER_ID"	property="urUserId" />
+        <result column="ORDER_CNT"	property="orderCount" />
+        <result column="PAID_PRICE_SUM" property="paidPriceSum" />
+    </resultMap>
+    <select id="getOrderCountFromUserGroup" resultMap="orderInfoFromUserGroupVoResultMap">
+        /*	orderFrontBatch.getOrderCountFromUserGroup  */
+        SELECT OO.UR_USER_ID, COUNT(OO.UR_USER_ID) AS ORDER_CNT, SUM(G4.PAID_PRICE) AS PAID_PRICE_SUM
+        FROM (
+            SELECT OD.OD_ORDER_ID, SUM(OD.PAID_PRICE) AS PAID_PRICE
+            FROM (
+                SELECT ROW_NUMBER() OVER (PARTITION BY G2.OD_ORDER_ID ORDER BY G2.DI_DT ASC) AS DI_RANK
+                    , G2.OD_ORDER_ID, G2.OD_ORDER_DETL_ID, G2.DI_DT
+                FROM (
+                    SELECT OD.OD_ORDER_ID
+                        ,OD.OD_ORDER_DETL_ID
+                        ,IFNULL(OD.DI_DT, NOW()) AS DI_DT
+                    FROM (
+                            SELECT OO.OD_ORDER_ID
+                            FROM OD_ORDER OO
+                                INNER JOIN OD_ORDER_DETL OD ON OO.OD_ORDER_ID = OD.OD_ORDER_ID
+                            WHERE OO.UR_USER_ID IN
+                                <foreach collection="userBuyerList" item="item" index="index" separator="," open="(" close=")">
+                                    #{item.urUserId}
+                                </foreach>
+                                AND OD.DI_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                                AND OO.ORDER_YN = 'Y'
+                            GROUP BY OO.OD_ORDER_ID
+                        ) G1 /* 계산 대상 주문번호 조회 */
+                        INNER JOIN OD_ORDER_DETL OD ON G1.OD_ORDER_ID = OD.OD_ORDER_ID
+                    ) G2 /* 출고일 NULL 값 예외처리 */
+                ) G3 /* 주문번호별 파티션 - 출고일 정렬기준으로 ROW NUMBER 계산 */
+                INNER JOIN OD_ORDER OO ON OO.OD_ORDER_ID = G3.OD_ORDER_ID
+                INNER JOIN OD_ORDER_DETL OD ON OD.OD_ORDER_ID = G3.OD_ORDER_ID
+            WHERE G3.DI_RANK = 1
+                AND G3.DI_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            GROUP BY OD.OD_ORDER_ID
+        ) G4 /* 첫번째 출고일 상품 기준 SUM 금액  */
+        INNER JOIN OD_ORDER OO ON OO.OD_ORDER_ID = G4.OD_ORDER_ID
+        GROUP BY OO.UR_USER_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 정보 조회 - 신규 회원 추천인 적립금 지급
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.19		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderInfoFromUserJoin" resultType="long">
+        /* orderFrontBatch.getOrderInfoFromUserJoin */
+        SELECT G1.UR_USER_ID
+        FROM (
+            SELECT OO.UR_USER_ID, COUNT(*) AS ORDER_CNT
+            FROM OD_ORDER OO
+                INNER JOIN OD_ORDER_DETL OD ON OO.OD_ORDER_ID = OD.OD_ORDER_ID
+            WHERE OD.DI_DT BETWEEN DATE_SUB(NOW(), INTERVAL #{userJoinDepositDay} DAY) AND NOW()
+                AND OO.ORDER_YN = 'Y'
+                AND OO.UR_USER_ID IN
+                <foreach collection="userIdList" item="urUserId" index="index" separator="," open="(" close=")">
+                    #{urUserId}
+                </foreach>
+            GROUP BY OO.UR_USER_ID
+        ) G1
+        WHERE G1.ORDER_CNT > 0
+    </select>
+
+</mapper>

@@ -1,0 +1,580 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.statics.data.DataDownloadStaticsMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 통계관리 > 데이터 추출 다운로드
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.10   whseo    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOnlineMemberReserveBalance" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getOnlineMemberReserveBalance [적립금 회원 잔액 조회] */
+        SELECT UU.UR_USER_ID AS "회원번호"
+        , IFNULL(UU.LOGIN_ID,'') AS "회원아이디"
+        , IFNULL(SUM(PU.AMOUNT),0) AS "남은적립금"
+        , IFNULL((SELECT UR_ERP_ORGANIZATION_NM FROM PM_COUPON_POINT_SHARE_ORGANIZATION WHERE PM_POINT_ID = PU.PM_POINT_ID),
+            IFNULL((SELECT UEE.ERP_ORGANIZATION_NM FROM UR_ERP_EMPLOYEE UEE WHERE UEE.FIN_ORGANIZATION_CD = PU.DEPT_CD AND UEE.FIN_ORGANIZATION_CD IS NOT NULL LIMIT 1),'')) AS "분담조직"
+        FROM PM_POINT_USED_DETL PU
+        INNER JOIN UR_USER UU ON(PU.UR_USER_ID = UU.UR_USER_ID AND PU.CLOSE_YN = 'N')
+        INNER JOIN UR_BUYER UB ON(PU.UR_USER_ID = UB.UR_USER_ID AND IFNULL(UB.UR_ERP_EMPLOYEE_CD,'')  = '')
+        WHERE PU.AVAILABLE_DT <![CDATA[<=]]> CONCAT(#{endDt}, ' 23:59:59') AND PU.EXPIRATION_DT <![CDATA[>=]]> CONCAT(#{endDt}, ' 23:59:59')
+        GROUP BY UU.UR_USER_ID
+        ORDER BY UU.UR_USER_ID
+    </select>
+
+    <select id="getEmployeeMemberReserveBalance" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getEmployeeMemberReserveBalance [적립금 임직원 잔액 조회] */
+        SELECT UU.UR_USER_ID AS "회원번호"
+        , IFNULL(UU.LOGIN_ID,'') AS "회원아이디"
+        , IFNULL(SUM(PU.AMOUNT),0) AS "남은적립금"
+        , IFNULL((SELECT UR_ERP_ORGANIZATION_NM FROM PM_COUPON_POINT_SHARE_ORGANIZATION WHERE PM_POINT_ID = PU.PM_POINT_ID),
+            IFNULL((SELECT UEE.ERP_ORGANIZATION_NM FROM UR_ERP_EMPLOYEE UEE WHERE UEE.FIN_ORGANIZATION_CD = PU.DEPT_CD AND UEE.FIN_ORGANIZATION_CD IS NOT NULL LIMIT 1),'')) AS "분담조직"
+        FROM PM_POINT_USED_DETL PU
+        INNER JOIN UR_USER UU ON(PU.UR_USER_ID = UU.UR_USER_ID AND PU.CLOSE_YN = 'N')
+        INNER JOIN UR_BUYER UB ON(PU.UR_USER_ID = UB.UR_USER_ID AND IFNULL(UB.UR_ERP_EMPLOYEE_CD,'')  != '')
+        WHERE PU.AVAILABLE_DT <![CDATA[<=]]> CONCAT(#{endDt}, ' 23:59:59') AND PU.EXPIRATION_DT <![CDATA[>=]]> CONCAT(#{endDt}, ' 23:59:59')
+        GROUP BY UU.UR_USER_ID
+        ORDER BY UU.UR_USER_ID
+    </select>
+
+    <select id="getSettlementPoint" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getSettlementPoint [적립금 정산 조회] */
+        SELECT  X.ODID AS "주문번호",
+               (CASE WHEN X.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPAR','POINT_PROCESS_TP.DPAE','POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPRR','POINT_PROCESS_TP.DPRO','POINT_PROCESS_TP.DVRO','POINT_PROCESS_TP.DPCR') THEN '지급'
+                WHEN X.POINT_PROCESS_TP IN ('이용권 등록','POINT_PROCESS_TP.DVCH') THEN '이용권 등록'
+                WHEN X.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPPA','POINT_PROCESS_TP.WVPA') THEN '사용'
+                WHEN X.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE','POINT_PROCESS_TP.WPEF','POINT_PROCESS_TP.WVEF') THEN '관리자 회수'
+                WHEN X.POINT_SETTLEMENT_TP = '이용권 등록 기간만료' THEN '이용권 등록 기간만료'
+                WHEN X.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNE','POINT_SETTLEMENT_TP.SWVE') THEN '유효기간 만료'
+                END) AS "적립금상태",
+                (CASE WHEN X.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPOT' THEN '구)올가 포인트 전환'
+                WHEN X.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPPT' THEN '구)풀무원샵 적립금 전환'
+                ELSE
+                    (SELECT B.DIC_MST_NM
+                    FROM ST_COMN_CODE A
+                    INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                    WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'POINT_PROCESS_TP' AND A.ST_COMN_CODE_ID = X.POINT_PROCESS_TP)
+                END)AS "설정구분1",
+                IFNULL((SELECT B.DIC_MST_NM
+                       FROM ST_COMN_CODE A
+                                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                       WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'POINT_ADMIN_ISSUE_TP' AND A.ST_COMN_CODE_ID = X.POINT_DETAIL_TP),'') AS "설정구분2",
+                /* 관리자 지급 (고객센터,이벤트) */
+                (CASE WHEN X.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPAR','POINT_PROCESS_TP.DPAE','POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPRR','POINT_PROCESS_TP.DPRO','POINT_PROCESS_TP.DVRO','POINT_PROCESS_TP.DPCR') THEN X.AMOUNT
+                ELSE 0
+                END) AS "지급금액",
+                /* 관리자 차감(회수) (고객센터,이벤트) */
+                (CASE WHEN X.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE','POINT_PROCESS_TP.WPEF','POINT_PROCESS_TP.WVEF') THEN X.AMOUNT
+                ELSE 0
+                END) AS "차감금액",
+                /* 지급, 차감, 소멸을 제외한 나머지 */
+                (CASE WHEN X.POINT_PROCESS_TP NOT IN ('POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.WPPA','POINT_PROCESS_TP.WVPA','POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE','POINT_PROCESS_TP.WPEF','POINT_PROCESS_TP.WVEF','이용권 등록 기간만료','POINT_PROCESS_TP.DPAR','POINT_PROCESS_TP.DPAE','POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPRR','POINT_PROCESS_TP.DPRO','POINT_PROCESS_TP.DVRO','POINT_PROCESS_TP.DPCR')
+                AND X.POINT_SETTLEMENT_TP NOT IN ('POINT_SETTLEMENT_TP.SWNE','POINT_SETTLEMENT_TP.SWVE','이용권 등록 기간만료') THEN X.AMOUNT
+                ELSE 0
+                END) AS "등록금액",
+                /* 주문에 사용 */
+                (CASE WHEN X.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPPA','POINT_PROCESS_TP.WVPA') THEN X.AMOUNT
+                ELSE 0
+                END) AS "사용금액",
+                /* 소멸 */
+                (CASE WHEN X.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNE','POINT_SETTLEMENT_TP.SWVE','이용권 등록 기간만료') THEN X.AMOUNT
+                ELSE 0
+                END) AS "소멸금액",
+                DATE_FORMAT(X.CREATE_DT,"%Y-%m-%d") AS "지급일자",
+                DATE_FORMAT(X.REG_DT,"%Y-%m-%d") AS "등록일자",
+                (CASE WHEN X.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPPA','POINT_PROCESS_TP.WVPA') THEN DATE_FORMAT(X.CREATE_DT,"%Y-%m-%d")
+                END) AS "사용일자",
+                DATE_FORMAT(X.EXPIRATION_DT,"%Y-%m-%d") AS "소멸일자",
+                (SELECT UU.LOGIN_ID FROM UR_USER UU WHERE UU.UR_USER_ID = X.UR_USER_ID) AS "지급대상",
+                X.PM_POINT_ID AS "적립금 마스터 번호",
+                X.POINT_NM AS "적립금명",
+                (CASE WHEN X.POINT_TP = 'POINT_TYPE.SERIAL_NUMBER' THEN X.REF_NO2
+                ELSE X.PM_POINT_USED_ID
+                END) AS "적립금 발급번호",
+                IFNULL((SELECT PCPSO.UR_ERP_ORGANIZATION_NM FROM PM_COUPON_POINT_SHARE_ORGANIZATION PCPSO WHERE PCPSO.PM_POINT_ID = X.PM_POINT_ID)
+               ,IFNULL((SELECT UEE.ERP_ORGANIZATION_NM FROM UR_ERP_EMPLOYEE UEE WHERE UEE.FIN_ORGANIZATION_CD = X.DEPT_CD AND UEE.FIN_ORGANIZATION_CD IS NOT NULL LIMIT 1),'')) AS "분담조직"
+        FROM (
+            SELECT PP.PM_POINT_ID, PP.POINT_NM, PP.POINT_TP, PP.POINT_DETAIL_TP, PPUD.POINT_PROCESS_TP,
+                PPUD.POINT_SETTLEMENT_TP, PPUD.AMOUNT, PPU.CREATE_DT, PP.CREATE_DT REG_DT, PPUD.EXPIRATION_DT,
+                PPUD.UR_USER_ID, PPUD.REF_NO2, PPU.PM_POINT_USED_ID, PPUD.DEPT_CD
+              , CASE WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN PPU.REF_NO1
+                     WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WPPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWNP' THEN PPU.REF_NO1
+                     WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DVRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDVC' THEN PPU.REF_NO1
+                     WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWVP' THEN PPU.REF_NO1
+                     WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPCR' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN PPU.REF_NO1
+                     ELSE ''
+                END AS ODID
+            FROM PM_POINT_USED PPU
+            INNER JOIN PM_POINT_USED_DETL PPUD ON PPU.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+            LEFT OUTER JOIN PM_POINT PP ON PPUD.PM_POINT_ID = PP.PM_POINT_ID
+            WHERE PPU.CREATE_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')
+            UNION ALL
+            SELECT PP.PM_POINT_ID, PP.POINT_NM, PP.POINT_TP, PP.POINT_DETAIL_TP, (CASE WHEN DATE_FORMAT(IFNULL(PP.VALIDITY_END_DT, PP.ISSUE_END_DT),'%Y%m%d') <![CDATA[>=]]> DATE_FORMAT(NOW(),'%Y%m%d') THEN '이용권 등록' ELSE '이용권 등록 기간만료' END) POINT_PROCESS_TP,
+            (CASE WHEN DATE_FORMAT(IFNULL(PP.VALIDITY_END_DT, PP.ISSUE_END_DT),'%Y%m%d') <![CDATA[>=]]> DATE_FORMAT(NOW(),'%Y%m%d') THEN '이용권 등록' ELSE '이용권 등록 기간만료' END) POINT_SETTLEMENT_TP, PP.ISSUE_VAL AMOUNT, '' CREATE_DT, PP.CREATE_DT REG_DT, IFNULL(PP.VALIDITY_END_DT,PP.ISSUE_END_DT) EXPIRATION_DT,
+            NULL UR_USER_ID, (CASE WHEN PP.SERIAL_NUMBER_TP = 'SERIAL_NUMBER_TYPE.FIXED_VALUE' THEN PP.FIX_SERIAL_NUMBER ELSE PSN.SERIAL_NUMBER END) REF_NO2, NULL PM_POINT_USED_ID, PP.ISSUE_DEPT_CD AS DEPT_CD, 'ODID'
+            FROM PM_POINT PP
+            LEFT OUTER JOIN PM_SERIAL_NUMBER PSN ON PP.PM_POINT_ID = PSN.PM_POINT_ID AND PSN.USE_TP = 'SERIAL_NUMBER_USE_TYPE.POINT' AND PSN.USE_DT IS NULL
+            WHERE PP.POINT_TP = 'POINT_TYPE.SERIAL_NUMBER'
+                AND PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED'
+                AND PP.USE_YN = 'Y'
+                AND PP.APPR_CHG_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')
+        ) X
+    </select>
+
+    <select id="getSettlementCoupon" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getSettlementCoupon [쿠폰 정산 조회] */
+        SELECT
+            G1.ORDER_TYPE AS "매출구분"
+            , IFNULL((SELECT B.DIC_MST_NM
+                FROM ST_COMN_CODE A
+                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'COUPON_STATUS' AND A.ST_COMN_CODE_ID = G1.STATUS),'') AS "쿠폰상태" /* G1.COUPON_STATUS  */
+            , IFNULL((SELECT B.DIC_MST_NM
+                FROM ST_COMN_CODE A
+                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'COUPON_TYPE' AND A.ST_COMN_CODE_ID = G1.COUPON_TP),'') AS "쿠폰종류" /* G1.COUPON_TP  */
+            , IFNULL((SELECT B.DIC_MST_NM
+                FROM ST_COMN_CODE A
+                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'PAYMENT_TYPE' AND A.ST_COMN_CODE_ID = G1.ISSUE_TP),'') AS "발급방법" /* G1.ISSUE_TP */
+            , IFNULL((SELECT B.DIC_MST_NM
+                FROM ST_COMN_CODE A
+                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'AUTO_ISSUE_TYPE' AND A.ST_COMN_CODE_ID = G1.ISSUE_DETAIL_TP),'') AS "쿠폰종류상세"	/* G1.ISSUE_DETAIL_TP*/
+            , SUM(G1.USE_PRICE) AS "사용금액"
+            , G1.USE_DT AS "사용일자"
+            , (SELECT UU.LOGIN_ID FROM UR_USER UU WHERE UU.UR_USER_ID = G1.UR_USER_ID) AS "지급대상"
+            , G1.PM_COUPON_ID AS "쿠폰 마스터 번호"
+            , G1.BOS_COUPON_NM AS "쿠폰명"
+            , G1.ODID as "주문번호"
+            , (SELECT B.DIC_MST_NM
+                FROM ST_COMN_CODE A
+                    INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'PG_ACCOUNT_TYPE' AND A.ST_COMN_CODE_ID = IFNULL((SELECT MAX(opm.PG_SERVICE)
+                    FROM OD_PAYMENT op
+                    INNER JOIN OD_PAYMENT_MASTER opm
+                    ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+                    WHERE op.OD_ORDER_ID = G1.OD_ORDER_ID) ,'')) AS "PG사"
+        FROM (
+            SELECT
+                '' AS OD_SHIPPING_PRICE_ID
+                , '매출' AS ORDER_TYPE
+                , PC.PM_COUPON_ID
+                , PC.BOS_COUPON_NM
+                , PCI.PM_COUPON_ISSUE_ID
+                , PCI.STATUS
+                , PC.COUPON_TP
+                , PC.ISSUE_TP
+                , PC.ISSUE_DETAIL_TP
+                , OODD.DISCOUNT_PRICE AS USE_PRICE
+                , PCI.EXPIRATION_DT
+                , PCI.CREATE_DT
+                , IFNULL(DATE_FORMAT(PCI.USE_DT, '%Y-%m-%d'),'') AS USE_DT
+                , PCI.UR_USER_ID
+                , OOD.ODID
+                , OOD.DI_DT
+                , OOD.GOODS_NM
+                , OOD.OD_ORDER_ID
+            FROM  PM_COUPON PC
+                INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+                INNER JOIN OD_ORDER_DETL_DISCOUNT OODD ON OODD.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+                INNER JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+                INNER JOIN OD_ORDER OO ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID AND OO.ORDER_YN = 'Y'
+                AND PCI.USE_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')
+
+        UNION ALL
+
+        /* 배송비 쿠폰 */
+        SELECT
+            DISTINCT OSP.OD_SHIPPING_PRICE_ID
+            , '매출' AS ORDER_TYPE
+            , PC.PM_COUPON_ID
+            , '배송비쿠폰' AS BOS_COUPON_NM
+            , PCI.PM_COUPON_ISSUE_ID
+            , PCI.STATUS
+            , PC.COUPON_TP
+            , PC.ISSUE_TP
+            , PC.ISSUE_DETAIL_TP
+            , OSP.SHIPPING_DISCOUNT_PRICE AS USE_PRICE
+            , PCI.EXPIRATION_DT
+            , PCI.CREATE_DT
+            , IFNULL(DATE_FORMAT(PCI.USE_DT, '%Y-%m-%d'),'') AS USE_DT
+            , PCI.UR_USER_ID
+            , OOD.ODID
+            , OOD.DI_DT
+            , OOD.GOODS_NM
+            , OOD.OD_ORDER_ID
+        FROM OD_SHIPPING_PRICE OSP
+            INNER JOIN OD_ORDER_DETL OOD ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+            INNER JOIN OD_ORDER OO ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID AND OO.ORDER_YN = 'Y'
+            INNER JOIN PM_COUPON_ISSUE PCI ON OSP.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+            INNER JOIN PM_COUPON PC ON PCI.PM_COUPON_ID = PC.PM_COUPON_ID
+        WHERE
+            OSP.PM_COUPON_ISSUE_ID <![CDATA[>]]>  0
+            AND OSP.SHIPPING_DISCOUNT_PRICE <![CDATA[>]]>  0
+            AND PCI.USE_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')
+
+        UNION ALL
+
+        SELECT
+            '' AS OD_SHIPPING_PRICE_ID
+            , '반품' AS ORDER_TYPE
+            , PC.PM_COUPON_ID
+            , PC.BOS_COUPON_NM
+            , PCI.PM_COUPON_ISSUE_ID
+            , PCI.STATUS
+            , PC.COUPON_TP
+            , PC.ISSUE_TP
+            , PC.ISSUE_DETAIL_TP
+            , (OCDD.DISCOUNT_PRICE * -1) AS USE_PRICE
+            , PCI.EXPIRATION_DT
+            , PCI.CREATE_DT
+            , IFNULL(DATE_FORMAT(PCI.USE_DT, '%Y-%m-%d'),'') AS USE_DT
+            , PCI.UR_USER_ID
+            , OOD.ODID
+            , OOD.DI_DT
+            , OOD.GOODS_NM
+            , OOD.OD_ORDER_ID
+        FROM  PM_COUPON PC
+            INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+            INNER JOIN OD_CLAIM_DETL_DISCOUNT OCDD ON PCI.PM_COUPON_ISSUE_ID = OCDD.PM_COUPON_ISSUE_ID
+            INNER JOIN OD_CLAIM_DETL OCD ON OCDD.OD_CLAIM_DETL_ID = OCD.OD_CLAIM_DETL_ID
+            INNER JOIN OD_CLAIM OC ON OCD.OD_CLAIM_ID = OC.OD_CLAIM_ID AND OC.CLAIM_YN = 'Y'
+            INNER JOIN OD_ORDER_DETL OOD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+            INNER JOIN OD_ORDER OO ON OOD.OD_ORDER_ID = OO.OD_ORDER_ID AND OO.ORDER_YN = 'Y'
+
+        WHERE 1=1
+            AND OCD.CLAIM_STATUS_CD not in ('RI')
+            AND
+
+            (
+                (1 = 1
+                    AND   OCD.CC_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(REPLACE(#{startDt}, '-', ''), ' 000000'), '%Y%m%d%H%i%s')
+                    AND   OCD.CC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(REPLACE(#{endDt}, '-', ''), ' 235959'), '%Y%m%d%H%i%s')
+                )
+                OR
+                (1 = 1
+                    AND   OCD.RC_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(REPLACE(#{startDt}, '-', ''), ' 000000'), '%Y%m%d%H%i%s')
+                    AND   OCD.RC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(REPLACE(#{endDt}, '-', ''), ' 235959'), '%Y%m%d%H%i%s')
+                )
+                OR
+                (1 = 1
+                    AND   OCD.EC_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(REPLACE(#{startDt}, '-', ''), ' 000000'), '%Y%m%d%H%i%s')
+                    AND   OCD.EC_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(REPLACE(#{endDt}, '-', ''), ' 235959'), '%Y%m%d%H%i%s')
+                )
+                OR
+                (
+                    OCD.CLAIM_STATUS_CD = 'IB'
+                    AND   OCD.CR_DT <![CDATA[>=]]> STR_TO_DATE(CONCAT(REPLACE(#{startDt}, '-', ''), ' 000000'), '%Y%m%d%H%i%s')
+                    AND   OCD.CR_DT <![CDATA[<=]]> STR_TO_DATE(CONCAT(REPLACE(#{endDt}, '-', ''), ' 235959'), '%Y%m%d%H%i%s')
+                )
+            )
+        ) G1
+        GROUP BY G1.ORDER_TYPE, G1.USE_DT, G1.ODID, G1.UR_USER_ID, G1.PM_COUPON_ID, G1.BOS_COUPON_NM
+        ORDER BY G1.ORDER_TYPE, G1.USE_DT, G1.ODID
+    </select>
+
+    <select id="getInternalAccountingCouponPayment" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getInternalAccountingCouponPayment [내부회계통제용 쿠폰 지급 조회] */
+        SELECT
+            PC.DISPLAY_COUPON_NM AS "쿠폰명"
+            , IFNULL(PC.MIN_PAYMENT_AMOUNT, 0) AS "최소금액"
+            , IFNULL(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT, 0) AS "최대할인금액"
+            , IFNULL((SELECT B.DIC_MST_NM
+                       FROM ST_COMN_CODE A
+                                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                       WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'COUPON_DISCOUNT_STATUS' AND A.ST_COMN_CODE_ID = PC.DISCOUNT_TP),'') AS "할인방식"
+            , (CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.FIXED_DISCOUNT' THEN CONCAT( DISCOUNT_VAL , '원') ELSE CONCAT (DISCOUNT_VAL , '%') END) AS "할인금액할인율"
+            , DATE_FORMAT(PCI.VALIDITY_START_DT, '%Y-%m-%d') AS "쿠폰시작일"
+	        , DATE_FORMAT(PCI.EXPIRATION_DT, '%Y-%m-%d') AS "쿠폰종료일"
+            , PC.ISSUE_REASON	AS "관리자메모"
+            , IFNULL((SELECT B.DIC_MST_NM
+                       FROM ST_COMN_CODE A
+                                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                       WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'COUPON_TYPE' AND A.ST_COMN_CODE_ID = PC.COUPON_TP),'') AS "쿠폰형태"
+            , UU.LOGIN_ID AS "등록자ID"
+            , DATE_FORMAT(PC.CREATE_DT, '%Y-%m-%d') AS "쿠폰생성일"
+            , IFNULL(CAST(AES_DECRYPT(UNHEX(UU.USER_NM), 'lssCSGhjyCBS!@34') AS CHAR), '') AS "쿠폰생성자"
+            , UU2.UR_USER_ID 	AS "발급자회원번호"
+            , UU2.LOGIN_ID AS "발급자회원아이디"
+            , IFNULL(CAST(AES_DECRYPT(UNHEX(UU2.USER_NM), 'lssCSGhjyCBS!@34') AS CHAR), '') AS "발급자회원명"
+            , DATE_FORMAT(PCI.CREATE_DT, '%Y-%m-%d') AS "쿠폰발급일자"
+        FROM PM_COUPON PC
+            INNER JOIN UR_USER UU ON PC.CREATE_ID = UU.UR_USER_ID
+            INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+            LEFT OUTER JOIN UR_USER UU2 ON PCI.UR_USER_ID = UU2.UR_USER_ID
+            LEFT OUTER JOIN UR_USER UR ON PC.MODIFY_ID = UR.UR_USER_ID
+            LEFT OUTER JOIN UR_USER UT ON PC.TICKET_COLLECT_USER_ID = UT.UR_USER_ID
+            LEFT OUTER JOIN PM_COUPON_COVERAGE PCC ON PC.PM_COUPON_ID = PCC.PM_COUPON_ID
+        WHERE PCI.CREATE_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')
+    </select>
+
+    <select id="getUseCouponCost" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getUseCouponCost [쿠폰비용 사용 조회] */
+        SELECT
+            OD.CREATE_DT AS "결재일시"
+            , UB.BRAND_NM AS "브랜드명"
+            , OOD.IL_GOODS_ID AS "상품코드"
+            , OOD.GOODS_NM AS "상품명"
+            , OD.UR_USER_ID AS "회원번호"
+            , PC.BOS_COUPON_NM AS "쿠폰명"
+            , OD.ODID AS "주문번호"
+            , IFNULL((SELECT B.DIC_MST_NM
+                       FROM ST_COMN_CODE A
+                                INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                       WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'COUPON_TYPE' AND A.ST_COMN_CODE_ID = PC.COUPON_TP),'') AS "쿠폰유형"
+            , IFNULL(ODCNT.DISCOUNT_PRICE, 0) AS "쿠폰비용"
+            , IFNULL(OOD.PAID_PRICE, 0) AS "매출"
+            , UC.COVERAGE_ID AS "쿠폰상품코드"
+        FROM PM_COUPON PC
+	        INNER JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+            INNER JOIN OD_ORDER_DETL_DISCOUNT ODCNT ON ODCNT.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+            INNER JOIN OD_ORDER_DETL OOD ON OOD.OD_ORDER_DETL_ID = ODCNT.OD_ORDER_DETL_ID
+            INNER JOIN OD_ORDER OD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OD.ORDER_YN = 'Y'
+            INNER JOIN IL_ITEM II ON OOD.IL_ITEM_CD = II.IL_ITEM_CD
+            LEFT OUTER JOIN UR_BRAND UB ON II.UR_BRAND_ID = UB.UR_BRAND_ID
+            LEFT OUTER JOIN PM_COUPON_COVERAGE UC ON PCI.PM_COUPON_ID = UC.PM_COUPON_ID AND OOD.IL_GOODS_ID = UC.COVERAGE_ID AND UC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS'
+        WHERE PCI.USE_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')
+    </select>
+
+    <select id="getUseReserveCost" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getUseReserveCost [적립금비용 사용 조회] */
+        SELECT
+            P.CREATE_DT	AS "사용일자"
+            , IFNULL(P.REF_NO1,'') AS "주문번호"
+            , OOD.UR_SUPPLIER_ID AS "공급업체ID"
+            , C.COMP_NM AS "공급업체명"
+            , I.UR_BRAND_ID AS "브랜드ID"
+            , B.BRAND_NM AS "브랜드명"
+            , G.IL_GOODS_ID AS "상품코드"
+            , UU.UR_USER_ID             AS "고객번호"
+            , IFNULL(UU.LOGIN_ID,'')             AS "고객아이디"
+            , IFNULL(CAST(AES_DECRYPT(UNHEX(UU.USER_NM), 'lssCSGhjyCBS!@34') AS CHAR),'')  AS "고객명"
+            , IFNULL(P.AMOUNT, 0) AS "적립금사용"
+            , IFNULL(OOD.PAID_PRICE, 0) AS "매출"
+        FROM PM_POINT_USED P
+            INNER JOIN (SELECT PM_POINT_USED_ID, POINT_PROCESS_TP, POINT_SETTLEMENT_TP, EXPIRATION_DT FROM PM_POINT_USED_DETL  GROUP BY PM_POINT_USED_ID ) PPUD ON P.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+            LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = P.PM_POINT_ID
+            LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = P.UR_USER_ID
+            LEFT OUTER JOIN OD_ORDER_DETL OOD ON P.REF_NO1 = OOD.ODID
+            LEFT OUTER JOIN IL_GOODS G ON G.IL_GOODS_ID = OOD.IL_GOODS_ID
+            LEFT OUTER JOIN  IL_ITEM I ON I.IL_ITEM_CD = G.IL_ITEM_CD
+            LEFT OUTER JOIN  UR_BRAND B ON    B.UR_BRAND_ID = I.UR_BRAND_ID
+            LEFT OUTER JOIN UR_COMPANY C ON C.UR_COMPANY_ID = OOD.UR_SUPPLIER_ID
+        WHERE P.CREATE_DT BETWEEN CONCAT(#{startDt}, ' 00:00:00')  AND CONCAT(#{endDt}, ' 23:59:59')
+            AND P.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION'
+        ORDER BY P.CREATE_DT DESC
+    </select>
+
+    <select id="getEmployeeDiscountSupport" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getEmployeeDiscountSupport [임직원 할인지원액 조회] */
+        SELECT SETTLE_MONTH AS "정산월"
+            , UR_ERP_EMPLOYEE_CD AS "아이디"
+            , ERP_NM AS "직원명"
+            , ERP_REGAL_NM AS "소속법인명"
+            , ERP_ORGANIZATION AS "소속팀명"
+            , OU_NM AS "소속부문"
+            , IFNULL(LIMIT_AMT, 0) AS "전체한도액"
+            , IFNULL(USE_AMT, 0) AS "사용한도액"
+            , IFNULL(LIMIT_AMT, 0) - IFNULL(USE_AMT, 0) AS "잔여한도액"
+            , CHANNEL_NM AS "채널명"
+        FROM (
+            SELECT DATE_FORMAT(C.SETTLE_DAY, '%Y%m') as SETTLE_MONTH
+                , C.UR_ERP_EMPLOYEE_CD AS UR_ERP_EMPLOYEE_CD
+                , C.ERP_NM AS ERP_NM
+                , C.ERP_REGAL_NM AS ERP_REGAL_NM
+                , C.ERP_ORGANIZATION_NM AS ERP_ORGANIZATION
+                , C.OU_NM AS OU_NM
+                , G1.LIMIT_AMT AS LIMIT_AMT
+                , (
+                SELECT SUM(G2.PAID_PRICE) AS PAID_PRICE
+                FROM (
+                    SELECT OODD.DISCOUNT_PRICE AS PAID_PRICE
+                    FROM OD_ORDER OO
+                        INNER JOIN OD_ORDER_DETL OD ON OD.OD_ORDER_ID = OO.OD_ORDER_ID
+                        INNER JOIN OD_ORDER_DT OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+                        INNER JOIN OD_ORDER_DETL_DISCOUNT OODD ON OD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID AND OODD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                    WHERE OO.UR_EMPLOYEE_CD = G1.UR_ERP_EMPLOYEE_CD
+                        AND OODD.PS_EMPL_DISC_GRP_ID = G1.PS_EMPL_DISC_GRP_ID
+                        AND OOD.CREATE_DT BETWEEN G1.START_DATE AND (G1.END_DATE + INTERVAL 1 DAY - INTERVAL 1 SECOND)  /* 주문 등록일자 */
+                        AND OO.ORDER_YN = 'Y'
+                        AND OD.OD_ORDER_DETL_DEPTH_ID <![CDATA[<]]> 3 /* 재배송건은 포함 안되도록 */
+                    UNION ALL
+                    SELECT OCDD.DISCOUNT_PRICE * (-1) AS PAID_PRICE
+                    FROM OD_ORDER OO
+                        INNER JOIN OD_CLAIM OC ON OC.OD_ORDER_ID = OO.OD_ORDER_ID AND OC.CLAIM_YN = 'Y'
+                        INNER JOIN OD_CLAIM_DETL OCD ON OCD.OD_CLAIM_ID = OC.OD_CLAIM_ID
+                        INNER JOIN OD_CLAIM_DETL_DISCOUNT OCDD ON OCDD.OD_CLAIM_DETL_ID = OCD.OD_CLAIM_DETL_ID AND OCDD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                    WHERE OO.UR_EMPLOYEE_CD = G1.UR_ERP_EMPLOYEE_CD
+                        AND OCDD.PS_EMPL_DISC_GRP_ID = G1.PS_EMPL_DISC_GRP_ID
+                        AND (
+                        OCD.CC_DT BETWEEN G1.START_DATE AND (G1.END_DATE + INTERVAL 1 DAY - INTERVAL 1 SECOND) /* 취소완료일자 */
+                        OR
+                        OCD.RC_DT BETWEEN G1.START_DATE AND (G1.END_DATE + INTERVAL 1 DAY - INTERVAL 1 SECOND) /* 반품완료일자 */
+                        OR
+                        (OCD.CLAIM_STATUS_CD IN ('IB') AND OCD.CR_DT BETWEEN G1.START_DATE AND (G1.END_DATE + INTERVAL 1 DAY - INTERVAL 1 SECOND)) /* 입금전취소 */
+                        )
+                        AND OO.ORDER_YN = 'Y'
+                        UNION ALL
+                        SELECT SUM(MED.USE_PRICE) AS PAID_PRICE
+                        FROM MG_EMPL_DISC MED
+                        WHERE MED.UR_ERP_EMPLOYEE_CD = G1.UR_ERP_EMPLOYEE_CD
+                            AND MED.PS_EMPL_DISC_GRP_ID = G1.PS_EMPL_DISC_GRP_ID
+                            AND MED.USE_DT BETWEEN G1.START_DATE AND (G1.END_DATE + INTERVAL 1 DAY - INTERVAL 1 SECOND) /* 사용일자 */
+                        ) G2
+                    ) AS USE_AMT
+                    , B.GROUP_NM AS CHANNEL_NM
+                FROM (
+                    SELECT UEE.UR_ERP_EMPLOYEE_CD ,
+                        M.PS_EMPL_DISC_MASTER_ID ,
+                        M.MASTER_NM ,
+                        G.PS_EMPL_DISC_GRP_ID ,
+                        G.LIMIT_AMT ,
+                        IFNULL((SELECT B.DIC_MST_NM
+                               FROM ST_COMN_CODE A
+                                        INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                               WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'EMPL_DISC_LIMIT_CYCLE_TP' AND A.ST_COMN_CODE_ID = G.EMPL_DISC_LIMIT_CYCLE_TP),'') AS EMPL_DISC_LIMIT_CYCLE_TP_NM,
+                        (CASE WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.YEAR' THEN date_format(NOW(), '%Y-01-01')
+                            WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.HALF' THEN if(QUARTER(NOW()) IN (1,2), DATE_FORMAT(NOW(),'%Y-01-01'), DATE_FORMAT(NOW(),'%Y-07-01'))
+                            WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.QUATER' THEN (CASE WHEN QUARTER(NOW()) = 1 THEN DATE_FORMAT(NOW(),'%Y-01-01')
+                            WHEN QUARTER(NOW()) = 2 THEN DATE_FORMAT(NOW(),'%Y-04-01')
+                            WHEN QUARTER(NOW()) = 3 THEN DATE_FORMAT(NOW(),'%Y-07-01')
+                            WHEN QUARTER(NOW()) = 4 THEN DATE_FORMAT(NOW(),'%Y-10-01') END)
+                            WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.MONTH' THEN date_format(NOW(), '%Y-%m-01') END) AS START_DATE,
+                        (CASE WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.YEAR' THEN date_format(NOW(), '%Y-12-31')
+                            WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.HALF' THEN if(QUARTER(NOW()) IN (1,2), DATE_FORMAT(NOW(),'%Y-06-30'), DATE_FORMAT(NOW(),'%Y-12-31'))
+                            WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.QUATER' THEN (CASE WHEN QUARTER(NOW()) = 1 THEN DATE_FORMAT(NOW(),'%Y-03-31')
+                            WHEN QUARTER(NOW()) = 2 THEN DATE_FORMAT(NOW(),'%Y-06-30')
+                            WHEN QUARTER(NOW()) = 3 THEN DATE_FORMAT(NOW(),'%Y-09-30')
+                            WHEN QUARTER(NOW()) = 4 THEN DATE_FORMAT(NOW(),'%Y-12-31') END)
+                            WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.MONTH' THEN LAST_DAY(NOW()) END) AS END_DATE
+                        FROM UR_ERP_EMPLOYEE UEE
+                            INNER JOIN PS_EMPL_DISC_MASTER_LEGAL ML ON UEE.ERP_REGAL_CD = ML.ERP_REGAL_CD
+                            INNER JOIN PS_EMPL_DISC_MASTER M ON ML.PS_EMPL_DISC_MASTER_ID = M.PS_EMPL_DISC_MASTER_ID
+                            INNER JOIN PS_EMPL_DISC_GRP G ON M.PS_EMPL_DISC_MASTER_ID = G.PS_EMPL_DISC_MASTER_ID
+                        WHERE UEE.USE_YN = 'Y'
+                            AND UEE.ERP_USER_STATUS = 'EMPLOYEE_STATUS.NORMAL'	/* 재직상태 - 정상 */
+                    ) G1
+                    INNER JOIN PS_EMPL_DISC_GRP_BRAND_GRP A ON (A.PS_EMPL_DISC_GRP_ID = G1.PS_EMPL_DISC_GRP_ID)
+                    INNER JOIN PS_EMPL_DISC_BRAND_GRP B ON (B.PS_EMPL_DISC_BRAND_GRP_ID = A.PS_EMPL_DISC_BRAND_GRP_ID)
+                    INNER JOIN CA_SETTLE_EMPLOYEE_DAY C ON (C.UR_ERP_EMPLOYEE_CD = G1.UR_ERP_EMPLOYEE_CD)
+                WHERE C.SETTLE_YN = 'Y' AND C.SETTLE_DAY BETWEEN replace(#{startDt},'-','') AND replace(#{endDt},'-','')
+                GROUP BY B.GROUP_NM, DATE_FORMAT(C.SETTLE_DAY, '%Y%M'), C.UR_ERP_EMPLOYEE_CD, C.ERP_NM, C.ERP_REGAL_NM, C.ERP_ORGANIZATION_NM, C.OU_NM
+                ) A
+            ORDER BY A.UR_ERP_EMPLOYEE_CD, A.CHANNEL_NM, A.SETTLE_MONTH
+    </select>
+
+    <select id="getDisposalDateByDistributionPeriod" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getDisposalDateByDistributionPeriod [용인물류 품목별 폐기 기준] */
+        SELECT BASE_DATE AS "기준일자"
+             , ITEM_CD AS "품목코드"
+             , IL_GOODS_ID AS "이샵코드"
+             , ITEM_BARCODE AS "재고코드"
+             , ITEM_NM AS "제품명"
+             , DISTRIBUTION_PERIOD AS "유통기한"
+             , DELIVERY AS "출고기한"
+             , IMMINENT AS "출고임박"
+             , DISPOSAL AS "폐기대상"
+             , CLOSED_QTY AS "전일재고"
+             , '' AS "오늘의폐기"
+             , '' AS "오늘의출고"
+             , '' AS "오늘의입고"
+             , '' AS "실재고"
+          FROM (
+                SELECT REPLACE(#{endDt}, '-', '') AS BASE_DATE
+                     , IIW.IL_ITEM_CD AS ITEM_CD
+                     , (
+                         SELECT IL_GOODS_ID
+                           FROM IL_GOODS IIG
+                          INNER JOIN ST_COMN_CODE SCC ON SCC.ST_COMN_CODE_ID = IIG.GOODS_TP
+                          WHERE IIG.IL_ITEM_CD = IIW.IL_ITEM_CD
+                            AND IIG.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+                            AND IIG.SALE_STATUS NOT IN ('SALE_STATUS.STOP_PERMANENT_SALE', 'SALE_STATUS.STOP_SALE')
+                          ORDER BY SCC.SORT
+                          LIMIT 1
+                       ) IL_GOODS_ID
+                     , II.ITEM_BARCODE AS ITEM_BARCODE
+                     , II.ITEM_NM AS ITEM_NM
+                     , ISD.DISTRIBUTION_PERIOD AS DISTRIBUTION_PERIOD
+                     , ISD.DELIVERY AS DELIVERY
+                     , ISD.IMMINENT AS IMMINENT
+                     , DATE_FORMAT(DATE_ADD(STR_TO_DATE(REPLACE(#{endDt}, '-', ''), '%Y%m%d'), INTERVAL IFNULL(DELIVERY, 0) - 1 DAY), '%Y%m%d') AS DISPOSAL
+                     , (
+                         SELECT STOCK_QTY
+                           FROM IL_ITEM_ERP_STOCK IIS
+                          WHERE IIS.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+                            AND IIS.BASE_DT = STR_TO_DATE(REPLACE(#{endDt}, '-', ''), '%Y%m%d')
+                            AND IIS.STOCK_TP = 'ERP_STOCK_TP.CLOSED'
+                          LIMIT 1
+                       ) AS CLOSED_QTY
+                     , ISD.IL_STOCK_DEADLINE_ID
+                  FROM IL_STOCK_DEADLINE ISD
+                     , IL_ITEM_WAREHOUSE IIW
+                     , UR_SUPPLIER_WAREHOUSE USW
+                     , IL_ITEM II
+                 WHERE ISD.IL_STOCK_DEADLINE_ID = IIW.IL_STOCK_DEADLINE_ID
+                   AND IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+                   AND IIW.IL_ITEM_CD = II.IL_ITEM_CD
+                   AND USW.UR_WAREHOUSE_ID = (SELECT PS_VAL FROM PS_CONFIG PC WHERE PC.PS_KEY = 'WAREHOUSE_YONGIN_ID')
+                   AND EXISTS (
+                               SELECT 1
+                                 FROM IL_GOODS IG
+                                WHERE IG.IL_ITEM_CD = II.IL_ITEM_CD
+                                  AND IG.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+                                  AND IG.SALE_STATUS NOT IN ('SALE_STATUS.STOP_PERMANENT_SALE', 'SALE_STATUS.STOP_SALE')
+                              )
+               ) X
+    </select>
+
+    <select id="getCustomerPriceCost" resultType="java.util.LinkedHashMap" fetchSize="1000">
+        /* dataDownloadStatics.getCustomerPriceCost [객단가] */
+        SELECT OOD.OD_ORDER_ID AS "주문 PK"
+             , OOD.ODID AS "주문번호"
+             , OOD.OD_ORDER_DETL_ID	AS "주문상세 PK"
+             , OOD.OD_ORDER_DETL_SEQ AS "주문상세 순번"
+             , UW.WAREHOUSE_GRP_CD	AS "출고처그룹 코드"
+             , IFNULL((SELECT GDM.DIC_MST_NM
+                       FROM GB_DIC_MST GDM
+                       WHERE GDM.GB_DIC_MST_ID = SCC4.GB_DIC_MST_ID), '') 	AS "출고처그룹 명"
+             , IFNULL(UW.WAREHOUSE_NM, '') AS "출고처명"
+             , OD.OM_SELLERS_ID	AS "판매처 PK"
+             , IFNULL(OS.SELLERS_NM, '')					AS "판매처명"
+             , IFNULL(OODT.CREATE_DT, '') 					AS "주문등록일자"
+             , IFNULL(OODT.IC_DT, '')						AS "결제완료일자"
+             , IFNULL(OOD.DI_DT, '')						AS "배송중 일자"
+             , IFNULL(ISS.SETTLE_DT, '') AS "정산일자"
+             , CAST(IFNULL(CAST(OOD.RECOMMENDED_PRICE AS SIGNED), 0) * IFNULL(OOD.ORDER_CNT, 0) AS SIGNED INTEGER)	AS "주문금액"
+             , CASE WHEN OD.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN
+                ROUND(CAST(OOD.RECOMMENDED_PRICE AS SIGNED) * (OOD.ORDER_CNT - OOD.CANCEL_CNT))
+              ELSE
+                ROUND(CAST(OOD.SALE_PRICE AS SIGNED) * (OOD.ORDER_CNT - OOD.CANCEL_CNT))
+              END AS "예상상품매출(VAT포함)"
+             , CASE WHEN OD.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN
+                CASE WHEN OOD.TAX_YN = 'Y' THEN
+                  ROUND((CAST(OOD.RECOMMENDED_PRICE AS SIGNED) * (OOD.ORDER_CNT - OOD.CANCEL_CNT)) / 1.1)
+                ELSE
+                  ROUND(CAST(OOD.RECOMMENDED_PRICE AS SIGNED) * (OOD.ORDER_CNT - OOD.CANCEL_CNT))
+                END ELSE
+                CASE WHEN OOD.TAX_YN = 'Y' THEN
+                  ROUND((CAST(OOD.SALE_PRICE AS SIGNED) * (OOD.ORDER_CNT - OOD.CANCEL_CNT)) / 1.1)
+                ELSE
+                  ROUND(CAST(OOD.SALE_PRICE AS SIGNED) * (OOD.ORDER_CNT - OOD.CANCEL_CNT))
+                END
+              END AS "예상상품매출(VAT제외)"
+        FROM OD_ORDER OD
+          INNER JOIN OD_ORDER_DETL OOD 		ON OOD.OD_ORDER_ID 				= OD.OD_ORDER_ID
+          INNER JOIN OD_ORDER_DT OODT 		ON OOD.OD_ORDER_ID 				= OODT.OD_ORDER_ID
+          INNER JOIN OD_SHIPPING_ZONE OSZ 	ON OOD.OD_SHIPPING_ZONE_ID 		= OSZ.OD_SHIPPING_ZONE_ID
+          INNER JOIN UR_WAREHOUSE UW 		ON OOD.UR_WAREHOUSE_ID 			= UW.UR_WAREHOUSE_ID
+          LEFT OUTER JOIN OM_SELLERS OS 			ON OD.OM_SELLERS_ID 		= OS.OM_SELLERS_ID
+          LEFT OUTER JOIN ST_COMN_CODE SCC4		ON SCC4.ST_COMN_CODE_ID		= UW.WAREHOUSE_GRP_CD AND SCC4.ST_COMN_CODE_MST_CD = 'WAREHOUSE_GROUP'
+          LEFT OUTER JOIN IF_SALES_SETTLE_INFO ISS ON OOD.ODID = ISS.ODID AND OOD.OD_ORDER_DETL_SEQ = ISS.OD_ORDER_DETL_SEQ
+        WHERE OD.ORDER_YN = 'Y'
+          AND OODT.CREATE_DT BETWEEN #{startDt} AND (#{endDt} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+        ORDER BY OS.SELLERS_NM, UW.WAREHOUSE_NM, OOD.OD_ORDER_ID, OOD.OD_ORDER_DETL_ID, OOD.OD_ORDER_DETL_SEQ
+    </select>
+
+</mapper>

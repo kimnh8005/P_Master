@@ -1,0 +1,313 @@
+# ------------------------------------------------------------------------
+# Pulmuone MALL 모듈 qa 프로파일 설정
+# ------------------------------------------------------------------------
+app:
+  domain: https://qashop.pulmuone.online
+  static-resource-cache-period: 0   # 개발 서버에서는 static resource 의 cache 미적용
+  storage:
+    public:
+      public-url-path: /pulmuone/public  # public 파일 접근 url
+      public-root-location: /data/dev_image   # public 파일의 최상위 저장경로
+      public-storage-url: https://sqa.pulmuone.app/  # 개발 서버와 연동된 public 저장소 url
+      public-cdn-url: https://sqa.pulmuone.app/  # QA 서버는 CDN 사용 안함 storage url 과 동일
+  secretKey: '#PMO_HGRM'
+
+spring:
+  profiles: qa
+  datasource:
+    hikari:
+      master:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://db-665ft.vpc-cdb.ntruss.com:3306/pulmuone_dev?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowMultiQueries=true
+        username: dev_hangaram
+        password: vnfandnjs##77
+        #        cachePrepStmts: true
+        #        prepStmtCacheSize: 250
+        #        prepStmtCacheSqlLimit: 2048
+        #        useServerPrepStmts: true
+        #        useLocalSessionState: true
+        #        rewriteBatchedStatements: true
+        #        cacheResultSetMetadata: true
+        #        cacheServerConfiguration: true
+        #        elideSetAutoCommits: true
+        #        maintainTimeStats: false
+        minimumIdle: 10
+        maximumPoolSize: 100
+        maxLifetime: 3540000
+        mybatis:
+          config-location: classpath:profiles/qa/sql-mapper-config-qa.xml
+      slave-erp:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:oracle:thin:@172.17.1.235:1541:dev
+        username: PMOESHOPERP
+        password: PMOESHOPERP
+        #        cachePrepStmts: true
+        #        prepStmtCacheSize: 250
+        #        prepStmtCacheSqlLimit: 2048
+        #        useServerPrepStmts: true
+        #        useLocalSessionState: true
+        #        rewriteBatchedStatements: true
+        #        cacheResultSetMetadata: true
+        #        cacheServerConfiguration: true
+        #        elideSetAutoCommits: true
+        #        maintainTimeStats: false
+        minimumIdle: 5
+        maximumPoolSize: 50
+        mybatis:
+          config-location: classpath:profiles/qa/sql-mapper-config-qa.xml
+      slave-cj-front:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:oracle:thin:@210.98.159.153:1523:OPENDBT
+        username: pulmuone
+        password: pulmuone123
+        #        cachePrepStmts: true
+        #        prepStmtCacheSize: 250
+        #        prepStmtCacheSqlLimit: 2048
+        #        useServerPrepStmts: true
+        #        useLocalSessionState: true
+        #        rewriteBatchedStatements: true
+        #        cacheResultSetMetadata: true
+        #        cacheServerConfiguration: true
+        #        elideSetAutoCommits: true
+        #        maintainTimeStats: false
+        minimumIdle: 1
+        maximumPoolSize: 1
+        mybatis:
+          config-location: classpath:profiles/qa/sql-mapper-config-qa.xml
+      slave-ecs:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:tibero:thin:@192.3.91.25:8629:ECSDEV
+        username: ecs_new
+        password: ecs_new1234
+        #        cachePrepStmts: true
+        #        prepStmtCacheSize: 250
+        #        prepStmtCacheSqlLimit: 2048
+        #        useServerPrepStmts: true
+        #        useLocalSessionState: true
+        #        rewriteBatchedStatements: true
+        #        cacheResultSetMetadata: true
+        #        cacheServerConfiguration: true
+        #        elideSetAutoCommits: true
+        #        maintainTimeStats: false
+        minimumIdle: 5
+        maximumPoolSize: 50
+        mybatis:
+          config-location: classpath:profiles/qa/sql-mapper-config-qa.xml
+      slave-pov:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:oracle:thin:@172.17.1.131:1521:POV
+        username: PMOODS
+        password: essbase
+        #        cachePrepStmts: true
+        #        prepStmtCacheSize: 250
+        #        prepStmtCacheSqlLimit: 2048
+        #        useServerPrepStmts: true
+        #        useLocalSessionState: true
+        #        rewriteBatchedStatements: true
+        #        cacheResultSetMetadata: true
+        #        cacheServerConfiguration: true
+        #        elideSetAutoCommits: true
+        #        maintainTimeStats: false
+        minimumIdle: 5
+        maximumPoolSize: 50
+        mybatis:
+          config-location: classpath:profiles/qa/sql-mapper-config-qa.xml
+
+  redis:
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 10
+        min-idle: 2
+    host: redisc-6p8bf.vpc-cdb.ntruss.com
+    port: 6379
+
+  servlet:
+    multipart:
+      max-file-size: 40MB
+      max-request-size: 200MB
+
+logging:
+  config: classpath:profiles/qa/logback-spring-qa.xml
+
+# ERP API request / connection-pooling 정보
+erp-api-exchange:
+  scheme: https
+  api-server-url: rsifdev.pulmuone.com
+  auth-key: 1ffb4653-5a67-457a-bb6e-deac12f4c053
+  request-timeout:
+    connect-timeout: 15   # 서버에 소켓 연결을 맺을 때의 타임아웃 ( 단위 : 초 )
+    connection-request-timeout: 15   # Connection Pool 로부터 꺼내올 때의 타임아웃 ( 단위 : 초 )
+    read-timeout: 30   # 읽기시간초과 ( 단위 : 초 )
+  connection-pooling:
+    max-conn-total: 100   # 최대 커넥션 갯수
+    max-conn-per-route: 20   # IP/domain port 하나 당 최대 커넥션 갯수
+
+lotteglogis:
+  tracking:
+    scheme: https
+    host: ftr.alps.llogis.com
+    port: 18260
+    path: /openapi/ftr/getCustmerNviewTracking
+  client-order:
+    auth-key: IgtAK eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJDMDEwMzE4IiwiYXVkIjoiQzAxMDMxOCIsIm5hbWUiOiJwbW9fZGV2Iiwic2NvcGUiOiJSU19BRERSIiwiZXhwIjoxNTM1MTM1NTk5OTk5LCJpYXQiOjE2MDA4MzU5MjZ9.xyAwUZAAWgcetM0CxJMlm5B7w4pmv1cmDUhKg3qqXa4
+    scheme: http
+    host: devapigw.llogis.com
+    port: 10110
+    path: /api/pid/cus/714a/apiSndOut
+
+cjlogistics:
+  tracking:
+    scheme: http
+    host: tracking.doortodoor.co.kr
+    path: /json_comn_info
+
+ezadmin:
+  partner-key: 6a9cbce1b364948918cb982f61b039e7
+  domain-key: 6a9cbce1b3649489b576c50befb04ad04b38cdf15a11b5c9
+  tracking:
+    scheme: http
+    host: api2.cloud.ezadmin.co.kr
+    path: /ezadmin/function.php
+
+# elasticsearch cluster
+elasticsearch:
+  hosts: 10.31.10.15:9200, 10.31.10.16:9200, 10.31.10.17:9200
+  dicDataPath: /data/dic/
+  dicDataBackupPath: /data/dic/backup/
+
+database:
+  encryption:
+    key: lssCSGhjyCBS!@34
+
+naver:
+  login:
+    clientId: uuEmdRKPmJl6Uu_Y6OBc
+    clientSecret: LynDiWzEq2
+    redirectUrl: https://qashop.pulmuone.online/user/snsLogin/callbackNaver
+    redirectBuyerUrl: https://qashop.pulmuone.online/user/buyer/callbackNaver
+    userProfileUrl: https://openapi.naver.com/v1/nid/me
+  sms:
+    apiUrl: https://sens.apigw.ntruss.com
+    requestUrl: /sms/v2/services/
+    requestUrlTail: /messages
+    serviceId: ncp:sms:kr:258062385037:pulmuone_sms
+    accessKeyId: ApZTxOC5V29tVWXA9BWO
+    secretKey: QhN00nlomNSpBX3eoc8yjKAVmkt2XdWwFZ19Zfij
+
+kakao:
+  login :
+    userProfileUrl: https://kapi.kakao.com/v2/user/me
+
+google:
+  recaptcha:
+    secret: 6LdZALQZAAAAAJ-ho29nvNeCLCI6zmKIoJNHZR9M
+  login:
+    userProfileUrl: https://oauth2.googleapis.com/tokeninfo?id_token=
+
+facebook:
+  login:
+    userProfileUrl: https://graph.facebook.com/v10.0/me?access_token=
+
+apple:
+  login:
+    userProfileUrl: https://appleid.apple.com/auth/keys
+
+asis:
+  user:
+    authorizationKey: WkdWMllYQnBjRzF2aE9Yez
+    userInfoCheck:
+      requestUrl: http://membertest.pulmuone.co.kr/user_info_check.jsp
+    searchCustDelvList:
+      requestUrl: http://dev.api.pulmuone.info/hgrm/api/searchCustDelvList
+    userSearchId:
+      requestUrl: http://membertest.pulmuone.co.kr/user_search_id.jsp
+    searchCustomerRsrvTotal:
+      requestUrl: http://dev.api.pulmuone.info/hgrm/api/searchCustRsrvTotal
+    minusCustomerRsrv:
+      requestUrl: http://dev.api.pulmuone.info/hgrm/api/minusCustRsrv
+
+#본인인증
+kmc:
+  cpId: PMOM1001
+  urlCode: '005001'
+
+inicis:
+  account:
+    basic:
+      mid: pulmtest05
+      signKey: c0RZRXdYZmhRVTlEaEswdkpWamVSQT09
+      cancelPassword: 1111
+      key: NlxK2cGL2xtW5n5a
+      iv: 8WrbmW0vw3KtIv==
+    admin:
+      mid: pulmtest06
+      signKey: emZ3c2c1eEVFbENOTXJFRXdEQ0EvZz09
+      cancelPassword: 1111
+      key: gmgktc89ZReuT5Bo
+      iv: bjpeFTYnBRxoVM==
+  payScriptUrl: https://stdpay.inicis.com/stdjs/INIStdPay.js
+  closeScriptUrl: https://stdpay.inicis.com/stdjs/INIStdPay_close.js
+  cardBillUrl: https://iniweb.inicis.com/DefaultWebApp/mall/cr/cm/mCmReceipt_head.jsp?noTid=
+  cashBillUrl: https://iniweb.inicis.com/DefaultWebApp/mall/cr/cm/Cash_mCmReceipt.jsp?noTid=
+
+kcp:
+  g_conf_log_dir: /data/qa_logs/PG/KCP/
+  g_conf_gw_url: paygw.kcp.co.kr
+  g_conf_js_url: https://pay.kcp.co.kr/plugin/payplus_web.jsp
+  g_conf_server: true
+  g_conf_site_name: PULMUONE SHOP
+  account:
+    basic:
+      site_cd: A96G6
+      site_key: 020FtP5n8BpbAa8zsPfwISS__
+    simple:
+      site_cd: A96G7
+      site_key: 3ewL4cZxu0KRbfnur4ZRXDl__
+    regular:
+      site_cd: A96G8
+      site_key: 1okDTwsw2o7JBzkZU2TPizd__
+      group_id: A96G81054076
+  cardBillUrl: https://admin8.kcp.co.kr/assist/bill.BillActionNew.do?cmd=card_bill&tno=
+  cashBillUrl: https://admin8.kcp.co.kr/assist/bill.BillActionNew.do?cmd=cash_bill&cash_no=
+#  g_conf_gw_url: testpaygw.kcp.co.kr
+#  g_conf_js_url: https://testpay.kcp.co.kr/plugin/payplus_web.jsp
+#  g_conf_server: false
+#  g_conf_site_name: PULMUONE TEST SHOP
+#  account:
+#    basic:
+#      site_cd: AO154
+#      site_key: 25gatCk1SxlIdj0EFbFVZb4__
+#    simple:
+#      site_cd: AO155
+#      site_key: 3QhW53C-i9ZzExdwx3q0dHl__
+#    regular:
+#      site_cd: AO155
+#      site_key: 1VXoo08z4CO3JXr60CxC3Af__
+#      group_id: abc
+#  cardBillUrl: https://testadmin8.kcp.co.kr/assist/bill.BillActionNew.do?cmd=card_bill&tno=
+#  cashBillUrl: https://testadmin8.kcp.co.kr/assist/bill.BillActionNew.do?cmd=cash_bill&cash_no=
+
+resource:
+  server:
+    url:
+      bos: https://qashopbos.pulmuone.online
+      mall: https://qashop.pulmuone.online
+      image: https://sqa.pulmuone.app
+
+watson:
+  key: k6MbmKiedByEGwY7D9ADoZd49m94C14M2Esmg7wH3C1a
+  url: https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/
+
+udms:
+  url: http://121.254.255.50:8080
+  userID: PMOSHOPT
+  authKey: 9@KOWLVTENP8zF3kOmu2
+  apiId: '030'
+
+slack:
+  channel: hangaram_noti_dev_bach
+
+shoplive:
+  access_key: xe9XZmy2pEIuNRirpdVC
+  secret_key: OUdsYktjVDdRYUFyVXQwU0VoYXFqZTVidk0xdXNzNEk=

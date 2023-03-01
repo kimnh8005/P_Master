@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.store.delivery.StoreDeliveryMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품의 스토어 배송권역 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.store.delivery.dto.ShippingPossibilityStoreDeliveryAreaDto" id="getShippingPossibilityStoreDeliveryAreaInfoMap">
+		<result column="UR_STORE_ID"                  property="urStoreId"  />
+		<result column="UR_DELIVERY_AREA_ID"          property="urDeliveryAreaId"  />
+		<result column="STORE_NM"                     property="storeName"  />
+		<result column="STORE_DELIVERY_INTERVAL_TP"   property="storeDeliveryIntervalType" />
+		<result column="STORE_DELIVERY_TP"            property="storeDeliveryType" />
+		<result column="STORE_DELIVERABLE_ITEM_TP"    property="storeDeliverableItemType" />
+		<result column="STORE_OVERLAP"            	  property="storeOverlap" />
+	</resultMap>
+	<select id="getShippingPossibilityStoreDeliveryAreaInfo" resultMap="getShippingPossibilityStoreDeliveryAreaInfoMap">
+		/*	storeDelivery.getShippingPossibilityStoreDeliveryAreaInfo	*/
+		SELECT
+			D.UR_STORE_ID
+			,D.UR_DELIVERY_AREA_ID
+			,D.STORE_DELIVERY_INTERVAL_TP
+		    ,IF(D.STORE_DELIVERY_TP_OFFICE > 0 AND D.STORE_DELIVERY_TP_HOME > 0, 'STORE_DELIVERY_TYPE.HD_OD', D.STORE_DELIVERY_TP) AS STORE_DELIVERY_TP
+		    ,D.STORE_DELIVERABLE_ITEM_TP
+		    ,IF(D.STORE_DELIVERY_TP_OFFICE > 0 AND D.STORE_DELIVERY_TP_HOME > 0, true, false) AS STORE_OVERLAP
+		    ,D.STORE_NM
+		FROM
+		(
+			SELECT
+				USDA.UR_STORE_ID
+				,USDA.UR_DELIVERY_AREA_ID
+				,USDA.STORE_DELIVERY_INTERVAL_TP
+	            ,USDA.STORE_DELIVERY_TP
+	            ,USDA.STORE_DELIVERABLE_ITEM_TP
+	            ,SUM(IF(USDA.STORE_DELIVERY_TP = 'STORE_DELIVERY_TYPE.OFFICE', 1, 0)) AS STORE_DELIVERY_TP_OFFICE
+	            ,SUM(IF(USDA.STORE_DELIVERY_TP = 'STORE_DELIVERY_TYPE.HOME', 1, 0)) AS STORE_DELIVERY_TP_HOME
+	            ,US.NM AS STORE_NM
+	            ,US.STORE_TP
+				,US.STORE_ORDER_SET
+			FROM
+				UR_STORE_DELIVERY_AREA USDA
+				JOIN UR_DELIVERY_AREA UDA ON UDA.UR_DELIVERY_AREA_ID = USDA.UR_DELIVERY_AREA_ID
+				JOIN UR_STORE US ON US.UR_STORE_ID = USDA.UR_STORE_ID
+			WHERE
+				USDA.USE_YN = 'Y'
+				AND UDA.USE_YN = 'Y'
+				AND US.USE_YN = 'Y'
+				AND USDA.STORE_DELIVERY_INTERVAL_TP NOT IN ('STORE_DELIVERY_INTERVAL.NON_DELV', 'STORE_DELIVERY_INTERVAL.PARCEL')
+				AND UDA.ZIP_CD = #{receiverZipCode}
+				AND UDA.BUILDING_NO = #{buildingCode}
+				AND US.STORE_TP = #{storeType}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(storeType,'STORE_TYPE.DIRECT')">
+				AND US.ONLINE_DIV_YN = 'Y'
+				</if>
+				<if test="storeDeliveralbeItemTypeBySupplierIdList.size() > 0">
+					AND USDA.STORE_DELIVERABLE_ITEM_TP IN
+						<foreach collection="storeDeliveralbeItemTypeBySupplierIdList" item="value" separator="," open="(" close=")">
+							#{value}
+						</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeDeliveryType)">
+					AND USDA.STORE_DELIVERY_TP = #{storeDeliveryType}
+				</if>
+		) D
+		WHERE D.UR_STORE_ID IS NOT NULL
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 새벽배송 여부 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.29		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="isDawnDeliveryArea" resultType="boolean">
+		/*	storeDelivery.isDawnDeliveryArea	*/
+		SELECT (CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END) AS DAWN_DELIVERY_YN
+		FROM UR_DAWN_DELIVERY_AREA
+		WHERE ZIP_CD = #{zipCode}
+			AND BUILDING_NO = #{buildingCode}
+	</select>
+
+	<select id="getStoreDeliveryArea" resultType="string">
+		/*	storeDelivery.isStoreDeliveryArea	*/
+		SELECT US.NM AS STORE_NAME
+		FROM UR_DELIVERY_AREA UDA
+			INNER JOIN UR_STORE_DELIVERY_AREA USDA ON UDA.UR_DELIVERY_AREA_ID = USDA.UR_DELIVERY_AREA_ID
+			INNER JOIN UR_STORE US ON USDA.UR_STORE_ID = US.UR_STORE_ID AND US.ONLINE_DIV_YN = 'Y'
+		WHERE UDA.ZIP_CD = #{zipCode}
+			AND UDA.BUILDING_NO = #{buildingCode}
+			AND USDA.STORE_DELIVERY_TP IN ('STORE_DELIVERY_TYPE.PICKUP', 'STORE_DELIVERY_TYPE.DIRECT')
+			AND USDA.USE_YN = 'Y'
+			AND US.USE_YN = 'Y'
+			AND USDA.STORE_DELIVERY_INTERVAL_TP != 'STORE_DELIVERY_INTERVAL.NON_DELV'
+		GROUP BY USDA.UR_STORE_ID
+	</select>
+
+	<select id="getDailyDeliveryArea" resultType="string">
+		/*	storeDelivery.isDailyDeliveryArea	*/
+		SELECT USDA.STORE_DELIVERABLE_ITEM_TP
+		FROM UR_DELIVERY_AREA UDA
+			INNER JOIN UR_STORE_DELIVERY_AREA USDA ON UDA.UR_DELIVERY_AREA_ID = USDA.UR_DELIVERY_AREA_ID
+		WHERE UDA.ZIP_CD = #{zipCode}
+			AND UDA.BUILDING_NO = #{buildingCode}
+			AND USDA.USE_YN = 'Y'
+			AND USDA.STORE_DELIVERY_TP IN ('STORE_DELIVERY_TYPE.HOME', 'STORE_DELIVERY_TYPE.OFFICE', 'STORE_DELIVERY_TYPE.HD_OD')
+			AND USDA.STORE_DELIVERY_INTERVAL_TP NOT IN ('STORE_DELIVERY_INTERVAL.NON_DELV', 'STORE_DELIVERY_INTERVAL.PARCEL')
+		GROUP BY USDA.STORE_DELIVERY_TP, USDA.STORE_DELIVERABLE_ITEM_TP
+	</select>
+
+
+	<resultMap type="kr.co.pulmuone.v1.shopping.cart.dto.CartStoreShippingDateScheduleDto" id="getStoreScheduleMap">
+		<result column="UR_STORE_SCHEDULE_ID"                  property="urStoreScheduleId"  />
+		<result column="IS_POSSIBLE_SELECT"          property="isPossibleSelect"  />
+		<result column="START_TIME"                     property="startTime"  />
+		<result column="END_TIME"   property="endTime" />
+	</resultMap>
+	<select id="getStoreSchedule" resultMap="getStoreScheduleMap">
+		/*	storeDelivery.getStoreSchedule	*/
+		SELECT
+			USS.UR_STORE_SCHEDULE_ID
+			, IF(
+				DATE_FORMAT(NOW(), '%Y%m%d')=DATE_FORMAT(#{arrivalScheduledDate, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.LocalDateTypeHandler, jdbcType=DATE}, '%Y%m%d') AND DATE_FORMAT(NOW(), '%H:%i:%s') <![CDATA[>]]> STR_TO_DATE(CUTOFF_TIME, '%H:%i:%s')
+			 	OR (LIMIT_CNT <![CDATA[<=]]> IFNULL((SELECT COUNT(*) FROM OD_ORDER OO
+			 		WHERE OO.ORDER_YN = 'Y' AND OO.UR_STORE_ID = USS.UR_STORE_ID
+			 		AND DATE_FORMAT(OO.STORE_START_TIME, '%Y%m%d') = DATE_FORMAT(#{arrivalScheduledDate, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.LocalDateTypeHandler, jdbcType=DATE}, '%Y%m%d')
+			 		AND OO.STORE_SCHEDULE_NO = USS.SCHEDULE_NO),0))
+			 	, false, true) AS IS_POSSIBLE_SELECT
+			, USS.START_TIME
+			, USS.END_TIME
+		FROM UR_STORE_SCHEDULE USS
+		WHERE USS.UR_STORE_ID = #{urStoreId}
+		AND USS.UR_DELIVERY_AREA_ID = #{urDeliveryAreaId}
+		AND USS.USE_YN = 'Y'
+		ORDER BY USS.SCHEDULE_NO ASC
+	</select>
+
+	<resultMap type="kr.co.pulmuone.v1.store.delivery.dto.StoreDeliveryScheduleDto" id="getStoreScheduleByUrStoreScheduleIdMap">
+		<result column="UR_STORE_ID"                  property="urStoreId"  />
+		<result column="SCHEDULE_NO"          property="scheduleNo"  />
+		<result column="IS_POSSIBLE_SELECT"          property="isPossibleSelect"  />
+		<result column="START_TIME"                     property="startTime"  />
+		<result column="END_TIME"   property="endTime" />
+	</resultMap>
+	<select id="getStoreScheduleByUrStoreScheduleId" resultMap="getStoreScheduleByUrStoreScheduleIdMap">
+		/*	storeDelivery.getStoreScheduleByUrStoreScheduleId	*/
+		SELECT
+			USS.UR_STORE_ID
+			, USS.SCHEDULE_NO
+			, IF(
+				DATE_FORMAT(NOW(), '%Y%m%d')=DATE_FORMAT(#{arrivalScheduledDate, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.LocalDateTypeHandler, jdbcType=DATE}, '%Y%m%d') AND DATE_FORMAT(NOW(), '%H:%i:%s') <![CDATA[>]]> STR_TO_DATE(CUTOFF_TIME, '%H:%i:%s')
+			 	OR (LIMIT_CNT <![CDATA[<=]]> IFNULL((SELECT COUNT(*) FROM OD_ORDER OO
+			 		WHERE OO.ORDER_YN = 'Y' AND OO.UR_STORE_ID = USS.UR_STORE_ID
+			 		AND DATE_FORMAT(OO.STORE_START_TIME, '%Y%m%d') = DATE_FORMAT(#{arrivalScheduledDate, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.LocalDateTypeHandler, jdbcType=DATE}, '%Y%m%d')
+			 		AND OO.STORE_SCHEDULE_NO = USS.SCHEDULE_NO),0))
+			 	OR USS.USE_YN != 'Y'
+			 	, false, true) AS IS_POSSIBLE_SELECT
+			, USS.START_TIME
+			, USS.END_TIME
+		FROM UR_STORE_SCHEDULE USS
+		WHERE UR_STORE_SCHEDULE_ID = #{urStoreScheduleId}
+	</select>
+
+
+	<resultMap type="kr.co.pulmuone.v1.store.delivery.dto.ShippingPossibilityStoreDeliveryAreaDto" id="getUrStoreDeliveryAreaIdResultMap">
+		<result column="UR_STORE_ID"                  property="urStoreId"  />
+		<result column="UR_DELIVERY_AREA_ID"          property="urDeliveryAreaId"  />
+		<result column="STORE_DELIVERY_TP"            property="storeDeliveryType" />
+	</resultMap>
+	<select id="getUrStoreDeliveryAreaId" resultMap="getUrStoreDeliveryAreaIdResultMap">
+		/*	storeDelivery.getUrStoreDeliveryAreaId	*/
+		SELECT
+			UR_DELIVERY_AREA_ID
+			 ,UR_STORE_ID
+			 ,STORE_DELIVERY_TP
+		FROM
+			UR_STORE_DELIVERY_AREA
+		WHERE
+			UR_STORE_ID = #{urStoreId}
+		  AND STORE_DELIVERY_TP = #{storeDeliveryType}
+		  AND IFNULL(STORE_DELIVERABLE_ITEM_TP,'') = IFNULL(#{storeDeliverableItemType},'')
+	</select>
+</mapper>

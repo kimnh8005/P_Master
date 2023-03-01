@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.shippingtemplate.PolicyShippingTemplateMapper">
+
+    <!-- 배송비 탬플릿 resultMap -->
+    <resultMap id="getShippingTemplateListResultMap" type="kr.co.pulmuone.v1.policy.shippingtemplate.dto.vo.ShippingTemplateVo">
+        <result column="SHIPPING_TEMPLATE_ID" property="shippingTemplateId" />
+        <result column="ORIGINAL_SHIPPING_TEMPLATE_ID" property="originalShippingTemplateId" />
+        <result column="SHIPPING_TEMPLATE_NAME" property="shippingTemplateName" />
+        <result column="PAYMENT_METHOD_TYPE" property="paymentMethodType" />
+        <result column="CONDITION_TYPE_CODE" property="conditionTypeCode" />
+        <result column="CONDITION_TYPE_NAME" property="conditionTypeName" />
+        <result column="SHIPPING_PRICE" property="shippingPrice" />
+        <result column="CLAIM_SHIPPING_PRICE" property="claimShippingPrice" />
+        <result column="BUNDLE_YN" property="bundleYn" />
+        <result column="UNDELIVERABLE_AREA_TP" property="undeliverableAreaTp" />
+        <result column="AREA_SHIPPING_DELIVERY_YN" property="areaShippingDeliveryYn" />
+        <result column="AREA_SHIPPING_YN" property="areaShippingYn" />
+        <result column="WAREHOUSE_COUNT" property="warehouseCount" />
+        <result column="WAREHOUSE_NAME" property="warehouseName" />
+        <result column="BASIC_YN" property="basicYn" />
+        <result column="JEJU_SHIPPING_PRICE" property="jejuShippingPrice" />
+        <result column="ISLAND_SHIPPING_PRICE" property="islandShippingPrice" />
+    </resultMap>
+
+    <!-- 배송비 조건 정보 resultMap -->
+    <resultMap id="getShippingConditionListResultMap" type="kr.co.pulmuone.v1.policy.shippingtemplate.dto.vo.ShippingConditionVo">
+        <result column="SHIPPING_TEMPLATE_ID" property="shippingTemplateId" />
+        <result column="SHIPPING_CONDITION_ID" property="shippingConditionId" />
+        <result column="SHIPPING_PRICE" property="shippingPrice" />
+        <result column="CONDITION_VALUE" property="conditionValue" />
+    </resultMap>
+
+    <!-- 배송비 출고처 정보 resultMap -->
+    <resultMap id="getShippingWarehouseListResultMap" type="kr.co.pulmuone.v1.policy.shippingtemplate.dto.vo.ShippingWarehouseVo">
+        <result column="SHIPPING_TEMPLATE_ID" property="shippingTemplateId" />
+        <result column="SHIPPING_WAREHOUSE_ID" property="shippingWarehouseId" />
+        <result column="WAREHOUSE_ID" property="warehouseId" />
+        <result column="WAREHOUSE_NAME" property="warehouseName" />
+        <result column="BASIC_YN" property="basicYn" />
+        <result column="BASIC_YN_CHECK" property="basicYnCheck" />
+    </resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 출고처기준 배송정책 설정 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getWarehousePeriodShippingTemplateList" resultMap="getShippingTemplateListResultMap">
+        /* policyShippingTemplate.getWarehousePeriodShippingTemplateList */
+        SELECT ST.IL_SHIPPING_TMPL_ID AS SHIPPING_TEMPLATE_ID /* 배송정책 ID */
+             , ST.NAME AS SHIPPING_TEMPLATE_NAME /* 배송정책명 */
+             , ST.CONDITION_TP AS CONDITION_TYPE_CODE /* 조건배송비 구분코드 */
+             , FN_COMN_CODE_DIC(ST.CONDITION_TP) AS CONDITION_TYPE_NAME /* 조건배송비 구분명 */
+             , ST.SHIPPING_PRICE /* 배송비 */
+             , ST.CLAIM_SHIPPING_PRICE /* 클래임배송비 */
+             , ST.BUNDLE_YN /* 합배송여부 */
+             , ST.UNDELIVERABLE_AREA_TP /* 배송불가지역 */
+             , ST.AREA_SHIPPING_DELIVERY_YN /* 지역별 배송가능 여부 */
+             , ST.AREA_SHIPPING_YN /* 지역별 배송비 사용 여부 */
+             , 1 AS WAREHOUSE_COUNT /* 출고처 갯수 */
+             , W.WAREHOUSE_NM AS WAREHOUSE_NAME /* 출고처명 */
+             , SW.BASIC_YN /* 기본 유무 */
+          FROM IL_SHIPPING_TEMPLATE ST
+          JOIN IL_SHIPPING_WAREHOUSE SW
+            ON SW.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID
+          JOIN UR_WAREHOUSE W
+            ON W.UR_WAREHOUSE_ID = SW.UR_WAREHOUSE_ID
+          JOIN IL_SHIPPING_TEMPLATE OST
+            ON OST.IL_SHIPPING_TMPL_ID = ST.ORIG_IL_SHIPPING_TMPL_ID
+         WHERE ST.DEL_YN = 'N'
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(shippingTemplateName)">
+            AND ST.NAME LIKE CONCAT('%', #{shippingTemplateName}, '%')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+            AND SW.UR_WAREHOUSE_ID = #{warehouseId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionType)">
+            AND ST.CONDITION_TP = #{conditionType}
+        </if>
+         ORDER BY OST.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 배송정책 설정 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getShippingTemplateList" resultMap="getShippingTemplateListResultMap">
+        /* policyShippingTemplate.getShippingTemplateList */
+        SELECT T2.IL_SHIPPING_TMPL_ID AS SHIPPING_TEMPLATE_ID /* 배송정책 ID */
+             , T2.NAME AS SHIPPING_TEMPLATE_NAME /* 배송정책명 */
+             , T2.CONDITION_TP AS CONDITION_TYPE_CODE /* 조건배송비 구분코드 */
+             , FN_COMN_CODE_DIC(T2.CONDITION_TP) AS CONDITION_TYPE_NAME /* 조건배송비 구분명 */
+             , T2.SHIPPING_PRICE /* 배송비 */
+             , T2.CLAIM_SHIPPING_PRICE /* 클래임배송비 */
+             , T2.BUNDLE_YN /* 합배송여부 */
+             , T2.UNDELIVERABLE_AREA_TP /*배송불가지역*/
+             , T2.AREA_SHIPPING_DELIVERY_YN /* 지역별 배송가능 여부 */
+             , T2.AREA_SHIPPING_YN /* 지역별 배송비 사용 여부 */
+             , T1.WAREHOUSE_COUNT /* 출고처 갯수 */
+             , T4.WAREHOUSE_NM AS WAREHOUSE_NAME /* 출고처명 */
+             , T3.BASIC_YN /* 기본 유무 */
+          FROM (
+                SELECT
+                       ST.IL_SHIPPING_TMPL_ID
+                     , MIN(SW.IL_SHIPPING_WAREHOUSE_ID) AS IL_SHIPPING_WAREHOUSE_ID
+                     , COUNT(SW.IL_SHIPPING_WAREHOUSE_ID) AS WAREHOUSE_COUNT
+                  FROM IL_SHIPPING_TEMPLATE ST
+                  JOIN IL_SHIPPING_WAREHOUSE SW
+                    ON SW.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID
+                 WHERE ST.DEL_YN = 'N'
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(shippingTemplateName)">
+                    AND ST.NAME LIKE CONCAT('%', #{shippingTemplateName}, '%')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+                    AND SW.UR_WAREHOUSE_ID = #{warehouseId}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionType)">
+                    AND ST.CONDITION_TP = #{conditionType}
+                </if>
+                 GROUP BY ST.IL_SHIPPING_TMPL_ID
+             ) T1
+          JOIN IL_SHIPPING_TEMPLATE T2
+            ON T2.IL_SHIPPING_TMPL_ID = T1.IL_SHIPPING_TMPL_ID
+          JOIN IL_SHIPPING_WAREHOUSE T3
+            ON T3.IL_SHIPPING_TMPL_ID = T1.IL_SHIPPING_TMPL_ID
+           AND T3.IL_SHIPPING_WAREHOUSE_ID = T1.IL_SHIPPING_WAREHOUSE_ID
+          JOIN UR_WAREHOUSE T4
+            ON T4.UR_WAREHOUSE_ID = T3.UR_WAREHOUSE_ID
+          JOIN IL_SHIPPING_TEMPLATE T5
+            ON T5.IL_SHIPPING_TMPL_ID = T2.ORIG_IL_SHIPPING_TMPL_ID
+         ORDER BY T5.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송비 탬플릿 상세 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getShippingTemplateInfo" resultMap="getShippingTemplateListResultMap">
+        /* policyShippingTemplate.getShippingTemplateInfo */
+        SELECT ST.IL_SHIPPING_TMPL_ID AS SHIPPING_TEMPLATE_ID /* 배송비 ID */
+             , ST.ORIG_IL_SHIPPING_TMPL_ID AS ORIGINAL_SHIPPING_TEMPLATE_ID /* 원본 배송정책 ID */
+             , ST.NAME AS SHIPPING_TEMPLATE_NAME /* 배송비 탬플릿명 */
+             , ST.PAYMENT_METHOD_TP AS PAYMENT_METHOD_TYPE /* 선착불구분 */
+             , ST.BUNDLE_YN /* 합배송 사용유무 */
+             , ST.CONDITION_TP AS CONDITION_TYPE_CODE /* 조건배송비 구분코드 */
+             , FN_COMN_CODE_DIC(ST.CONDITION_TP) AS CONDITION_TYPE_NAME /* 조건배송비 구분명 */
+             , ST.SHIPPING_PRICE /* 기본 배송비 */
+             , ST.CLAIM_SHIPPING_PRICE /* 클래임배송비 */
+             , ST.UNDELIVERABLE_AREA_TP /*배송불가지역*/
+             , ST.AREA_SHIPPING_DELIVERY_YN /* 지역별 배송 가능 여부 */
+             , ST.AREA_SHIPPING_YN /* 지역별 배송비 사용 여부 */
+             , ST.JEJU_SHIPPING_PRICE /* 제주 추가 배송비 */
+             , ST.ISLAND_SHIPPING_PRICE /* 도서산간 추가 배송비 */
+          FROM IL_SHIPPING_TEMPLATE ST
+         WHERE ST.IL_SHIPPING_TMPL_ID = #{shippingTemplateId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송비 출고처 정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getShippingWarehouseList" resultMap="getShippingWarehouseListResultMap">
+        /* policyShippingTemplate.getShippingWarehouseList */
+        SELECT SW.IL_SHIPPING_TMPL_ID AS SHIPPING_TEMPLATE_ID /* 배송비 탬플릿 ID */
+             , SW.IL_SHIPPING_WAREHOUSE_ID AS SHIPPING_WAREHOUSE_ID /* 배송비 출고처 정보 SEQ */
+             , SW.UR_WAREHOUSE_ID AS WAREHOUSE_ID /* 출고처 코드 */
+             , W.WAREHOUSE_NM AS WAREHOUSE_NAME /* 출고처명 */
+             , SW.BASIC_YN /* 기본여부 */
+             , CASE WHEN SW.BASIC_YN = 'Y'
+                    THEN 1
+               ELSE 0
+                END BASIC_YN_CHECK /* 기본여부 체크박스 */
+          FROM IL_SHIPPING_WAREHOUSE SW
+          JOIN UR_WAREHOUSE W
+            ON W.UR_WAREHOUSE_ID = SW.UR_WAREHOUSE_ID
+         WHERE SW.IL_SHIPPING_TMPL_ID = #{shippingTemplateId}
+         ORDER BY W.WAREHOUSE_NM
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송비 조건 정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getShippingConditionList" resultMap="getShippingConditionListResultMap">
+        /* policyShippingTemplate.getShippingConditionList */
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionTypeCode,'CONDITION_TYPE.3')"> <!-- 조건배송비구분.결제금액별 배송비 -->
+                SELECT SC.IL_SHIPPING_TMPL_ID AS SHIPPING_TEMPLATE_ID /* 배송비 탬플릿 ID */
+                     , SC.IL_SHIPPING_CONDITION_ID AS SHIPPING_CONDITION_ID /* 배송비 조건 정보 SEQ */
+                     , IFNULL(( LAG(SC.SHIPPING_PRICE, 1) OVER(PARTITION BY SC.IL_SHIPPING_TMPL_ID ORDER BY SC.CONDITION_VAL) ), ST.SHIPPING_PRICE) AS SHIPPING_PRICE /* 배송비 금액 */
+                     , SC.CONDITION_VAL AS CONDITION_VALUE /* 조건 */
+                  FROM IL_SHIPPING_TEMPLATE ST
+                  JOIN IL_SHIPPING_CONDITION SC
+                    ON SC.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID
+                 WHERE ST.IL_SHIPPING_TMPL_ID = #{shippingTemplateId}
+                 ORDER BY SC.CONDITION_VAL
+            </when>
+            <otherwise>
+                SELECT ST.IL_SHIPPING_TMPL_ID AS SHIPPING_TEMPLATE_ID /* 배송비 탬플릿 ID */
+                     , 1 AS SHIPPING_CONDITION_ID /* 배송비 조건 정보 SEQ */
+                     , ST.SHIPPING_PRICE /* 배송비 금액 */
+                     , 0 AS CONDITION_VALUE /* 조건 */
+                  FROM IL_SHIPPING_TEMPLATE ST
+                 WHERE ST.IL_SHIPPING_TMPL_ID = #{shippingTemplateId}
+            </otherwise>
+        </choose>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송정책 탬플릿 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addShippingTemplate" useGeneratedKeys="true" keyProperty="shippingTemplateId">
+        /* policyShippingTemplate.addShippingTemplate */
+        INSERT INTO IL_SHIPPING_TEMPLATE (
+          ORIG_IL_SHIPPING_TMPL_ID
+        , NAME
+        , PAYMENT_METHOD_TP
+        , BUNDLE_YN
+        , CONDITION_TP
+        , SHIPPING_PRICE
+        , CLAIM_SHIPPING_PRICE
+        , UNDELIVERABLE_AREA_TP
+        , AREA_SHIPPING_DELIVERY_YN
+        , AREA_SHIPPING_YN
+        , JEJU_SHIPPING_PRICE
+        , ISLAND_SHIPPING_PRICE
+        , DEL_YN
+        , SHIPPING_COMP_CD
+        , CREATE_ID
+        , CREATE_DT
+        ) VALUES (
+          #{originalShippingTemplateId}
+        , #{shippingTemplateName}
+        , #{paymentMethodType}
+        , #{bundleYn}
+        , #{conditionTypeCode}
+        , #{shippingPrice}
+        , #{claimShippingPrice}
+        , #{undeliverableAreaTp}
+        , #{areaShippingDeliveryYn}
+        , #{areaShippingYn}
+        , #{jejuShippingPrice}
+        , #{islandShippingPrice}
+        , 'N'
+        , ''
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송비 탬플릿 원본 정책번호 업데이트
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putOriginalShippingTemplateId">
+        /* policyShippingTemplate.putOriginalShippingTemplateId */
+        UPDATE IL_SHIPPING_TEMPLATE
+           SET ORIG_IL_SHIPPING_TMPL_ID = #{originalShippingTemplateId}
+             , MODIFY_ID = #{createId}
+             , MODIFY_DT = NOW()
+         WHERE IL_SHIPPING_TMPL_ID = #{shippingTemplateId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 배송비 출고처정보 동일한 출고처 기본유무 N 으로 변경
+     * @
+     * @ 수정일        수정자           수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28    손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putShippingWarehouseBasicInitialization">
+        /* policyShippingTemplate.putShippingWarehouseBasicInitialization */
+        UPDATE IL_SHIPPING_WAREHOUSE SW
+          JOIN IL_SHIPPING_TEMPLATE ST
+            ON SW.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID
+           AND ST.DEL_YN = 'N'
+           SET SW.BASIC_YN = 'N'
+             , SW.MODIFY_ID = #{createId}
+             , SW.MODIFY_DT = NOW()
+         WHERE SW.UR_WAREHOUSE_ID = #{warehouseId}
+           AND SW.BASIC_YN = 'Y'
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송비 출고처정보 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addShippingWarehouse">
+        /* policyShippingTemplate.addShippingWarehouse */
+        INSERT INTO IL_SHIPPING_WAREHOUSE (
+          IL_SHIPPING_TMPL_ID
+        , IL_SHIPPING_WAREHOUSE_ID
+        , UR_WAREHOUSE_ID
+        , BASIC_YN
+        , CREATE_ID
+        , CREATE_DT
+        ) VALUES (
+          #{shippingTemplateId}
+        , #{shippingWarehouseId}
+        , #{warehouseId}
+        , #{basicYn}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송비 조건정보 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addShippingCondition">
+        /* policyShippingTemplate.addShippingCondition */
+        INSERT INTO IL_SHIPPING_CONDITION (
+          IL_SHIPPING_TMPL_ID
+        , IL_SHIPPING_CONDITION_ID
+        , SHIPPING_PRICE
+        , CONDITION_VAL
+        , CREATE_ID
+        , CREATE_DT
+        ) VALUES (
+          #{shippingTemplateId}
+        , #{shippingConditionId}
+        , #{shippingPrice}
+        , #{conditionValue}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송비 탬플릿 삭제여부 업데이트
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putShippingTemplateDeleteYn">
+        /* policyShippingTemplate.putShippingTemplateDeleteYn */
+        UPDATE IL_SHIPPING_TEMPLATE
+           SET DEL_YN = 'Y'
+             , MODIFY_ID = #{createId}
+             , MODIFY_DT = NOW()
+         WHERE IL_SHIPPING_TMPL_ID = #{shippingTemplateId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품 배송비 관계 출고처 유무 체크
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsShippingTemplateYn" resultType="boolean">
+        /* policyShippingTemplate.getGoodsShippingTemplateYn */
+        SELECT CASE WHEN (SELECT COUNT(1)
+                            FROM IL_GOODS_SHIPPING_TEMPLATE
+                           WHERE ORIG_IL_SHIPPING_TMPL_ID = #{originalShippingTemplateId}
+                             AND UR_WAREHOUSE_ID = #{warehouseId}
+                           LIMIT 1) > 0
+                    THEN 1
+               ELSE 0
+                END
+         FROM DUAL
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 배송정책 출고처 기본여부 체크
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getShippingWarehouseBasicYnCheck" resultType="boolean">
+        /* policyShippingTemplate.getShippingWarehouseBasicYnCheck */
+        SELECT CASE WHEN (SELECT COUNT(1)
+                            FROM IL_SHIPPING_TEMPLATE ST
+                            JOIN IL_SHIPPING_WAREHOUSE SW
+                              ON SW.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID
+                           WHERE ST.DEL_YN = 'N'
+                             AND SW.BASIC_YN = 'Y'
+                          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(shippingTemplateId)">
+                             AND ST.IL_SHIPPING_TMPL_ID != #{shippingTemplateId}
+                          </if>
+                             AND SW.UR_WAREHOUSE_ID IN
+                             <foreach collection="shippingWarehouseList" item="shippingWarehouseInfo" index="index" separator="," open="(" close=")">
+                                 #{shippingWarehouseInfo.warehouseId}
+                             </foreach>
+                           LIMIT 1) > 0
+                    THEN 1
+               ELSE 0
+                END
+         FROM DUAL
+    </select>
+</mapper>

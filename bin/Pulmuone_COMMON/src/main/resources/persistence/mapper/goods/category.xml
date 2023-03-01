@@ -1,0 +1,865 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.category.CategoryMapper">
+
+  <resultMap type="kr.co.pulmuone.v1.goods.category.dto.vo.CategoryVo" id="categoryMap">
+    <result column="IL_CTGRY_ID"      property="categoryId"       />
+    <result column="MALL_DIV"         property="mallDivision"     />
+    <result column="CTGRY_NM"         property="categoryName"     />
+    <result column="DEPTH"            property="depth"            />
+    <result column="PRNTS_CTGRY_ID"   property="parentsCategoryId"/>
+    <result column="ADULT_YN"         property="adultYn"          />
+    <result column="FEEDBACK_YN"      property="feedbackYn"       />
+    <result column="PC_IMG"           property="pcImage"          />
+    <result column="MO_IMG"           property="mobileImage"      />
+    <result column="SORT"             property="sort"             />
+    <result column="DISP_GOODS_CNT"   property="displayGoodsCount"/>
+    <result column="DISP_YN"          property="displayYn"        />
+    <result column="USE_YN"           property="useYn"            />
+    <result column="LINK_YN"          property="linkYn"           />
+    <result column="LINK_URL"         property="linkUrl"          />
+    <result column="DEL_YN"           property="deleteYn"         />
+    <result column="CREATE_ID"        property="createId"         />
+    <result column="CREATE_DT"        property="createDt"         />
+    <result column="MODIFY_ID"        property="modifyId"         />
+    <result column="MODIFY_DT"        property="modifyDt"         />
+    <result column="ISLEAF"           property="isleaf"           />
+  </resultMap>
+
+  <resultMap type="kr.co.pulmuone.v1.goods.category.dto.vo.CategoryExcelVo" id="categoryExcelMap">
+    <result column="IL_CTGRY_ID"      property="categoryId"   />
+    <result column="DEPTH"            property="depth"        />
+    <result column="CTGRY_ID0"        property="categoryId0"  />
+    <result column="CTGRY_ID1"        property="categoryId1"  />
+    <result column="CTGRY_ID2"        property="categoryId2"  />
+    <result column="CTGRY_ID3"        property="categoryId3"  />
+    <result column="CTGRY_ID4"        property="categoryId4"  />
+    <result column="CTGRY_ID5"        property="categoryId5"  />
+    <result column="CTGRY_NM0"        property="categoryName0"/>
+    <result column="CTGRY_NM1"        property="categoryName1"/>
+    <result column="CTGRY_NM2"        property="categoryName2"/>
+    <result column="CTGRY_NM3"        property="categoryName3"/>
+    <result column="CTGRY_NM4"        property="categoryName4"/>
+    <result column="CTGRY_NM5"        property="categoryName5"/>
+    <result column="SORT0"            property="sort0"        />
+    <result column="SORT1"            property="sort1"        />
+    <result column="SORT2"            property="sort2"        />
+    <result column="SORT3"            property="sort3"        />
+    <result column="SORT4"            property="sort4"        />
+    <result column="SORT5"            property="sort5"        />
+  </resultMap>
+
+  <resultMap type="kr.co.pulmuone.v1.goods.category.dto.vo.CategoryStdVo" id="categoryStdMap">
+    <result column="IL_CTGRY_STD_ID"  property="standardCategoryId"   />
+    <result column="CTGRY_STD_NM"     property="standardCategoryName" />
+    <result column="DEPTH"            property="depth"                />
+    <result column="PRNTS_CTGRY_ID"   property="parentsCategoryId"    />
+    <result column="SORT"             property="sort"                 />
+    <result column="USE_YN"           property="useYn"                />
+    <result column="RETURNABLE_YN"    property="returnableYn"         />
+    <result column="DEL_YN"           property="deleteYn"             />
+    <result column="CREATE_ID"        property="createId"             />
+    <result column="CREATE_DT"        property="createDt"             />
+    <result column="MODIFY_ID"        property="modifyId"             />
+    <result column="MODIFY_DT"        property="modifyDt"             />
+  </resultMap>
+
+  <!-- ==================================================================== -->
+  <!-- 전시카테고리 -->
+  <!-- ==================================================================== -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 리스트 조회
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getCategoryList" resultMap="categoryMap">
+      /*category.getCategoryList*/
+      SELECT  C.IL_CTGRY_ID
+            , C.MALL_DIV
+            , C.CTGRY_NM
+            , C.DEPTH
+            , C.PRNTS_CTGRY_ID
+            , C.ADULT_YN
+            , C.FEEDBACK_YN
+            , C.PC_IMG
+            , C.MO_IMG
+            , C.SORT
+            , CASE  WHEN  (
+                          SELECT  COUNT(1)
+                          FROM    IL_CTGRY C2
+                          WHERE   C2.PRNTS_CTGRY_ID = C.IL_CTGRY_ID
+                          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+                            AND   C2.USE_YN         = 'Y'
+                          </if>
+                            AND   C2.DEL_YN         = 'N'
+                          ) = 0
+                    THEN  'false'
+                    ELSE  'true'
+              END AS ISLEAF
+            , C.DISP_GOODS_CNT
+            , C.DISP_YN
+            , C.USE_YN
+            , C.LINK_YN           /*Y:URL사용,N:URL미사용*/
+            , C.LINK_URL
+            , C.DEL_YN
+            , C.CREATE_ID
+            , DATE_FORMAT(C.CREATE_DT, '%Y%m%d%H%i%s')  AS CREATE_DT
+            , C.MODIFY_ID
+            , DATE_FORMAT(C.MODIFY_DT, '%Y%m%d%H%i%s')  AS MODIFY_DT
+      FROM    IL_CTGRY C
+      WHERE   C.MALL_DIV        = #{mallDivision}       <!--필수조건:몰구분-->
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+        AND   C.USE_YN          = 'Y'
+      </if>
+        AND   C.DEL_YN          = 'N'
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryId)">
+        AND   C.PRNTS_CTGRY_ID  = #{categoryId}
+      </if>
+      ORDER BY C.DEPTH ASC, C.SORT ASC, C.CTGRY_NM ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 상세 조회
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getCategory" resultMap="categoryMap">
+    /*category.getCategory*/
+    SELECT  C.IL_CTGRY_ID
+          , C.MALL_DIV
+          , C.CTGRY_NM
+          , C.DEPTH
+          , C.PRNTS_CTGRY_ID
+          , C.ADULT_YN
+          , C.FEEDBACK_YN
+          , C.PC_IMG
+          , C.MO_IMG
+          , C.SORT
+          , CASE  WHEN  (
+                        SELECT  COUNT(1)
+                        FROM    IL_CTGRY C2
+                        WHERE   C2.PRNTS_CTGRY_ID = C.IL_CTGRY_ID
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+                          AND   C2.USE_YN         = 'Y'
+                        </if>
+                          AND   C2.DEL_YN         = 'N'
+                        ) = 0
+                  THEN  'false'
+                  ELSE  'true'
+            END AS ISLEAF
+          , C.DISP_GOODS_CNT
+          , C.DISP_YN
+          , C.USE_YN
+          , C.LINK_YN           /*Y:URL사용,N:URL미사용*/
+          , C.LINK_URL
+          , C.DEL_YN
+          , C.CREATE_ID
+          , C.CREATE_DT
+          , C.MODIFY_ID
+          , C.MODIFY_DT
+    FROM    IL_CTGRY C
+    WHERE   C.IL_CTGRY_ID  = #{categoryId}   <!-- 필수조건:카테고리ID -->
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 등록
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addCategory" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryRequestDto"
+                           useGeneratedKeys="true" keyProperty="categoryId">
+    /*category.addCategory*/
+    INSERT INTO IL_CTGRY (
+          MALL_DIV
+        , CTGRY_NM
+        , DEPTH
+        , PRNTS_CTGRY_ID
+        , ADULT_YN
+        , FEEDBACK_YN
+        , PC_IMG
+        , MO_IMG
+        , SORT
+        , DISP_GOODS_CNT
+        , DISP_YN
+        , USE_YN
+        , LINK_YN
+        , LINK_URL
+        , DEL_YN
+        , CREATE_ID
+        , CREATE_DT
+        , MODIFY_ID
+        , MODIFY_DT
+    )
+    SELECT  #{mallDivision}
+          , #{categoryName}
+          , #{depth}
+          , #{parentsCategoryId}
+          , #{adultYn}
+          , #{feedbackYn}
+          , #{pcImage}
+          , #{mobileImage}
+          , IFNULL(#{sort}, (
+                            SELECT  IFNULL(MAX(SORT), 0) + 1
+                            FROM    IL_CTGRY
+                            WHERE   PRNTS_CTGRY_ID = #{parentsCategoryId}
+                              AND   DEPTH = #{depth}
+                              AND   DEL_YN = 'N'
+                            )
+            )
+          , IFNULL(#{displayGoodsCount}, 0)
+          , #{displayYn}
+          , #{useYn}
+          , #{linkYn}
+          , #{linkUrl}
+          , #{deleteYn}
+          , #{createId}
+          , NOW()
+          , #{modifyId}
+          , NOW()
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 그룹 사용여부 변경
+   * @
+   * @ 수정일                    수정자           수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.25   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putCategoryGroupUseYn" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryRequestDto">
+    /*category.putCategoryGroupUseYn*/
+    UPDATE  IL_CTGRY
+    SET     MODIFY_ID       = #{modifyId}
+          , MODIFY_DT       = NOW()
+          , USE_YN          = #{useYn}          <!-- 업무에서 N Set -->
+    WHERE   DEL_YN          = 'N'
+      AND   MALL_DIV        = #{mallDivision}   <!-- 업무에서 Set -->
+      AND   DEPTH           = #{depth}          <!-- 업무에서 0 Set -->
+      AND   USE_YN          = #{befUseYn}       <!-- 업무에서 Y Set -->
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 수정
+   * @
+   * @ 수정일                    수정자           수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putCategory" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryRequestDto">
+    /*category.putCategory*/
+    UPDATE  IL_CTGRY
+    SET     MODIFY_ID       = #{modifyId}
+          , MODIFY_DT       = NOW()
+          , CTGRY_NM        = #{categoryName}
+          , USE_YN          = #{useYn}
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sort)'>
+          , SORT          = #{sort}
+        </if>
+    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(depth, "0") '>
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(depth, "1") '>
+          <!-- , DEFAULT_USE_YN  = #{defaultUseYn} -->
+      </if>
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(depth, "1") '>
+          , LINK_YN       = #{linkYn}
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(linkYn, "N")'>
+          , LINK_URL      = ''
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(linkYn, "Y")'>
+          , LINK_URL      = #{linkUrl}
+        </if>
+      </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adultYn)'>
+          , ADULT_YN      = #{adultYn}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackYn)'>
+          , FEEDBACK_YN   = #{feedbackYn}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pcImage)'>
+          , PC_IMG        = #{pcImage}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobileImage)'>
+          , MO_IMG        = #{mobileImage}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayGoodsCount)'>
+          , DISP_GOODS_CNT = #{displayGoodsCount}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayYn)'>
+          , DISP_YN       = #{displayYn}
+        </if>
+    </if>
+    WHERE   IL_CTGRY_ID   = #{categoryId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 정렬변경
+   * @
+   * @ 수정일                    수정자           수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.07   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putCategorySort" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryRequestDto">
+    /*category.putCategorySort*/
+    UPDATE  IL_CTGRY
+    SET     MODIFY_ID       = #{modifyId}
+          , MODIFY_DT       = NOW()
+          , SORT           = #{sort}
+    WHERE   IL_CTGRY_ID   = #{categoryId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 삭제
+   * @
+   * @ 수정일                    수정자           수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="delCategory" parameterType="String">
+    /*category.delCategory*/
+    UPDATE  IL_CTGRY
+    SET     MODIFY_ID = #{modifyId}
+          , DEL_YN    = 'Y'
+    WHERE   IL_CTGRY_ID   = #{categoryId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리 상&하위정보 등록
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.11   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addCategoryPrntsInfo" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryRequestDto">
+    /*category.addCategoryPrntsInfo*/
+    INSERT INTO IL_CTGRY_PRNTS_INFO (
+          IL_CTGRY_ID
+        , CTGRY_ID_DEPTH0
+        , CTGRY_ID_DEPTH1
+        , CTGRY_ID_DEPTH2
+        , CTGRY_ID_DEPTH3
+        , CTGRY_ID_DEPTH4
+        , CTGRY_ID_DEPTH5
+    )
+    SELECT  C.IL_CTGRY_ID
+          , CASE  WHEN C.DEPTH = 0 THEN C.IL_CTGRY_ID
+                  WHEN C.DEPTH = 1 THEN C.PRNTS_CTGRY_ID
+                  WHEN C.DEPTH = 2 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID)
+                  WHEN C.DEPTH = 3 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID))
+                  WHEN C.DEPTH = 4 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID)))
+                  WHEN C.DEPTH = 5 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID))))
+                  ELSE 0
+            END AS ID_0
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN C.IL_CTGRY_ID
+                  WHEN C.DEPTH = 2 THEN C.PRNTS_CTGRY_ID
+                  WHEN C.DEPTH = 3 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID)
+                  WHEN C.DEPTH = 4 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID))
+                  WHEN C.DEPTH = 5 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID)))
+                  ELSE 0
+            END AS ID_1
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN C.IL_CTGRY_ID
+                  WHEN C.DEPTH = 3 THEN C.PRNTS_CTGRY_ID
+                  WHEN C.DEPTH = 4 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID)
+                  WHEN C.DEPTH = 5 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID))
+                  ELSE 0
+            END AS ID_2
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN NULL
+                  WHEN C.DEPTH = 3 THEN C.IL_CTGRY_ID
+                  WHEN C.DEPTH = 4 THEN C.PRNTS_CTGRY_ID
+                  WHEN C.DEPTH = 5 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY WHERE IL_CTGRY_ID = C.PRNTS_CTGRY_ID)
+                  ELSE 0
+            END AS ID_3
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN NULL
+                  WHEN C.DEPTH = 3 THEN NULL
+                  WHEN C.DEPTH = 4 THEN C.IL_CTGRY_ID
+                  WHEN C.DEPTH = 5 THEN C.PRNTS_CTGRY_ID
+                  ELSE 0
+            END AS ID_4
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN NULL
+                  WHEN C.DEPTH = 3 THEN NULL
+                  WHEN C.DEPTH = 4 THEN NULL
+                  WHEN C.DEPTH = 5 THEN C.IL_CTGRY_ID
+                  ELSE 0
+            END AS ID_5
+    FROM    IL_CTGRY C
+    WHERE   C.IL_CTGRY_ID = #{categoryId}
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 전시카테고리엑셀용리스트조회
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.11   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getCategoryListForExcel" resultMap="categoryExcelMap">
+    /*category.getCategoryListForExcel*/
+    SELECT  T.RNUM
+          , T.IL_CTGRY_ID
+          , T.DEPTH
+          , T.CTGRY_ID0
+          <!-- , (CASE WHEN T.RNUM = 1 THEN T.CTGRY_NM0 ELSE '' END) AS CTGRY_NM0 -->
+          , IFNULL(T.CTGRY_NM0, '') AS CTGRY_NM0
+          , T.SORT0
+          , T.CTGRY_ID1
+          , IFNULL(T.CTGRY_NM1, '') AS CTGRY_NM1
+          , T.SORT1
+          , T.CTGRY_ID2
+          , IFNULL(T.CTGRY_NM2, '') AS CTGRY_NM2
+          , T.SORT2
+          , T.CTGRY_ID3
+          , IFNULL(T.CTGRY_NM3, '') AS CTGRY_NM3
+          , T.SORT3
+          , T.CTGRY_ID4
+          , IFNULL(T.CTGRY_NM4, '') AS CTGRY_NM4
+          , T.SORT4
+          , T.CTGRY_ID5
+          , IFNULL(T.CTGRY_NM5, '') AS CTGRY_NM5
+          , T.SORT5
+    FROM    (
+            SELECT  A.*
+                  , (CASE @VID WHEN A.CTGRY_ID0 THEN @ROWNUM:=@ROWNUM+1 ELSE @ROWNUM:=1 END) RNUM
+                  , (@VID:=A.CTGRY_ID0) V
+            FROM    (
+                    SELECT  C.IL_CTGRY_ID
+                          , C.DEPTH
+                          , P.CTGRY_ID_DEPTH0   AS CTGRY_ID0
+                          , C0.CTGRY_NM         AS CTGRY_NM0
+                          , C0.SORT             AS SORT0
+                          , P.CTGRY_ID_DEPTH1   AS CTGRY_ID1
+                          , C1.CTGRY_NM         AS CTGRY_NM1
+                          , C1.SORT             AS SORT1
+                          , P.CTGRY_ID_DEPTH2   AS CTGRY_ID2
+                          , C2.CTGRY_NM         AS CTGRY_NM2
+                          , C2.SORT             AS SORT2
+                          , P.CTGRY_ID_DEPTH3   AS CTGRY_ID3
+                          , C3.CTGRY_NM         AS CTGRY_NM3
+                          , C3.SORT             AS SORT3
+                          , P.CTGRY_ID_DEPTH4   AS CTGRY_ID4
+                          , C4.CTGRY_NM         AS CTGRY_NM4
+                          , C4.SORT             AS SORT4
+                          , P.CTGRY_ID_DEPTH5   AS CTGRY_ID5
+                          , C5.CTGRY_NM         AS CTGRY_NM5
+                          , C5.SORT             AS SORT5
+                    FROM    IL_CTGRY C
+                          , IL_CTGRY_PRNTS_INFO P
+                              LEFT OUTER  JOIN  IL_CTGRY C0
+                                          ON    C0.IL_CTGRY_ID = P.CTGRY_ID_DEPTH0
+                                          AND   C0.DEL_YN      = 'N'
+                              LEFT OUTER  JOIN  IL_CTGRY C1
+                                          ON    C1.IL_CTGRY_ID = P.CTGRY_ID_DEPTH1
+                                          AND   C1.DEL_YN      = 'N'
+                              LEFT OUTER  JOIN  IL_CTGRY C2
+                                          ON    C2.IL_CTGRY_ID = P.CTGRY_ID_DEPTH2
+                                          AND   C2.DEL_YN      = 'N'
+                              LEFT OUTER  JOIN  IL_CTGRY C3
+                                          ON    C3.IL_CTGRY_ID = P.CTGRY_ID_DEPTH3
+                                          AND   C3.DEL_YN      = 'N'
+                              LEFT OUTER  JOIN  IL_CTGRY C4
+                                          ON    C4.IL_CTGRY_ID = P.CTGRY_ID_DEPTH4
+                                          AND   C4.DEL_YN      = 'N'
+                              LEFT OUTER  JOIN  IL_CTGRY C5
+                                          ON    C5.IL_CTGRY_ID = P.CTGRY_ID_DEPTH5
+                                          AND   C5.DEL_YN      = 'N'
+                    WHERE   C.MALL_DIV = #{mallDivision}
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+                      AND   C.USE_YN = 'Y'
+                    </if>
+                      AND   C.DEL_YN = 'N'
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+                      AND   CASE  WHEN C.DEPTH = 0 AND C0.USE_YN = 'Y' THEN 1
+                                  WHEN C.DEPTH = 1 AND C0.USE_YN = 'Y' AND C1.USE_YN = 'Y' THEN 1
+                                  WHEN C.DEPTH = 2 AND C0.USE_YN = 'Y' AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' THEN 1
+                                  WHEN C.DEPTH = 3 AND C0.USE_YN = 'Y' AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' AND C3.USE_YN = 'Y' THEN 1
+                                  WHEN C.DEPTH = 4 AND C0.USE_YN = 'Y' AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' AND C3.USE_YN = 'Y' AND C4.USE_YN = 'Y' THEN 1
+                                  WHEN C.DEPTH = 5 AND C0.USE_YN = 'Y' AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' AND C3.USE_YN = 'Y' AND C4.USE_YN = 'Y' AND C5.USE_YN = 'Y' THEN 1
+                                  ELSE 0
+                            END = 1
+                    </if>
+                      AND   CASE  WHEN C.DEPTH = 0 AND C0.DEL_YN = 'N' THEN 1
+                                  WHEN C.DEPTH = 1 AND C0.DEL_YN = 'N' AND C1.DEL_YN = 'N' THEN 1
+                                  WHEN C.DEPTH = 2 AND C0.DEL_YN = 'N' AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' THEN 1
+                                  WHEN C.DEPTH = 3 AND C0.DEL_YN = 'N' AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' AND C3.DEL_YN = 'N' THEN 1
+                                  WHEN C.DEPTH = 4 AND C0.DEL_YN = 'N' AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' AND C3.DEL_YN = 'N' AND C4.DEL_YN = 'N' THEN 1
+                                  WHEN C.DEPTH = 5 AND C0.DEL_YN = 'N' AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' AND C3.DEL_YN = 'N' AND C4.DEL_YN = 'N' AND C5.DEL_YN = 'N' THEN 1
+                                  ELSE 0
+                            END = 1
+                      AND   P.IL_CTGRY_ID = C.IL_CTGRY_ID
+                    ) A
+                  , (
+                    SELECT  @VID:='', @ROWNUM:=0
+                    FROM    DUAL
+                    ) B
+            ) T
+    ORDER BY  T.SORT0, T.CTGRY_NM0, T.SORT1, T.CTGRY_NM1, T.SORT2, T.CTGRY_NM2, T.SORT3, T.CTGRY_NM3, T.SORT4, T.CTGRY_NM4, T.SORT5, T.CTGRY_NM5
+  </select>
+
+  <!-- ==================================================================== -->
+  <!-- 표준카테고리 -->
+  <!-- ==================================================================== -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리 리스트 조회
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getCategoryStdList" resultMap="categoryStdMap">
+      /*category.getCategoryStdList*/
+      SELECT  C.IL_CTGRY_STD_ID
+            , C.CTGRY_STD_NM
+            , C.DEPTH
+            , C.PRNTS_CTGRY_ID
+            , C.SORT
+            , CASE  WHEN  (
+                          SELECT  COUNT(1)
+                          FROM    IL_CTGRY_STD C2
+                          WHERE   C2.PRNTS_CTGRY_ID = C.IL_CTGRY_STD_ID
+                          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+                            AND   C2.USE_YN         = 'Y'
+                          </if>
+                            AND   C2.DEL_YN         = 'N'
+                          ) = 0
+                    THEN  'false'
+                    ELSE  'true'
+              END AS ISLEAF
+            , C.USE_YN
+            , C.DEL_YN
+            , C.RETURNABLE_YN
+            , C.CREATE_ID
+            , DATE_FORMAT(C.CREATE_DT, '%Y%m%d%H%i%s')  AS CREATE_DT
+            , C.MODIFY_ID
+            , DATE_FORMAT(C.MODIFY_DT, '%Y%m%d%H%i%s')  AS MODIFY_DT
+      FROM    IL_CTGRY_STD C
+    <where>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(standardCategoryId)">
+        AND   C.PRNTS_CTGRY_ID  = #{standardCategoryId}
+      </if>
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+        AND   C.USE_YN          = 'Y'
+      </if>
+        AND   C.DEL_YN          = 'N'
+    </where>
+      ORDER BY C.DEPTH ASC, C.SORT ASC, C.CTGRY_STD_NM ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리 상세 조회
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getCategoryStd" resultMap="categoryStdMap">
+    /*category.getCategoryStd*/
+    SELECT  C.IL_CTGRY_STD_ID
+          , C.CTGRY_STD_NM
+          , C.DEPTH
+          , C.PRNTS_CTGRY_ID
+          , C.SORT
+          , CASE  WHEN  (
+                        SELECT  COUNT(1)
+                        FROM    IL_CTGRY_STD C2
+                        WHERE   C2.PRNTS_CTGRY_ID = C.IL_CTGRY_STD_ID
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+                          AND   C2.USE_YN         = 'Y'
+                        </if>
+                          AND   C2.DEL_YN         = 'N'
+                        ) = 0
+                  THEN  'false'
+                  ELSE  'true'
+            END AS ISLEAF
+          , C.USE_YN
+          , C.DEL_YN
+          , C.RETURNABLE_YN
+          , C.CREATE_ID
+          , DATE_FORMAT(C.CREATE_DT, '%Y%m%d%H%i%s')  AS CREATE_DT
+          , C.MODIFY_ID
+          , DATE_FORMAT(C.MODIFY_DT, '%Y%m%d%H%i%s')  AS MODIFY_DT
+    FROM    IL_CTGRY_STD C
+    WHERE   C.IL_CTGRY_STD_ID  = #{standardCategoryId}   <!-- 필수조건:표준카테고리ID -->
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리 등록
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addCategoryStd" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryStdRequestDto"
+                           useGeneratedKeys="true" keyProperty="standardCategoryId">
+    /*category.addCategoryStd*/
+    INSERT INTO IL_CTGRY_STD (
+          CTGRY_STD_NM
+        , DEPTH
+        , PRNTS_CTGRY_ID
+        , SORT
+        , USE_YN
+        , RETURNABLE_YN
+        , DEL_YN
+        , CREATE_ID
+        , CREATE_DT
+        , MODIFY_ID
+        , MODIFY_DT
+    )
+    SELECT  #{standardCategoryName}
+          , #{depth}
+          , #{parentsCategoryId}
+          , IFNULL(#{sort}, (
+                            SELECT  IFNULL(MAX(SORT), 0) + 1
+                            FROM    IL_CTGRY_STD
+                            WHERE   PRNTS_CTGRY_ID = #{parentsCategoryId}
+                              AND   DEPTH = #{depth}
+                              AND   DEL_YN = 'N'
+                            )
+            )
+          , #{useYn}
+          , CASE WHEN #{depth} = 3 THEN #{returnableYn} ELSE NULL END
+          , #{deleteYn}
+          , #{createId}
+          , NOW()
+          , #{modifyId}
+          , NOW()
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리 수정
+   * @
+   * @ 수정일                    수정자           수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putCategoryStd" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryStdRequestDto">
+    /*category.putCategoryStd*/
+    UPDATE  IL_CTGRY_STD
+    SET     MODIFY_ID       = #{modifyId}
+          , MODIFY_DT       = NOW()
+          , CTGRY_STD_NM    = #{standardCategoryName}
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)'>
+          , USE_YN          = #{useYn}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(returnableYn)'>
+          , RETURNABLE_YN   = CASE WHEN DEPTH = 3 THEN #{returnableYn} ELSE NULL END
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deleteYn)'>
+          , DEL_YN          = #{deleteYn}
+        </if>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sort)'>
+          , SORT            = #{sort}
+        </if>
+    WHERE   IL_CTGRY_STD_ID   = #{standardCategoryId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리 정렬변경
+   * @
+   * @ 수정일                    수정자           수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.07   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putCategoryStdSort" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryStdRequestDto">
+    /*category.putCategoryStdSort*/
+    UPDATE  IL_CTGRY_STD
+    SET     MODIFY_ID       = #{modifyId}
+          , MODIFY_DT       = NOW()
+          , SORT            = #{sort}
+    WHERE   IL_CTGRY_STD_ID = #{standardCategoryId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리 삭제
+   * @
+   * @ 수정일                    수정자           수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.04   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="delCategoryStd" parameterType="String">
+    /*category.putCategoryStd*/
+    UPDATE  IL_CTGRY_STD
+    SET     MODIFY_ID = #{modifyId}
+          , DEL_YN    = 'Y'
+    WHERE   IL_CTGRY_STD_ID   = #{standardCategoryId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리 상&하위정보 등록
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.11   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addCategoryStdPrntsInfo" parameterType="kr.co.pulmuone.v1.goods.category.dto.CategoryStdRequestDto">
+    /*category.addCategoryStdPrntsInfo*/
+    INSERT INTO IL_CTGRY_STD_PRNTS_INFO (
+          IL_CTGRY_STD_ID
+        , CTGRY_STD_ID_DEPTH1
+        , CTGRY_STD_ID_DEPTH2
+        , CTGRY_STD_ID_DEPTH3
+        , CTGRY_STD_ID_DEPTH4
+        , CTGRY_STD_ID_DEPTH5
+    )
+    SELECT  C.IL_CTGRY_STD_ID
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN C.IL_CTGRY_STD_ID
+                  WHEN C.DEPTH = 2 THEN C.PRNTS_CTGRY_ID
+                  WHEN C.DEPTH = 3 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = C.PRNTS_CTGRY_ID)
+                  WHEN C.DEPTH = 4 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = C.PRNTS_CTGRY_ID))
+                  WHEN C.DEPTH = 5 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = C.PRNTS_CTGRY_ID)))
+                  ELSE 0
+            END AS ID_1
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN C.IL_CTGRY_STD_ID
+                  WHEN C.DEPTH = 3 THEN C.PRNTS_CTGRY_ID
+                  WHEN C.DEPTH = 4 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = C.PRNTS_CTGRY_ID)
+                  WHEN C.DEPTH = 5 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = C.PRNTS_CTGRY_ID))
+                  ELSE 0
+            END AS ID_2
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN NULL
+                  WHEN C.DEPTH = 3 THEN C.IL_CTGRY_STD_ID
+                  WHEN C.DEPTH = 4 THEN C.PRNTS_CTGRY_ID
+                  WHEN C.DEPTH = 5 THEN (SELECT PRNTS_CTGRY_ID FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID = C.PRNTS_CTGRY_ID)
+                  ELSE 0
+            END AS ID_3
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN NULL
+                  WHEN C.DEPTH = 3 THEN NULL
+                  WHEN C.DEPTH = 4 THEN C.IL_CTGRY_STD_ID
+                  WHEN C.DEPTH = 5 THEN C.PRNTS_CTGRY_ID
+                  ELSE 0
+            END AS ID_4
+          , CASE  WHEN C.DEPTH = 0 THEN NULL
+                  WHEN C.DEPTH = 1 THEN NULL
+                  WHEN C.DEPTH = 2 THEN NULL
+                  WHEN C.DEPTH = 3 THEN NULL
+                  WHEN C.DEPTH = 4 THEN NULL
+                  WHEN C.DEPTH = 5 THEN C.IL_CTGRY_STD_ID
+                  ELSE 0
+            END AS ID_5
+    FROM    IL_CTGRY_STD C
+    WHERE   C.IL_CTGRY_STD_ID = #{standardCategoryId}
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 표준카테고리엑셀용리스트조회
+   * @
+   * @ 수정일              수정자             수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.08.11   dgyoun   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getCategoryStdListForExcel" resultMap="categoryExcelMap">
+    /*category.getCategoryStdListForExcel*/
+    SELECT  T.IL_CTGRY_ID
+          , T.DEPTH
+          , T.CTGRY_ID1
+          , IFNULL(T.CTGRY_NM1, '') AS CTGRY_NM1
+          , T.SORT1
+          , T.CTGRY_ID2
+          , IFNULL(T.CTGRY_NM2, '') AS CTGRY_NM2
+          , T.SORT2
+          , T.CTGRY_ID3
+          , IFNULL(T.CTGRY_NM3, '') AS CTGRY_NM3
+          , T.SORT3
+          , T.CTGRY_ID4
+          , IFNULL(T.CTGRY_NM4, '') AS CTGRY_NM4
+          , T.SORT4
+          , T.CTGRY_ID5
+          , IFNULL(T.CTGRY_NM5, '') AS CTGRY_NM5
+          , T.SORT5
+    FROM    (
+            SELECT  C.IL_CTGRY_STD_ID       AS IL_CTGRY_ID
+                  , C.DEPTH
+                  , P.CTGRY_STD_ID_DEPTH1   AS CTGRY_ID1
+                  , C1.CTGRY_STD_NM         AS CTGRY_NM1
+                  , C1.SORT             AS SORT1
+                  , P.CTGRY_STD_ID_DEPTH2   AS CTGRY_ID2
+                  , C2.CTGRY_STD_NM         AS CTGRY_NM2
+                  , C2.SORT             AS SORT2
+                  , P.CTGRY_STD_ID_DEPTH3   AS CTGRY_ID3
+                  , C3.CTGRY_STD_NM         AS CTGRY_NM3
+                  , C3.SORT             AS SORT3
+                  , P.CTGRY_STD_ID_DEPTH4   AS CTGRY_ID4
+                  , C4.CTGRY_STD_NM         AS CTGRY_NM4
+                  , C4.SORT             AS SORT4
+                  , P.CTGRY_STD_ID_DEPTH5   AS CTGRY_ID5
+                  , C5.CTGRY_STD_NM         AS CTGRY_NM5
+                  , C5.SORT             AS SORT5
+            FROM    IL_CTGRY_STD C
+                  , IL_CTGRY_STD_PRNTS_INFO P
+                      LEFT OUTER  JOIN  IL_CTGRY_STD C1
+                                  ON    C1.IL_CTGRY_STD_ID = P.CTGRY_STD_ID_DEPTH1
+                                  AND   C1.DEL_YN      = 'N'
+                      LEFT OUTER  JOIN  IL_CTGRY_STD C2
+                                  ON    C2.IL_CTGRY_STD_ID = P.CTGRY_STD_ID_DEPTH2
+                                  AND   C2.DEL_YN      = 'N'
+                      LEFT OUTER  JOIN  IL_CTGRY_STD C3
+                                  ON    C3.IL_CTGRY_STD_ID = P.CTGRY_STD_ID_DEPTH3
+                                  AND   C3.DEL_YN      = 'N'
+                      LEFT OUTER  JOIN  IL_CTGRY_STD C4
+                                  ON    C4.IL_CTGRY_STD_ID = P.CTGRY_STD_ID_DEPTH4
+                                  AND   C4.DEL_YN      = 'N'
+                      LEFT OUTER  JOIN  IL_CTGRY_STD C5
+                                  ON    C5.IL_CTGRY_STD_ID = P.CTGRY_STD_ID_DEPTH5
+                                  AND   C5.DEL_YN      = 'N'
+          <where>
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+              AND   C.USE_YN = 'Y'
+            </if>
+              AND   C.DEL_YN = 'N'
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(useAllYn) or (@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useAllYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useAllYn, "Y"))'>
+              AND   CASE  WHEN C.DEPTH = 1 AND C1.USE_YN = 'Y' THEN 1
+                          WHEN C.DEPTH = 2 AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' THEN 1
+                          WHEN C.DEPTH = 3 AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' AND C3.USE_YN = 'Y' THEN 1
+                          WHEN C.DEPTH = 4 AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' AND C3.USE_YN = 'Y' AND C4.USE_YN = 'Y' THEN 1
+                          WHEN C.DEPTH = 5 AND C1.USE_YN = 'Y' AND C2.USE_YN = 'Y' AND C3.USE_YN = 'Y' AND C4.USE_YN = 'Y' AND C5.USE_YN = 'Y' THEN 1
+                          ELSE 0
+                    END = 1
+            </if>
+              AND   CASE  WHEN C.DEPTH = 1 AND C1.DEL_YN = 'N' THEN 1
+                          WHEN C.DEPTH = 2 AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' THEN 1
+                          WHEN C.DEPTH = 3 AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' AND C3.DEL_YN = 'N' THEN 1
+                          WHEN C.DEPTH = 4 AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' AND C3.DEL_YN = 'N' AND C4.DEL_YN = 'N' THEN 1
+                          WHEN C.DEPTH = 5 AND C1.DEL_YN = 'N' AND C2.DEL_YN = 'N' AND C3.DEL_YN = 'N' AND C4.DEL_YN = 'N' AND C5.DEL_YN = 'N' THEN 1
+                          ELSE 0
+                    END = 1
+              AND   P.IL_CTGRY_STD_ID = C.IL_CTGRY_STD_ID
+          </where>
+            ) T
+    ORDER BY  T.SORT1, T.CTGRY_NM1, T.SORT2, T.CTGRY_NM2, T.SORT3, T.CTGRY_NM3, T.SORT4, T.CTGRY_NM4, T.SORT5, T.CTGRY_NM5
+  </select>
+
+</mapper>
+

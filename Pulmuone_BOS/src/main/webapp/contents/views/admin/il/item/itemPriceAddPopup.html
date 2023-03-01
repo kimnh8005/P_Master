@@ -1,0 +1,261 @@
+<form id="inputForm" name="inputForm" method="post" onsubmit="return false">
+    <div class="fb__sect">
+        <div id="contents" class="pop-contents">
+            <span style="float:right;margin-bottom:5px;">
+                <button type="button" id="fnAddDiscount" class="btn-point btn-m" data-bind="enabled: isAddPriceEnabled, events:{click: fnAddPrice}">추가</button>
+            </span>
+            <body>
+                <table class="datatable v-type">
+                    <thead>
+                        <tr>
+							<th style="width:90px;"><label>구분</label></th>
+                            <th style="width:90px;"><label>승인상태</label></th>
+                            <th style="width:100px;"><label class="req-star-th">시작일</label></th>
+                            <th style="width:100px;"><label class="req-star-th">종료일</label></th>
+                            <th style="width:100px;"><label>원가</label></th>
+                            <th style="width:100px;"><label class="req-star-th">정상가</label></th>
+                            <th style="width:100px;"><label>마진율</label></th>
+                            <th style="width:100px;"><label>승인요청자</label></th>
+                            <th style="width:100px;"><label>승인관리자(1차/최종)</label></th>
+                            <th style="width:80px;"><label>관리</label></th>
+                        </tr>
+                    </thead>
+                    <tbody id="goodsDiscountTbody" data-template="row-template" data-bind="source: orginPriceList">
+
+                    </tbody>
+                </table>
+            </body>
+        </div>
+    </div>
+
+
+<!--    <div class="fb__sect">-->
+<!--        <div id="contents" class="pop-contents" style="display:none;" data-bind="visible: isAddApprovalVisiable">-->
+<!--            <span style="float:right;margin-bottom:5px;">-->
+<!--                <button type="button" id="fnAddApproval" class="btn-point btn-m" data-bind="enabled: isAddDiscountEnabled, visible:isApprovalBtn, events:{click: fnAddDiscount}">승인관리자 지정</button>-->
+<!--                <button type="button" id="fnAddApprovalInit" class="btn-point btn-m" data-bind="enabled: isAddDiscountEnabled, visible:isApprovalBtn,  events:{click: fnAddDiscount}">초기화</button>-->
+<!--            </span>-->
+
+<!--                <table class="datatable v-type" data-bind="visible:isApprovalBtn">-->
+<!--                    <thead>-->
+<!--                        <tr>-->
+<!--                            <th style="width:90px;"><label>승인관리자 정보</label></th>-->
+<!--                            <th style="width:270px;"><label>계정<br>유형</label></th>-->
+<!--                            <th style="width:270px;"><label>관리자<br>(이름/ID)</label></th>-->
+<!--                            <th style="width:120px;"><label>조직 <br> 거래처 정보</label></th>-->
+<!--                            <th style="width:120px;"><label>조직장 여부</label></th>-->
+<!--                            <th style="width:120px;"><label>BOS <br> 계정상태</label></th>-->
+
+<!--                            <th style="width:120px;"><label>권한우임정보 <br>(이름/ID)</label></th>-->
+<!--                            <th style="width:120px;"><label>권한위임기간</label></th>-->
+<!--                            <th style="width:120px;"><label>권한위임자 <br> BOS 계정상태</label></th>-->
+<!--                        </tr>-->
+<!--                    </thead>-->
+<!--                    <tbody >-->
+
+<!--                    </tbody>-->
+<!--                </table>-->
+
+<!--        </div>-->
+<!--    </div>-->
+	<div class="fb__sect grid-sect" id="apprDiv" style="display: none;">
+		<div class="wrap-tit">
+			<div class="ea-title">
+				<h3>승인관리자 정보</h3>
+			</div>
+			<span class="btn-area">
+					<button id="fnApprAdmin" class="set-btn-type4 clientAllow" type="button" onclick="$scope.fnApprAdmin()" >승인관리자 지정</button>
+					<button id="fnApprClear" class="set-btn-type5 clientAllow" type="button" onclick="$scope.fnApprClear()" >초기화</button>
+				</span>
+		</div>
+		<div id="apprGrid"></div>
+	</div>
+
+    <span class="btn-area" id="saveButton" style="display: none;">
+        <button type="button" id="fnSave" class="btn-point btn-l" data-bind="events:{click: fnSave}">저장</button>
+    </span>
+
+</form>
+
+<!-- 할인 Template -->
+<script id="row-template" type="text/x-kendo-template">
+
+#
+	var foodLegalTypeCode = "PFF";       // 풀무원 식품 법인코드
+	var orgaLegalTypeCode = "OGH";       // 올가 법인코드
+	var foodmerceLegalTypeCode = "FDM";  // 푸드머스 법인코드
+	var lohasLegalTypeCode = "PGS";      // 건강생활 법인코드
+ 	var idx = viewModel.orginPriceList.indexOf(data);
+#
+	# if ( fnFormatDate( data.priceApplyStartDate, 'yyyy-MM-dd') <= fnGetToday() && fnFormatDate( data.priceApplyEndDate, 'yyyy-MM-dd') >= fnGetToday() && approvalStatusCode === "APPR_STAT.APPROVED" ) { #
+		<tr style="background-color:\#D2E7A9">
+	# } else { #
+		<tr>
+	# } #
+		<td style="text-align:center">	<!-- 구분 -->
+			<span data-bind="text: updateTypeName"></span>
+		</td>
+        <td style="text-align:center">	<!-- 승인 상태 -->
+			<span data-bind="text: approvalStatusCodeName"></span>
+        </td>
+		<td style="text-align:center">	<!-- 시작일 -->
+			# if( approvalStatusCode != "APPR_STAT.NONE" ){ #
+                #= kendo.toString(kendo.parseDate(priceApplyStartDate), "yyyy-MM-dd") #
+			#}else{#
+
+				# if( viewModel.itemInfo.get("newInit") == true ){ #
+					<div class="complex-condition">
+						# if( viewModel.itemInfo.get("isErpItemLink") == false ){ #
+							<span data-bind="text: priceApplyStartDate" data-format="{0: yyyy-MM-dd}"></span>
+						# } else { #
+                 	   <input id="priceApplyStartDate" name="priceApplyStartDate" type="text" style="width:90px" required
+                    	       	class="datepicker-wrapper marginR5"
+                        	   	data-role="datepicker"
+				           		data-format="{0: yyyy-MM-dd}"
+                           		data-date-input="true"
+                           		data-min="#: priceApplyStartDate #"
+                           		data-bind="value: priceApplyStartDate,
+								disableDates: disableStartDates,
+								events: { change: fnStartDateChange, open: fnStartDateOpen }" />
+						# } #
+					</div>
+				# } else { #
+					<div class="complex-condition">
+                 	   <input id="priceApplyStartDate" name="priceApplyStartDate" type="text" style="width:90px" required
+                    	       	class="datepicker-wrapper marginR5"
+                        	   	data-role="datepicker"
+				           		data-format="{0: yyyy-MM-dd}"
+                           		data-date-input="true"
+                           		data-min="#: priceApplyStartDate #"
+                           		data-bind="value: priceApplyStartDate,
+								disableDates: disableStartDates,
+								events: { change: fnStartDateChange, open: fnStartDateOpen }" />
+					</div>
+				# } #
+
+			#}#
+		</td>
+		<td style="text-align:center">	<!-- 종료일 -->
+			#: priceApplyEndDate #
+        </td>
+		<td style="text-align:center">	<!-- 원가 -->
+			# if( approvalStatusCode != "APPR_STAT.NONE" ){ #
+                #= kendo.toString(standardPrice, "n0") #
+				# if ( viewModel.get("isAddPriceEnabled") == false) { #
+					# if(viewModel.itemInfo.get("priceManageTp") == 'R' && idx > 0 && idx <= viewModel.get("orginPriceList").data().length -2 ) { #
+						<span class="standPriceToolTip"><span class="k-icon k-i-question k-i-help" title="도움말 tooltip"></span></span>
+					# } #
+				# } else { #
+					# if(viewModel.itemInfo.get("priceManageTp") == 'R' && idx > 0 && idx <= viewModel.get("orginPriceList").data().length -1 ) { #
+						<span class="standPriceToolTip"><span class="k-icon k-i-question k-i-help" title="도움말 tooltip"></span></span>
+					# } #
+				# } #
+
+			#}else{#
+				# if (viewModel.itemInfo.get("priceManageTp") == 'A') { #
+								<input name="standardPrice"
+                       				data-role="numerictextbox"
+                       				data-format="n0"
+                       				data-min=""
+                       				data-decimals="0"
+                       				data-spinners="false"
+                       				data-restrict-decimals="true"
+                       				data-bind="value: standardPrice,
+                            		events: { change: fnNewStandPriceChange }"
+                       				style="width: 80px;text-align:right;">
+				# } else { #
+						<span data-bind="text: standardPrice" data-format="\#\#,\#"></span>
+				# } #
+			#}#
+
+        </td>
+		<td style="text-align:center">	<!-- 정상가 -->
+			# if( approvalStatusCode != "APPR_STAT.NONE" ){ #
+                #= kendo.toString(recommendedPrice, "n0") #
+				# if ( viewModel.get("isAddPriceEnabled") == false) { #
+					# if(viewModel.itemInfo.get("priceManageTp") == 'R' && managerUpdateYn == 'N' && idx > 0 && idx <= viewModel.get("orginPriceList").data().length -2 ) { #
+						<span class="recommendedPriceToolTip"><span class="k-icon k-i-question k-i-help" title="도움말 tooltip"></span></span>
+					# } #
+				# } else { #
+					# if(viewModel.itemInfo.get("priceManageTp") == 'R' && managerUpdateYn == 'N' && idx > 0 && idx <= viewModel.get("orginPriceList").data().length -1) { #
+						<span class="recommendedPriceToolTip"><span class="k-icon k-i-question k-i-help" title="도움말 tooltip"></span></span>
+					# } #
+				# } #
+			#}else{#
+				# if (viewModel.itemInfo.get("priceManageTp") == 'A' || viewModel.itemInfo.get("priceManageTp") == 'R') { #
+						<input name="recommendedPrice"
+                       				data-role="numerictextbox"
+                       				data-format="n0"
+                       				data-min=""
+                       				data-decimals="0"
+                       				data-spinners="false"
+                       				data-restrict-decimals="true"
+                       				data-bind="value: recommendedPrice,
+                            		events: { change: fnNewRecommendedPriceChange }"
+                       				style="width: 80px;text-align:right;">
+				# } else { #
+						<span data-bind="text: recommendedPrice" data-format="\#\#,\#"></span>
+				# } #
+			#}#
+
+        </td>
+
+		<td style="text-align:center;" hidden>	<!-- 현재 원가 -->
+			<span data-bind="text: standardPriceChange"></span>%
+		</td>
+		<td style="text-align:center;" hidden>	<!-- 현재 정상가 -->
+			<span data-bind="text: recommendedPriceChange"></span>%
+		</td>
+
+		<td style="text-align:center">	<!-- 마진율 -->
+
+			<span data-bind="text: priceRatio"></span>%
+        </td>
+		<td style="text-align:center">	<!-- 승인요청자 -->
+			<span data-bind="text: approvalRequestUserInfo"></span>  <!-- 승인요청자 -->
+        </td>
+		<td style="text-align:center">	<!-- 승인관리자(1차/최종) -->
+			<span data-bind="text: approvalAdminUserInfo"></span>  <!-- 승인관리자(1차/최종) -->
+        </td>
+		<td style="text-align:center">	<!-- 삭제버튼 -->
+			#
+			let nowDate = fnGetToday("yyyyMMdd");
+			var startDate = parseInt(priceApplyStartDate.replaceAll('-',''));
+			var endDate = parseInt(priceApplyEndDate.replaceAll('-',''));
+			let nowValue = false;
+
+			if(nowDate >= startDate){
+				nowValue = true;
+			}
+			#
+
+            # if( (approvalStatusCode == "APPR_STAT.APPROVED" && !nowValue && managerUpdateYn === "Y") || approvalStatusCode == "APPR_STAT.REQUEST" || approvalStatusCode == "APPR_STAT.NONE") { #
+				<button type="button" class="btn-red btn-s" data-bind="events:{click: fnPriceDeleteRow}">삭제</button>
+			# }#
+		</td>
+
+
+    </tr>
+</script>
+
+<!-- 도움말 template -->
+<script
+    id="standPriceToolTip-template"
+    type="text/x-kendo-template"
+>
+<div style="padding: 15px;">
+    <div style="text-align:left; padding-left: 15px;">해당 원가정보는 참고값이며, 시작일 기점으로 실제 원가</div>
+    <div style="text-align:left; padding-left: 15px;">정보가 적용됩니다. 진행예정 상태에는 신규 스케쥴이 업데이트 될 경우 변경될 수 있습니다.</div>
+</div>
+</script>
+
+
+<script
+    id="recommendedPriceToolTip-template"
+    type="text/x-kendo-template"
+>
+<div style="padding: 15px;">
+    <div style="text-align:left; padding-left: 15px;">해당 정상가정보는 참고값이며, 시작일 기점으로 실제 정상가</div>
+    <div style="text-align:left; padding-left: 15px;">정보가 적용됩니다. 진행예정 상태에는 신규 스케쥴이 업데이트 될 경우 변경될 수 있습니다.</div>
+</div>
+</script>

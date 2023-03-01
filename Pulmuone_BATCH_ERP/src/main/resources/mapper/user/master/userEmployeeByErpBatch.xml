@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.batch.erp.infra.mapper.user.master.UserEmployeeByErpBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 풀무원 임직원정보 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.08		ykk          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPulmuoneEmployeeList" resultType="ErpEmployeeBatchVo">
+        /* userEmployeeByErpBatch.getPulmuoneEmployeeList */
+        SELECT EE.UR_ERP_EMPLOYEE_CD AS ERP_EMPLOYEE_NUMBER /* 사번 */
+          FROM UR_ERP_EMPLOYEE EE
+          <where>
+          	<if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(code)">
+             	AND ERP_USER_STATUS = #{code}	/* 상태 */
+	        </if>
+	        <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isEmpty(code)">
+             	AND ERP_USER_STATUS != 'EMPLOYEE_STATUS.RESIGN'	/* 재직상태 */
+	        </if>
+          </where>
+         ORDER BY EE.UR_ERP_EMPLOYEE_CD DESC
+    </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 풀무원 임직원정보 등록 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.10		ykk          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addErpEmployee">
+		/*	userEmployeeByErpBatch.addErpEmployee  */
+		INSERT INTO UR_ERP_EMPLOYEE
+        (
+	          UR_ERP_EMPLOYEE_CD
+	        , ERP_NM
+	        , ERP_PHONE
+	        , ERP_EMAIL
+	        , ERP_REGAL_CD
+	        , ERP_REGAL_NM
+	        , ERP_ORGANIZATION_CD
+	        , ERP_ORGANIZATION_NM
+	        , ERP_GRADE_CD
+	        , ERP_GRADE_NM
+	        , ERP_POSITION_NM
+	        , ERP_USER_STATUS
+			, FIN_REGAL_CD
+			, FIN_ORGANIZATION_CD
+			, FIN_ACCOUNT_CD
+			, SOB
+			, OU_ID
+			, OU_NAME
+			, USE_YN
+			, MANUAL_YN
+			, MANUAL_START_DT
+			, MANUAL_END_DT
+	        , CREATE_ID
+        )
+        VALUES
+        (
+	          #{erpEmployeeNumber}
+	        , FN_ENCRYPT(#{erpEmployeeName})
+	        , FN_ENCRYPT(#{erpCellPhone})
+	        , FN_ENCRYPT(#{erpEmail})
+	        , #{erpRegalCode}
+	        , #{erpRegalName}
+	        , #{erpOrganizationCode}
+	        , #{erpOrganizationName}
+	        , #{erpGradeCode}
+	        , #{erpGradeName}
+	        , #{erpPositionName}
+	        , #{erpStatusName}
+			, #{finRegalCd}
+			, #{finOrganizationCd}
+			, #{finAccountCd}
+			, #{sob}
+			, #{ouId}
+			, #{ouName}
+	        , #{useYn}
+	        , 'N'
+	        , NULL
+	        , NULL
+	        , #{createId}
+        )
+		ON	DUPLICATE KEY
+		UPDATE
+			   MODIFY_ID = #{createId}
+			 , MODIFY_DT = NOW()
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpEmployeeName)">
+             , ERP_NM = FN_ENCRYPT(#{erpEmployeeName})	/* 이름 */
+	         </if>
+			<if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpCellPhone)">
+				, ERP_PHONE = FN_ENCRYPT(#{erpCellPhone})	/* 연락처 */
+			</if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpEmail)">
+	             , ERP_EMAIL = FN_ENCRYPT(#{erpEmail})	/* 이메일 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpRegalCode)">
+	             , ERP_REGAL_CD = #{erpRegalCode}		/* 소속법인코드 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpRegalName)">
+	             , ERP_REGAL_NM = #{erpRegalName}		/* 소속법인명 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpOrganizationCode)">
+	             , ERP_ORGANIZATION_CD = #{erpOrganizationCode}	/* 소속팀코드 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpOrganizationName)">
+	             , ERP_ORGANIZATION_NM = #{erpOrganizationName}	/* 소속팀명 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpGradeCode)">
+	             , ERP_GRADE_CD = #{erpGradeCode}	/* 직급코드 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpGradeName)">
+	             , ERP_GRADE_NM = #{erpGradeName}	/* 직급명 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpPositionName)">
+	             , ERP_POSITION_NM = #{erpPositionName}	/* 직책명 */
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpStatusName)">
+	             , ERP_USER_STATUS = #{erpStatusName}	/* 재직상태 */
+	         </if>
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(finRegalCd)">
+				 , FIN_REGAL_CD = #{finRegalCd}	/* 회계 법인코드 */
+			 </if>
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(finOrganizationCd)">
+				 , FIN_ORGANIZATION_CD = #{finOrganizationCd}	/* 회계 조직코드 */
+			 </if>
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(finAccountCd)">
+				 , FIN_ACCOUNT_CD = #{finAccountCd}	/* 계정과목코드 */
+			 </if>
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(sob)">
+				 , SOB = #{sob}	/* ERP장부ID */
+			 </if>
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(ouId)">
+				 , OU_ID = #{ouId}	/* OU ID */
+			 </if>
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(ouName)">
+				 , OU_NAME = #{ouName}	/* OU  */
+			 </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(useYn)">
+	             , USE_YN = #{useYn}	/* 사용유무(Y:사용) */
+	         </if>
+	</insert>
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원상세 상태정보  수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.10		ykk          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putEmployee">
+        /* userEmployeeByErpBatch.putEmployee */
+        UPDATE UR_EMPLOYEE
+           SET MODIFY_ID = #{createId}
+           	 , REGAL_NM = #{regalName}	/* 법인명 */
+           	 , POSITION_NM = #{positionName}	/* 직책정보 */
+           	 , ORGANIZATION_NM = #{organizationName}	/* 조직정보 */
+           	 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(userStatus)">
+             , STATUS_TP = #{userStatus}	/* 회원상태 */
+             </if>
+        WHERE UR_EMPLOYEE_CD = #{employeeNumber}
+    </update>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원기본 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.14		ykk          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getUserInfo" resultType="UserVo">
+        /* userEmployeeByErpBatch.getUserInfo */
+        SELECT U.UR_USER_ID AS USER_ID /* 회원 ID */
+             , FN_DECRYPT(U.USER_NM) AS LOGIN_NAME /* 이름 */
+          FROM UR_USER U
+         WHERE U.LOGIN_ID = #{loginId}
+    </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원기본정보 수정
+     * @
+     * @ 수정일        		수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.15     ykk          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putUserName">
+        /* userEmployeeByErpBatch.putUserName */
+        UPDATE UR_USER
+        	SET MODIFY_DT = NOW()
+        <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(loginName)">
+            , USER_NM = FN_ENCRYPT(#{loginName})
+        </if>
+        WHERE UR_USER_ID = #{userId}
+    </update>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 풀무원 ERP 법인 정보 등록 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.17		ykk          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addErpRegal">
+		/*	userEmployeeByErpBatch.addErpRegal  */
+		INSERT INTO UR_ERP_REGAL
+        (
+	          ERP_REGAL_CD
+	        , ERP_REGAL_NM
+	        , EMPLOYEE_DISCOUNT_YN
+	        , USE_YN
+	        , CREATE_ID
+        )
+        VALUES
+        (
+	          #{erpRegalCode}
+	        , #{erpRegalName}
+	        , 'Y'
+	        , 'Y'
+	        , #{createId}
+        )
+		ON	DUPLICATE KEY
+		UPDATE
+			   MODIFY_ID = #{createId}
+			 , MODIFY_DT = NOW()
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpRegalName)">
+            	 , ERP_REGAL_NM = #{erpRegalName}
+	         </if>
+	</insert>
+
+
+  	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 풀무원 ERP 조직 정보 등록 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.17		ykk          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addErpOrganization">
+		/*	userEmployeeByErpBatch.addErpOrganization  */
+		INSERT INTO UR_ERP_ORGANIZATION
+        (
+	          ERP_ORGANIZATION_CD
+	        , ERP_ORGANIZATION_NM
+	        , ERP_REGAL_CD
+	        , ERP_REGAL_NM
+	        , USE_YN
+	        , CREATE_ID
+        )
+        VALUES
+        (
+	          #{erpOrganizationCode}
+	        , #{erpOrganizationName}
+	        , #{erpRegalCode}
+	        , #{erpRegalName}
+	        , 'Y'
+	        , #{createId}
+        )
+		ON	DUPLICATE KEY
+		UPDATE
+			   MODIFY_ID = #{createId}
+			 , MODIFY_DT = NOW()
+			 <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpOrganizationName)">
+	             , ERP_ORGANIZATION_NM = #{erpOrganizationName}
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpRegalCode)">
+	             , ERP_REGAL_CD = #{erpRegalCode}
+	         </if>
+	         <if test="@kr.co.pulmuone.batch.erp.common.util.StringUtil@isNotEmpty(erpRegalName)">
+	             , ERP_REGAL_NM = #{erpRegalName}
+	         </if>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 풀무원 임직원 동기화 처리 대상자 조회
+     *						- 자동관리 되고 퇴사 하지 않은 임직원
+     *						- ERP에 존재하지 않은 임시 생성 데이터 중 수동관리기간이 만료된 임직원
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.04		문상필          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getSyncTargetPulmuoneEmployeeList" resultType="ErpEmployeeBatchVo">
+		/* userEmployeeByErpBatch.getSyncTargetPulmuoneEmployeeList */
+		SELECT UR_ERP_EMPLOYEE_CD AS ERP_EMPLOYEE_NUMBER /* 사번 */
+		FROM UR_ERP_EMPLOYEE
+		WHERE ERP_USER_STATUS != 'EMPLOYEE_STATUS.RESIGN'
+		AND MANUAL_YN = 'N'
+		UNION ALL
+		SELECT UR_ERP_EMPLOYEE_CD AS ERP_EMPLOYEE_NUMBER /* 사번 */
+		FROM UR_ERP_EMPLOYEE
+		WHERE ERP_USER_STATUS != 'EMPLOYEE_STATUS.RESIGN'
+		AND MANUAL_YN = 'Y'
+		AND MANUAL_END_DT <![CDATA[<]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 풀무원 임직원 동기화 배치 제외 대상자 조회 목록(퇴사, 수동관리 임직원)
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.05.04		문상필          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<select id="getSyncExceptionTargetPulmuoneEmployeeList" resultType="ErpEmployeeBatchVo">
+		/* userEmployeeByErpBatch.getResignPulmuoneEmployeeList */
+		SELECT UR_ERP_EMPLOYEE_CD AS ERP_EMPLOYEE_NUMBER /* 사번 */
+		FROM UR_ERP_EMPLOYEE
+		WHERE ERP_USER_STATUS = 'EMPLOYEE_STATUS.RESIGN'
+		AND MANUAL_YN = 'N'
+		UNION ALL
+		SELECT UR_ERP_EMPLOYEE_CD AS ERP_EMPLOYEE_NUMBER /* 수동관리 되는 수동관리종료일이 지난 임직 */
+		FROM UR_ERP_EMPLOYEE
+		WHERE MANUAL_YN = 'Y'
+		AND MANUAL_END_DT <![CDATA[>]]> DATE_FORMAT(NOW(), '%Y-%m-%d') /* 상태 */
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : ITGC 등록
+	 * @
+	 * @ 수정일         수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.31     이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItgcList">
+		/* systemItgc.addItgcList */
+		INSERT INTO ST_ITGC (
+		ST_MENU_ID, ITGC_TP, ITSM_ID, ITGC_DETAIL, ITGC_ADD_TP
+		, TARGET_INFO, TARGET_USER_ID, CREATE_ID, CREATE_DT
+		)
+		VALUES
+		<foreach item="insertData" index="index" collection="insertList" open="" separator="," close="">
+			(
+			#{insertData.stMenuId}
+			, #{insertData.itgcType}
+			, #{insertData.itsmId}
+			, #{insertData.itgcDetail}
+			, #{insertData.itgcAddType}
+			, #{insertData.targetInfo}
+			, #{insertData.targetUserId}
+			, #{insertData.createId}
+			, CURRENT_TIMESTAMP
+			)
+		</foreach>
+	</insert>
+
+</mapper>
+

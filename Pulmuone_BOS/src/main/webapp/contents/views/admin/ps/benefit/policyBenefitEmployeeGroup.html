@@ -1,0 +1,239 @@
+<div class="wrap-location">
+	 <h1 class="title"></h1>
+	 <span class="location"> </span>
+</div>
+<div class="fb__sect">
+	<form id="inputForm" name="inputForm" >
+	<section class="fb__section" style="width : 1400px;">
+		<section id="view" class="fb__benefitGroup">
+			<div class="fb__benefitGroup__header">
+				<p class="fb__benefitGroup__updated-wrapper">
+					최근 업데이트 일자 : <span id="lastUpdateDate" class="font--bold"></span>
+				</p>
+				<span class="btn-area align-right">
+					<button type="button" id="button-create" class="btn-point btn-l" data-bind="disabled : isNewData, click : fnCreate">&plus;혜택그룹신규생성</button>
+				</span>
+			</div>
+			<div class="fb__benefitGroup__tableWrapper">
+				<table class="datatable v-type" data-role="grid" data-scrollable="false">
+					<colgroup>
+						<col style="width: 4%">
+						<col style="width: 14%">
+						<col style="width: 20%">
+						<col style="width: 30%">
+						<col style="width: 15%">
+						<col style="width: 12%">
+						<col style="width: 5%">
+					</colgroup>
+					<thead>
+						<tr>
+							<th style="text-align: center;">
+								<label style="font-size: 14px;">No</label>
+							</th>
+							<th style="text-align: center;">
+								<label style="font-size: 14px;">그룹명</label>
+							</th>
+							<th style="text-align: center;">
+								<label style="font-size: 14px;" class="req-star-th">혜택별 법인 그룹</label>
+							</th>
+							<th style="text-align: center;">
+								<label style="font-size: 14px;" class="req-star-th">임직원 할인 그룹/할인율</label>
+							</th>
+							<th style="text-align: center;">
+								<label style="font-size: 14px;" class="req-star-th">한도액</label>
+							</th>
+							<th style="text-align: center;">
+								<label style="font-size: 14px;" class="req-star-th">한도액 주기</label>
+							</th>
+							<th style="text-align: center;">
+								<label style="font-size: 14px;">관리</label>
+							</th>
+						</tr>
+					</thead>
+					<tbody data-template="benefit-row-template" data-bind="source : apiData"></tbody>
+				</table>
+				<div id="grid-norecords" class="k-grid-norecords">
+					조회 결과가 없습니다.
+				</div>
+				<span class="btn-area">
+					<button type="button" id="button-save" class="btn-point btn-l" data-bind="click : onSave">저장</button>
+				</span>
+			</div>
+		</section>
+	</section>
+	</form>
+</div>
+<!-- 할인그룹 row 템플릿 -->
+<script id="benefit-row-template" type="text/x-kendo-template">
+	# var rowIndex = window.viewModel.get("apiData").indexOf(data); #
+	<tr data-row-index="#= rowIndex#" class="outer-row">
+		<td colspan="7">
+			<table class="inner__table">
+				<colgroup>
+					<col style="width: 4%">
+					<col style="width: 14%">
+					<col style="width: 20%">
+					<col style="width: 30%">
+					<col style="width: 15%">
+					<col style="width: 12%">
+					<col style="width: 5%">
+				</colgroup>
+				<tbody>
+					<!-- ***첫번째 행*** -->
+					<tr>
+						<!-- 순번 -->
+						# var ROW_SPAN = data.groupList.length ? data.groupList.length + 1 : 2; #
+						<td rowspan="#= ROW_SPAN #">
+							<div class="cell-inner textCenter font--bold">
+								<span>#=rowIndex+1#</span>
+							</div>
+						</td>
+						<td rowspan="#= ROW_SPAN #">
+							<div class="cell-inner textCenter font--bold">
+								<span><input type="text" class="comm-input" data-bind="value : masterName , events : { keyup : onCheckGroupName }" >
+								</span>
+								<a href="" class="removeRow-btn" data-bind="click : onRemoveRow">&times;</a>
+							</div>
+						</td>
+						<!-- 법인 추가 버튼 -->
+						<td class="top" rowspan="#= ROW_SPAN #">
+							<div class="cell-inner textLeft">
+								<div class="company__item">
+									<input data-role="dropdownlist"
+										data-auto-bind="false"
+										data-text-field="erpRegalName"
+										data-value-field="erpRegalCode"
+										data-option-label="선택해주세요"
+										data-bind="source: regalDs, events : { change : onChange }"
+										style="margin-right:5px;"
+										id="regalList#=rowIndex#"
+										name="regalList#=rowIndex#"
+									/>
+									<button type="button" class="btn-s btn-sw add-regalItem-btn" data-bind="click : onAddLegal">추가</button>
+								</div>
+								<!-- 법인 추가 템플릿 Loop -->
+								# if( data.companyList ) { #
+								<div class="compant__item-wrapper" data-template="regal-item-template" data-bind="source : companyList"></div>
+								# } #
+							</div>
+						</td>
+						<!-- 할인그룹 추가 버튼 -->
+						<td colspan="4" style="height:40px;">
+							<div class="cell-inner textLeft">
+								<button type="button" class="btn-s btn-sw marginR5" data-bind="click : onAddGroupData">&plus; 할인그룹 추가</button>
+							</div>
+						</td>
+					</tr>
+					<!-- ***첫번째 행 끝*** -->
+					<!-- ***두번째 행*** -->
+						<!-- NOTE groupList가 없을 경우 빈 테이블 셀 렌더링 -->
+							# var currentData = data.groupList;#
+
+							# if( !currentData.length ) { #
+
+								<td colspan="4">할인그룹을 추가해주세요.</td>
+
+							<!-- NOTE groupList가 있을 경우 템플릿을 통해 화면 렌더링 -->
+
+								# } else { #
+
+									# for ( var i = 0; i < groupList.length; i++) { #
+									# /*var groupListIdx = window.viewModel.list()[rowIndex].groupList.indexOf(groupList[i]); */ #
+									# var groupListIdx = i;  #
+									# var currentGroupList = currentData[i];  #
+									<tr class="groupList-row" data-grouplist-idx="#= groupListIdx #">
+										<td class="top">
+											<div class="list-table__inner group__item__content">
+												<div class="group__item__select">
+													<input data-role="dropdownlist"
+														id="brandGroupList_#=rowIndex#-#= groupListIdx #"
+														class="fb__custom__select"
+														data-auto-bind="false"
+														data-text-field="groupName"
+														data-value-field="psEmplDiscBrandGrpId"
+														data-option-label="선택해주세요"
+														data-bind="source: brandGroupDs, events : { change : onChange } "
+														style="width: 150px; margin-right:5px;"
+														name="brandGroupList_#=rowIndex#-#= groupListIdx #"
+													/>
+													<!-- <select data-role="dropdownlist" data-bind="source : brandGroupDs" data-text-field="groupName" data-value-field="psEmplDiscBrandGrpId" data-auto-bind="false"></select> -->
+													<button type="button" class="btn-s btn-point add-groupItem-btn" data-bind="click : onAddGroupItem">추가</button>
+												</div>
+												<!-- 할인 그룹 추가 템플릿 -->
+
+												# if( currentGroupList.brandGroupList && currentGroupList.brandGroupList.length ) { #
+												# var GROUP_LIST = currentGroupList.brandGroupList; #
+
+												#  #
+														<div class="group__item__wrapper" data-template="group-item-template" data-bind="source : groupList[#=i#].brandGroupList " data-grouplist-idx="#= i #"></div>
+												# } else { #
+												# console.log(">> line : 152 brandGroupList가 없습니다."); #
+												# } #
+											</div>
+										</td>
+										<!-- 한도액 -->
+										<td>
+											<div class="cell-inner">
+
+												# var LIMIT_AMT = currentGroupList.limitAmt ? currentGroupList.limitAmt : 0; #
+												<input type="text" class="comm-input"
+												style="text-align: right;"
+					                            data-role="numerictextbox"
+					                            data-format="\#\#,\#"
+												data-min="0"
+                                            	data-spinners="false"
+                                            	data-decimals="0"
+                                           		data-restrict-decimals="true"
+												data-bind="value : groupList[#=i#].limitAmt, events : { keyup : onCheckAmmount }">
+												<span>원</span>
+											</div>
+										</td>
+										<!-- 한도액 주기 -->
+										<td>
+											<div class="cell-inner textCenter">
+												<!-- <input type="text" class="fb__custom__select" value="주기 선택"> -->
+												<input data-role="dropdownlist"
+														id="cycleList_#=rowIndex#-#= groupListIdx #"
+														class="fb__custom__select"
+														data-auto-bind="false"
+														data-text-field="NAME"
+														data-value-field="CODE"
+														data-value-primitive="true"
+														data-option-label="주기 선택"
+														data-bind="value : groupList[#=i#].emplDiscLimitCycleTp ,source: cycleDataDs"
+														style="width: 130px; margin-right:5px;"
+														name="cycleList_#=rowIndex#-#= groupListIdx #"
+													/>
+											</div>
+										</td>
+										<!-- 삭제 버튼 -->
+										<td>
+											<div class="cell-inner">
+												<button type="button" class="btn-s btn-sw" data-grouplist-idx="#= groupListIdx #" data-bind="click : onRemoveGroupData">삭제</button>
+											</div>
+										</td>
+									</tr>
+								# } #
+							# } #
+					<!-- ***두번째 행 끝*** -->
+				</tbody>
+			</table>
+		</td>
+	</tr>
+</script>
+
+<!-- 할인 그룹 템플릿 -->
+<script id="group-item-template" type="text/x-kendo-template">
+<div class="group__item__select" data-brand-group-id="#= psEmplDiscBrandGrpId #">
+	<input type="text" class="comm-input disabled" value="#= groupName #" style="width : 150px;">
+	<input type="text" class="comm-input disabled" value="#= discountRatio #" name="discountRatio" style="width:70px;">
+	<button type="button" class="btn-s btn-red remove-groupItem-btn" data-bind="click : onRemoveGroupItem">삭제</button>
+</div>
+</script>
+
+<script id="regal-item-template" type="text/x-kendo-template">
+	<div class="company__item">
+		<input type="text" class="comm-input disabled" style="width:140px;" data-bind="value : erpRegalName" name="regalName" data-regal-code="#= erpRegalCode #">
+		<button type="button" class="btn-red btn-s remove-regalItem-btn" data-bind="click : onRemoveLegal">삭제</button>
+	</div>
+</script>

@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.shippingarea.PolicyShippingAreaMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 도서산간/배송불가 엑셀 업로드
+     * @
+     * @ 수정일              수정자   수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021. 09. 30       남기승   최초생성
+     * @
+   ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addShippingAreaExcelInfo">
+        /* policyShippingArea.addShippingAreaExcelInfo */
+        INSERT INTO PS_SHIPPING_AREA_EXCEL_INFO (
+            UNDELIVERABLE_TP, TOTAL_CNT, KEYWORD, CREATE_ID, CREATE_DT, UPLOAD_STATUS_CD, FILE_NM, STORAGE_FILE_NM
+        ) VALUES (
+            #{undeliverableTp}, #{totalCnt}, #{keyword},#{createId}, NOW(), #{uploadStatusCd}, #{fileNm}, #{storageFileNm}
+        )
+        <selectKey resultType="Long" keyProperty="psShippingAreaExcelInfoId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 도서산간/배송불가 엑셀 업로드 - 완료
+     * @
+     * @ 수정일              수정자   수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021. 09. 30       남기승   최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putShippingAreaExcelInfo">
+        /* policyShippingArea.putShippingAreaExcelInfo */
+        UPDATE PS_SHIPPING_AREA_EXCEL_INFO PSAEI
+        SET PSAEI.SUCCESS_CNT = (
+            SELECT COUNT(*) AS SUCCESS_CNT
+            FROM PS_SHIPPING_AREA PSA
+            WHERE PSA.PS_SHIPPING_AREA_EXCEL_INFO_ID = PSAEI.PS_SHIPPING_AREA_EXCEL_INFO_ID
+            )
+          , PSAEI.FAIL_CNT = (
+              SELECT COUNT(*) AS FAIL_CNT
+              FROM PS_SHIPPING_AREA_EXCEL_FAIL PSAEF
+              WHERE PSAEF.PS_SHIPPING_AREA_EXCEL_INFO_ID = PSAEI.PS_SHIPPING_AREA_EXCEL_INFO_ID
+              )
+          , PSAEI.TOTAL_CNT = (
+              SELECT SUM(A.CNT)
+              FROM (
+                  SELECT COUNT(*) AS CNT FROM PS_SHIPPING_AREA
+                  WHERE PS_SHIPPING_AREA_EXCEL_INFO_ID = PSAEI.PS_SHIPPING_AREA_EXCEL_INFO_ID
+                  UNION ALL
+                  SELECT COUNT(*) AS CNT FROM PS_SHIPPING_AREA_EXCEL_FAIL
+                  WHERE PS_SHIPPING_AREA_EXCEL_INFO_ID = PSAEI.PS_SHIPPING_AREA_EXCEL_INFO_ID
+                  ) A
+              )
+          , PSAEI.ALTERNATE_CNT = (
+              SELECT COUNT(*) AS SUCCESS_CNT
+              FROM PS_SHIPPING_AREA PSA
+              WHERE PSA.PS_SHIPPING_AREA_EXCEL_INFO_ID = PSAEI.PS_SHIPPING_AREA_EXCEL_INFO_ID
+                AND ALTERNATE_DELIVERY_TP = #{alternateDeliveryTp}
+              )
+          , PSAEI.UPLOAD_STATUS_CD = #{uploadStatusCd}
+        WHERE PSAEI.PS_SHIPPING_AREA_EXCEL_INFO_ID = #{psShippingAreaExcelInfoId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 도서산간/배송불가 추가
+     * @
+     * @ 수정일              수정자   수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021. 09. 30       남기승   최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="addShippingAreaInfo">
+        /* policyShippingArea.addShippingAreaInfo */
+        INSERT INTO PS_SHIPPING_AREA
+            ( PS_SHIPPING_AREA_EXCEL_INFO_ID, UNDELIVERABLE_TP, ZIP_CD, ALTERNATE_DELIVERY_TP, CREATE_ID, CREATE_DT )
+        VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+        (
+            #{psShippingAreaExcelInfoId}, #{vo.undeliverableTp}, #{vo.zipCd}, #{vo.alternateDeliveryTp}, #{vo.createId}, NOW()
+        )
+        </foreach>
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 도서산간/배송불가 엑셀 업로드 실패 등록
+     * @
+     * @ 수정일              수정자   수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021. 09. 30       남기승   최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="addShippingAreaExcelFail">
+        /* policyShippingArea.addShippingAreaExcelFail */
+        INSERT INTO PS_SHIPPING_AREA_EXCEL_FAIL
+            ( PS_SHIPPING_AREA_EXCEL_INFO_ID, UNDELIVERABLE_TP, ALTERNATE_DELIVERY_TP, ZIP_CD, KEYWORD, FAIL_MSG )
+        VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+        (
+            #{psShippingAreaExcelInfoId}, #{vo.undeliverableTp}, #{vo.alternateDeliveryTp}, #{vo.zipCd}, #{vo.keyword}, #{vo.failMsg}
+        )
+        </foreach>
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 도서산간/배송불가 엑셀 업로드 실패 등록
+     * @
+     * @ 수정일              수정자   수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021. 09. 30       남기승   최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getShippingAreaExcelInfoListResultMap" type="kr.co.pulmuone.v1.policy.shippingarea.dto.vo.ShippingAreaExcelUploadInfoVo">
+        <result column="PS_SHIPPING_AREA_EXCEL_INFO_ID"     property="psShippingAreaExcelInfoId"/>
+        <result column="UNDELIVERABLE_TP"                   property="undeliverableTp"/>
+        <result column="UNDELIVERABLE_NM"                   property="undeliverableNm"/>
+        <result column="TOTAL_CNT"                          property="totalCnt"/>
+        <result column="SUCCESS_CNT"                        property="successCnt"/>
+        <result column="FAIL_CNT"                           property="failCnt"/>
+        <result column="ALTERNATE_CNT"                      property="alternateCnt"/>
+        <result column="CREATE_ID"                          property="createId"/>
+        <result column="UPLOAD_STATUS_CD_NM"                property="uploadStatusCdNm"/>
+        <result column="CREATE_NM"                          property="createNm"/>
+        <result column="CREATE_DT"                          property="createDt"/>
+        <result column="FILE_NM"                            property="fileNm"/>
+        <result column="STORAGE_FILE_NM"                    property="storageFileNm"/>
+    </resultMap>
+    <select id="getShippingAreaExcelInfoList" resultMap="getShippingAreaExcelInfoListResultMap">
+        /* policyShippingArea.getShippingAreaExcelInfoList */
+        SELECT T1.PS_SHIPPING_AREA_EXCEL_INFO_ID
+             , T1.UNDELIVERABLE_TP
+             , FN_COMN_CODE_DIC(T1.UNDELIVERABLE_TP) AS UNDELIVERABLE_NM
+             , T1.TOTAL_CNT
+             , T1.SUCCESS_CNT
+             , T1.FAIL_CNT
+             , T1.ALTERNATE_CNT
+             , T1.KEYWORD
+             , T1.CREATE_ID
+             , (CASE WHEN T1.UPLOAD_STATUS_CD = '10' THEN '등록중'
+                     WHEN T1.UPLOAD_STATUS_CD = '11' THEN '등록완료' END) AS UPLOAD_STATUS_CD_NM
+             , FN_DECRYPT(UU.USER_NM) AS CREATE_NM
+             , DATE_FORMAT(T1.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT
+             , IFNULL(T1.FILE_NM, '') AS FILE_NM
+             , IFNULL(T1.STORAGE_FILE_NM, '') AS STORAGE_FILE_NM
+        FROM PS_SHIPPING_AREA_EXCEL_INFO T1
+            LEFT OUTER JOIN UR_USER UU ON T1.CREATE_ID = UU.UR_USER_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(undeliverableTp)">
+                AND T1.UNDELIVERABLE_TP = #{undeliverableTp}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(keyword)">
+                AND T1.KEYWORD LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            AND T1.SUCCESS_CNT > 0
+        </where>
+        ORDER BY T1.CREATE_DT DESC
+    </select>
+
+    <resultMap id="getShippingAreaInfoListResultMap" type="kr.co.pulmuone.v1.policy.shippingarea.dto.vo.ShippingAreaExcelUploadInfoVo">
+        <result column="PS_SHIPPING_AREA_EXCEL_INFO_ID"     property="psShippingAreaExcelInfoId"/>
+        <result column="ZIP_CD"                             property="zipCd"/>
+        <result column="UNDELIVERABLE_TP"                   property="undeliverableTp"/>
+        <result column="UNDELIVERABLE_NM"                   property="undeliverableNm"/>
+        <result column="KEYWORD"                            property="keyword"/>
+        <result column="ALTERNATE_DELIVERY_TP"              property="alternateDeliveryTp"/>
+        <result column="CREATE_ID"                          property="createId"/>
+        <result column="CREATE_NM"                          property="createNm"/>
+        <result column="CREATE_DT"                          property="createDt"/>
+        <result column="FILE_NM"                            property="fileNm"/>
+        <result column="STORAGE_FILE_NM"                    property="storageFileNm"/>
+    </resultMap>
+    <select id="getShippingAreaInfoList" resultMap="getShippingAreaInfoListResultMap">
+        /* policyShippingArea.getShippingAreaInfoList */
+        SELECT T1.PS_SHIPPING_AREA_EXCEL_INFO_ID
+             , T1.ZIP_CD
+             , T1.UNDELIVERABLE_TP
+             , FN_COMN_CODE_DIC(T1.UNDELIVERABLE_TP) AS UNDELIVERABLE_NM
+             , T2.KEYWORD
+             , FN_COMN_CODE_DIC(T1.ALTERNATE_DELIVERY_TP) AS ALTERNATE_DELIVERY_TP
+             , T2.CREATE_ID
+             , FN_DECRYPT(UU.USER_NM) AS CREATE_NM
+             , DATE_FORMAT(T2.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT
+        FROM PS_SHIPPING_AREA T1
+            INNER JOIN PS_SHIPPING_AREA_EXCEL_INFO T2
+                ON T2.PS_SHIPPING_AREA_EXCEL_INFO_ID = T1.PS_SHIPPING_AREA_EXCEL_INFO_ID
+            LEFT OUTER JOIN UR_USER UU ON T2.CREATE_ID = UU.UR_USER_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(undeliverableTp)">
+                AND T1.UNDELIVERABLE_TP = #{undeliverableTp}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(zipCd)">
+                AND T1.ZIP_CD LIKE CONCAT('%', #{zipCd}, '%')
+            </if>
+        </where>
+        ORDER BY T1.CREATE_DT DESC
+    </select>
+
+
+    <select id="getUploadShippingAreaExcelInfo" resultType="kr.co.pulmuone.v1.policy.shippingarea.dto.vo.ShippingAreaExcelUploadInfoVo">
+        /* policyShippingArea.getUploadShippingAreaExcelInfo */
+        SELECT PS_SHIPPING_AREA_EXCEL_INFO_ID
+             , UNDELIVERABLE_TP
+             , FN_COMN_CODE_DIC(UNDELIVERABLE_TP) AS UNDELIVERABLE_NM
+             , TOTAL_CNT
+             , SUCCESS_CNT
+             , FAIL_CNT
+             , ALTERNATE_CNT
+             , KEYWORD
+             , CREATE_ID
+             , (CASE WHEN UPLOAD_STATUS_CD = '10' THEN '등록중'
+                     WHEN UPLOAD_STATUS_CD = '11' THEN '등록완료' END) AS UPLOAD_STATUS_CD_NM
+             , DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT
+             -- , UPLOAD_JSON_DATA
+             , IFNULL(FILE_NM, '') AS FILE_NM
+             , IFNULL(STORAGE_FILE_NM, '') AS STORAGE_FILE_NM
+        FROM PS_SHIPPING_AREA_EXCEL_INFO
+        WHERE PS_SHIPPING_AREA_EXCEL_INFO_ID = #{psShippingAreaExcelInfoId}
+    </select>
+
+
+    <select id="getShippingAreaInfoExcelDownload" resultType="kr.co.pulmuone.v1.policy.shippingarea.dto.vo.ShippingAreaExcelUploadInfoVo">
+        /* policyShippingArea.getShippingAreaInfoExcelDownload */
+        SELECT T1.PS_SHIPPING_AREA_EXCEL_INFO_ID
+             , T1.ZIP_CD
+             , T1.UNDELIVERABLE_TP
+             , FN_COMN_CODE_DIC(T1.UNDELIVERABLE_TP) AS UNDELIVERABLE_NM
+             , T2.KEYWORD
+             , IFNULL(FN_COMN_CODE_DIC(T1.ALTERNATE_DELIVERY_TP), '') AS ALTERNATE_DELIVERY_TP
+             , T1.CREATE_ID
+             , FN_DECRYPT(UU.USER_NM) AS CREATE_NM
+             , T1.CREATE_DT
+        FROM PS_SHIPPING_AREA T1
+            LEFT OUTER JOIN PS_SHIPPING_AREA_EXCEL_INFO T2
+        ON T1.PS_SHIPPING_AREA_EXCEL_INFO_ID = T2.PS_SHIPPING_AREA_EXCEL_INFO_ID
+            LEFT OUTER JOIN UR_USER UU
+            ON T1.CREATE_ID = UU.UR_USER_ID
+        WHERE T1.PS_SHIPPING_AREA_EXCEL_INFO_ID = #{psShippingAreaExcelInfoId}
+    </select>
+
+    <select id="getShippingAreaUpdateFailExcelDownload" resultType="kr.co.pulmuone.v1.policy.shippingarea.dto.vo.ShippingAreaExcelUploadFailVo">
+        /* policyShippingArea.getShippingAreaUpdateFailExcelDownload */
+        SELECT EF.ZIP_CD
+             , EF.UNDELIVERABLE_TP
+             , FN_COMN_CODE_DIC(EF.UNDELIVERABLE_TP) AS UNDELIVERABLE_NM
+             , IFNULL(FN_COMN_CODE_DIC(EF.ALTERNATE_DELIVERY_TP), '') AS ALTERNATE_DELIVERY_TP
+             , EI.KEYWORD
+             , EF.FAIL_MSG
+        FROM PS_SHIPPING_AREA_EXCEL_FAIL EF
+            LEFT OUTER JOIN PS_SHIPPING_AREA_EXCEL_INFO EI ON EI.PS_SHIPPING_AREA_EXCEL_INFO_ID = EF.PS_SHIPPING_AREA_EXCEL_INFO_ID
+        WHERE EF.PS_SHIPPING_AREA_EXCEL_INFO_ID = #{psShippingAreaExcelInfoId}
+        ORDER BY EF.ZIP_CD ASC
+    </select>
+
+    <select id="getShippingAreaExcelInfoId" resultType="long">
+        /* policyShippingArea.getShippingAreaExcelInfoId */
+        SELECT PS_SHIPPING_AREA_EXCEL_INFO_ID
+        FROM PS_SHIPPING_AREA
+        WHERE ZIP_CD = #{zipCd}
+          AND UNDELIVERABLE_TP = #{undeliverableTp}
+    </select>
+
+    <delete id="delShippingAreaInfo">
+        /* policyShippingArea.delShippingAreaInfo */
+        DELETE FROM PS_SHIPPING_AREA
+        WHERE PS_SHIPPING_AREA_EXCEL_INFO_ID = #{psShippingAreaExcelInfoId}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(zipCd)">
+            AND ZIP_CD = #{zipCd}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(undeliverableTp)">
+            AND UNDELIVERABLE_TP = #{undeliverableTp}
+        </if>
+    </delete>
+
+    <delete id="delShippingAreaExcelInfo">
+        /* policyShippingArea.delShippingAreaExcelInfo */
+        DELETE FROM PS_SHIPPING_AREA_EXCEL_INFO
+        WHERE PS_SHIPPING_AREA_EXCEL_INFO_ID = #{psShippingAreaExcelInfoId}
+    </delete>
+
+    <delete id="delShippingAreaExcelFail">
+        /* policyShippingArea.delShippingAreaExcelFail */
+        DELETE FROM PS_SHIPPING_AREA_EXCEL_FAIL
+        WHERE PS_SHIPPING_AREA_EXCEL_INFO_ID = #{psShippingAreaExcelInfoId}
+    </delete>
+
+    <select id="getShippingAreaKeyword" resultType="int">
+        /* policyShippingArea.getShippingAreaKeyword */
+        SELECT COUNT(*)
+        FROM PS_SHIPPING_AREA_EXCEL_INFO
+        WHERE KEYWORD = #{keyword}
+        AND SUCCESS_CNT > 0
+    </select>
+
+    <select id="getShippingAreaZipCd" resultType="int">
+        /* policyShippingArea.getShippingAreaZipCd */
+        SELECT COUNT(*)
+        FROM PS_SHIPPING_AREA
+        WHERE ZIP_CD = #{zipCd}
+        AND UNDELIVERABLE_TP = #{undeliverableTp}
+    </select>
+</mapper>

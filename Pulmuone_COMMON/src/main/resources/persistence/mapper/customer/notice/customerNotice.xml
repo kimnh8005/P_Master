@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.notice.CustomerNoticeMapper">
+	<!-- 공지사항 리스트 -->
+	 <resultMap id="getNoticeListByUserMap" type="kr.co.pulmuone.v1.customer.notice.dto.vo.GetNoticeListByUserResultVo">
+        <result column="CS_NOTICE_ID"            property="csNoticeId" />
+        <result column="NOITCE_TP" 	             property="noticeType" />
+        <result column="NOTICE_TP_NM"      	     property="noticeTypeName" />
+        <result column="TOP_FIX_YN"      	     property="topFixYn" />
+        <result column="TITLE" 		             property="title" />
+        <result column="VIEWS" 		             property="views" />
+        <result column="CREATE_DATE" 		     property="createDate" />
+    </resultMap>
+    <!-- 공지사항 상세 -->
+	 <resultMap id="getNoticeByUserMap" type="kr.co.pulmuone.v1.customer.notice.dto.GetNoticeByUserResponseDto">
+        <result column="CS_NOTICE_ID"            property="csNoticeId" />
+        <result column="NOTICE_TP" 	             property="noticeType" />
+        <result column="NOTICE_TP_NM"      	     property="noticeTypeName" />
+        <result column="TITLE" 		             property="title" />
+        <result column="VIEWS" 		             property="views" />
+        <result column="CONTENT" 		         property="content" />
+        <result column="CREATE_DT" 		         property="createDate" />
+    </resultMap>
+    <!-- 이전글/다음글 -->
+    <resultMap id="GetNoticePreNextListByUserResultMap" type="kr.co.pulmuone.v1.customer.notice.dto.vo.GetNoticePreNextListByUserResultVo">
+		<result column="CS_NOTICE_ID" 		     property="csNoticeId" />
+		<result column="NOTICE_TP_NM"      	     property="noticeTypeName" />
+		<result column="TITLE" 					 property="title" />
+		<result column="PRE_NEXT_TYPE" 			 property="preNextType" />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.27		최윤지    	   최초생성
+	 * @ 2021.08.24		배민영          목록에 최종수정일자가 아닌 등록일자 보이도록 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getNoticeListByUser" resultMap="getNoticeListByUserMap">
+        /* customerNotice.getNoticeListByUser */
+		SELECT *
+		FROM (
+		(
+		SELECT
+			 'TOP_FIX_Y' AS TOP_FIX_YN
+			,CNY.CS_NOTICE_ID
+			,CNY.NOTICE_TP
+			,FN_COMN_CODE_DIC(CNY.NOTICE_TP) AS NOTICE_TP_NM
+			,CNY.TITLE
+			,CNY.CREATE_DT AS CREATE_DATE
+			,CNY.VIEWS
+		FROM CS_NOTICE CNY
+	   WHERE NOW() BETWEEN CNY.TOP_DISP_START_DT AND CNY.TOP_DISP_END_DT
+		  AND CNY.NOTICE_VIEW_YN = 'Y'
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+			 AND CNY.CHANNEL_PC_YN = 'Y'
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(deviceType, "PC")'>
+			 AND CNY.CHANNEL_MO_YN = 'Y'
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(noticeType)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(noticeType, "NOTICE_TP.WINNERINFO")'>
+					AND CNY.NOTICE_TP = #{noticeType}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(noticeType, "NOTICE_TP.WINNERINFO")'>
+					AND CNY.NOTICE_TP NOT IN ('NOTICE_TP.WINNERINFO')
+				</when>
+			</choose>
+		</if>
+		  )
+		UNION ALL
+		(
+		SELECT
+			 'TOP_FIX_N' AS TOP_FIX_YN
+			,CNN.CS_NOTICE_ID
+			,CNN.NOTICE_TP
+			,FN_COMN_CODE_DIC(CNN.NOTICE_TP) AS NOTICE_TP_NM
+			,CNN.TITLE
+			,CNN.CREATE_DT AS CREATE_DATE
+			,CNN.VIEWS
+		FROM CS_NOTICE CNN
+	   WHERE CNN.CS_NOTICE_ID NOT IN
+		(
+		SELECT
+			 CNN.CS_NOTICE_ID
+		FROM CS_NOTICE CNN
+	   WHERE NOW() BETWEEN CNN.TOP_DISP_START_DT AND CNN.TOP_DISP_END_DT
+		  )
+		 AND CNN.NOTICE_VIEW_YN = 'Y'
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+			 AND CNN.CHANNEL_PC_YN = 'Y'
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(deviceType, "PC")'>
+			 AND CNN.CHANNEL_MO_YN = 'Y'
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(noticeType)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(noticeType, "NOTICE_TP.WINNERINFO")'>
+					AND CNN.NOTICE_TP = #{noticeType}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(noticeType, "NOTICE_TP.WINNERINFO")'>
+					AND CNN.NOTICE_TP NOT IN ('NOTICE_TP.WINNERINFO')
+				</when>
+			</choose>
+		</if>
+		)
+	) AS T
+	ORDER BY TOP_FIX_YN DESC, CREATE_DATE DESC
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.27		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id = "getNoticeByUser" resultMap = "getNoticeByUserMap">
+	 /* customerNotice.getNoticeByUser */
+		SELECT
+			   CS_NOTICE_ID
+			  ,NOTICE_TP
+			  ,FN_COMN_CODE_DIC(NOTICE_TP) AS NOTICE_TP_NM
+			  ,TITLE
+			  ,VIEWS
+			  ,CONTENT
+			  ,CREATE_DT
+			  ,MODIFY_DT
+		  FROM
+			   CS_NOTICE
+		 WHERE
+			   CS_NOTICE_ID = #{csNoticeId}
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 이전글/다음글 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.30		최윤지    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNoticePreNextListByUser" resultMap="GetNoticePreNextListByUserResultMap">
+	/* customerNotice.getNoticePreNextListByUser */
+		SELECT 	T.*
+		  FROM 	(
+					(
+					SELECT 'PREVIOUS' AS PRE_NEXT_TYPE
+						  ,A.CS_NOTICE_ID
+						  ,FN_COMN_CODE_DIC(A.NOTICE_TP) AS NOTICE_TP_NM
+						  ,A.TITLE
+					  FROM CS_NOTICE A JOIN CS_NOTICE B
+					 WHERE A.NOTICE_VIEW_YN = 'Y'
+					   AND B.CS_NOTICE_ID = #{csNoticeId}
+					   AND A.CS_NOTICE_ID != B.CS_NOTICE_ID
+					   AND B.CREATE_DT >= A.CREATE_DT
+				  ORDER BY A.CREATE_DT DESC LIMIT 1
+					)
+					UNION ALL
+					(
+					SELECT 'NEXT' AS PRE_NEXT_TYPE
+						   ,A.CS_NOTICE_ID
+						   ,FN_COMN_CODE_DIC(A.NOTICE_TP) AS NOTICE_TP_NM
+						   ,A.TITLE
+					  FROM CS_NOTICE A JOIN CS_NOTICE B
+					 WHERE A.NOTICE_VIEW_YN = 'Y'
+					   AND B.CS_NOTICE_ID = #{csNoticeId}
+					   AND A.CS_NOTICE_ID != B.CS_NOTICE_ID
+					   AND A.CREATE_DT >= B.CREATE_DT
+				  ORDER BY A.CREATE_DT ASC LIMIT 1
+					)
+				) T
+	   ORDER BY T.PRE_NEXT_TYPE DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 상세 조회수 증가
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.29		천혜현		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="addNoticeViews">
+	/* customerNotice.addNoticeViews */
+		UPDATE CS_NOTICE
+		SET VIEWS = VIEWS + 1
+		WHERE CS_NOTICE_ID = #{noticeId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 공지사항 관리 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.11		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.notice.dto.vo.NoticeBosListVo" id="getNoticeListResultMap">
+        <result column="NOTICE_TYPE_NAME" property="noticeTypeName"/>
+        <result column="TITLE" property="noticeTitle"/>
+        <result column="USER_NAME" property="userName"/>
+        <result column="CREATE_ID" property="userId"/>
+        <result column="CREATE_DT" property="createDate"/>
+        <result column="NOTICE_VIEW_YN" property="displayYn"/>
+        <result column="TOP_DISPLAY_YN" property="topDisplayYn"/>
+        <result column="VIEWS" property="viewCount"/>
+        <result column="VIEW_SORT" property="viewSort"/>
+        <result column="CONTENT" property="content"/>
+        <result column="CS_NOTICE_ID" property="noticeId"/>
+		<result column="MODIFY_ID" property="modifyId"/>
+    </resultMap>
+    <select id="getNoticeList" resultMap="getNoticeListResultMap">
+        /* customerNotice.getNoticeList */
+        SELECT
+        		A.*
+        FROM
+        (
+	        SELECT
+				C.NOTICE_TP
+				,FN_COMN_CODE_DIC(C.NOTICE_TP) AS NOTICE_TYPE_NAME
+				,C.TITLE
+				,FN_DECRYPT(U.USER_NM) AS USER_NAME
+				,U.LOGIN_ID AS CREATE_ID
+				,C.NOTICE_VIEW_YN
+				,C.CREATE_DT
+				,CASE WHEN NOW() <![CDATA[<]]> C.TOP_DISP_END_DT then 'Y'
+				      ELSE 'N'
+				 END AS TOP_DISPLAY_YN
+				,C.VIEWS
+				,C.CONTENT
+				,C.CS_NOTICE_ID
+	        	,C.MODIFY_ID
+			FROM CS_NOTICE C
+			INNER JOIN UR_USER U ON C.CREATE_ID = U.UR_USER_ID
+		) AS A
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.CREATE_USER")'>
+					AND A.USER_NAME IN
+					<foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+						#{findKeyword}
+					</foreach>
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.CREATE_ID")'>
+					AND A.CREATE_ID IN
+					<foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+						#{findKeyword}
+					</foreach>
+				</when>
+			</choose>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findManyKeyword)">
+        	<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.TITLE")'>
+					AND A.TITLE LIKE CONCAT('%',#{findManyKeyword},'%')
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.CONTENT")'>
+					AND A.CONTENT LIKE CONCAT('%',#{findManyKeyword},'%')
+	            </when>
+	            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.TITLE_CONTENT")'>
+					AND (A.TITLE LIKE CONCAT('%',#{findManyKeyword},'%') OR A.CONTENT LIKE CONCAT('%',#{findManyKeyword},'%'))
+				</when>
+			</choose>
+        </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchNoticeSelect)">
+            	AND A.NOTICE_TP = #{searchNoticeSelect}
+            </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+            	AND A.CREATE_DT between  #{createDateStart} AND (#{createDateEnd}+ INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            </if>
+        </if>
+		ORDER BY A.CREATE_DT DESC
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 관리 상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.11		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getDetailNoticeResultMap" type="kr.co.pulmuone.v1.customer.notice.dto.vo.NoticeBosDetailVo">
+        <result column="CS_NOTICE_ID"   	property="noticeId" />
+        <result column="NOTICE_TP"         property="noticeType" />
+        <result column="NOTICE_TYPE_NAME"  property="noticeTypeName" />
+        <result column="NOTICE_TITLE"      property="noticeTitle" />
+        <result column="CONTENT"        property="content" />
+        <result column="TOP_DISP_START_DT"        property="topDisplayStartDate" />
+        <result column="TOP_DISP_END_DT"        property="topDisplayEndDate" />
+        <result column="VIEW_COUNT"     property="viewCount" />
+        <result column="DISPLAY_YN"     property="displayYn" />
+        <result column="TOP_DISPLAY_YN"     property="topDisplayYn" />
+        <result column="CHANNEL_PC_YN"     property="channelPcYn" />
+        <result column="CHANNEL_MO_YN"     property="channelMoYn" />
+    </resultMap>
+    <select id="getDetailNotice" resultMap="getDetailNoticeResultMap">
+        /* customerNotice.getDetailNotice */
+	        SELECT
+			       F.CS_NOTICE_ID
+			     , F.NOTICE_TP
+			     , FN_COMN_CODE_DIC(F.NOTICE_TP) AS NOTICE_TYPE_NAME
+			     , F.TITLE AS NOTICE_TITLE
+	             , F.CONTENT
+	             , F.TOP_DISP_START_DT
+	             , F.TOP_DISP_END_DT
+	             ,CASE WHEN NOW() <![CDATA[<]]> F.TOP_DISP_END_DT THEN 'Y'
+				      ELSE 'N'
+				  END AS TOP_DISPLAY_YN
+	             , F.VIEWS AS VIEW_COUNT
+	             , F.NOTICE_VIEW_YN AS DISPLAY_YN
+	             , F.CHANNEL_PC_YN
+	             , F.CHANNEL_MO_YN
+	          FROM CS_NOTICE F
+        WHERE F.CS_NOTICE_ID = #{noticeId}
+    </select>
+
+       <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 공지사항 신규 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.11		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addNoticeInfo">
+	/* customerNotice.addNoticeInfo */
+		INSERT INTO CS_NOTICE
+		(
+			NOTICE_TP,
+			TITLE,
+			CONTENT,
+			NOTICE_VIEW_YN,
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topDisplayStartDate)">
+			TOP_DISP_START_DT,
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topDisplayEndDate)">
+			TOP_DISP_END_DT,
+			</if>
+			CHANNEL_PC_YN,
+			CHANNEL_MO_YN,
+			VIEWS,
+			CREATE_DT,
+			CREATE_ID
+		)
+		VALUES
+		(
+			#{noticeType},
+			#{noticeTitle},
+			#{content},
+			#{displayYn},
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topDisplayStartDate)">
+			STR_TO_DATE( CONCAT( REPLACE( #{topDisplayStartDate} , '-', '' ) , '000000' ) , '%Y%m%d%H%i%s' ),
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topDisplayEndDate)">
+            STR_TO_DATE( CONCAT( REPLACE( #{topDisplayEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' ),
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(channelPcYn)">
+	        	<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(channelPcYn, "NOTICE_CHANNEL.PC")'>
+						'Y',
+					</when>
+		            <otherwise>
+						'N',
+		            </otherwise>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(channelPcYn)">
+				'N',
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(channelMobileYn)">
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(channelMobileYn, "NOTICE_CHANNEL.MOBILE")'>
+						'Y',
+					</when>
+		            <otherwise>
+						'N',
+		            </otherwise>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(channelMobileYn)">
+				'N',
+			</if>
+			0,
+			now(),
+			#{userVo.userId}
+		)
+		<selectKey resultType="String" keyProperty="noticeId" keyColumn="CS_NOTICE_ID" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 관리정보 수정
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.11		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putNoticeInfo">
+	/* customerNotice.putNoticeInfo */
+		UPDATE CS_NOTICE
+		SET MODIFY_DT		= now()
+			, MODIFY_ID		= #{userVo.userId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(noticeType)">
+			, NOTICE_TP 			= #{noticeType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(noticeTitle)">
+			, TITLE			= #{noticeTitle}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(content)">
+			, CONTENT		= #{content}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayYn)">
+			, NOTICE_VIEW_YN	= #{displayYn}
+		</if>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topDisplayStartDate)">
+				, TOP_DISP_START_DT = STR_TO_DATE( CONCAT( REPLACE( #{topDisplayStartDate} , '-', '' ) , '000000' ) , '%Y%m%d%H%i%s' )
+			</when>
+			<otherwise>
+				, TOP_DISP_START_DT = NULL
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topDisplayEndDate)">
+	            , TOP_DISP_END_DT = STR_TO_DATE( CONCAT( REPLACE( #{topDisplayEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' )
+	        </when>
+	        <otherwise>
+	        	, TOP_DISP_END_DT = NULL
+	        </otherwise>
+        </choose>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(channelPcYn)">
+        	<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(channelPcYn, "NOTICE_CHANNEL.PC")'>
+					, CHANNEL_PC_YN	= 'Y'
+				</when>
+	            <otherwise>
+					, CHANNEL_PC_YN	= 'N'
+	            </otherwise>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(channelPcYn)">
+			, CHANNEL_PC_YN	= 'N'
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(channelMobileYn)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(channelMobileYn, "NOTICE_CHANNEL.MOBILE")'>
+					, CHANNEL_MO_YN	= 'Y'
+				</when>
+	            <otherwise>
+					, CHANNEL_MO_YN	= 'N'
+	            </otherwise>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(channelMobileYn)">
+			, CHANNEL_MO_YN	= 'N'
+		</if>
+		WHERE CS_NOTICE_ID = #{noticeId}
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 정보 삭제
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.11		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteNoticeInfo">
+	/* customerNotice.deleteNoticeInfo */
+		DELETE
+		FROM CS_NOTICE
+		WHERE CS_NOTICE_ID = #{noticeId}
+
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 수정내역 목록 조회
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.23		배민영		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNoticeHistoryList" resultMap="getNoticeListResultMap">
+		/* customerNotice.getNoticeHistoryList */
+		SELECT
+		A.*
+		FROM
+		(
+		SELECT
+			C.CS_NOTICE_ID
+		  , U.LOGIN_ID AS CREATE_ID
+		  , FN_DECRYPT(U.USER_NM) AS USER_NAME
+		  , C.CREATE_DT
+		FROM CS_NOTICE_HISTORY C
+		INNER JOIN UR_USER U ON C.CREATE_ID = U.UR_USER_ID
+		  WHERE C.CS_NOTICE_ID = #{noticeId}
+		) A
+		ORDER BY A.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 수정내역 등록
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.23		배민영		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addNoticeHistoryInfo">
+		/* customerNotice.addNoticeHistoryInfo */
+		INSERT INTO CS_NOTICE_HISTORY
+		  (
+		   CS_NOTICE_ID,
+		   CREATE_ID
+		  )
+		  VALUES
+		  (
+		   #{noticeId},
+		   #{userVo.userId}
+		  )
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 수정내역 삭제
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.24		배민영		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteNoticeHistoryInfo">
+		/* customerNotice.deleteNoticeHistoryInfo */
+		DELETE
+		FROM CS_NOTICE_HISTORY
+		WHERE CS_NOTICE_ID = #{noticeId}
+	</delete>
+</mapper>

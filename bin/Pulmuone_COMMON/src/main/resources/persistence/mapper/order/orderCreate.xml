@@ -1,0 +1,861 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.create.OrderCreateMapper">
+
+
+	<!-- 상품정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.create.dto.OrderExcelResponseDto" id="getOrderCreateExcelGoodsResultMap" >
+		<result column="RNUM"  						property="rnum"  />
+		<result column="GOODS_ID"  					property="goodsId"  />
+   		<result column="IL_ITEM_CD"  				property="ilItemCd"  />
+   		<result column="ITEM_BARCODE"  				property="itemBarcode"  />
+   		<result column="GOODS_NAME"  				property="goodsName"  />
+   		<result column="STORAGE_METHOD_TYPE_CODE"  	property="storageMethodTypeCode"  />
+   		<result column="STORAGE_METHOD_TYPE_NAME"  	property="storageMethodTypeName"  />
+   		<result column="RECOMMENDED_PRICE"  		property="recommendedPrice"  />
+   		<result column="SALE_PRICE"  				property="salePrice"  />
+   		<result column="ORG_SALE_PRICE"  			property="orgSalePrice"  />
+   		<result column="RECV_NM"  					property="recvNm"  />
+   		<result column="RECV_HP"  					property="recvHp"  />
+   		<result column="RECV_ZIP_CD"  				property="recvZipCd"  />
+   		<result column="RECV_ADDR1"  				property="recvAddr1"  />
+   		<result column="RECV_ADDR2"  				property="recvAddr2"  />
+   		<result column="IL_GOODS_ID"  				property="ilGoodsId"  />
+   		<result column="ORDER_CNT"  				property="orderCnt"  />
+   		<result column="SALE_STATUS"  				property="saleStatus"  />
+		<result column="SALE_STATUS_NM"  			property="saleStatusNm"  />
+   		<result column="ORDER_AMT"  				property="orderAmt"  />
+   		<result column="ERR_RECV_NM"  				property="errRecvNm"  />
+   		<result column="ERR_RECV_HP"  				property="errRecvHp"  />
+		<result column="ERR_RECV_ZIP_CD"  			property="errRecvZipCd"  />
+		<result column="ERR_RECV_ADDR1"  			property="errRecvAddr1"  />
+		<result column="ERR_RECV_ADDR2"  			property="errRecvAddr2"  />
+		<result column="ERR_IL_GOODS_ID"  			property="errIlGoodsId"  />
+		<result column="ERR_ORDER_CNT"  			property="errOrderCnt"  />
+   		<result column="SALE_PRICE_REMARK" 			property="salePriceRemark"  />
+   		<result column="ZIP_SRCH_YN"  				property="zipSrchYn"  />
+   		<result column="GOODS_SRCH_YN"  			property="goodsSrchYn"  />
+   		<result column="GRP_SHIPPING_ID"  			property="grpShippingId"  />
+   		<result column="IL_SHIPPING_TMPL_ID" 		property="ilShippingTmplId" />
+   		<result column="UR_WAREHOUSE_ID"  			property="urWarehouseId"  />
+		<result column="GOODS_TP"  					property="goodsTp"  />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문생성 엑셀 업로드시 상품조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.21		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getExcelUploadList" parameterType="kr.co.pulmuone.v1.order.create.dto.OrderExcelRequestDto" resultMap="getOrderCreateExcelGoodsResultMap">
+		/*	order.create.getExcelUploadList  */
+		WITH EXCEL_INFO AS
+		(
+	       	<foreach collection="orderExcelList" item="orderExcel" index="index" separator="UNION ALL" >
+	    	SELECT
+                     #{orderExcel.recvNm} AS RECV_NM
+                   , #{orderExcel.recvHp} AS RECV_HP
+                   , #{orderExcel.recvZipCd}  AS RECV_ZIP_CD
+                   , #{orderExcel.recvAddr1} AS RECV_ADDR1
+                   , #{orderExcel.recvAddr2} AS RECV_ADDR2
+                   , #{orderExcel.ilGoodsId} AS IL_GOODS_ID
+                   , #{orderExcel.orderCnt} AS ORDER_CNT
+                   , #{orderExcel.salePrice} AS SALE_PRICE
+	        FROM DUAL
+	       	</foreach>
+		)
+		SELECT
+			@ROWNUM:=@ROWNUM+1 AS RNUM
+			, A.RECV_NM		/* 수취인명 */
+			, A.RECV_HP		/* 수취인연락처 */
+			, A.RECV_ZIP_CD		/* 우편번호 */
+			, A.RECV_ADDR1		/* 주소1 */
+			, A.RECV_ADDR2		/* 주소2 */
+            , B.IL_ITEM_CD 		/* 마스터품목코드 */
+            , B.ITEM_BARCODE 	/* 품목바코드 */
+            , B.GOODS_ID 		/* 상품 코드 */
+            , A.IL_GOODS_ID		/* 상품 코드 */
+            , B.SALE_STATUS		/* 판매상태 */
+			, FN_COMN_CODE_DIC(B.SALE_STATUS) AS SALE_STATUS_NM		/* 판매상태 */
+            , B.GOODS_NAME 					/* 상품명 */
+			, B.STORAGE_METHOD_TYPE_CODE    /* 보관방법코드*/
+            , B.STORAGE_METHOD_TYPE_NAME	/* 보관방법명 */
+            , A.ORDER_CNT					/* 수량 */
+            , B.SALE_PRICE AS ORG_SALE_PRICE/* 상품판매가 */
+            , B.RECOMMENDED_PRICE 			/* 정상가 */
+            -- , CASE WHEN B.GOODS_TP IN ('GOODS_TYPE.GIFT_FOOD_MARKETING','GOODS_TYPE.GIFT') THEN 0	/* 증정품, 식품마케팅 증정품 가격 0원 처리 */
+            -- 		WHEN IF(A.SALE_PRICE IS NULL, 0, IF(A.SALE_PRICE = 'null', 0, A.SALE_PRICE)) = 0 THEN B.SALE_PRICE
+            -- 		ELSE A.SALE_PRICE END SALE_PRICE	/* 판매가 */
+			, CASE WHEN B.GOODS_TP IN ('GOODS_TYPE.GIFT_FOOD_MARKETING','GOODS_TYPE.GIFT') THEN 0	/* 증정품, 식품마케팅 증정품 가격 0원 처리 */
+					ELSE IF(A.SALE_PRICE IS NULL, 0, A.SALE_PRICE) END SALE_PRICE	/* 판매가 */
+            -- , CASE WHEN B.GOODS_TP IN ('GOODS_TYPE.GIFT_FOOD_MARKETING','GOODS_TYPE.GIFT') THEN 0	/* 증정품, 식품마케팅 증정품 가격 0원 처리 */
+			-- 		WHEN IF(A.SALE_PRICE IS NULL, 0, IF(A.SALE_PRICE = 'null', 0, A.SALE_PRICE)) = 0 THEN A.ORDER_CNT * B.SALE_PRICE
+			-- 		ELSE A.ORDER_CNT * A.SALE_PRICE END AS ORDER_AMT	/* 주문금액 */
+			 , CASE WHEN B.GOODS_TP IN ('GOODS_TYPE.GIFT_FOOD_MARKETING','GOODS_TYPE.GIFT') THEN 0	/* 증정품, 식품마케팅 증정품 가격 0원 처리 */
+		 			ELSE A.ORDER_CNT * IF(A.SALE_PRICE IS NULL, 0, A.SALE_PRICE) END AS ORDER_AMT	/* 주문금액 */
+			, '' AS ERR_RECV_NM	/* 수취인명 에러 메세지	*/
+			, '' AS ERR_RECV_HP	/* 수취인연락처 에러 메세지	*/
+			, '' AS ERR_RECV_ZIP_CD	/* 우편번호 에러 메세지	*/
+			, '' AS ERR_RECV_ADDR1	/* 주소1 에러 메세지	*/
+			, '' AS ERR_RECV_ADDR2	/* 주소2 에러 메세지	*/
+			, 'Y' AS ZIP_SRCH_YN	/* 주소검색유무	*/
+            , '' AS ERR_IL_GOODS_ID		/* 상품코드 에러 메세지 */
+            , '' AS ERR_ORDER_CNT						/* 수량 에러 메세지 */
+            , CASE WHEN IF(A.SALE_PRICE IS NULL, 0, IF(A.SALE_PRICE = 'null', 0, A.SALE_PRICE)) > 0 AND ROUND(B.SALE_PRICE * 0.5) >= A.SALE_PRICE THEN
+            	   	'(판매가확인)' END AS SALE_PRICE_REMARK	/* 판매가 메세지 */
+            , B.GRP_SHIPPING_ID			/* 출고처_배송정책 */
+            , B.UR_WAREHOUSE_ID			/* 출고처 정보 */
+		    , B.IL_SHIPPING_TMPL_ID		/* 배송정책 PK */
+			, B.GOODS_TP				/* 상품타입 */
+        FROM
+        	EXCEL_INFO A
+        	INNER JOIN  (SELECT @ROWNUM := 0) R
+        	 LEFT JOIN
+        		  (SELECT X1.GOODS_ID 					/* 상품 ID */
+		                , X1.IL_ITEM_CD 				/* 품목코드 */
+		                , X1.ITEM_BARCODE 				/* 품목바코드 */
+		                , X1.GOODS_NAME 				/* 상품명 */
+		                , X1.STORAGE_METHOD_TYPE_CODE 	/* 보관방법코드 */
+		                , FN_COMN_CODE_DIC(X1.STORAGE_METHOD_TYPE_CODE) AS STORAGE_METHOD_TYPE_NAME /* 보관방법명 */
+		                , GP.RECOMMENDED_PRICE 			/* 정상가 */
+		                , GP.SALE_PRICE 				/* 판매가 */
+		                , X1.SALE_STATUS
+		                , X1.GRP_SHIPPING_ID			/* 출고처_배송정책 */
+		                , X1.UR_WAREHOUSE_ID			/* 출고처 정보 */
+		                , X1.IL_SHIPPING_TMPL_ID		/* 배송정책 PK */
+						, X1.GOODS_TP					/* 상품타입 */
+		             FROM (SELECT G.IL_GOODS_ID AS GOODS_ID
+		                        , I.IL_ITEM_CD
+		                        , IFNULL(I.ITEM_BARCODE,'') AS ITEM_BARCODE
+		                        , G.GOODS_NM AS GOODS_NAME
+		                        , I.STORAGE_METHOD_TP AS STORAGE_METHOD_TYPE_CODE
+		                        , (SELECT IL_GOODS_PRICE_ID
+		                  	         FROM IL_GOODS_PRICE
+		                            WHERE IL_GOODS_ID = G.IL_GOODS_ID
+		                      	      AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+		                            ORDER BY IL_GOODS_PRICE_ID DESC
+		                            LIMIT 1
+		                          ) AS GOODS_PRICE_ID
+		                        , SALE_STATUS
+		                        , CONCAT(IFNULL(GST.UR_WAREHOUSE_ID, ''), '_', IFNULL(ST.IL_SHIPPING_TMPL_ID, '')) AS GRP_SHIPPING_ID
+		                        , IFNULL(GST.UR_WAREHOUSE_ID, '')		AS UR_WAREHOUSE_ID
+		                        , IFNULL(ST.IL_SHIPPING_TMPL_ID, '') 	AS IL_SHIPPING_TMPL_ID
+								, G.GOODS_TP
+							FROM IL_GOODS G
+		              	    INNER JOIN IL_ITEM I ON I.IL_ITEM_CD = G.IL_ITEM_CD
+		              	    INNER JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (G.IL_GOODS_ID = GST.IL_GOODS_ID AND G.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+                            INNER JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+		              	  ) X1
+                     JOIN IL_GOODS_PRICE GP ON GP.IL_GOODS_PRICE_ID = X1.GOODS_PRICE_ID
+		          ) B
+          		 ON A.IL_GOODS_ID = B.GOODS_ID
+			  ORDER BY RECV_NM , RECV_HP , RECV_ZIP_CD , RECV_ADDR1 , RECV_ADDR2
+	</select>
+
+	<!-- 상품정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.create.dto.GoodsInfoDto" id="getGoodsInfoResultMap">
+		<result column="IL_GOODS_SHIPPING_TEMPLATE_ID" 	property="ilGoodsShippingTemplateId" />
+		<result column="UR_WAREHOUSE_ID"               	property="urWarehouseId" />
+		<result column="UR_SUPPLIER_ID"                	property="urSupplierId" />
+		<result column="IL_GOODS_RESERVE_OPTN_ID"      	property="ilGoodsReserveOptnId" />
+		<result column="EV_EXHIBIT_ID"                 	property="evExhibitId" />
+		<result column="STATUS_CD"                     	property="statusCd" />
+		<result column="SELLER_ORDER_ID"               	property="sellerOrderId" />
+		<result column="UR_WAREHOUSE_GROUP_CD"         	property="urWarehouseGroupCd" />
+		<result column="GOODS_TP"                      	property="goodsTp" />
+		<result column="GOODS_DELIVERY_TYPE"		   	property="goodsDeliveryType" />
+		<result column="SALE_TP"                       	property="saleTp"  />
+		<result column="IL_CTGRY_STD_ID"               	property="ilCtgryStdId" />
+		<result column="IL_CTGRY_DISPLAY_ID"           	property="ilCtgryDisplayId" />
+		<result column="IL_CTGRY_MALL_ID"              	property="ilCtgryMallId" />
+		<result column="TAX_YN"                     	property="taxYn" />
+		<result column="STANDARD_PRICE"                	property="standardPrice" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 테이블에 상품 정보 입력을 위한 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.08		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsInfo" parameterType="long" resultMap="getGoodsInfoResultMap">
+		/*	order.create.getGoodsInfo  */
+		SELECT
+			IFNULL((SELECT ST.IL_SHIPPING_TMPL_ID
+					FROM IL_GOODS_SHIPPING_TEMPLATE GST
+					JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+					WHERE GST.IL_GOODS_ID = A.IL_GOODS_ID AND GST.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID), 0) AS IL_GOODS_SHIPPING_TEMPLATE_ID	/* 배송비 정책 PK */
+			, IFNULL(A.UR_WAREHOUSE_ID, 0) AS UR_WAREHOUSE_ID									/* 출고처 관리 PK */
+			, IFNULL(B.UR_SUPPLIER_ID, 0) AS UR_SUPPLIER_ID										/* 공급업체 PK */
+			, IFNULL((	SELECT IL_GOODS_RESERVE_OPTN_ID
+						FROM IL_GOODS_RESERVE_OPTN T
+						WHERE T.IL_GOODS_ID = A.IL_GOODS_ID
+							AND SYSDATE() BETWEEN RESERVE_START_DT AND RESERVE_END_DT ), 0) AS IL_GOODS_RESERVE_OPTN_ID		/* 예약정보 PK */
+			, IFNULL((	SELECT EV_EXHIBIT_ID
+						FROM EV_EXHIBIT_GROUP T1 INNER JOIN EV_EXHIBIT_GROUP_DETL T2
+						WHERE T1.EV_EXHIBIT_GROUP_ID = T2.EV_EXHIBIT_GROUP_ID
+							AND T2.IL_GOODS_ID = A.IL_GOODS_ID AND USE_YN = 'Y' LIMIT 1), 0) AS EV_EXHIBIT_ID /* 기획전 PK */
+			, (	SELECT STATUS_CD
+				FROM OD_STATUS T1
+				WHERE SEARCH_GRP = 'O' AND STATUS_NM = '입금대기중'
+					AND USE_YN = 'Y') AS STATUS_CD	/* 정상주문상태 */
+			, '' AS SELLER_ORDER_ID				/* 판매처주문번호 */
+			, (	SELECT WAREHOUSE_GRP_CD
+				FROM UR_WAREHOUSE T1
+				WHERE T1.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID) AS UR_WAREHOUSE_GROUP_CD	/* 출고처그룹 */
+			, GOODS_TP					/* 상품유형 */
+			, '' AS GOODS_DELIVERY_TYPE	/* 배송유형 */
+			, SALE_TP 					/* 판매유형 */
+			, IFNULL(IL_CTGRY_STD_ID, 0) AS IL_CTGRY_STD_ID			/* 표준카테고리 */
+			, IFNULL((	SELECT IL_CTGRY_ID
+						FROM IL_GOODS_CTGRY T
+						WHERE BASIC_YN = 'Y' AND MALL_DIV = 'MALL_DIV.PULMUONE'
+							AND T.IL_GOODS_ID = A.IL_GOODS_ID), 0) AS IL_CTGRY_DISPLAY_ID	/* 전시 카테고리 */
+			, IFNULL((	SELECT IL_CTGRY_ID
+						FROM IL_GOODS_CTGRY T
+						WHERE BASIC_YN = 'Y' AND MALL_DIV != 'MALL_DIV.PULMUONE'
+							AND T.IL_GOODS_ID = A.IL_GOODS_ID), 0) AS IL_CTGRY_MALL_ID		/* 몰인몰 카테고리 */
+			, TAX_YN 	/* 과세구분 */
+			, IFNULL((SELECT STANDARD_PRICE
+						FROM IL_GOODS_PRICE T
+						WHERE A.IL_GOODS_ID = T.IL_GOODS_ID
+						AND DISCOUNT_TP = 'GOODS_DISCOUNT_TP.NONE'
+						AND SYSDATE() BETWEEN PRICE_START_DT AND PRICE_END_DT
+						AND USE_YN = 'Y'), 0) AS STANDARD_PRICE /* 원가 */
+		FROM
+			IL_GOODS A
+			INNER JOIN IL_ITEM B ON A.IL_ITEM_CD = B.IL_ITEM_CD
+		WHERE
+			A.IL_GOODS_ID = #{ilGoodsId}
+	</select>
+
+	<!-- 회원그룹정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.create.dto.UserGroupInfoDto" id="getUserGroupInfoResultMap">
+   		<result column="UR_GROUP_ID"  			property="urGroupId"  />
+   		<result column="UR_GROUP_NM"  			property="urGroupNm"  />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 테이블에 회원 정보입력을 위한 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.06		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserGroupInfo" parameterType="long" resultMap="getUserGroupInfoResultMap">
+		/*	order.create.getUserGroupInfo  */
+		SELECT
+			A.UR_GROUP_ID AS UR_GROUP_ID
+			, G.GROUP_NM AS UR_GROUP_NM
+		FROM
+			UR_BUYER A
+			INNER JOIN UR_USER C ON
+				A.UR_USER_ID = C.UR_USER_ID
+			INNER JOIN UR_GROUP G ON
+				A.UR_GROUP_ID = G.UR_GROUP_ID
+		WHERE
+			A.UR_USER_ID = #{urUserId}
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문생성정보 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.07		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCreateInfo" parameterType="kr.co.pulmuone.v1.order.create.dto.vo.CreateInfoVo">
+		/*	order.create.addCreateInfo  */
+		INSERT INTO OD_CREATE_INFO
+		(
+			CREATE_TYPE					/* S:개별,T:단일 */
+			, BUYER_NM					/* 주문자명 */
+			, ORDER_PRICE				/* 주문금액 */
+			, ORDER_PAYMENT_TYPE		/* 결제수단:공통코드(ORDER_PAYMENT_TYPE) */
+			, SUCCESS_ORDER_CNT			/* 성공 주문번호 건수 */
+			, SUCCESS_ORDER_DETL_CNT	/* 성공 주문상세 건수 */
+			, FAILURE_ORDER_CNT			/* 실패 주문번호 건수 */
+			, FAILURE_ORDER_DETL_CNT	/* 실패 주문상세 건수 */
+			, ODID						/* 주문리스트검색용,로구분 */
+			, CREATE_STATUS				/* W:대기중,C:입금대기중,E:생성완료 */
+			, ORIGIN_NM					/* 원본파일명 */
+			, UPLOAD_NM					/* 업로드파일명 */
+			, UPLOAD_PATH				/* 업로드경로 */
+			, CREATE_ID					/* 등록자 */
+		)
+		VALUES
+		(
+			#{createType}
+			, FN_ENCRYPT(#{buyerNm})
+			, #{orderPrice}
+			, #{orderPaymentType}
+			, #{successOrderCnt}
+			, #{successOrderDetlCnt}
+			, #{failureOrderCnt}
+			, #{failureOrderDetlCnt}
+			, #{odid}
+			, #{createStatus}
+			, #{originNm}
+			, #{uploadNm}
+			, #{uploadPath}
+			, #{createId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문정보 수정
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderInfo">
+		/*	order.create.putOrderInfo  */
+		INSERT INTO
+			OD_ORDER
+		(OD_ORDER_ID, ODID, OM_SELLERS_ID, BUYER_NM, BUYER_HP, ORDER_PAYMENT_TYPE, BUYER_TYPE_CD, AGENT_TYPE_CD, ORDER_HPN_CD, GIFT_YN, UR_PCID_CD, GOODS_NM, ORDER_PRICE, SHIPPING_PRICE, PAID_PRICE)
+		SELECT
+			*
+		FROM
+			(SELECT
+				OO.OD_ORDER_ID
+				, ODID
+				, OM_SELLERS_ID
+				, BUYER_NM
+				, BUYER_HP
+				, ORDER_PAYMENT_TYPE
+				, BUYER_TYPE_CD
+				, AGENT_TYPE_CD
+				, ORDER_HPN_CD
+				, GIFT_YN
+				, UR_PCID_CD
+				, CASE WHEN (COUNT(1) - 1) = 0 THEN OO.GOODS_NM ELSE CONCAT(OO.GOODS_NM, ' 외 ', (COUNT(1)-1), '건') END AS GOODS_NM
+				, SUM(OOD.ORDER_CNT * OOD.SALE_PRICE) AS SALE_PRICE
+				, SUM(OSP.SHIPPING_PRICE) AS SHIPPING_PRICE
+				, SUM(OOD.ORDER_CNT * OOD.SALE_PRICE) AS PAID_PRICE
+			FROM
+				OD_ORDER OO
+				INNER JOIN OD_ORDER_DETL OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+				INNER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+
+			<where>
+				OO.ODID IN
+		       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+		        	#{odId}
+		       	</foreach>
+		    </where>
+
+			GROUP BY OO.OD_ORDER_ID, OO.ODID, OO.OM_SELLERS_ID, BUYER_NM, BUYER_HP, ORDER_PAYMENT_TYPE, BUYER_TYPE_CD, AGENT_TYPE_CD, ORDER_HPN_CD, GIFT_YN, UR_PCID_CD, OO.GOODS_NM
+			) T
+		ON DUPLICATE KEY UPDATE
+			GOODS_NM = T.GOODS_NM
+			, ORDER_PRICE = T.SALE_PRICE
+			, SHIPPING_PRICE = T.SHIPPING_PRICE
+			, PAID_PRICE = T.PAID_PRICE
+	</update>
+
+
+	<!-- 주문생성 내역 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.create.dto.CreateInfoDto" id="getOrderCreateListResultMap">
+		<result column="ROWNUM"                 property="rownum"  />
+		<result column="BUYER_NM" 				property="buyerNm"  />
+		<result column="CREATE_TYPE"			property="createType"  />
+		<result column="OD_CREATE_INFO_ID"		property="odCreateInfoId"  />
+		<result column="CREATE_STATUS" 			property="createStatus"  />
+		<result column="ORDER_PAYMENT_TYPE" 	property="orderPaymentType"  />
+		<result column="ODID" 					property="odid"  />
+		<result column="SUCCESS_ORDER_CNT" 		property="successOrderCnt"  />
+		<result column="SUCCESS_ORDER_DETL_CNT"	property="successOrderDetlCnt"  />
+		<result column="ORDER_PRICE" 			property="orderPrice"  />
+		<result column="CREATE_DT"				property="createDt"  />
+		<result column="OD_PAYMENT_MASTER_ID"	property="odPaymentMasterId"  />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문생성 내역 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderCreateList" parameterType="kr.co.pulmuone.v1.order.create.dto.OrderCreateListRequestDto" resultMap="getOrderCreateListResultMap">
+		/*	order.create.getOrderCreateList  */
+        SELECT
+        	*
+        FROM
+			(SELECT
+				@ROWNUM :=@ROWNUM +1 AS ROWNUM
+				, FN_DECRYPT(BUYER_NM) AS BUYER_NM 					/* 주문자명 */
+				, CREATE_TYPE				/* S: 개별, T: 단일 */
+				, OD_CREATE_INFO_ID			/* 주문생성정보 PK */
+				, CREATE_STATUS 			/* W: 대기중, C: 입금대기중, E: 생성완료 */
+				, ORDER_PAYMENT_TYPE 		/* 결제수단 : 공통코드( ORDER_PAYMENT_TYPE) */
+				, ODID 						/* 주문리스트 검색용 ,로 구분 */
+				, SUCCESS_ORDER_CNT 		/* 성공 주문번호 건수 */
+				, SUCCESS_ORDER_DETL_CNT	/* 성공 주문상세 건수 */
+				, ORDER_PRICE 				/* 주문금액 */
+				, DATE_FORMAT(CREATE_DT, '%Y-%m-%d') AS CREATE_DT	/* 등록일 */
+				, IFNULL(OD_PAYMENT_MASTER_ID, 0) AS OD_PAYMENT_MASTER_ID		/* 주문결제 마스터 PK */
+			FROM
+				OD_CREATE_INFO OCI
+				INNER JOIN (SELECT @ROWNUM := 0) R
+	        <where>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)"> <!-- 등록일자 -->
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+						AND CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+					</if>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderCreateType)"> <!-- 생성구분 -->
+					AND CREATE_TYPE = #{orderCreateType}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createStatus)"> <!-- 상태 -->
+					AND CREATE_STATUS = #{createStatus}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(keywordVal)"> <!-- 검색어 -->
+					<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(keywordType, "buyerNm")'>
+						AND BUYER_NM LIKE CONCAT('%', #{keywordVal}, '%')
+					</if>
+					<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(keywordType, "buyerHp")'>
+						AND BUYER_NM LIKE CONCAT('%', #{keywordVal}, '%')
+					</if>
+					<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(keywordType, "goodsNm")'>
+						AND BUYER_NM LIKE CONCAT('%', #{keywordVal}, '%')
+					</if>
+				</if>
+			</where>
+			) ORDER_CREATE
+		ORDER BY ROWNUM DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문생성 삭제
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.13		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteOrderCreateInfo">
+        /* order.create.deleteOrderCreateInfo */
+        DELETE FROM OD_CREATE_INFO
+        WHERE OD_CREATE_INFO_ID = #{odCreateInfoId}
+    </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 삭제
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.13		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteOrder">
+        /* order.create.deleteOrder */
+		DELETE FROM OD_ORDER
+        WHERE
+        	ODID IN
+       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+        	#{odId}
+       	</foreach>
+    </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상태일자 삭제
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.13		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteOrderDt">
+        /* order.create.deleteOrderDt */
+        DELETE FROM OD_ORDER_DT
+        WHERE
+        	OD_ORDER_ID IN
+       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+        	#{odId}
+       	</foreach>
+    </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 배송지 삭제
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.13		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteShippingZone">
+        /* order.create.deleteShippingZone */
+        DELETE FROM OD_SHIPPING_ZONE
+        WHERE
+			OD_ORDER_ID IN
+				(SELECT
+					OD_ORDER_ID
+				FROM OD_ORDER
+				WHERE ODID IN
+		       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+		        	#{odId}
+		       	</foreach>
+				)
+    </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 배송지 이력 삭제
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.13		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteShippingZoneHist">
+        /* order.create.deleteShippingZoneHist */
+        DELETE FROM OD_SHIPPING_ZONE_HIST
+        WHERE
+			OD_ORDER_ID IN
+				(SELECT
+					OD_ORDER_ID
+				FROM OD_ORDER
+				WHERE ODID IN
+		       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+		        	#{odId}
+		       	</foreach>
+				)
+    </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 배송비 삭제
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.13		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteShippingPrice">
+        /* order.create.deleteShippingPrice */
+        DELETE FROM OD_SHIPPING_PRICE
+        WHERE
+			OD_SHIPPING_PRICE_ID IN
+				(SELECT
+					OD_SHIPPING_PRICE_ID
+				FROM OD_ORDER_DETL
+				WHERE OD_ORDER_ID IN (SELECT OD_ORDER_ID FROM OD_ORDER WHERE ODID IN
+								       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+								        	#{odId}
+								       	</foreach>
+				))
+    </delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 삭제
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.13		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteOrderDetl">
+        /* order.create.deleteOrderDetl */
+        DELETE FROM OD_ORDER_DETL
+        WHERE
+			OD_ORDER_ID IN
+				(SELECT
+					OD_ORDER_ID
+				FROM OD_ORDER
+				WHERE ODID IN
+		       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+		        	#{odId}
+		       	</foreach>
+				)
+    </delete>
+
+	<!-- 카드결제를 위한 주문자 정보 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.create.dto.OrderInfoDto" id="getOrderInfoResultMap">
+		<result column="BUYER_NM"				property="buyerNm" />
+		<result column="BUYER_MAIL"				property="buyerMail" />
+		<result column="BUYER_HP"				property="buyerHp" />
+		<result column="GOODS_NM"				property="goodsNm" />
+		<result column="LOGIN_ID"				property="loginId" />
+		<result column="ODID"					property="odid" />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 카드결제를 위한 주문자 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.14		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderInfo" parameterType="kr.co.pulmuone.v1.order.create.dto.OrderCardPayRequestDto" resultMap="getOrderInfoResultMap">
+		/*	order.create.getOrderInfo  */
+		SELECT
+			FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM 		/** 구매자명 */
+			, FN_DECRYPT(OO.BUYER_MAIL) AS BUYER_MAIL 	/** 구매자메일 */
+			, FN_DECRYPT(OO.BUYER_HP) AS BUYER_HP 		/** 구매자연락처 */
+			, OO.GOODS_NM 		/** 상품명 */
+			, IFNULL((
+				SELECT
+					LOGIN_ID
+				FROM
+					UR_USER
+				WHERE
+					UR_USER_ID = OO.UR_USER_ID
+			), '비회원') AS LOGIN_ID
+			, OO.ODID
+		FROM
+			OD_ORDER OO
+        <where>
+        	OO.ODID IN
+	       	<foreach collection="findOdIdList" item="odId" index="index" separator="," open="(" close=")">
+	        	#{odId}
+	       	</foreach>
+	       	LIMIT 1
+		</where>
+	</select>
+
+	<!-- 카드결제를 위한 주문 결제 정보 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.create.dto.PaymentInfoDto" id="getPaymentInfoResultMap">
+		<result column="PAID_PRICE"			property="paidPrice" />
+		<result column="TAXABLE_PRICE"		property="taxablePrice" />
+		<result column="NON_TAXABLE_PRICE"	property="nonTaxablePrice" />
+		<result column="PAYMENT_PRICE"		property="paymentPrice" />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 카드결제를 위한 주문 내역 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.14		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPaymentInfo" parameterType="long" resultMap="getPaymentInfoResultMap">
+		/*	order.create.getPaymentInfo  */
+		SELECT
+			PAID_PRICE 			/** 상품결제금액 */
+			, TAXABLE_PRICE 	/** 과세결제금액 */
+			, NON_TAXABLE_PRICE /** 비과세결제금액 */
+			, PAYMENT_PRICE 	/** 결제금액 */
+		FROM
+			OD_PAYMENT_MASTER
+        WHERE
+        	OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 신용카드 결제 및 무통장 입금 결과 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.14		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPaymentMasterInfo">
+		/*	order.create.putPaymentMasterInfo  */
+		UPDATE OD_PAYMENT_MASTER
+		SET
+			TYPE = #{type}	<!-- 결제타입 (G : 결제, F : 환불 , A : 추가) -->
+			, APPROVAL_DT = #{approvalDt}		<!-- 승인일자 -->
+			, RESPONSE_DATA = #{responseData}	<!-- 응답데이터 -->
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(status)"> <!-- 결제상태(IR:입금예정,IC:입금완료) -->
+			, STATUS = #{status}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(payTp)"> <!-- 결제방법 공통코드(PAY_TP) -->
+			, PAY_TP = #{payTp}
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pgService)"> <!-- PG 종류 공통코드(PG_SERVICE) -->
+			, PG_SERVICE = #{pgService}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(tid)"> <!-- 거래 ID -->
+			, TID = #{tid}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(authCd)"> <!-- 승인코드 -->
+			, AUTH_CD = #{authCd}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(bankNm)"> <!-- 입금은행명 -->
+			, BANK_NM = #{bankNm}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(info)"> <!-- 결제 정보 -->
+			, INFO = #{info}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(paidDueDt)"> <!-- 입금기한 -->
+			, PAID_DUE_DT = #{paidDueDt}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(paidHolder)"> <!-- 입금자명 -->
+			, PAID_HOLDER = #{paidHolder}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(virtualAccountNumber)"> <!-- 가상계좌 번호 -->
+			, VIRTUAL_ACCOUNT_NUMBER = #{virtualAccountNumber}
+			</if>
+		WHERE
+			OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+	</update>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송중 업데이트를 위한 주문상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.17     이명수           최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="selectOrderDetailDcList" resultType="String">
+		/*	orderStatus.selectOrderDetailDcList  */
+		SELECT
+			OD_ORDER_DETL_ID
+		FROM
+			OD_ORDER_DETL
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 송장번호 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyTrackingNumber" >
+		/* orderCreate.addOrderCopyTrackingNumber */
+		INSERT INTO OD_TRACKING_NUMBER
+		(
+		  OD_ORDER_DETL_ID		/* 주문상세 PK */
+		, PS_SHIPPING_COMP_ID	/* 택배사 PK */
+		, TRACKING_NO			/* 개별송장번호 */
+		, SORT					/* 순서 */
+		, CREATE_ID				/* 등록자  UR_USER.UR_USER_ID */
+		, CREATE_DT				/* 등록일 */
+		, EZADMIN_API_YN		/* 이지어드민 송장입력 API 전송여부 */
+		)
+		WITH ORG_ORDER_DETL AS
+		(
+			SELECT
+				T1.IL_GOODS_ID,
+				IFNULL(T2.PS_SHIPPING_COMP_ID, 1) AS PS_SHIPPING_COMP_ID,
+				IFNULL(T2.TRACKING_NO, DATE_FORMAT(NOW(), '%Y%m%d')) AS TRACKING_NO
+			FROM
+				OD_ORDER_DETL T1
+				LEFT OUTER JOIN OD_TRACKING_NUMBER T2 ON T1.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+			WHERE
+				T1.ODID = #{orderCopyOdid}
+		)
+		SELECT
+			#{odOrderDetlId},
+			T2.PS_SHIPPING_COMP_ID,
+			T2.TRACKING_NO,
+			1,
+			#{createId},
+			NOW(),
+		    'N'
+		FROM
+			OD_ORDER_DETL T1
+			INNER JOIN ORG_ORDER_DETL T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId}
+		LIMIT 1
+	</insert>
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상태 변경 이력 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.11     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDetailStatusHistory" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlHistVo">
+		/*	orderCreate.addOrderDetailStatusHistory  */
+		INSERT INTO OD_ORDER_DETL_HIST (
+		OD_ORDER_ID
+		, OD_ORDER_DETL_ID
+		, OD_ORDER_DETL_SEQ
+		, PREV_STATUS_CD
+		, STATUS_CD
+		, HIST_MSG
+		, CREATE_ID
+		, CREATE_DT
+		)
+		SELECT  OD_ORDER_ID
+		, OD_ORDER_DETL_ID
+		, OD_ORDER_DETL_SEQ
+		, ORDER_STATUS_CD
+		, #{statusCd}
+		, #{histMsg}
+		, #{createId}
+		, NOW()
+		FROM	OD_ORDER_DETL
+		WHERE	1 = 1
+		<choose>
+			<when test="odOrderDetlId != 0"> AND OD_ORDER_DETL_ID = #{odOrderDetlId} </when>
+			<otherwise> AND	OD_ORDER_ID = #{odOrderId} </otherwise>
+		</choose>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상태 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.28 	이명수          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetailStatus" parameterType="kr.co.pulmuone.v1.order.status.dto.OrderStatusUpdateDto">
+		/*	orderCreate.putOrderDetailStatus  */
+		UPDATE OD_ORDER_DETL
+		SET
+		ORDER_STATUS_CD = #{orderStatusCd}
+		<choose>
+			<when test="drId != null and drId > 0">
+				, DR_ID        = #{drId}
+				, DR_DT        = NOW()
+				, BATCH_EXEC_FL = 'Y'
+				, BATCH_EXEC_DT = now()
+			</when>
+			<when test="diId != null and diId > 0">, DI_ID = #{diId}, DI_DT = NOW() </when>
+			<when test="dcId != null and dcId > 0">, DC_ID = #{dcId}, DC_DT = NOW() </when>
+			<when test="bfId != null and bfId > 0">, BF_ID = #{bfId}, BF_DT = NOW() </when>
+		</choose>
+		WHERE
+		OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 실패 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.09 	이명수          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderFail">
+		/*	orderCreate.putOrderFail  */
+		UPDATE OD_ORDER SET ORDER_YN = 'N' WHERE OD_ORDER_ID = #{odOrderId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 성공 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.13 	이명수          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderSuccess">
+		/*	orderCreate.putOrderSuccess  */
+		UPDATE OD_ORDER SET ORDER_YN = 'Y'
+		WHERE
+			OD_ORDER_ID IN
+			(
+			SELECT
+				OD_ORDER_ID
+			FROM
+				OD_PAYMENT_MASTER T1
+				INNER JOIN OD_PAYMENT T2 ON T1.OD_PAYMENT_MASTER_ID = T2.OD_PAYMENT_MASTER_ID
+			WHERE
+				T1.OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+			)
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품PK로 품목별 출고처PK 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.29		천혜현	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIlItemWarehouseIdByIlGoodsId" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemWarehouseVo">
+		/*	order.create.getIlItemWarehouseIdByIlGoodsId  */
+		SELECT
+			IIW.IL_ITEM_WAREHOUSE_ID
+			,IF(UW.STOCK_ORDER_YN = 'N' AND IIW.UNLIMIT_STOCK_YN = 'Y' , TRUE, FALSE) AS UNLIMIT_STOCK_YN
+			,IIW.NOT_IF_STOCK_CNT
+		FROM
+			IL_GOODS IG
+				JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+				JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID AND IG.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+				JOIN IL_ITEM_WAREHOUSE IIW ON IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID AND II.IL_ITEM_CD = IIW.IL_ITEM_CD
+				JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = IG.UR_WAREHOUSE_ID
+		WHERE
+			IG.IL_GOODS_ID = #{ilGoodsId}
+	</select>
+
+</mapper>

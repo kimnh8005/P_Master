@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.monitoring.MonitoringSmsSendBatchMapper">
+
+    <resultMap type="kr.co.pulmuone.v1.batch.monitoring.dto.vo.MonitoringSmsSendResultVo" id="monitoringSmsSendResultMap">
+        <result column="EXEC_YMD"                   property="execYmd"/>
+        <result column="EXEC_TIME"                  property="execTime"/>
+        <result column="TOT_USER_CNT"               property="totUserCnt"/>
+        <result column="TOT_ORDER_CNT"              property="totOrderCnt"/>
+        <result column="TOT_PAYMENT_PRICE"          property="totPaymentPrice"/>
+        <result column="TOT_ORDER_CNT_OUTMALL"      property="totOrderCntOutmall"/>
+        <result column="TOT_PAYMENT_PRICE_OUTMALL"  property="totPaymentPriceOutmall"/>
+    </resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 회원가입자수, 주문건수, 결제금액 조회 (배치가 실행된 일자와 시간이 조건)
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.07		김만환          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getUserOrderPaymentInfo" resultMap="monitoringSmsSendResultMap">
+        /* monitoringSmsSendBatch.getUserOrderPaymentInfo */
+        SELECT
+               CONCAT(CONCAT(DATE_FORMAT(NOW(), '%Y'),'년 '),CONCAT(DATE_FORMAT(NOW(), '%m'),'월'),CONCAT(DATE_FORMAT(NOW(), '%d'),'일')) AS EXEC_YMD
+	         , CONCAT(DATE_FORMAT(NOW(), '%H') ,'시') AS EXEC_TIME
+             , TOT_USER_CNT
+             , TOT_ORDER_CNT
+             , TOT_PAYMENT_PRICE
+             , TOT_ORDER_CNT_OUTMALL
+             , TOT_PAYMENT_PRICE_OUTMALL
+          FROM MT_SMS_SEND_INFO
+         WHERE BASE_DT = DATE_FORMAT(NOW(), '%Y%m%d')
+           AND EXEC_TIME = CONCAT(DATE_FORMAT(NOW(), '%H'), '00')
+           AND SEND_FL = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전송된 데이터 전송여부 Y 업데이트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.08		김만환          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="upUserOrderPaymentInfo">
+        UPDATE MT_SMS_SEND_INFO
+           SET SEND_FL = 'Y'
+         WHERE BASE_DT = DATE_FORMAT(NOW(), '%Y%m%d')
+           AND EXEC_TIME = CONCAT(DATE_FORMAT(NOW(), '%H'), '00')
+           AND SEND_FL = 'N'
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 회원가입자수, 주문건수, 결제금액 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.07		김만환          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addUserOrderPaymentInfo">
+        /* monitoringSmsSendBatch.addUserOrderPaymentInfo */
+        INSERT INTO MT_SMS_SEND_INFO (BASE_DT, EXEC_TIME, TOT_USER_CNT, TOT_ORDER_CNT, TOT_ORDER_CNT_OUTMALL, TOT_PAYMENT_PRICE, TOT_PAYMENT_PRICE_OUTMALL)
+        SELECT DATE_FORMAT(NOW(), '%Y%m%d') AS BASE_DT
+             , CONCAT(DATE_FORMAT(NOW(), '%H'), '00') AS EXEC_TIME
+             , IFNULL(J.TOT_USER_CNT, 0) AS TOT_USER_CNT
+             , IFNULL(OD.TOT_ORDER_CNT, 0) AS TOT_ORDER_CNT
+             , IFNULL(OD_OUTMALL.TOT_ORDER_CNT_OUTMALL, 0) AS TOT_ORDER_CNT_OUTMALL
+             , IFNULL(P.TOT_PAYMENT_PRICE, 0) AS TOT_PAYMENT_PRICE
+             , IFNULL(P_OUTMALL.TOT_PAYMENT_PRICE_OUTMALL, 0) AS TOT_PAYMENT_PRICE_OUTMALL
+        FROM ( SELECT '---' AS ID FROM DUAL ) M
+        LEFT OUTER JOIN (
+                            SELECT
+                                  '---' AS JOIN_SUMMARY
+                                , COUNT(*) AS TOT_USER_CNT
+                              FROM UR_USER U
+                             WHERE USER_TP = 'USER_TYPE.BUYER'
+                               and CREATE_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+                        ) J
+                        ON M.ID = J.JOIN_SUMMARY
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' ODID_SUMMARY
+                                  , COUNT(DISTINCT OD.ODID) AS TOT_ORDER_CNT
+                              FROM OD_ORDER OD
+                             WHERE OD.CREATE_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+                               AND OD.ORDER_YN = 'Y'
+                               AND OD.OM_SELLERS_ID = 0
+                        ) OD
+                        ON M.ID = OD.ODID_SUMMARY
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' ODID_SUMMARY_OUTMALL
+                                  , COUNT(DISTINCT OD.ODID) AS TOT_ORDER_CNT_OUTMALL
+                              FROM OD_ORDER OD
+                             WHERE OD.CREATE_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+                               AND OD.ORDER_YN = 'Y'
+                               AND OD.OM_SELLERS_ID != 0
+                        ) OD_OUTMALL
+                        ON M.ID = OD_OUTMALL.ODID_SUMMARY_OUTMALL
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' PAYMENT_SUMMARY
+                                   , SUM( IF(TYPE = 'G', op.PAYMENT_PRICE, 0)) TOT_PAYMENT_PRICE
+                             FROM OD_PAYMENT_MASTER opm
+                             INNER JOIN OD_PAYMENT op ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+                             INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = op.OD_ORDER_ID
+                            WHERE opm.APPROVAL_DT  BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+                              AND opm.STATUS = 'IC'
+                              AND oo.OM_SELLERS_ID = 0
+                        )  P
+                        ON M.ID = P.PAYMENT_SUMMARY
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' PAYMENT_SUMMARY_OUTMALL
+                                   , SUM( IF(TYPE = 'G', op.PAYMENT_PRICE, 0)) TOT_PAYMENT_PRICE_OUTMALL
+                             FROM OD_PAYMENT_MASTER opm
+                             INNER JOIN OD_PAYMENT op ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+                             INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = op.OD_ORDER_ID
+                            WHERE opm.APPROVAL_DT  BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+                              AND opm.STATUS = 'IC'
+                              AND oo.OM_SELLERS_ID != 0
+                        )  P_OUTMALL
+                        ON M.ID = P_OUTMALL.PAYMENT_SUMMARY_OUTMALL
+        WHERE NOT EXISTS (SELECT 'Y'
+                            FROM MT_SMS_SEND_INFO M
+                           WHERE M.BASE_DT = DATE_FORMAT(NOW(), '%Y%m%d')
+                             AND M.EXEC_TIME = CONCAT(DATE_FORMAT(NOW(), '%H'), '00')
+                         )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 회원가입자수, 주문건수, 결제금액 데이터 조회 (어제 하루 종일 데이터)
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.25		김만환          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getUserOrderPaymentInfoYesterdayAll" resultMap="monitoringSmsSendResultMap">
+        /* monitoringSmsSendBatch.getUserOrderPaymentInfoYesterdayAll */
+        SELECT CONCAT(CONCAT(DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%Y'),'년 '),CONCAT(DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%m'),'월'),CONCAT(DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%d'),'일')) AS EXEC_YMD
+             , IFNULL(J.TOT_USER_CNT, 0) AS TOT_USER_CNT
+             , IFNULL(OD.TOT_ORDER_CNT, 0) AS TOT_ORDER_CNT
+             , IFNULL(OD_OUTMALL.TOT_ORDER_CNT_OUTMALL, 0) AS TOT_ORDER_CNT_OUTMALL
+             , IFNULL(P.TOT_PAYMENT_PRICE, 0) AS TOT_PAYMENT_PRICE
+             , IFNULL(P_OUTMALL.TOT_PAYMENT_PRICE_OUTMALL, 0) AS TOT_PAYMENT_PRICE_OUTMALL
+        FROM ( SELECT '---' AS ID FROM DUAL ) M
+        LEFT OUTER JOIN (
+                            SELECT
+                                  '---' AS JOIN_SUMMARY
+                                , COUNT(*) AS TOT_USER_CNT
+                              FROM UR_USER U
+                             WHERE USER_TP = 'USER_TYPE.BUYER'
+                               and CREATE_DT BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 23:59:59')
+                        ) J
+                        ON M.ID = J.JOIN_SUMMARY
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' ODID_SUMMARY
+                                  , COUNT(DISTINCT OD.ODID) AS TOT_ORDER_CNT
+                              FROM OD_ORDER OD
+                             WHERE OD.CREATE_DT BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 23:59:59')
+                               AND OD.ORDER_YN = 'Y'
+                               AND OD.OM_SELLERS_ID = 0
+                        ) OD
+                        ON M.ID = OD.ODID_SUMMARY
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' ODID_SUMMARY_OUTMALL
+                                  , COUNT(DISTINCT OD.ODID) AS TOT_ORDER_CNT_OUTMALL
+                              FROM OD_ORDER OD
+                             WHERE OD.CREATE_DT BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 23:59:59')
+                               AND OD.ORDER_YN = 'Y'
+                               AND OD.OM_SELLERS_ID != 0
+                        ) OD_OUTMALL
+                        ON M.ID = OD_OUTMALL.ODID_SUMMARY_OUTMALL
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' PAYMENT_SUMMARY
+                                   , SUM( IF(TYPE = 'G', op.PAYMENT_PRICE, 0)) TOT_PAYMENT_PRICE
+                             FROM OD_PAYMENT_MASTER opm
+                             INNER JOIN OD_PAYMENT op ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+                             INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = op.OD_ORDER_ID
+                            WHERE opm.APPROVAL_DT  BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 23:59:59')
+                              AND opm.STATUS = 'IC'
+                              AND oo.OM_SELLERS_ID = 0
+                        )  P
+                        ON M.ID = P.PAYMENT_SUMMARY
+        LEFT OUTER JOIN (
+                            SELECT
+                                    '---' PAYMENT_SUMMARY_OUTMALL
+                                   , SUM( IF(TYPE = 'G', op.PAYMENT_PRICE, 0)) TOT_PAYMENT_PRICE_OUTMALL
+                             FROM OD_PAYMENT_MASTER opm
+                             INNER JOIN OD_PAYMENT op ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+                             INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = op.OD_ORDER_ID
+                            WHERE opm.APPROVAL_DT  BETWEEN DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY),'%Y-%m-%d 23:59:59')
+                              AND opm.STATUS = 'IC'
+                              AND oo.OM_SELLERS_ID != 0
+                        )  P_OUTMALL
+                        ON M.ID = P_OUTMALL.PAYMENT_SUMMARY_OUTMALL
+    </select>
+
+</mapper>

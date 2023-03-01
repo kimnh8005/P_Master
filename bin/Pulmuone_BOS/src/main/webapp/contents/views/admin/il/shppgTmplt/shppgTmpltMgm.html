@@ -1,0 +1,230 @@
+<style>
+	.k-state-disabled {
+		opacity: 0.25;
+	}
+</style>
+<div class="fb__sect">
+	<form id="inputForm" name="inputForm" method="post" onsubmit="return false">
+		<table class="datatable v-type">
+			<colgroup>
+				<col style="width:25%">
+				<col style="width:*">
+			</colgroup>
+			<tbody>
+				<tr>
+					<th scope="row"><label for="shippingTemplateName" class="req-star-front">배송정책명</label></th>
+					<td>
+						<div class="complex-condition">
+							<input type="text" id="shippingTemplateName" name="shippingTemplateName" class="comm-input" style="width: 100%;" maxlength="40"
+                                data-bind="value: shippingTemplateInfo.shippingTemplateName" required>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+                        <label for="warehouse" class="req-star-front">출고처</label>
+                    </th>
+					<td>
+                        <div class="fb__sect grid-sect">
+                            <div class="align-left">
+                                <button type="button" class="btn-point btn-s" style="margin-bottom: 5px" data-bind="click: fnWarehouseSearchPopup">검색</button>
+                            </div>
+                            <div id="shippingWarehouseGrid"
+                                 data-role="grid"
+                                 data-bind="source: shippingWarehouseList"
+                                 data-no-records='{ template: "출고처를 선택해 주시기 바랍니다."}'
+                                 data-columns='[
+                                                  { field : "warehouseName", title : "출고처명", width : "150px", headerAttributes : {style : "text-align:center"}, attributes : {style : "text-align:center"}}
+                                                , { field: "basicYnCheck", title : "기본여부", width : "100px", headerAttributes : {style : "text-align:center"}, attributes : {style : "text-align:center"},
+                                                        template : kendo.template($("#basicYn-template").html())
+                                                   }
+                                                , { command: [{ name: "해제", className: "k-button k-button-icontext",
+                                                                click: function(e) {
+                                                                    e.preventDefault();
+                                                                    let row = $(e.target).closest("tr");
+                                                                    let rowData = this.dataItem(row);
+
+                                                                    fnKendoMessage({
+                                                                         type    : "confirm",
+                                                                         message : "해제하시겠습니까?",
+                                                                         ok      : function()
+                                                                         {
+                                                                             if( viewModel.newCreate ){
+                                                                                 viewModel.shippingWarehouseList.remove(rowData);
+                                                                             }else{
+                                                                                 viewModel.fnGoodsShippingTemplateCheck(rowData);
+                                                                             }
+                                                                         },
+                                                                         cancel  : function(){
+
+                                                                         }
+                                                                     });
+                                                                 }
+                                                      }], title : "해제", width : "70px", headerAttributes : {style : "text-align:center"}, attributes : {style : "text-align:center"}
+                                                   }]'>
+                            </div>
+                        </div>
+                        <span style="color: red; font-size: 10pt;">* 기본여부를 변경하고자 할 경우 사용 할 배송정책에 기본으로 수정하시길 바랍니다.</span>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="claimShippingPrice" class="req-star-front">클레임 배송비</label></th>
+					<td>
+						<div class="complex-condition">
+                            <input id="claimShippingPrice"
+                                   name="claimShippingPrice"
+                                   data-role="numerictextbox"
+                                   data-format="n0"
+                                   data-min="0"
+                                   maxlength="6"
+                                   data-decimals="0"
+                                   data-restrict-decimals="true"
+                                   data-spinners="false"
+                                   data-bind="value: shippingTemplateInfo.claimShippingPrice"
+                                   style="width:150px;text-align:right;" required>
+						    <span>&nbsp; 원 &nbsp; (편도)</span>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="termsShipping" class="req-star-front">조건 배송비</label></th>
+					<td>
+						<table class="datatable v-type">
+							<colgroup>
+								<col style="width:25%">
+								<col style="width:*">
+							</colgroup>
+							<tbody>
+								<tr>
+									<th scope="row"><label for="conditionType">조건 배송비 구분</label></th>
+									<td>
+										<div class="complex-condition">
+											<input type="text" id="conditionTypeCode" name="conditionTypeCode" class="fb__custom__select left-input marginR10" style="width:200px;"
+                                                data-value-primitive="true"
+                                                data-bind="value: shippingTemplateInfo.conditionTypeCode, events: {change:fnConditionTypeChange}">
+											<input type="text" id="bundleYn" name="bundleYn" class="fb__custom__select left-input" style="width:100px;"
+                                                data-value-primitive="true"
+                                                data-bind="value: shippingTemplateInfo.bundleYn, disabled: bundleYnDisabled">
+										</div>
+									</td>
+								</tr>
+        						<tr data-bind="visible: shippingConditionGridVisible">
+                                    <td colspan="2">
+                                        <div class="fb__sect grid-sect">
+                                            <div id="shippingConditionGrid"
+                                                data-role="grid"
+                                                data-editable="true"
+                                                data-bind="source: shippingConditionList"
+                                                data-columns='[
+                                                                 { field : "conditionValue", title : "주문금액", width : "100%"
+                                                                 , headerAttributes : {style : "text-align:center"}, attributes : {style : "text-align:right"}
+                                                                 , editor: viewModel.fnNumericEditor
+                                                                 , template: function(dataItem) {
+                                                                       return kendo.format("{0:n0}", dataItem.conditionValue) + " 원 미만 일 경우";
+                                                                   }
+                                                                 }
+                                                               , { field : "shippingPrice", title : "배송비", width : "100%"
+                                                                 , headerAttributes : {style : "text-align:center"}, attributes : {style : "text-align:right"}
+                                                                 , editor: viewModel.fnNumericEditor
+                                                                 , template: function(dataItem) {
+                                                                       return kendo.format("{0:n0}", dataItem.shippingPrice) + " 원";
+                                                                   }
+                                                                 }
+                                                              ]'>
+                                            </div>
+                                        </div>
+                                    </td>
+        						</tr>
+							</tbody>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="areaShippingPrice" class="req-star-front">지역별 배송비</label></th>
+					<td>
+						<table class="datatable v-type">
+							<colgroup>
+								<col style="width:25%">
+								<col style="width:*">
+							</colgroup>
+							<tbody>
+								<tr>
+									<th scope="row"><label for="areaShippingUseYn">사용 유무</label></th>
+									<td>
+										<div class="complex-condition">
+                                            <div id="areaShippingUseYn" class="radios-wrapper fb__custom__radio"></div>
+										</div>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="islandShippingPrice">도서산간 (1권역)</label></th>
+									<td>
+										<div class="complex-condition">
+											<input id="islandShippingPrice"
+												   name="islandShippingPrice"
+												   data-role="numerictextbox"
+												   data-format="n0"
+												   data-min="0"
+												   maxlength="6"
+												   data-decimals="0"
+												   data-restrict-decimals="true"
+												   data-spinners="false"
+												   data-bind="value: shippingTemplateInfo.islandShippingPrice, disabled: islandShippingPriceDisabled"
+												   style="width:150px;text-align:right;">
+											<span>&nbsp; 원</span>
+											<label class="checkbox-wrapper" for="islandShppingPriceCheckBox">
+												<input type="checkBox"
+													   id="islandShppingPriceCheckBox"
+													   name="islandShppingPriceCheckBox"
+													   class="checkbox-wrapper"
+													   data-bind="checked: shippingTemplateInfo.islandShppingPriceCheckBox, disabled: islandShippingCheckDisabled"
+													   onclick="$scope.fnIslandShppingPriceUseYnChange(this.checked)">
+												<span>배송불가</span>
+											</label>
+										</div>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="jejuShippingPrice">제주 (2권역)</label></th>
+									<td>
+										<div class="complex-condition">
+                                            <input id="jejuShippingPrice"
+                                                   name="jejuShippingPrice"
+                                                   data-role="numerictextbox"
+                                                   data-format="n0"
+                                                   data-min="0"
+                                                   maxlength="6"
+                                                   data-decimals="0"
+                                                   data-restrict-decimals="true"
+                                                   data-spinners="false"
+												   data-bind="value: shippingTemplateInfo.jejuShippingPrice, disabled: jejuShippingPriceDisabled"
+                                                   style="width:150px;text-align:right;">
+											<span>&nbsp; 원</span>
+											<label class="checkbox-wrapper" for="jejuShppingPriceCheckBox">
+												<input type="checkBox"
+													   id="jejuShppingPriceCheckBox"
+													   name="jejuShppingPriceCheckBox"
+													   class="checkbox-wrapper"
+													   data-bind="checked: shippingTemplateInfo.jejuShppingPriceCheckBox, disabled: jejuShippingCheckDisabled"
+													   onclick="$scope.fnJejuShppingPriceUseYnChange(this.checked)">
+												<span>배송불가</span>
+											</label>
+										</div>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</form>
+</div>
+<span class="btn-area">
+	<button type="button" id="fnSave" class="btn-point btn-l" onclick="$scope.fnSave()">저장</button>
+</span>
+
+<!-- 출고처 기본 체크박스 템플릿 -->
+<script id="basicYn-template" type="text/x-kendo-template">
+	<input type="checkbox" class="checkbox-wrapper" name="basicYnCheck" data-bind="checked : basicYnCheck">&nbsp;기본</input>
+</script>

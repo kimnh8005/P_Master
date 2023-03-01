@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.GoodsEtcBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 랭킹 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addGoodsRankingList">
+        /* goodsEtcBatch.addGoodsRankingList */
+        INSERT INTO IL_GOODS_RANKING (
+            MALL_DIV, IL_GOODS_ID, IL_CTGRY_ID, RANKING, BEST_YN, CREATE_DT
+        ) VALUES
+        <foreach item="insertData" index="index" collection="insertList" open="" separator="," close="">
+            (
+                #{insertData.mallDiv}
+                , #{insertData.ilGoodsId}
+                , #{insertData.ilCtgryId}
+                , #{insertData.ranking}
+                , #{insertData.bestYn}
+                , CURRENT_TIMESTAMP
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 랭킹 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delAllGoodsRanking">
+        /* goodsEtcBatch.delAllGoodsRanking */
+        DELETE FROM IL_GOODS_RANKING;
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 랭킹 조회 - 브랜드
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.15		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsRankingByDpBrandId" resultType="long">
+        /* goodsEtcBatch.getGoodsRankingByDpBrandId */
+        SELECT G1.IL_GOODS_ID
+        FROM  (
+            SELECT IG.IL_GOODS_ID, IFNULL(IGR.RANKING, 999999) AS RANKING
+            FROM IL_ITEM II
+                INNER JOIN IL_GOODS IG ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+                LEFT OUTER JOIN IL_GOODS_RANKING IGR ON IGR.IL_GOODS_ID = IG.IL_GOODS_ID AND IGR.MALL_DIV = #{mallDiv} AND IGR.IL_CTGRY_ID = "0"
+            WHERE II.DP_BRAND_ID = #{dpBrandId}
+                AND IG.SALE_STATUS = 'SALE_STATUS.ON_SALE'
+                AND IG.DISP_YN = 'Y'
+                AND IG.DEL_YN = 'N'
+                AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+                AND IG.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.GIFT_FOOD_MARKETING')
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsList)">
+                    <if test="goodsList.size() > 0">
+                        AND IG.IL_GOODS_ID NOT IN
+                        <foreach collection="goodsList" item="goodsId" separator="," open="(" close=")">
+                            #{goodsId}
+                        </foreach>
+                    </if>
+                </if>
+        ) G1
+        ORDER BY G1.RANKING ASC
+        LIMIT #{limit}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsRankingFromNowSale" resultType="long">
+        /* goodsEtcBatch.getGoodsRankingFromNowSale */
+        SELECT G1.IL_GOODS_ID
+        FROM (
+            SELECT IGR.IL_GOODS_ID
+                , P.RECOMMENDED_PRICE  -- 정상가
+                , P.SALE_PRICE  -- 판매가
+                , truncate((CAST(P.RECOMMENDED_PRICE AS SIGNED) - CAST(P.SALE_PRICE  AS SIGNED)) / P.RECOMMENDED_PRICE * 100, 0) AS DISCOUNT_RATE
+            FROM IL_GOODS_RANKING IGR
+                INNER JOIN IL_GOODS_PRICE P ON P.IL_GOODS_ID = IGR.IL_GOODS_ID AND P.USE_YN = 'Y' AND NOW() BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+            WHERE IGR.MALL_DIV = #{mallDiv}
+                AND IGR.BEST_YN = 'Y'
+                AND IGR.IL_CTGRY_ID = 0
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsList)">
+                    <if test="goodsList.size() > 0">
+                        AND IGR.IL_GOODS_ID NOT IN
+                        <foreach collection="goodsList" item="goodsId" separator="," open="(" close=")">
+                            #{goodsId}
+                        </foreach>
+                    </if>
+                </if>
+        ) G1
+        WHERE G1.DISCOUNT_RATE <![CDATA[ > ]]> 0
+        ORDER BY G1.DISCOUNT_RATE DESC
+        LIMIT #{limit}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 랭킹 조회 - 중카테고리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.18		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsRankingByDpCtgryId" resultType="long">
+        /* goodsEtcBatch.getGoodsRankingByDpCtgryId */
+        SELECT IGR.IL_GOODS_ID
+        FROM IL_GOODS_RANKING IGR
+        WHERE EXISTS (
+            SELECT 1
+            FROM IL_CTGRY_PRNTS_INFO T1
+                JOIN IL_GOODS_CTGRY T2 ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                JOIN IL_CTGRY T3 ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+            WHERE T1.CTGRY_ID_DEPTH2 = #{dpCtgryId}
+                AND T3.USE_YN = 'Y'
+                AND T3.DEL_YN = 'N'
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(basicYn)">
+                    AND T2.BASIC_YN = #{basicYn}
+                </if>
+                AND T3.MALL_DIV = #{mallDiv}
+                AND T3.MALL_DIV = IGR.MALL_DIV
+                AND T1.CTGRY_ID_DEPTH1 = IGR.IL_CTGRY_ID
+                AND T2.IL_GOODS_ID = IGR.IL_GOODS_ID
+            )/* 전시카테고리 중분류 */
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsList)">
+                <if test="goodsList.size() > 0">
+                    AND IGR.IL_GOODS_ID NOT IN
+                    <foreach collection="goodsList" item="goodsId" separator="," open="(" close=")">
+                        #{goodsId}
+                    </foreach>
+                </if>
+            </if>
+        ORDER BY IGR.RANKING ASC
+        LIMIT #{limit}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 랭킹 조회 - 산지직송
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsRankingFromDirectGoods" resultType="long">
+        /* goodsEtcBatch.getGoodsRankingFromDirectGoods */
+        SELECT IGR.IL_GOODS_ID
+        FROM IL_GOODS_RANKING IGR
+            INNER JOIN IL_GOODS IG ON IGR.IL_GOODS_ID = IG.IL_GOODS_ID
+            INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+            INNER JOIN IL_ITEM_WAREHOUSE IIW ON II.IL_ITEM_CD = IIW.IL_ITEM_CD
+            INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+            INNER JOIN UR_WAREHOUSE UW ON USW.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+        WHERE IGR.IL_CTGRY_ID = 0
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsList)">
+                <if test="goodsList.size() > 0">
+                    AND IGR.IL_GOODS_ID NOT IN
+                    <foreach collection="goodsList" item="goodsId" separator="," open="(" close=")">
+                        #{goodsId}
+                    </foreach>
+                </if>
+            </if>
+            AND EXISTS (
+                SELECT 1
+                FROM IL_CTGRY_PRNTS_INFO T1
+                    JOIN IL_GOODS_CTGRY T2 ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                    JOIN IL_CTGRY T3 ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                WHERE T1.CTGRY_ID_DEPTH1 IN
+                    <foreach collection="dpCtgryIdList" item="dpCtgryId" separator="," open="(" close=")">
+                        #{dpCtgryId}
+                    </foreach>
+                    AND T3.USE_YN = 'Y'
+                    AND T3.DEL_YN = 'N'
+                    AND T2.BASIC_YN = 'Y'
+                    AND T3.MALL_DIV = #{mallDiv}
+                    AND T3.MALL_DIV = IGR.MALL_DIV
+                    AND T2.IL_GOODS_ID = IGR.IL_GOODS_ID
+            )/* 전시카테고리 대분류 */
+            AND UW.WAREHOUSE_GRP_CD = 'WAREHOUSE_GROUP.ACCOUNT_Orga'
+        GROUP BY IGR.IL_GOODS_ID
+        ORDER BY IGR.RANKING ASC
+        LIMIT #{limit}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 판매중 상품 조회 - 묶음상품 제외 (후기집계용)
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.goods.etc.dto.vo.GoodsFeedbackVo" id="goodsFeedbackResultMap">
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="IL_ITEM_CD" property="ilItemCd"/>
+    </resultMap>
+    <select id="getGoodsFromFeedback" resultMap="goodsFeedbackResultMap">
+        /* goodsEtcBatch.getGoodsFromFeedback */
+        SELECT IG.IL_GOODS_ID, IG.IL_ITEM_CD
+        FROM IL_GOODS IG
+            INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+        WHERE IG.DISP_YN = 'Y'
+            AND IG.DEL_YN = 'N'
+            AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+            AND IG.GOODS_TP NOT IN ('GOODS_TYPE.PACKAGE', 'GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.GIFT_FOOD_MARKETING')
+        GROUP BY IG.IL_ITEM_CD
+        ORDER BY IG.IL_ITEM_CD
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 판매중 상품 조회 - 묶음상품 (후기집계용)
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsPackageFromFeedback" resultMap="goodsFeedbackResultMap">
+        /* goodsEtcBatch.getGoodsPackageFromFeedback */
+        SELECT G1.IL_GOODS_ID, G1.IL_ITEM_CD
+        FROM (
+            SELECT IG.IL_GOODS_ID, IG.IL_ITEM_CD
+            FROM IL_GOODS IG
+                INNER JOIn IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+            WHERE IG.DISP_YN = 'Y'
+                AND IG.DEL_YN = 'N'
+                AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+                AND IG.GOODS_TP = 'GOODS_TYPE.PACKAGE'
+            UNION ALL
+            SELECT IG.IL_GOODS_ID, TIG.IL_ITEM_CD
+            FROM IL_GOODS IG
+                INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IG.IL_GOODS_ID = IGPGM.IL_GOODS_ID
+                INNER JOIN IL_GOODS TIG ON TIG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+            WHERE IG.DISP_YN = 'Y'
+                AND IG.DEL_YN = 'N'
+                AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+                AND IG.GOODS_TP = 'GOODS_TYPE.PACKAGE'
+            GROUP BY IG.IL_GOODS_ID, TIG.IL_ITEM_CD
+        ) G1
+        GROUP BY G1.IL_GOODS_ID, G1.IL_ITEM_CD
+        ORDER BY G1.IL_GOODS_ID
+    </select>
+
+</mapper>

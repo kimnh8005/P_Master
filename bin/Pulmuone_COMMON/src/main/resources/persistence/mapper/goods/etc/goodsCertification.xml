@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.etc.GoodsCertificationMapper">
+
+    <resultMap id="ilCertificationMap" type="kr.co.pulmuone.v1.goods.etc.dto.vo.CertificationVo">
+        <result column="IL_CERTIFICATION_ID" property="ilCertificationId" />
+        <result column="CERTIFICATION_NAME" property="certificationName" />
+        <result column="USE_YN" property="useYn" />
+        <result column="DEFAULT_CERTIFICATION_DESC" property="defaultCertificationDescribe" />
+        <result column="IMG_PATH" property="imagePath" />
+        <result column="IMG_NM" property="imageName" />
+        <result column="IMG_ORIGIN_NM" property="imageOriginName" />
+        <result column="CREATE_LOGIN_ID" property="createLoginId" />
+        <result column="CREATE_LOGIN_NAME" property="createLoginName" />
+        <result column="CREATE_DATE" property="createDate" />
+        <result column="MODIFY_LOGIN_ID" property="modifyLoginId" />
+        <result column="MODIFY_LOGIN_NAME" property="modifyLoginName" />
+        <result column="MODIFY_DATE" property="modifyDate" />
+    </resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품인증정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.14     박영후          최초생성
+     * @ 2020.10.08     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getIlCertificationList" resultMap="ilCertificationMap">
+        /* goodsCertification.getIlCertificationList */
+        SELECT
+               IC.IL_CERTIFICATION_ID
+             , IC.CERTIFICATION_NM AS CERTIFICATION_NAME
+             , IF(IC.USE_YN = 'Y', '예', '아니오') AS USE_YN
+             , IC.DEFAULT_CERTIFICATION_DESC
+             , IC.IMG_PATH
+             , IC.IMG_NM
+             , IC.IMG_ORIGIN_NM
+             , UU1.LOGIN_ID AS CREATE_LOGIN_ID
+             , FN_DECRYPT(UU1.USER_NM) AS CREATE_LOGIN_NAME
+             , DATE_FORMAT(IC.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+             , UU2.LOGIN_ID AS MODIFY_LOGIN_ID
+             , CASE WHEN UU2.USER_NM IS NULL
+                    THEN ''
+               ELSE FN_DECRYPT(UU2.USER_NM)
+                END MODIFY_LOGIN_NAME
+             , DATE_FORMAT(IC.MODIFY_DT, '%Y-%m-%d %T') AS MODIFY_DATE
+          FROM IL_CERTIFICATION IC
+          JOIN UR_USER UU1
+            ON UU1.UR_USER_ID = IC.CREATE_ID
+     LEFT JOIN UR_USER UU2
+            ON UU2.UR_USER_ID = IC.MODIFY_ID
+         WHERE IC.DEL_YN = 'N'
+       <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCertificationName)">
+           AND IC.CERTIFICATION_NM LIKE CONCAT('%',#{searchCertificationName},'%')
+       </if>
+       <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchUseYn,'ALL')">
+           AND IC.USE_YN = #{searchUseYn}
+       </if>
+         ORDER BY IC.CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품인증정보 상세 조회
+     * @
+     * @ 수정일         수정자       수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.15     박영후          최초생성
+     * @ 2020.10.08     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getIlCertification" resultMap="ilCertificationMap">
+        /* goodsCertification.getIlCertification */
+        SELECT
+               IC.IL_CERTIFICATION_ID
+             , IC.CERTIFICATION_NM AS CERTIFICATION_NAME
+             , IC.USE_YN
+             , IC.DEFAULT_CERTIFICATION_DESC
+             , IC.IMG_PATH
+             , IC.IMG_NM
+             , IC.IMG_ORIGIN_NM
+             , UU1.LOGIN_ID AS CREATE_LOGIN_ID
+             , FN_DECRYPT(UU1.USER_NM) AS CREATE_LOGIN_NAME
+             , DATE_FORMAT(IC.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+             , UU2.LOGIN_ID AS MODIFY_LOGIN_ID
+             , CASE WHEN UU2.USER_NM IS NULL
+                        THEN ''
+                   ELSE FN_DECRYPT(UU2.USER_NM)
+                    END MODIFY_LOGIN_NAME
+             , DATE_FORMAT(IC.MODIFY_DT, '%Y-%m-%d %T') AS MODIFY_DATE
+          FROM IL_CERTIFICATION IC
+          JOIN UR_USER UU1
+            ON UU1.UR_USER_ID = IC.CREATE_ID
+     LEFT JOIN UR_USER UU2
+            ON UU2.UR_USER_ID = IC.MODIFY_ID
+         WHERE IC.IL_CERTIFICATION_ID = #{ilCertificationId}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품인증정보 추가
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.15     박영후          최초생성
+     * @ 2020.10.08     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addIlCertification" useGeneratedKeys="true" keyProperty="ilCertificationId">
+        /* goodsCertification.addIlCertification */
+        INSERT INTO IL_CERTIFICATION
+        (
+          CERTIFICATION_NM
+        , USE_YN
+        , DEFAULT_CERTIFICATION_DESC
+        , IMG_PATH
+        , IMG_NM
+        , IMG_ORIGIN_NM
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{certificationName}
+        , #{useYn}
+        , #{defaultCertificationDescribe}
+        , #{imagePath}
+        , #{imageName}
+        , #{imageOriginName}
+        , #{userVo.userId}
+        , NOW()
+        )
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품인증정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.15     박영후          최초생성
+     * @ 2020.10.08     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putIlCertification">
+        /* goodsCertification.putIlCertification */
+        UPDATE IL_CERTIFICATION
+           SET CERTIFICATION_NM = #{certificationName}
+             , USE_YN = #{useYn}
+             , DEFAULT_CERTIFICATION_DESC = #{defaultCertificationDescribe}
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(imageOriginName)">
+             , IMG_PATH = #{imagePath}
+             , IMG_NM = #{imageName}
+             , IMG_ORIGIN_NM = #{imageOriginName}
+         </if>
+             , MODIFY_ID = #{userVo.userId}
+             , MODIFY_DT = NOW()
+         WHERE IL_CERTIFICATION_ID = #{ilCertificationId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품인증정보 사제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.15     박영후          최초생성
+     * @ 2020.10.08     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="delIlCertification">
+        /* goodsCertification.delIlCertification */
+        UPDATE IL_CERTIFICATION
+           SET DEL_YN = 'Y'
+             , MODIFY_ID = #{userVo.userId}
+             , MODIFY_DT = NOW()
+         WHERE IL_CERTIFICATION_ID = #{ilCertificationId}
+    </update>
+</mapper>

@@ -1,0 +1,1108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.urcompany.UrCompanyMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 거래처 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.26		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCompanyListResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetCompanyListResultVo">
+		<result column="NO"  property="no"/>
+		<result column="UR_CLIENT_ID"  property="urClientId"/>
+		<result column="CLIENT_TP"  property="clientTp"/>
+		<result column="CLIENT_TYPE_NAME"  property="clientTypeName"/>
+		<result column="CLIENT_NAME"  property="clientName"/>
+		<result column="SUPPLY_COMP_NM"  property="supplyCompName"/>
+		<result column="USE_YN"  property="useYn"/>
+		<result column="CREATE_DT"  property="createDate"/>
+		<result column="UR_COMPANY_ID"  property="urCompanyId"/>
+	</resultMap>
+
+	<select id="getCompanyList" resultMap="getCompanyListResultMap">
+		/* urCompany.getCompanyList */
+		SELECT A.* FROM
+		(
+		SELECT
+		A.UR_COMPANY_ID
+		,A.UR_CLIENT_ID
+		,A.CLIENT_TP
+		,FN_COMN_CODE_DIC(A.CLIENT_TP ) AS CLIENT_TYPE_NAME
+		,B.COMP_NM
+		,A.CHANNEL_ID
+		,A.UR_STORE_ID
+		,CASE WHEN A.CLIENT_TP  =   'CLIENT_TYPE.CLIENT' THEN (SELECT COMP_NM FROM UR_COMPANY uc WHERE UR_COMPANY_ID =   (SELECT UR_COMPANY_ID FROM UR_SUPPLIER US2  WHERE US2.UR_SUPPLIER_ID  = A.UR_SUPPLIER_ID))
+		WHEN A.CLIENT_TP  =   'CLIENT_TYPE.SHOP' THEN (SELECT COMP_NM FROM UR_COMPANY uc WHERE UR_COMPANY_ID =   (SELECT UR_COMPANY_ID FROM UR_SUPPLIER US2  WHERE US2.UR_SUPPLIER_ID  = A.UR_SUPPLIER_ID))
+		ELSE (SELECT GROUP_CONCAT(V.SELLERS_NM) AS SELELRS_NM
+		FROM (
+		SELECT OS.SELLERS_NM FROM UR_CLIENT UC INNER JOIN OM_SELLERS OS ON UC.ERP_CD = OS.OM_SELLERS_ID
+		WHERE UC.UR_COMPANY_ID = A.UR_COMPANY_ID
+		) AS V)
+		END AS SUPPLY_COMP_NM
+		,B.USE_YN
+		,B.CREATE_DT
+		,B.COMP_NM AS CLIENT_NAME
+		,B.COMP_MAIL
+		,B.COMP_TEL
+		FROM (SELECT * FROM UR_CLIENT GROUP BY UR_COMPANY_ID) A
+		INNER JOIN UR_COMPANY B
+		WHERE A.UR_COMPANY_ID = B.UR_COMPANY_ID
+		) AS A
+		WHERE 	1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyTypeValue)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType,'ACCOUNT_SEARCH_TYPE.NAME')">
+					AND A.COMP_NM LIKE CONCAT(#{companyTypeValue},'%')
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType,'ACCOUNT_SEARCH_TYPE.EMAIL')">
+					AND A.COMP_MAIL LIKE CONCAT(#{companyTypeValue},'%')
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType,'ACCOUNT_SEARCH_TYPE.TEL')">
+					AND A.COMP_TEL LIKE CONCAT(#{companyTypeValue},'%')
+				</when>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(tpCode)">
+			AND A.CLIENT_TP = #{tpCode}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+			AND A.USE_YN = UPPER(#{useYn})
+		</if>
+		ORDER BY A.CREATE_DT DESC
+	</select>
+
+
+	<select id="getCompanyListCount" resultType="int">
+		/* urCompany.getCompanyListCount */
+		SELECT	COUNT(*)
+		FROM
+		(
+		SELECT
+		@rownum:=@rownum+1 AS NO
+		,A.UR_CLIENT_ID
+		,A.CLIENT_TP
+		,FN_COMN_CODE_DIC(A.CLIENT_TP ) AS CLIENT_TYPE_NAME
+		,B.COMP_NM
+		,A.CHANNEL_ID
+		,A.UR_STORE_ID
+		,(SELECT COMP_NM FROM UR_COMPANY uc WHERE UR_COMPANY_ID = CASE WHEN A.UR_STORE_ID IS NOT NULL THEN A.UR_STORE_ID
+		ELSE A.CHANNEL_ID
+		END) AS SUPPLY_COMP_NM
+		,B.USE_YN
+		,B.CREATE_DT
+		,B.COMP_NM AS CLIENT_NAME
+		,B.COMP_MAIL
+		,B.COMP_TEL
+		FROM UR_CLIENT A, (SELECT @rownum:=0) r
+		INNER JOIN UR_COMPANY B
+		WHERE A.UR_COMPANY_ID = B.UR_COMPANY_ID
+		) AS A
+		WHERE 	1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(companyTypeValue)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType,'ACCOUNT_SEARCH_TYPE.NAME')">
+					AND A.COMP_NM LIKE CONCAT(#{companyTypeValue},'%')
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType,'ACCOUNT_SEARCH_TYPE.EMAIL')">
+					AND A.COMP_MAIL LIKE CONCAT(#{companyTypeValue},'%')
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(companyType,'ACCOUNT_SEARCH_TYPE.TEL')">
+					AND A.COMP_TEL LIKE CONCAT(#{companyTypeValue},'%')
+				</when>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(tpCode)">
+			AND A.CLIENT_TP = #{tpCode}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+			AND A.USE_YN = UPPER(#{useYn})
+		</if>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 거래처 상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.26		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getClientResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetClientResultVo">
+		<result column="UR_CLIENT_ID"  property="urClientId"/>
+		<result column="UR_COMPANY_ID"  property="urCompanyId"/>
+		<result column="COMP_TP"  property="companyType"/>
+		<result column="CLIENT_TP"  property="inputTpCode"/>
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId"/>
+		<result column="COMPANY_NAME"  property="companyName"/>
+		<result column="COMPANY_TELEPHONE1"  property="accountTelephone1"/>
+		<result column="COMPANY_TELEPHONE2"  property="accountTelephone2"/>
+		<result column="COMPANY_TELEPHONE3"  property="accountTelephone3"/>
+		<result column="ACCOUNT_MAIL"  property="accountMail"/>
+		<result column="ACCOUNT_MEMO"  property="accountMemo"/>
+		<result column="USE_YN"  property="inputUseYn"/>
+		<result column="CREATE_DATE"  property="createDate"/>
+		<result column="MODIFY_DATE"  property="modifyDate"/>
+		<result column="UR_WAREHOUSE_ID"  property="warehouseId"/>
+		<result column="WAREHOUSE_NAME"  property="warehouseName"/>
+		<result column="ORDER_ALARM_REV_YN"  property="orderAlarmRevYn"/>
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId"/>
+		<!-- <result column="DELIVERY_STAT_CHG_YN"  property="deliveryStatChgYn"/> -->
+	</resultMap>
+	<select id="getClient" resultMap="getClientResultMap">
+		/* urCompany.getClient */
+		SELECT DISTINCT C.UR_CLIENT_ID
+		,A.UR_COMPANY_ID
+		,A.COMP_TP
+		,C.CLIENT_TP
+		,FN_COMN_CODE_DIC(C.CLIENT_TP) AS CLIENT_TYPE_NAME
+		,C.UR_SUPPLIER_ID AS SUPPLIER_COMPANY
+		,A.COMP_NM AS COMPANY_NAME
+		,A.COMP_TEL AS COMPANY_TELEPHONE
+		,SUBSTRING_INDEX(COMP_TEL, '-', 1) AS COMPANY_TELEPHONE1
+		,SUBSTRING_INDEX(SUBSTRING_INDEX(COMP_TEL, '-', 2), '-', -1) AS COMPANY_TELEPHONE2
+		,SUBSTRING_INDEX(COMP_TEL, '-', -1) AS COMPANY_TELEPHONE3
+		,A.COMP_MAIL AS ACCOUNT_MAIL
+		,A.MEMO AS ACCOUNT_MEMO
+		,A.USE_YN
+		,A.CREATE_DT AS CREATE_DATE
+		,A.MODIFY_DT AS MODIFY_DATE
+		<!-- ,E.UR_WAREHOUSE_ID
+        ,(SELECT UW.WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE UR_WAREHOUSE_ID = E.UR_WAREHOUSE_ID ) AS WAREHOUSE_NAME -->
+		,A.ORDER_ALARM_REV_YN
+		<!-- ,A.DELIVERY_STAT_CHG_YN -->
+		,E.UR_SUPPLIER_ID
+		FROM UR_COMPANY A
+		INNER JOIN UR_CLIENT C
+		INNER JOIN UR_CLIENT_SUPPLIER_WAREHOUSE D
+		INNER JOIN UR_SUPPLIER_WAREHOUSE E ON D.UR_SUPPLIER_WAREHOUSE_ID = E.UR_SUPPLIER_WAREHOUSE_ID
+		WHERE A.UR_COMPANY_ID = C.UR_COMPANY_ID
+		AND C.UR_CLIENT_ID = D.UR_CLIENT_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urClientId)">
+			AND C.UR_CLIENT_ID =#{urClientId}
+		</if>
+		LIMIT 1
+
+	</select>
+
+
+	<resultMap id="getClientSupplierWarehouseInfoResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetClientResultVo">
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="UR_SUPPLIER_WAREHOUSE_ID"  property="urSupplierWarehouseId"/>
+	</resultMap>
+	<select id="getClientSupplierWarehouseInfo" resultMap="getClientSupplierWarehouseInfoResultMap">
+		/* urCompany.getClientSupplierWarehouseInfo */
+		SELECT C.WAREHOUSE_NM , B.UR_SUPPLIER_WAREHOUSE_ID
+		FROM UR_CLIENT_SUPPLIER_WAREHOUSE A
+		INNER JOIN UR_SUPPLIER_WAREHOUSE B ON A.UR_SUPPLIER_WAREHOUSE_ID = B.UR_SUPPLIER_WAREHOUSE_ID
+		INNER JOIN UR_WAREHOUSE C ON C.UR_WAREHOUSE_ID = B.UR_WAREHOUSE_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urClientId)">
+			WHERE A.UR_CLIENT_ID =#{urClientId}
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 거래처 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.02		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getClientSellerInfoResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetClientResultVo">
+		<result column="SELLERS_NM"  property="sellersNm"/>
+		<result column="OM_SELLERS_ID"  property="omSellersId"/>
+		<result column="SELLERS_GROUP_CD"  property="sellersGroupCd"/>
+	</resultMap>
+	<select id="getClientSellerInfo" resultMap="getClientSellerInfoResultMap">
+		/* urCompany.getClientSellerInfo */
+		SELECT A.UR_COMPANY_ID
+		, A.UR_CLIENT_ID
+		, B.OM_SELLERS_ID
+		, B.SELLERS_GROUP_CD
+		, B.SELLERS_NM
+		FROM UR_CLIENT A
+		INNER JOIN OM_SELLERS B ON A.ERP_CD = B.OM_SELLERS_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urCompanyId)">
+			WHERE A.UR_COMPANY_ID =#{urCompanyId}
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 매장정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.26		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getClientShopResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetClientResultVo">
+		<result column="UR_CLIENT_ID"  property="urClientId"/>
+		<result column="UR_COMPANY_ID"  property="urCompanyId"/>
+		<result column="COMP_TP"  property="companyType"/>
+		<result column="CLIENT_TP"  property="inputTpCode"/>
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId"/>
+		<result column="SUPPLIER_COMPANY"  property="supplierCompany"/>
+		<result column="COMPANY_NAME"  property="companyName"/>
+		<result column="COMPANY_TELEPHONE1"  property="shopTelephone1"/>
+		<result column="COMPANY_TELEPHONE2"  property="shopTelephone2"/>
+		<result column="COMPANY_TELEPHONE3"  property="shopTelephone3"/>
+		<result column="ACCOUNT_MAIL"  property="accountMail"/>
+		<result column="ACCOUNT_MEMO"  property="accountMemo"/>
+		<result column="USE_YN"  property="inputUseYn"/>
+		<result column="CREATE_DATE"  property="createDate"/>
+		<result column="MODIFY_DATE"  property="modifyDate"/>
+		<result column="UR_STORE_ID"  property="store"/>
+		<result column="UR_STORE"  property="storeId"/>
+		<result column="ORDER_ALARM_REV_YN"  property="orderAlarmRevYn"/>
+	</resultMap>
+	<select id="getClientShop" resultMap="getClientShopResultMap">
+		/* urCompany.getClientShop */
+		SELECT DISTINCT
+		C.UR_CLIENT_ID
+		,A.UR_COMPANY_ID
+		,A.COMP_TP
+		,C.CLIENT_TP
+		,FN_COMN_CODE_DIC(C.CLIENT_TP) AS CLIENT_TYPE_NAME
+		,C.UR_SUPPLIER_ID
+		,C.UR_SUPPLIER_ID AS SUPPLIER_COMPANY
+		,A.COMP_NM AS COMPANY_NAME
+		,A.COMP_TEL AS COMPANY_TELEPHONE
+		,SUBSTRING_INDEX(COMP_TEL, '-', 1) AS COMPANY_TELEPHONE1
+		,SUBSTRING_INDEX(SUBSTRING_INDEX(COMP_TEL, '-', 2), '-', -1) AS COMPANY_TELEPHONE2
+		,SUBSTRING_INDEX(COMP_TEL, '-', -1) AS COMPANY_TELEPHONE3
+		,A.COMP_MAIL AS ACCOUNT_MAIL
+		,A.MEMO AS ACCOUNT_MEMO
+		,A.USE_YN
+		,A.CREATE_DT AS CREATE_DATE
+		,A.MODIFY_DT AS MODIFY_DATE
+		,C.UR_STORE_ID
+		,CONCAT(C.UR_STORE_ID,'_', A.COMP_TEL) AS UR_STORE
+		,A.ORDER_ALARM_REV_YN
+		FROM UR_COMPANY A
+		INNER JOIN UR_CLIENT C
+		WHERE A.UR_COMPANY_ID = C.UR_COMPANY_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urClientId)">
+			AND C.UR_CLIENT_ID =#{urClientId}
+		</if>
+
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 거래처 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.26		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getClientVendorResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetClientResultVo">
+		<result column="UR_CLIENT_ID"  property="urClientId"/>
+		<result column="UR_COMPANY_ID"  property="urCompanyId"/>
+		<result column="COMP_TP"  property="companyType"/>
+		<result column="CLIENT_TP"  property="inputTpCode"/>
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId"/>
+		<result column="SUPPLIER_COMPANY"  property="supplierCompany"/>
+		<result column="COMPANY_NAME"  property="companyName"/>
+		<result column="COMPANY_TELEPHONE1"  property="accountTelephone1"/>
+		<result column="COMPANY_TELEPHONE2"  property="accountTelephone2"/>
+		<result column="COMPANY_TELEPHONE3"  property="accountTelephone3"/>
+		<result column="ACCOUNT_MAIL"  property="accountMail"/>
+		<result column="ACCOUNT_MEMO"  property="accountMemo"/>
+		<result column="USE_YN"  property="inputUseYn"/>
+		<result column="CREATE_DATE"  property="createDate"/>
+		<result column="MODIFY_DATE"  property="modifyDate"/>
+		<result column="ERP_CD"  property="erpCode"/>
+		<result column="CHANNEL_ID"  property="channelCode"/>
+		<result column="ORDER_ALARM_REV_YN"  property="orderAlarmRevYn"/>
+		<!-- <result column="DELIVERY_STAT_CHG_YN"  property="deliveryStatChgYn"/> -->
+	</resultMap>
+	<select id="getClientVendor" resultMap="getClientVendorResultMap">
+		/* urCompany.getClientVendor */
+		SELECT DISTINCT
+		<!-- C.UR_CLIENT_ID -->
+		A.UR_COMPANY_ID
+		,A.COMP_TP
+		,C.CLIENT_TP
+		,FN_COMN_CODE_DIC(C.CLIENT_TP) AS CLIENT_TYPE_NAME
+		<!-- ,C.UR_SUPPLIER_ID
+        ,C.UR_SUPPLIER_ID AS SUPPLIER_COMPANY -->
+		,A.COMP_NM AS COMPANY_NAME
+		,A.COMP_TEL AS COMPANY_TELEPHONE
+		,SUBSTRING_INDEX(COMP_TEL, '-', 1) AS COMPANY_TELEPHONE1
+		,SUBSTRING_INDEX(SUBSTRING_INDEX(COMP_TEL, '-', 2), '-', -1) AS COMPANY_TELEPHONE2
+		,SUBSTRING_INDEX(COMP_TEL, '-', -1) AS COMPANY_TELEPHONE3
+		,A.COMP_MAIL AS ACCOUNT_MAIL
+		,A.MEMO AS ACCOUNT_MEMO
+		,A.USE_YN
+		,A.CREATE_DT AS CREATE_DATE
+		,A.MODIFY_DT AS MODIFY_DATE
+		,A.ORDER_ALARM_REV_YN
+		<!-- ,A.DELIVERY_STAT_CHG_YN -->
+		<!-- ,C.ERP_CD
+          ,C.CHANNEL_ID -->
+		FROM UR_COMPANY A
+		<!-- INNER JOIN UR_SUPPLIER B -->
+		INNER JOIN UR_CLIENT C ON A.UR_COMPANY_ID = C.UR_COMPANY_ID
+		<!-- WHERE A.UR_COMPANY_ID = B.UR_COMPANY_ID
+		AND B.UR_COMPANY_ID = C.UR_COMPANY_ID -->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urCompanyId)">
+			WHERE A.UR_COMPANY_ID =#{urCompanyId}
+		</if>
+
+	</select>
+
+
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공급처 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.26		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSupplierCompanyListResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetSupplierListResultVo">
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId"/>
+		<result column="SUPPLIER_NAME"  property="supplierName"/>
+	</resultMap>
+
+	<select id="getSupplierCompanyList" resultMap="getSupplierCompanyListResultMap">
+		/* urCompany.getSupplierCompanyList */
+		SELECT A.UR_SUPPLIER_ID
+		,B.COMP_NM AS SUPPLIER_NAME
+		,A.UR_COMPANY_ID
+		FROM UR_SUPPLIER A
+		INNER JOIN UR_COMPANY B
+		WHERE A.UR_COMPANY_ID = B.UR_COMPANY_ID
+		AND B.USE_YN = 'Y'
+		AND B.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+		ORDER BY B.CREATE_DT DESC
+
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 출고처별 공급처 검색
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.26		최윤석          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSupplierCompanyListByWhareHouse" resultMap="getSupplierCompanyListResultMap">
+		/* urCompany.getSupplierCompanyListByWhareHouse */
+		SELECT
+		US.UR_SUPPLIER_ID
+		, UC.COMP_NM AS SUPPLIER_NAME
+		, UC.UR_COMPANY_ID
+		FROM UR_WAREHOUSE UW
+		INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+		INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = USW.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+				AND UW.UR_WAREHOUSE_ID = #{urWarehouseId}
+			</if>
+			AND UC.USE_YN = 'Y'
+			AND UC.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+		</where>
+		ORDER BY UC.COMP_NM ASC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 출고처 정보 조회
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getWarehouseListResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetWarehouseListResultVo">
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+		<result column="SUPPLIER_COMPANY_NAME"  property="supplierCompanyName"/>
+		<result column="WAREHOUSE_NAME"  property="warehouseName"/>
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId"/>
+		<result column="UR_SUPPLIER_WAREHOUSE_ID"  property="urSupplierWarehouseId"/>
+		<result column="WORKING_DAY"  property="workingDay"/>
+	</resultMap>
+
+	<select id="getWarehouseList" resultMap="getWarehouseListResultMap">
+		/* urCompany.getWarehouseList */
+		SELECT    A.*
+		FROM (
+		SELECT DISTINCT C.WAREHOUSE_GRP_CD
+		,FN_COMN_CODE_DIC(C.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+		,C.WAREHOUSE_NM AS WAREHOUSE_NAME
+		,C.UR_WAREHOUSE_ID
+		/*,A.UR_SUPPLIER_ID*/
+		/*,B.UR_SUPPLIER_WAREHOUSE_ID*/
+		/*,(SELECT GROUP_CONCAT(FN_COMN_CODE_DIC(UB.WEEK_CD)) AS WORKING_DAY
+		FROM UR_WAREHOUSE UA
+		INNER JOIN UR_WAREHOUSE_WEEK UB
+		ON UA.UR_WAREHOUSE_ID =UB.UR_WAREHOUSE_ID
+		WHERE UA.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		GROUP BY UA.UR_WAREHOUSE_ID) AS WORKING_DAY*/
+		,CASE WHEN (SELECT COUNT(*)CNT FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID ) = 1 THEN
+		CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		))
+		WHEN (SELECT COUNT(*)CNT FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID ) = 2 THEN
+		CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 1,1),''
+		)
+		))
+		WHEN (SELECT COUNT(*)CNT FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID ) = 3 THEN
+		CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 1,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 2,1),''
+		)
+		))
+		ELSE CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 1,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 2,1),''
+		)
+		),' 외',
+		(SELECT COUNT(*)CNT  FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID )-3 ,'건')
+		END AS SUPPLIER_COMPANY_NAME
+		,C.CREATE_DT
+		FROM UR_SUPPLIER A
+		INNER JOIN UR_SUPPLIER_WAREHOUSE B
+		INNER JOIN UR_WAREHOUSE C
+		WHERE A.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+		AND B.UR_WAREHOUSE_ID  = C.UR_WAREHOUSE_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCode)">
+			AND A.UR_SUPPLIER_ID  = #{supplierCode}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCompanyName)">
+			AND C.WAREHOUSE_NM LIKE CONCAT('%',#{supplierCompanyName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+			AND C.WAREHOUSE_GRP_CD  IN
+			<foreach collection="warehouseGroupList" item="VAL" open="(" separator="," close=")">
+				#{VAL}
+			</foreach>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stockOrderYn)">
+			AND C.STOCK_ORDER_YN  = #{stockOrderYn}
+		</if>
+		)A
+		ORDER BY CREATE_DT DESC
+	</select>
+
+
+	<select id="getWarehouseListCount" resultType="int">
+		/* urCompany.getWarehouseListCount */
+		SELECT   COUNT(*)
+		FROM (
+		SELECT DISTINCT C.WAREHOUSE_GRP_CD
+		,FN_COMN_CODE_DIC(C.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+		,C.WAREHOUSE_NM AS WAREHOUSE_NAME
+		,C.UR_WAREHOUSE_ID
+		/*,A.UR_SUPPLIER_ID*/
+		/*,B.UR_SUPPLIER_WAREHOUSE_ID*/
+		/*,(SELECT GROUP_CONCAT(FN_COMN_CODE_DIC(UB.WEEK_CD)) AS WORKING_DAY
+		FROM UR_WAREHOUSE UA
+		INNER JOIN UR_WAREHOUSE_WEEK UB
+		ON UA.UR_WAREHOUSE_ID =UB.UR_WAREHOUSE_ID
+		WHERE UA.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		GROUP BY UA.UR_WAREHOUSE_ID) AS WORKING_DAY*/
+		,CASE WHEN (SELECT COUNT(*)CNT FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID ) = 1 THEN
+		CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		))
+		WHEN (SELECT COUNT(*)CNT FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID ) = 2 THEN
+		CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 1,1),''
+		)
+		))
+		WHEN (SELECT COUNT(*)CNT FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID ) = 3 THEN
+		CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 1,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 2,1),''
+		)
+		))
+		ELSE CONCAT((
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 0,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 1,1),''
+		)
+		),',',
+		(
+		IFNULL(
+		(SELECT UC.COMP_NM
+		FROM UR_SUPPLIER_WAREHOUSE USW
+		INNER JOIN UR_SUPPLIER US
+		ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+		ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID
+		LIMIT 2,1),''
+		)
+		),' 외',
+		(SELECT COUNT(*)CNT  FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = C.UR_WAREHOUSE_ID )-3 ,'건')
+		END AS SUPPLIER_COMPANY_NAME
+		FROM UR_SUPPLIER A
+		INNER JOIN UR_SUPPLIER_WAREHOUSE B
+		INNER JOIN UR_WAREHOUSE C
+		WHERE A.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+		AND B.UR_WAREHOUSE_ID  = C.UR_WAREHOUSE_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCode)">
+			AND A.UR_SUPPLIER_ID  = #{supplierCode}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCompanyName)">
+			AND C.WAREHOUSE_NM LIKE CONCAT('%',#{supplierCompanyName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+			AND C.WAREHOUSE_GRP_CD  IN
+			<foreach collection="warehouseGroupList" item="VAL" open="(" separator="," close=")">
+				#{VAL}
+			</foreach>
+		</if>
+		)A
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 매장/가맹점 정보 조회
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getStoreListResultMap" type="kr.co.pulmuone.v1.user.urcompany.dto.vo.GetStoreListResultVo">
+		<result column="STORE_ID"  property="storeId"/>
+		<result column="STORE_NAME"  property="storeName"/>
+		<result column="COMPANY_TELEPHONE1"  property="companyTelephone1"/>
+		<result column="COMPANY_TELEPHONE2"  property="companyTelephone2"/>
+		<result column="COMPANY_TELEPHONE3"  property="companyTelephone3"/>
+		<result column="UR_STORE_ID"  property="urStoreId"/>
+	</resultMap>
+
+	<select id="getStoreList" resultMap="getStoreListResultMap">
+		/* urCompany.getStoreList */
+		SELECT
+		A.NM AS STORE_NAME
+		,CONCAT(A.UR_STORE_ID,'_', A.TEL) AS STORE_ID
+		,SUBSTRING_INDEX(A.TEL, '-', 1) AS COMPANY_TELEPHONE1
+		,SUBSTRING_INDEX(SUBSTRING_INDEX(A.TEL, '-', 2), '-', -1) AS COMPANY_TELEPHONE2
+		,SUBSTRING_INDEX(A.TEL, '-', -1) AS COMPANY_TELEPHONE3
+		,A.UR_STORE_ID
+		FROM UR_STORE A
+		WHERE 1=1
+		AND  A.ONLINE_DIV_YN = 'Y'
+		AND A.STORE_CATEGORY1  <![CDATA[<>]]>  'STORE_CATEGORY.FD'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+			AND A.UR_SUPPLIER_ID  = #{urSupplierId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthStoreId) and listAuthStoreId.size != 0">
+			AND A.UR_STORE_ID IN (
+				<foreach collection="listAuthStoreId" item="authStoreId" separator=",">
+					#{authStoreId}
+				</foreach>
+			)
+		</if>
+		ORDER BY A.CREATE_DT DESC
+
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 회사정보 등록
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCompany">
+		/* urCompany.addCompany */
+		INSERT INTO UR_COMPANY
+		(
+		COMP_NM
+		,COMP_TEL
+		,COMP_MAIL
+		,COMP_TP
+		,MEMO
+		,USE_YN
+		,ORDER_ALARM_REV_YN
+		<!-- ,DELIVERY_STAT_CHG_YN -->
+		,CREATE_DT
+		,CREATE_ID
+		)
+		VALUES
+		(
+		#{companyName}
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputTpCode,'CLIENT_TYPE.CLIENT')">
+				,CONCAT(#{accountTelephone1},'-',#{accountTelephone2},'-',#{accountTelephone3})
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputTpCode,'CLIENT_TYPE.SHOP')">
+				,CONCAT(#{shopTelephone1},'-',#{shopTelephone2},'-',#{shopTelephone3})
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputTpCode,'CLIENT_TYPE.VENDOR')">
+				,CONCAT(#{accountTelephone1},'-',#{accountTelephone2},'-',#{accountTelephone3})
+			</when>
+		</choose>
+		,#{accountMail}
+		,'COMPANY_TYPE.CLIENT'
+		,#{accountMemo}
+		,#{inputUseYn}
+		,#{orderAlarmRevYn}
+		<!-- ,#{deliveryStatChgYn} -->
+		,SYSDATE()
+		,#{userVo.userId}
+		)
+		<selectKey resultType="String" keyProperty="urCompanyId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 공급처 등록
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addSupplier">
+		/* urCompany.addSupplier */
+		INSERT INTO UR_SUPPLIER
+		(
+		UR_COMPANY_ID
+		)
+		VALUES
+		(
+		#{urCompanyId}
+		)
+
+		<selectKey resultType="String" keyProperty="urSupplierId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 거래처 등록
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClient">
+		/* urCompany.addClient */
+		INSERT INTO UR_CLIENT
+		(
+		UR_COMPANY_ID
+		,CLIENT_TP
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCompany)">
+			,UR_SUPPLIER_ID
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(store)">
+			,UR_STORE_ID
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)">
+			,ERP_CD
+		</if>
+		)
+		VALUES
+		(
+		#{urCompanyId}
+		,#{inputTpCode}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCompany)">
+			,#{supplierCompany}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(store)">
+			,#{store}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)">
+			,#{omSellersId}
+		</if>
+		)
+		<selectKey resultType="String" keyProperty="urClientId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 거래처/공급처/출고처 등록
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClientSupplierWarehouse">
+		/* urCompany.addClientSupplierWarehouse */
+		INSERT INTO UR_CLIENT_SUPPLIER_WAREHOUSE
+		(
+		UR_SUPPLIER_WAREHOUSE_ID
+		,UR_CLIENT_ID
+		,CREATE_DT
+		,CREATE_ID
+		)
+		VALUES
+		(
+		#{urSupplierWarehouse}
+		,#{urClientId}
+		,SYSDATE()
+		,#{userVo.userId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 회사정보 수정
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<update id="putCompany">
+		/* urCompany.putCompany */
+		UPDATE 	UR_COMPANY
+		SET 	COMP_NM			 = #{companyName}
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputTpCode,'CLIENT_TYPE.CLIENT')">
+				,COMP_TEL		 = CONCAT(#{accountTelephone1},'-',#{accountTelephone2},'-',#{accountTelephone3})
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputTpCode,'CLIENT_TYPE.SHOP')">
+				,COMP_TEL        = CONCAT(#{shopTelephone1},'-',#{shopTelephone2},'-',#{shopTelephone3})
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputTpCode,'CLIENT_TYPE.VENDOR')">
+				,COMP_TEL        = CONCAT(#{accountTelephone1},'-',#{accountTelephone2},'-',#{accountTelephone3})
+			</when>
+		</choose>
+		,COMP_MAIL		 = #{accountMail}
+		,MEMO			 = #{accountMemo}
+		,USE_YN			 = #{inputUseYn}
+		,ORDER_ALARM_REV_YN = #{orderAlarmRevYn}
+		<!-- ,DELIVERY_STAT_CHG_YN = #{deliveryStatChgYn} -->
+		,MODIFY_ID		 = #{userVo.userId}
+		,MODIFY_DT		 = SYSDATE()
+		WHERE  	UR_COMPANY_ID    = #{urCompanyId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 거래처 수정
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<update id="putClient">
+		/* urCompany.putClient */
+		UPDATE 	UR_CLIENT
+		SET 	CLIENT_TP    = #{inputTpCode}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierCompany)">
+			,UR_SUPPLIER_ID	 = #{supplierCompany}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)">
+			,ERP_CD 		 = #{omSellersId}
+		</if>
+		WHERE  	UR_CLIENT_ID    = #{urClientId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 거래처/공급처/출고처 삭제
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<delete id="delClientSupplierWarehouse">
+		/* urCompany.delClientSupplierWarehouse */
+		DELETE
+		FROM 	UR_CLIENT_SUPPLIER_WAREHOUSE
+		WHERE  	UR_CLIENT_ID = #{urClientId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 거래처정보 삭제
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.03.02		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<delete id="delClient">
+		/* urCompany.delClient */
+		DELETE
+		FROM 	UR_CLIENT
+		WHERE  	UR_COMPANY_ID = #{urCompanyId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 거래처/공급처/출고처 수정
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.10.26		안치열          최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<insert id="putClientSupplierWarehouse">
+		/* urCompany.putClientSupplierWarehouse */
+		INSERT INTO UR_CLIENT_SUPPLIER_WAREHOUSE
+		(
+		UR_SUPPLIER_WAREHOUSE_ID
+		,UR_CLIENT_ID
+		,CREATE_DT
+		,CREATE_ID
+		)
+		VALUES
+		(
+		#{urSupplierWarehouse}
+		,#{urClientId}
+		,SYSDATE()
+		,#{userVo.userId}
+		)
+	</insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  외부몰 중복  조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.03.04      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateClient" resultType="int">
+
+		/*	urCompany.getDuplicateClient */
+
+		SELECT COUNT(*)
+		FROM UR_CLIENT
+		WHERE ERP_CD = #{omSellersId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urCompanyId)">
+			AND UR_COMPANY_ID <![CDATA[<>]]> #{urCompanyId}
+		</if>
+	</select>
+
+
+
+	<resultMap id="getWarehouseGroupByWarehouseListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.WarehouseVo">
+		<result column="WAREHOUSE_ID" property="warehouseId" />
+		<result column="WAREHOUSE_NAME" property="warehouseName" />
+		<result column="SUPPLIER_WAREHOUSE_ID" property="supplierWarehouseId" />
+		<result column="SUPPLIER_ID" property="supplierId" />
+	</resultMap>
+	<select id="getWarehouseGroupByWarehouseList" resultMap="getWarehouseGroupByWarehouseListResultMap">
+		/* urCompany.getWarehouseGroupByWarehouseList */
+		SELECT W.UR_WAREHOUSE_ID AS WAREHOUSE_ID /* 출고처 ID */
+		, W.WAREHOUSE_NM AS WAREHOUSE_NAME /* 출고처명 */
+		, S.UR_SUPPLIER_WAREHOUSE_ID AS SUPPLIER_WAREHOUSE_ID
+		FROM UR_WAREHOUSE W
+		JOIN UR_SUPPLIER_WAREHOUSE S ON S.UR_WAREHOUSE_ID = W.UR_WAREHOUSE_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroupCode)">
+			AND W.WAREHOUSE_GRP_CD = #{warehouseGroupCode}
+		</if>
+		AND S.UR_SUPPLIER_ID = #{supplierCompany}
+		GROUP BY W.UR_WAREHOUSE_ID, W.WAREHOUSE_NM
+		ORDER BY W.WAREHOUSE_NM
+	</select>
+
+
+
+	<resultMap id="getSupplierCompanyByWarehouseListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.WarehouseVo">
+		<result column="WAREHOUSE_GRP_CD" property="warehouseGrpCd" />
+		<result column="WAREHOUSE_GROUP_NAME" property="warehouseGroupName" />
+	</resultMap>
+	<select id="getSupplierCompanyByWarehouseList" resultMap="getSupplierCompanyByWarehouseListResultMap">
+		/* urCompany.getSupplierCompanyByWarehouseList */
+		SELECT W.WAREHOUSE_GRP_CD, FN_COMN_CODE_DIC(W.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+		FROM UR_WAREHOUSE W
+		JOIN UR_SUPPLIER_WAREHOUSE S ON S.UR_WAREHOUSE_ID = W.UR_WAREHOUSE_ID
+		WHERE 1=1
+		AND S.UR_SUPPLIER_ID = #{supplierCompany}
+		GROUP BY W.WAREHOUSE_GRP_CD
+		ORDER BY W.WAREHOUSE_GRP_CD
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장명 중복  조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.06.21      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateShop" resultType="int">
+
+		/*	urCompany.getDuplicateShop */
+
+		SELECT COUNT(*)
+		FROM UR_CLIENT
+		WHERE CLIENT_TP  = 'CLIENT_TYPE.SHOP'
+		AND UR_STORE_ID = #{store}
+
+	</select>
+
+</mapper>

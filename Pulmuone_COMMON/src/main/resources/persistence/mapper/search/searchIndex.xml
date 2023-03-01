@@ -1,0 +1,681 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.search.index.SearchIndexMapper">
+
+    <resultMap id="indexTargetGoodsMap" type="kr.co.pulmuone.v1.search.indexer.dto.GoodsDocumentDto">
+        <result column="IL_GOODS_ID" property="goodsId" />
+        <result column="GOODS_NAME" property="goodsName" />
+        <result column="PROMOTION_NAME" property="promotionName" />
+        <result column="SIZE_UNIT" property="sizeUnit" />
+        <result column="UR_SUPPLIER_ID" property="supplierId" />
+        <result column="GOODS_FULL_NAME" property="goodsFullName" />
+        <result column="SEARCH_KYWRD" property="searchKeyword" />
+        <result column="CREATE_DT" property="createDateTime" />
+        <result column="GOODS_IMG_PATH" property="thumbnailPath" />
+        <result column="DP_BRAND_ID" property="brandId" />
+        <result column="DP_BRAND_NM" property="brandName" />
+        <result column="BRAND_PAVILION_YN" property="brandPavilionYn" />
+        <result column="SUPPLIER_ORGA_YN" property="supplierOrgaYn" />
+        <result column="LEV3_CATEGORY_ID" property="lev3CategoryId" />
+        <result column="LEV3_CATEGORY_ID_NAME" property="lev3CategoryIdName" />
+        <result column="LEV2_CATEGORY_ID" property="lev2CategoryId" />
+        <result column="LEV2_CATEGORY_ID_NAME" property="lev2CategoryIdName" />
+        <result column="LEV1_CATEGORY_ID" property="lev1CategoryId" />
+        <result column="LEV1_CATEGORY_ID_NAME" property="lev1CategoryIdName" />
+        <result column="MAIN_LEV1_CATEGORY_ID" property="mainLev1CategoryId" />
+        <result column="MAIN_LEV1_CATEGORY_ID_NAME" property="mainLev1CategoryIdName" />
+        <result column="SALE_PRICE" property="salePrice" />
+        <result column="RECOMMENDED_PRICE" property="recommendedPrice" />
+        <result column="DISCOUNT_RATE" property="discountRate" />
+        <result column="EMPLOYEE_SALE_PRICE" property="employeeDiscountPrice" />
+        <result column="EMPLOYEE_DISCOUNT_RATE" property="employeeDiscountRate" />
+        <result column="SALE_STATUS" property="statusCode" />
+        <result column="DELIVERY_TYPE_ID" property="deliveryTypeId" />
+        <result column="DELIVERY_TYPE_ID_NAME" property="deliveryTypeIdName" />
+        <result column="BENEFIT_TYPE_ID" property="benefitTypeId" />
+        <result column="BENEFIT_TYPE_ID_NAME" property="benefitTypeIdName" />
+        <result column="CERTIFICATION_TYPE_ID" property="certificationTypeId" />
+        <result column="CERTIFICATION_TYPE_ID_NAME" property="certificationTypeIdName" />
+        <result column="MALL_ID" property="mallId" />
+        <result column="MALL_ID_NAME" property="mallIdName" />
+        <result column="IS_NEW_GOODS" property="isNewGoods" />
+        <result column="IS_BEST_GOODS" property="isBestGoods" />
+        <result column="IS_RECOMMENDED_GOODS" property="isRecommendedGoods" />
+        <result column="STORAGE_METHOD_ID" property="storageMethodId" />
+        <result column="STORAGE_METHOD_NAME" property="storageMethodName" />
+        <result column="POPULARITY_SCORE" property="popularityScore" />
+        <result column="POPULARITY_RANKING" property="popularityRanking" />
+        <result column="HAS_GIFT" property="hasGift" />
+        <result column="AVAILABLE_COUPON" property="availableCoupon" />
+        <result column="PURCHASE_TARGET_TP" property="purchaseTargetType" />
+        <result column="PURCHASE_NONMEMBER_YN" property="purchaseNonMemberYn" />
+        <result column="PURCHASE_EMPLOYEE_YN" property="purchaseEmployeeYn" />
+        <result column="PURCHASE_MEMBER_YN" property="purchaseMemberYn" />
+        <result column="DISP_WEB_PC_YN" property="displayPcYn" />
+        <result column="DISP_WEB_MOBILE_YN" property="displayMobileYn" />
+        <result column="DISP_APP_YN" property="displayAppYn" />
+        <result column="DISPLAY_CHANNEL" property="displayChannel" />
+        <result column="SATISFACTION_SCORE" property="satisfactionScore" />
+        <result column="GOODS_TP" property="goodsType" />
+
+    </resultMap>
+
+    <select id="getIndexTargetGoodsList" resultMap="indexTargetGoodsMap">
+	    /* searchIndex.getIndexTargetGoodsList */
+        SELECT
+                IFNULL(CONCAT(R2.GOODS_NM, ' ', R2.SIZE_UNIT), R2.GOODS_NM) AS GOODS_NAME
+              , CONCAT(IF(R2.GOODS_TP = 'GOODS_TYPE.RENTAL',CONCAT('[렌탈]',IF(IFNULL(R2.PROMOTION_NAME,'') = '', ' ', '')),''), IFNULL(R2.PROMOTION_NAME,''), R2.GOODS_NM, IFNULL(CONCAT(' ', R2.SIZE_UNIT),'')) AS GOODS_FULL_NAME
+              , IF(R2.GOODS_TP = 'GOODS_TYPE.RENTAL', R2.SALE_PRICE, R2.EMPLOYEE_SALE_PRICE) AS EMPLOYEE_SALE_PRICE
+              , IF(R2.GOODS_TP = 'GOODS_TYPE.RENTAL', R2.DISCOUNT_RATE, R2.EMPLOYEE_DISCOUNT_RATE) AS EMPLOYEE_DISCOUNT_RATE
+              , R2.*
+        FROM (
+            SELECT
+
+                   R.*
+                   , IF(A.PACKAGE_UNIT_DISP_YN = 'Y', IF(A.GOODS_TP = 'GOODS_TYPE.PACKAGE', CONCAT('(',A.PACKAGE_UNIT_DESC,')'), CONCAT('(', CAST(B.SIZE_PER_PACKAGE AS float),
+                     CASE
+                        WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+                        ELSE FN_COMN_CODE_DIC(B.SIZE_UNIT)
+                      END
+                   , IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+                      CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+                           ELSE FN_COMN_CODE_DIC(B.PACKAGE_UNIT)
+                      END
+                     ), ''), ')'
+                    )), '') AS SIZE_UNIT
+                   , R.STORAGE_METHOD_TP STORAGE_METHOD_ID
+                   , FN_COMN_CODE_DIC(R.STORAGE_METHOD_TP) AS STORAGE_METHOD_NAME
+                   , (SELECT IFNULL(ROUND(AVG(FF.SATISFACTION_SCORE),1),0)
+                        FROM  FB_FEEDBACK FF
+                        WHERE FF.DISP_YN = 'Y'
+                            AND FF.IL_ITEM_CD IN (
+                                SELECT IL_ITEM_CD
+                                FROM (
+                                    SELECT R.IL_ITEM_CD AS IL_ITEM_CD
+                                    FROM dual
+                                    UNION ALL
+                                    SELECT TIG.IL_ITEM_CD
+                                    FROM IL_GOODS IG
+                                        INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IG.IL_GOODS_ID = IGPGM.IL_GOODS_ID
+                                        INNER JOIN IL_GOODS TIG ON TIG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+                                    WHERE IG.IL_GOODS_ID = R.IL_GOODS_ID
+                                    AND IG.GOODS_TP = 'GOODS_TYPE.PACKAGE'
+                                ) G1
+                                GROUP BY G1.IL_ITEM_CD)
+                        ) AS SATISFACTION_SCORE
+                   , ((100000 - POPULARITY_RANKING) / 100000 ) * 100 AS POPULARITY_SCORE
+                   , concat(CASE WHEN RECOMMENDED_PRICE > SALE_PRICE THEN 'DISCOUNT,' ELSE '' END
+                            , CASE WHEN R.COUPON_USE_YN = 'Y' AND R.AVAILABLE_COUPON = TRUE THEN 'COUPON,' ELSE '' END
+                            , CASE WHEN CONDITION_TP = 'CONDITION_TYPE.1' THEN CONCAT(CONDITION_TP, ',')
+                                   ELSE '' END
+                    )  BENEFIT_TYPE_ID
+                   , concat(CASE WHEN RECOMMENDED_PRICE > SALE_PRICE THEN 'DISCOUNT:할인,' ELSE '' END
+                           , CASE WHEN R.COUPON_USE_YN = 'Y' AND R.AVAILABLE_COUPON = TRUE THEN 'COUPON:쿠폰,' ELSE '' END
+                           , CASE WHEN CONDITION_TP = 'CONDITION_TYPE.1' THEN concat(CONDITION_TP, ':', '무료배송', ',') ELSE '' END
+                    )  BENEFIT_TYPE_ID_NAME
+           FROM (
+                    SELECT
+                          A.IL_GOODS_ID
+                        , A.GOODS_NM
+                        , IF(SYSDATE() BETWEEN A.PROMOTION_NM_START_DT AND A.PROMOTION_NM_END_DT,
+                             IF(A.PROMOTION_NM IS NULL OR TRIM(A.PROMOTION_NM) = '', '', CONCAT('[', A.PROMOTION_NM, '] ')), '') AS PROMOTION_NAME
+                        , A.IL_ITEM_CD
+                        , A.GOODS_TP
+                        , A.SALE_TP
+                        , A.GOODS_DESC
+                        , CONCAT(CASE WHEN A.DISP_WEB_PC_YN = 'Y' THEN 'PC,' ELSE ',' END
+                                , CASE WHEN A.DISP_WEB_MOBILE_YN = 'Y' THEN 'MOBILE,' ELSE ',' END
+                                , CASE WHEN A.DISP_APP_YN = 'Y' THEN 'APP' ELSE '' END) AS DISPLAY_CHANNEL
+                        , A.SEARCH_KYWRD
+                        , A.SALE_STATUS
+                        , A.SALE_TP  AS SALE_TYPE
+                        , A.CREATE_DT
+                        , CASE WHEN A.PURCHASE_NONMEMBER_YN = 'N' AND A.PURCHASE_EMPLOYEE_YN = 'Y' AND A.PURCHASE_MEMBER_YN = 'N' THEN 'ONLY_EMPLOYEE'
+                            ELSE 'ALL' END AS PURCHASE_TARGET_TP
+                        , A.PURCHASE_NONMEMBER_YN
+                        , A.PURCHASE_EMPLOYEE_YN
+                        , A.PURCHASE_MEMBER_YN
+                        , A.DISP_WEB_PC_YN
+                        , A.DISP_WEB_MOBILE_YN
+                        , A.DISP_APP_YN
+                        , A.SALE_START_DT
+                        , A.SALE_END_DT
+                        , A.DISP_YN
+                        , A.AUTO_DISP_SIZE_YN
+                        , A.SIZE_ETC
+                        , A.SALE_SHOP_YN
+                        , IF( (
+	                        		SELECT COUNT(*)
+		                        		FROM EV_EXHIBIT EE
+						                INNER JOIN EV_EXHIBIT_GIFT EEG ON EE.EV_EXHIBIT_ID = EEG.EV_EXHIBIT_ID
+						                INNER JOIN (
+						                    SELECT EEGTG.EV_EXHIBIT_ID
+						                    FROM EV_EXHIBIT_GIFT_TARGET_GOODS EEGTG
+						                    WHERE EEGTG.IL_GOODS_ID = A.IL_GOODS_ID
+						                UNION ALL
+						                    SELECT EEGTB.EV_EXHIBIT_ID
+						                    FROM EV_EXHIBIT_GIFT_TARGET_BRAND EEGTB
+						                    WHERE EEGTB.BRAND_ID = B.DP_BRAND_ID
+						                ) G_EXHIBIT ON EE.EV_EXHIBIT_ID  = G_EXHIBIT.EV_EXHIBIT_ID
+					                WHERE
+						                EE.USE_YN = 'Y'
+						                AND EE.DEL_YN = 'N'
+						                AND ((NOW() BETWEEN EE.START_DT AND EE.END_DT	AND EE.ALWAYS_YN = 'N') OR EE.ALWAYS_YN = 'Y')
+						                AND EE.EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+						                AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+                                        AND EEG.GIFT_TP = 'GIFT_TP.GOODS'
+								) > 0
+                        	,true
+                        	, CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+		                        	IF((SELECT COUNT(*) FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')) > 0, true, false)
+		                         ELSE false END
+						) AS HAS_GIFT
+                        , CASE WHEN (SELECT COUNT(*) FROM PM_COUPON PCP JOIN PM_COUPON_COVERAGE PCPC ON (PCPC.PM_COUPON_ID = PCP.PM_COUPON_ID)
+							WHERE PCP.COUPON_TP = 'COUPON_TYPE.GOODS' AND PCP.ISSUE_TP = 'PAYMENT_TYPE.GOODS_DETAIL'
+							AND PCPC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS' AND PCPC.INCLUDE_YN = 'Y'
+							AND DATE(NOW()) BETWEEN PCP.ISSUE_START_DT AND PCP.ISSUE_END_DT
+							AND PCP.USE_YN = 'Y'
+							AND PCPC.COVERAGE_ID = A.IL_GOODS_ID
+							LIMIT 0, 1) > 0 THEN true ELSE false END AS AVAILABLE_COUPON
+                        , CASE WHEN A.CREATE_DT > DATE_ADD(now(), INTERVAL -1 QUARTER) THEN true ELSE false END  AS IS_NEW_GOODS
+                        , (SELECT EXISTS(SELECT 1 FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND IGR.BEST_YN = 'Y')) AS IS_BEST_GOODS
+                        , IFNULL((SELECT RANKING FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND MALL_DIV = 'MALL_DIV.PULMUONE' AND IL_CTGRY_ID = '0'), 100000)  AS POPULARITY_RANKING
+                        , CASE WHEN A.MD_RECOMMEND_YN = 'Y' THEN true ELSE false END IS_RECOMMENDED_GOODS
+                        , B.STORAGE_METHOD_TP
+                        , DB.DP_BRAND_ID
+                        , DB.DP_BRAND_NM
+                        , IFNULL(DB.BRAND_PAVILION_YN,'N') AS BRAND_PAVILION_YN
+                        , IF(G.UR_SUPPLIER_ID = (SELECT B.UR_SUPPLIER_ID FROM UR_COMPANY A JOIN UR_SUPPLIER B ON A.UR_COMPANY_ID = B.UR_COMPANY_ID WHERE B.SUPPLIER_CD = 'OG'), 'Y', 'N') AS SUPPLIER_ORGA_YN  -- 공급업체 올가
+                        , P.RECOMMENDED_PRICE  -- 정상가
+                        , P.SALE_PRICE  -- 판매가
+                        , truncate((CAST(P.RECOMMENDED_PRICE AS SIGNED) - CAST(P.SALE_PRICE AS SIGNED)) / P.RECOMMENDED_PRICE * 100, 0)  AS DISCOUNT_RATE
+
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+							(
+								SELECT SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)
+									FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+									JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+									JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+									JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+									LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+									LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+									LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                   					LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+									WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+							)
+                        ELSE
+                        	TRUNCATE(CAST(P.RECOMMENDED_PRICE * ((100 - IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                                                                FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                                                                AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT
+                                                                                AND IGD.IL_GOODS_ID = A.IL_GOODS_ID AND IGD.USE_YN = 'Y'
+                                                                              ), IFNULL(BG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1)
+                        END  AS EMPLOYEE_SALE_PRICE    -- 임직원할인가 원단위 버림
+
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+							IFNULL((
+								SELECT TRUNCATE(((SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) - SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)) / SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) * 100), 0)
+									FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+									JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+									JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+									JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+									LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+									LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+									LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                   					LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+									WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+							), 0)
+                        ELSE
+                        	IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                    FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                    AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT AND IGD.IL_GOODS_ID = A.IL_GOODS_ID AND USE_YN = 'Y'
+                                  ), IFNULL(BG.DISCOUNT_RATIO,0) )
+                        END AS EMPLOYEE_DISCOUNT_RATE  -- 임직원할인율
+
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                                    CASE WHEN A.GOODS_PACKAGE_IMG_TP = 'GOODS_PACKAGE_IMG_TP.NORMAL_GOODS' THEN ITM_IMG.MS_IMG ELSE IMG.MS_IMG END
+                               ELSE ITM_IMG.MS_IMG
+                          END AS GOODS_IMG_PATH
+                        , group_concat(distinct CC.MALL_DIV SEPARATOR ',') AS MALL_ID
+                        , group_concat(distinct (CASE WHEN CC.MALL_DIV = 'MALL_DIV.PULMUONE' THEN 'MALL_DIV.PULMUONE:전체'
+                                                      WHEN CC.MALL_DIV = 'MALL_DIV.ORGA' THEN 'MALL_DIV.ORGA:올가'
+                                                      WHEN CC.MALL_DIV = 'MALL_DIV.EATSLIM' THEN 'MALL_DIV.EATSLIM:잇슬림'
+                                                      WHEN CC.MALL_DIV = 'MALL_DIV.BABYMEAL' THEN 'MALL_DIV.BABYMEAL:베이비밀'
+                                                      END
+                                                 ) SEPARATOR',')   AS MALL_ID_NAME
+                        , group_concat( distinct MAIN_CTGRY.CTGRY_ID_DEPTH1 SEPARATOR ',') as MAIN_LEV1_CATEGORY_ID
+                        , group_concat( distinct concat(MAIN_CTGRY.CTGRY_ID_DEPTH1,':',MAIN_CTGRY.CTGRY_NM) SEPARATOR ',') as MAIN_LEV1_CATEGORY_ID_NAME
+                        , group_concat( distinct PC.CTGRY_ID_DEPTH1 SEPARATOR ',') AS LEV1_CATEGORY_ID
+                        , group_concat( distinct concat(PC.CTGRY_ID_DEPTH1, ':', (select A.CTGRY_NM from IL_CTGRY A where A.IL_CTGRY_ID = PC.CTGRY_ID_DEPTH1)) SEPARATOR ',') AS LEV1_CATEGORY_ID_NAME
+                        , group_concat( distinct PC.CTGRY_ID_DEPTH2 SEPARATOR ',') AS LEV2_CATEGORY_ID
+                        , group_concat( distinct concat(PC.CTGRY_ID_DEPTH2, ':', (select A.CTGRY_NM from IL_CTGRY A where A.IL_CTGRY_ID = PC.CTGRY_ID_DEPTH2)) SEPARATOR ',') AS LEV2_CATEGORY_ID_NAME
+                        , group_concat( distinct PC.CTGRY_ID_DEPTH3 SEPARATOR ',') AS LEV3_CATEGORY_ID
+                        , group_concat( distinct concat(PC.CTGRY_ID_DEPTH3, ':', (select A.CTGRY_NM from IL_CTGRY A where A.IL_CTGRY_ID = PC.CTGRY_ID_DEPTH3)) SEPARATOR ',') AS LEV3_CATEGORY_ID_NAME
+                        , group_concat( distinct (CASE WHEN A.SALE_TP NOT IN ('SALE_TYPE.RESERVATION', 'SALE_TYPE.SHOP') THEN A.SALE_TP ELSE ',' END) SEPARATOR ',')  AS DELIVERY_TYPE_ID
+                        , group_concat( distinct (CASE WHEN A.SALE_TP = CONCAT('SALE_TYPE.NORMAL') THEN concat(A.SALE_TP,':일반배송')
+                                        WHEN A.SALE_TP = 'SALE_TYPE.REGULAR' THEN concat(A.SALE_TP,':정기배송')
+                                        WHEN A.SALE_TP = 'SALE_TYPE.DAILY' THEN concat(A.SALE_TP,':일일배송')
+                                        ELSE ',' END) SEPARATOR ',' )
+                           AS DELIVERY_TYPE_ID_NAME
+                        , group_concat(distinct D.IL_CERTIFICATION_ID SEPARATOR ',') AS CERTIFICATION_TYPE_ID
+                        , group_concat(distinct concat(D.IL_CERTIFICATION_ID, ':', DD.CERTIFICATION_NM) SEPARATOR ',') AS CERTIFICATION_TYPE_ID_NAME
+                        , HH.CONDITION_TP
+                        , CASE WHEN HH.CONDITION_TP = 'CONDITION_TYPE.1' THEN true ELSE false END IS_FREE_SHIPPING_GOODS
+                        , B.UR_SUPPLIER_ID
+                        , A.COUPON_USE_YN
+                   FROM  IL_ITEM B JOIN IL_GOODS A ON A.IL_ITEM_CD = B.IL_ITEM_CD
+                     JOIN IL_GOODS_PRICE P ON P.IL_GOODS_ID = A.IL_GOODS_ID AND P.USE_YN = 'Y' AND NOW() BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+                     LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = A.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+                     LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = A.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+                     JOIN IL_GOODS_CTGRY C ON C.IL_GOODS_ID = A.IL_GOODS_ID
+                     JOIN IL_CTGRY CC ON CC.IL_CTGRY_ID = C.IL_CTGRY_ID AND CC.USE_YN = 'Y' AND CC.DISP_YN = 'Y'
+                     JOIN IL_CTGRY_PRNTS_INFO_DE PC ON PC.IL_CTGRY_ID = C.IL_CTGRY_ID
+                     JOIN (select A.IL_GOODS_ID, B.CTGRY_ID_DEPTH1, C.CTGRY_NM
+                            from IL_GOODS_CTGRY A, IL_CTGRY_PRNTS_INFO B, IL_CTGRY C
+                            where  A.IL_CTGRY_ID = B.IL_CTGRY_ID
+                            AND B.CTGRY_ID_DEPTH1 = C.IL_CTGRY_ID
+                            and A.BASIC_YN = 'Y'
+                            and A.MALL_DIV = 'MALL_DIV.PULMUONE') MAIN_CTGRY ON MAIN_CTGRY.IL_GOODS_ID = A.IL_GOODS_ID
+                     LEFT OUTER JOIN IL_ITEM_CERTIFICATION D ON D.IL_ITEM_CD = A.IL_ITEM_CD
+                     LEFT OUTER JOIN IL_CERTIFICATION DD ON DD.IL_CERTIFICATION_ID = D.IL_CERTIFICATION_ID AND DD.USE_YN = 'Y'
+                     LEFT OUTER JOIN UR_BRAND G ON G.UR_BRAND_ID = B.UR_BRAND_ID AND G.USE_YN = 'Y'
+                     LEFT OUTER JOIN DP_BRAND DB ON DB.DP_BRAND_ID = B.DP_BRAND_ID AND DB.USE_YN = 'Y'
+                     LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND BGB ON G.UR_BRAND_ID = BGB.UR_BRAND_ID
+                     LEFT JOIN PS_EMPL_DISC_BRAND_GRP BG ON BG.PS_EMPL_DISC_BRAND_GRP_ID = BGB.PS_EMPL_DISC_BRAND_GRP_ID
+                     JOIN IL_GOODS_SHIPPING_TEMPLATE H ON H.IL_GOODS_ID = A.IL_GOODS_ID AND H.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID
+                     JOIN IL_SHIPPING_TEMPLATE HH ON HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND HH.DEL_YN = 'N'
+                   WHERE A.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+                     AND A.DISP_YN = 'Y'
+                     AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.SHOP_ONLY', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                     AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+                     GROUP BY A.IL_GOODS_ID
+            ) R
+           JOIN IL_GOODS A ON R.IL_GOODS_ID = A.IL_GOODS_ID
+           JOIN IL_ITEM B ON B.IL_ITEM_CD = A.IL_ITEM_CD
+        ) R2
+	</select>
+
+    <resultMap id="indexTargetGoodsSuggestionMap" type="kr.co.pulmuone.v1.search.indexer.dto.GoodsDocumentDto">
+        <result column="GOODS_FULL_NAME" property="goodsFullName" />
+    </resultMap>
+    <select id="getIndexTargetGoodsSuggestionList" resultMap="indexTargetGoodsSuggestionMap">
+        SELECT
+              IFNULL(CONCAT(R2.PROMOTION_NAME, R2.GOODS_NM, ' ', R2.SIZE_UNIT), R2.GOODS_NM) AS GOODS_FULL_NAME
+        FROM (
+            SELECT
+                    R.GOODS_NM
+                   , R.PROMOTION_NAME
+                   , IF(A.PACKAGE_UNIT_DISP_YN = 'Y', CONCAT('(', B.SIZE_PER_PACKAGE,
+                     CASE
+                        WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+                        ELSE FN_COMN_CODE_DIC(B.SIZE_UNIT)
+                      END
+                   , IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+                      CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+                           ELSE FN_COMN_CODE_DIC(B.PACKAGE_UNIT)
+                      END
+                     ), ''), ')'
+                    ), '') AS SIZE_UNIT
+           FROM (
+                    SELECT
+                         A.IL_GOODS_ID
+                        , A.GOODS_NM
+                        , IF(SYSDATE() BETWEEN A.PROMOTION_NM_START_DT AND A.PROMOTION_NM_END_DT,
+                          IF(A.PROMOTION_NM IS NULL OR TRIM(A.PROMOTION_NM) = '', '', CONCAT('[', A.PROMOTION_NM, '] ')), '') AS PROMOTION_NAME
+                   FROM  IL_ITEM B JOIN IL_GOODS A ON A.IL_ITEM_CD = B.IL_ITEM_CD
+                   WHERE A.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+                     AND A.DISP_YN = 'Y'
+                     AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                     AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+                     GROUP BY A.IL_GOODS_ID
+            ) R
+           JOIN IL_GOODS A ON R.IL_GOODS_ID = A.IL_GOODS_ID
+           JOIN IL_ITEM B ON B.IL_ITEM_CD = A.IL_ITEM_CD
+        ) R2
+    </select>
+
+
+    <resultMap id="categoryBoostResultMap" type="kr.co.pulmuone.v1.search.indexer.dto.CategoryBoostDocumentDto">
+        <result column="IL_CTGRY_ID" property="lev1CategoryId" />
+        <result column="SEARCH_WORD" property="keyword" />
+        <result column="BOOSTING_SCORE" property="score" />
+    </resultMap>
+
+    <select id="getCategoryBoostList" resultMap="categoryBoostResultMap">
+        /* searchIndex.getCategoryBoostList */
+        SELECT
+           IL_CTGRY_ID
+          , SEARCH_WORD
+          , BOOSTING_SCORE
+        FROM DP_CTGRY_BOOSTING
+        WHERE USE_YN = 'Y'
+    </select>
+
+
+    <resultMap id="promotionSuggestionListResultMap" type="kr.co.pulmuone.v1.search.indexer.dto.PromotionSuggestionDto">
+        <result column="TYPE_CODE" property="typeCode" />
+        <result column="TYPE_DETAIL_CODE" property="typeDetailCode" />
+        <result column="ID" property="id" />
+        <result column="TITLE" property="title" />
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn" />
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn" />
+        <result column="DISP_APP_YN" property="displayAppYn" />
+        <result column="CREATE_DT" property="createDate" />
+    </resultMap>
+
+    <select id="getPromotionSuggestionList" resultMap="promotionSuggestionListResultMap">
+        /* searchIndex.getPromotionSuggestionList */
+        SELECT
+            'EVENT' AS TYPE_CODE
+            , EVENT_TP AS TYPE_DETAIL_CODE
+            , EV_EVENT_ID AS ID
+            , TITLE
+            , DISP_WEB_PC_YN
+            , DISP_WEB_MOBILE_YN
+            , DISP_APP_YN
+            , CREATE_DT
+        FROM EV_EVENT evt
+        WHERE USE_YN = 'Y'
+        AND DISP_YN = 'Y'
+        AND DEL_YN = 'N'
+        AND EV_EMPLOYEE_TP = 'EV_EMPLOYEE_TP.NO_LIMIT'
+        AND NOW() BETWEEN START_DT AND END_DT
+        UNION
+        SELECT
+            'EXHIBITION' AS TYPE_CODE
+            , EXHIBIT_TP AS TYPE_DETAIL_CODE
+            , EV_EXHIBIT_ID AS ID
+            , TITLE
+            , DISP_WEB_PC_YN
+            , DISP_WEB_MOBILE_YN
+            , DISP_APP_YN
+            , CREATE_DT
+        FROM EV_EXHIBIT ee
+        WHERE USE_YN = 'Y'
+        AND DISP_YN = 'Y'
+        AND DEL_YN = 'N'
+        AND EV_EMPLOYEE_TP = 'EV_EMPLOYEE_TP.NO_LIMIT'
+        AND NOW() BETWEEN START_DT AND END_DT
+    </select>
+
+    <resultMap id="indexTargetStoreGoodsMap" type="kr.co.pulmuone.v1.search.indexer.dto.StoreGoodsDocumentDto">
+        <result column="IL_GOODS_ID" property="goodsId" />
+        <result column="GOODS_NAME" property="goodsName" />
+        <result column="PROMOTION_NAME" property="promotionName" />
+        <result column="SIZE_UNIT" property="sizeUnit" />
+        <result column="UR_SUPPLIER_ID" property="supplierId" />
+        <result column="GOODS_FULL_NAME" property="goodsFullName" />
+        <result column="SEARCH_KYWRD" property="searchKeyword" />
+        <result column="CREATE_DT" property="createDateTime" />
+        <result column="GOODS_IMG_PATH" property="thumbnailPath" />
+        <result column="DP_BRAND_ID" property="brandId" />
+        <result column="DP_BRAND_NM" property="brandName" />
+        <result column="BRAND_PAVILION_YN" property="brandPavilionYn" />
+        <result column="SUPPLIER_ORGA_YN" property="supplierOrgaYn" />
+        <result column="LEV3_CATEGORY_ID" property="lev3CategoryId" />
+        <result column="LEV3_CATEGORY_ID_NAME" property="lev3CategoryIdName" />
+        <result column="LEV2_CATEGORY_ID" property="lev2CategoryId" />
+        <result column="LEV2_CATEGORY_ID_NAME" property="lev2CategoryIdName" />
+        <result column="LEV1_CATEGORY_ID" property="lev1CategoryId" />
+        <result column="LEV1_CATEGORY_ID_NAME" property="lev1CategoryIdName" />
+        <result column="MAIN_LEV1_CATEGORY_ID" property="mainLev1CategoryId" />
+        <result column="MAIN_LEV1_CATEGORY_ID_NAME" property="mainLev1CategoryIdName" />
+        <result column="SALE_PRICE" property="salePrice" />
+        <result column="RECOMMENDED_PRICE" property="recommendedPrice" />
+        <result column="DISCOUNT_RATE" property="discountRate" />
+        <result column="EMPLOYEE_SALE_PRICE" property="employeeDiscountPrice" />
+        <result column="EMPLOYEE_DISCOUNT_RATE" property="employeeDiscountRate" />
+        <result column="SALE_STATUS" property="statusCode" />
+        <result column="DELIVERY_TYPE_ID" property="deliveryTypeId" />
+        <result column="DELIVERY_TYPE_ID_NAME" property="deliveryTypeIdName" />
+        <result column="BENEFIT_TYPE_ID" property="benefitTypeId" />
+        <result column="BENEFIT_TYPE_ID_NAME" property="benefitTypeIdName" />
+        <result column="CERTIFICATION_TYPE_ID" property="certificationTypeId" />
+        <result column="CERTIFICATION_TYPE_ID_NAME" property="certificationTypeIdName" />
+        <result column="MALL_ID" property="mallId" />
+        <result column="MALL_ID_NAME" property="mallIdName" />
+        <result column="IS_NEW_GOODS" property="isNewGoods" />
+        <result column="IS_BEST_GOODS" property="isBestGoods" />
+        <result column="IS_RECOMMENDED_GOODS" property="isRecommendedGoods" />
+        <result column="STORAGE_METHOD_ID" property="storageMethodId" />
+        <result column="STORAGE_METHOD_NAME" property="storageMethodName" />
+        <result column="POPULARITY_SCORE" property="popularityScore" />
+        <result column="POPULARITY_RANKING" property="popularityRanking" />
+        <result column="HAS_GIFT" property="hasGift" />
+        <result column="AVAILABLE_COUPON" property="availableCoupon" />
+        <result column="PURCHASE_TARGET_TP" property="purchaseTargetType" />
+        <result column="PURCHASE_NONMEMBER_YN" property="purchaseNonMemberYn" />
+        <result column="PURCHASE_EMPLOYEE_YN" property="purchaseEmployeeYn" />
+        <result column="PURCHASE_MEMBER_YN" property="purchaseMemberYn" />
+        <result column="DISP_WEB_PC_YN" property="displayPcYn" />
+        <result column="DISP_WEB_MOBILE_YN" property="displayMobileYn" />
+        <result column="DISP_APP_YN" property="displayAppYn" />
+        <result column="DISPLAY_CHANNEL" property="displayChannel" />
+        <result column="SATISFACTION_SCORE" property="satisfactionScore" />
+        <result column="UR_STORE_ID" property="storeId" />
+        <result column="GOODS_TP" property="goodsType" />
+
+    </resultMap>
+
+    <select id="getIndexTargetStoreGoodsList" resultMap="indexTargetStoreGoodsMap">
+	    /* searchIndex.getIndexTargetStoreGoodsList */
+        SELECT
+                IFNULL(CONCAT(R2.GOODS_NM, ' ', R2.SIZE_UNIT), R2.GOODS_NM) AS GOODS_NAME
+              , IFNULL(CONCAT(R2.PROMOTION_NAME, R2.GOODS_NM, ' ', R2.SIZE_UNIT), R2.GOODS_NM) AS GOODS_FULL_NAME
+              , R2.*
+        FROM (
+            SELECT
+
+                   R.*
+                   , IF(A.PACKAGE_UNIT_DISP_YN = 'Y', CONCAT('(', CAST(B.SIZE_PER_PACKAGE AS float),
+                     CASE
+                        WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+                        ELSE FN_COMN_CODE_DIC(B.SIZE_UNIT)
+                      END
+                   , IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+                      CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+                           ELSE FN_COMN_CODE_DIC(B.PACKAGE_UNIT)
+                      END
+                     ), ''), ')'
+                    ), '') AS SIZE_UNIT
+                   , R.STORAGE_METHOD_TP STORAGE_METHOD_ID
+                   , FN_COMN_CODE_DIC(R.STORAGE_METHOD_TP) AS STORAGE_METHOD_NAME
+                   , (SELECT IFNULL(ROUND(AVG(FF.SATISFACTION_SCORE),1),0) FROM  FB_FEEDBACK FF WHERE FF.IL_GOODS_ID = R.IL_GOODS_ID) AS SATISFACTION_SCORE
+                   , ((100000 - POPULARITY_RANKING) / 100000 ) * 100 AS POPULARITY_SCORE
+                   , concat(CASE WHEN RECOMMENDED_PRICE > C.STORE_SALE_PRICE THEN 'DISCOUNT,' ELSE '' END
+                            , CASE WHEN R.COUPON_USE_YN = 'Y' AND R.AVAILABLE_COUPON = TRUE THEN 'COUPON,' ELSE '' END
+                            , CASE WHEN CONDITION_TP = 'CONDITION_TYPE.1' THEN CONCAT(CONDITION_TP, ',')
+                                   ELSE '' END
+                    )  BENEFIT_TYPE_ID
+                   , concat(CASE WHEN RECOMMENDED_PRICE > C.STORE_SALE_PRICE THEN 'DISCOUNT:할인,' ELSE '' END
+                           , CASE WHEN R.COUPON_USE_YN = 'Y' AND R.AVAILABLE_COUPON = TRUE THEN 'COUPON:쿠폰,' ELSE '' END
+                           , CASE WHEN CONDITION_TP = 'CONDITION_TYPE.1' THEN concat(CONDITION_TP, ':', '무료배송', ',') ELSE '' END
+                    )  BENEFIT_TYPE_ID_NAME
+                   , C.UR_STORE_ID AS UR_STORE_ID
+                   , C.STORE_SALE_PRICE AS SALE_PRICE
+                   , CASE WHEN C.STORE_STOCK = 0 THEN 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER' ELSE 'SALE_STATUS.ON_SALE' END AS SALE_STATUS
+                   , truncate((CAST(RECOMMENDED_PRICE AS SIGNED) - CAST(STORE_SALE_PRICE AS SIGNED)) / RECOMMENDED_PRICE * 100, 0)  AS DISCOUNT_RATE
+           FROM (
+                    SELECT
+                          A.IL_GOODS_ID
+                        , A.GOODS_NM
+                        , IF(SYSDATE() BETWEEN A.PROMOTION_NM_START_DT AND A.PROMOTION_NM_END_DT,
+                             IF(A.PROMOTION_NM IS NULL OR TRIM(A.PROMOTION_NM) = '', '', CONCAT('[', A.PROMOTION_NM, '] ')), '') AS PROMOTION_NAME
+                        , A.IL_ITEM_CD
+                        , A.GOODS_TP
+                        , A.GOODS_DESC
+                        , CONCAT(CASE WHEN A.DISP_WEB_PC_YN = 'Y' THEN 'PC,' ELSE ',' END
+                                , CASE WHEN A.DISP_WEB_MOBILE_YN = 'Y' THEN 'MOBILE,' ELSE ',' END
+                                , CASE WHEN A.DISP_APP_YN = 'Y' THEN 'APP' ELSE '' END) AS DISPLAY_CHANNEL
+                        , A.SEARCH_KYWRD
+                        , A.SALE_TP  AS SALE_TYPE
+                        , A.CREATE_DT
+                        , CASE WHEN A.PURCHASE_NONMEMBER_YN = 'N' AND A.PURCHASE_EMPLOYEE_YN = 'Y' AND A.PURCHASE_MEMBER_YN = 'N' THEN 'ONLY_EMPLOYEE'
+                            ELSE 'ALL' END AS PURCHASE_TARGET_TP
+                        , A.PURCHASE_NONMEMBER_YN
+                        , A.PURCHASE_EMPLOYEE_YN
+                        , A.PURCHASE_MEMBER_YN
+                        , A.DISP_WEB_PC_YN
+                        , A.DISP_WEB_MOBILE_YN
+                        , A.DISP_APP_YN
+                        , A.SALE_START_DT
+                        , A.SALE_END_DT
+                        , A.DISP_YN
+                        , A.AUTO_DISP_SIZE_YN
+                        , A.SIZE_ETC
+                        , A.SALE_SHOP_YN
+                        , IF( (
+	                        		SELECT COUNT(*)
+		                        		FROM EV_EXHIBIT EE
+						                INNER JOIN EV_EXHIBIT_GIFT EEG ON EE.EV_EXHIBIT_ID = EEG.EV_EXHIBIT_ID
+						                INNER JOIN (
+						                    SELECT EEGTG.EV_EXHIBIT_ID
+						                    FROM EV_EXHIBIT_GIFT_TARGET_GOODS EEGTG
+						                    WHERE EEGTG.IL_GOODS_ID = A.IL_GOODS_ID
+						                UNION ALL
+						                    SELECT EEGTB.EV_EXHIBIT_ID
+						                    FROM EV_EXHIBIT_GIFT_TARGET_BRAND EEGTB
+						                    WHERE EEGTB.BRAND_ID = B.DP_BRAND_ID
+						                ) G_EXHIBIT ON EE.EV_EXHIBIT_ID  = G_EXHIBIT.EV_EXHIBIT_ID
+					                WHERE
+						                EE.USE_YN = 'Y'
+						                AND EE.DEL_YN = 'N'
+						                AND ((NOW() BETWEEN EE.START_DT AND EE.END_DT	AND EE.ALWAYS_YN = 'N') OR EE.ALWAYS_YN = 'Y')
+						                AND EE.EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+						                AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+                                        AND EEG.GIFT_TP = 'GIFT_TP.GOODS'
+								) > 0
+                        	,true
+                        	, CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+		                        	IF((SELECT COUNT(*) FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')) > 0, true, false)
+		                         ELSE false END
+						) AS HAS_GIFT
+                        , CASE WHEN (SELECT COUNT(*) FROM PM_COUPON PCP JOIN PM_COUPON_COVERAGE PCPC ON (PCPC.PM_COUPON_ID = PCP.PM_COUPON_ID)
+							WHERE PCP.COUPON_TP = 'COUPON_TYPE.GOODS' AND PCP.ISSUE_TP = 'PAYMENT_TYPE.GOODS_DETAIL'
+							AND PCPC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS' AND PCPC.INCLUDE_YN = 'Y'
+							AND DATE(NOW()) BETWEEN PCP.ISSUE_START_DT AND PCP.ISSUE_END_DT
+							AND PCP.USE_YN = 'Y'
+							AND PCPC.COVERAGE_ID = A.IL_GOODS_ID
+							LIMIT 0, 1) > 0 THEN true ELSE false END AS AVAILABLE_COUPON
+                        , CASE WHEN A.CREATE_DT > DATE_ADD(now(), INTERVAL -1 QUARTER) THEN true ELSE false END  AS IS_NEW_GOODS
+                        , (SELECT EXISTS(SELECT 1 FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND IGR.BEST_YN = 'Y')) AS IS_BEST_GOODS
+                        , IFNULL((SELECT RANKING FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND MALL_DIV = 'MALL_DIV.PULMUONE' AND IL_CTGRY_ID = '0'), 100000)  AS POPULARITY_RANKING
+                        , CASE WHEN A.MD_RECOMMEND_YN = 'Y' THEN true ELSE false END IS_RECOMMENDED_GOODS
+                        , B.STORAGE_METHOD_TP
+                        , DB.DP_BRAND_ID
+                        , DB.DP_BRAND_NM
+                        , IFNULL(DB.BRAND_PAVILION_YN,'N') AS BRAND_PAVILION_YN
+                        , IF(G.UR_SUPPLIER_ID = (SELECT B.UR_SUPPLIER_ID FROM UR_COMPANY A JOIN UR_SUPPLIER B ON A.UR_COMPANY_ID = B.UR_COMPANY_ID WHERE B.SUPPLIER_CD = 'OG'), 'Y', 'N') AS SUPPLIER_ORGA_YN  -- 공급업체 올가
+                        , P.RECOMMENDED_PRICE  -- 정상가
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+							(
+								SELECT SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)
+									FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+									JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+									JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+									JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+									LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+									LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+									LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                   					LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+									WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+							)
+                        ELSE
+                        	TRUNCATE(CAST(P.RECOMMENDED_PRICE * ((100 - IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                                                                FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                                                                AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT
+                                                                                AND IGD.IL_GOODS_ID = A.IL_GOODS_ID AND IGD.USE_YN = 'Y'
+                                                                              ), IFNULL(BG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1)
+                        END  AS EMPLOYEE_SALE_PRICE    -- 임직원할인가 원단위 버림
+
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+							IFNULL((
+								SELECT TRUNCATE(((SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) - SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)) / SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) * 100), 0)
+									FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+									JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+									JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+									JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+									LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+									LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+									LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                   					LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+									WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+							), 0)
+                        ELSE
+                        	IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                    FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                    AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT AND IGD.IL_GOODS_ID = A.IL_GOODS_ID AND USE_YN = 'Y'
+                                  ), IFNULL(BG.DISCOUNT_RATIO,0) )
+                        END AS EMPLOYEE_DISCOUNT_RATE  -- 임직원할인율
+
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                                    CASE WHEN A.GOODS_PACKAGE_IMG_TP = 'GOODS_PACKAGE_IMG_TP.NORMAL_GOODS' THEN ITM_IMG.MS_IMG ELSE IMG.MS_IMG END
+                               ELSE ITM_IMG.MS_IMG
+                          END AS GOODS_IMG_PATH
+                        , group_concat(distinct CC.MALL_DIV SEPARATOR ',') AS MALL_ID
+                        , group_concat(distinct (CASE WHEN CC.MALL_DIV = 'MALL_DIV.PULMUONE' THEN 'MALL_DIV.PULMUONE:전체'
+                                                      WHEN CC.MALL_DIV = 'MALL_DIV.ORGA' THEN 'MALL_DIV.ORGA:올가'
+                                                      WHEN CC.MALL_DIV = 'MALL_DIV.EATSLIM' THEN 'MALL_DIV.EATSLIM:잇슬림'
+                                                      WHEN CC.MALL_DIV = 'MALL_DIV.BABYMEAL' THEN 'MALL_DIV.BABYMEAL:베이비밀'
+                                                      END
+                                                 ) SEPARATOR',')   AS MALL_ID_NAME
+                        , group_concat( distinct MAIN_CTGRY.CTGRY_ID_DEPTH1 SEPARATOR ',') as MAIN_LEV1_CATEGORY_ID
+                        , group_concat( distinct concat(MAIN_CTGRY.CTGRY_ID_DEPTH1,':',MAIN_CTGRY.CTGRY_NM) SEPARATOR ',') as MAIN_LEV1_CATEGORY_ID_NAME
+                        , group_concat( distinct PC.CTGRY_ID_DEPTH1 SEPARATOR ',') AS LEV1_CATEGORY_ID
+                        , group_concat( distinct concat(PC.CTGRY_ID_DEPTH1, ':', (select A.CTGRY_NM from IL_CTGRY A where A.IL_CTGRY_ID = PC.CTGRY_ID_DEPTH1)) SEPARATOR ',') AS LEV1_CATEGORY_ID_NAME
+                        , group_concat( distinct PC.CTGRY_ID_DEPTH2 SEPARATOR ',') AS LEV2_CATEGORY_ID
+                        , group_concat( distinct concat(PC.CTGRY_ID_DEPTH2, ':', (select A.CTGRY_NM from IL_CTGRY A where A.IL_CTGRY_ID = PC.CTGRY_ID_DEPTH2)) SEPARATOR ',') AS LEV2_CATEGORY_ID_NAME
+                        , group_concat( distinct PC.CTGRY_ID_DEPTH3 SEPARATOR ',') AS LEV3_CATEGORY_ID
+                        , group_concat( distinct concat(PC.CTGRY_ID_DEPTH3, ':', (select A.CTGRY_NM from IL_CTGRY A where A.IL_CTGRY_ID = PC.CTGRY_ID_DEPTH3)) SEPARATOR ',') AS LEV3_CATEGORY_ID_NAME
+                        , group_concat( distinct (CASE WHEN A.SALE_TP NOT IN ('SALE_TYPE.RESERVATION', 'SALE_TYPE.SHOP') THEN A.SALE_TP ELSE ',' END) SEPARATOR ',')  AS DELIVERY_TYPE_ID
+                        , group_concat( distinct (CASE WHEN A.SALE_TP = CONCAT('SALE_TYPE.NORMAL') THEN concat(A.SALE_TP,':일반배송')
+                                        WHEN A.SALE_TP = 'SALE_TYPE.REGULAR' THEN concat(A.SALE_TP,':정기배송')
+                                        WHEN A.SALE_TP = 'SALE_TYPE.DAILY' THEN concat(A.SALE_TP,':일일배송')
+                                        ELSE ',' END) SEPARATOR ',' )
+                           AS DELIVERY_TYPE_ID_NAME
+                        , group_concat(distinct D.IL_CERTIFICATION_ID SEPARATOR ',') AS CERTIFICATION_TYPE_ID
+                        , group_concat(distinct concat(D.IL_CERTIFICATION_ID, ':', DD.CERTIFICATION_NM) SEPARATOR ',') AS CERTIFICATION_TYPE_ID_NAME
+                        , HH.CONDITION_TP
+                        , CASE WHEN HH.CONDITION_TP = 'CONDITION_TYPE.1' THEN true ELSE false END IS_FREE_SHIPPING_GOODS
+                        , B.UR_SUPPLIER_ID
+                        , A.COUPON_USE_YN
+                   FROM  IL_ITEM B JOIN IL_GOODS A ON A.IL_ITEM_CD = B.IL_ITEM_CD
+                     JOIN IL_GOODS_PRICE P ON P.IL_GOODS_ID = A.IL_GOODS_ID AND P.USE_YN = 'Y' AND NOW() BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+                     LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = A.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+                     LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = A.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+                     JOIN IL_GOODS_CTGRY C ON C.IL_GOODS_ID = A.IL_GOODS_ID
+                     JOIN IL_CTGRY CC ON CC.IL_CTGRY_ID = C.IL_CTGRY_ID AND CC.USE_YN = 'Y' AND CC.DISP_YN = 'Y'
+                     JOIN IL_CTGRY_PRNTS_INFO_DE PC ON PC.IL_CTGRY_ID = C.IL_CTGRY_ID
+                     JOIN (select A.IL_GOODS_ID, B.CTGRY_ID_DEPTH1, C.CTGRY_NM
+                            from IL_GOODS_CTGRY A, IL_CTGRY_PRNTS_INFO B, IL_CTGRY C
+                            where  A.IL_CTGRY_ID = B.IL_CTGRY_ID
+                            AND B.CTGRY_ID_DEPTH1 = C.IL_CTGRY_ID
+                            and A.BASIC_YN = 'Y'
+                            and A.MALL_DIV = 'MALL_DIV.ORGA') MAIN_CTGRY ON MAIN_CTGRY.IL_GOODS_ID = A.IL_GOODS_ID
+                     LEFT OUTER JOIN IL_ITEM_CERTIFICATION D ON D.IL_ITEM_CD = A.IL_ITEM_CD
+                     LEFT OUTER JOIN IL_CERTIFICATION DD ON DD.IL_CERTIFICATION_ID = D.IL_CERTIFICATION_ID AND DD.USE_YN = 'Y'
+                     LEFT OUTER JOIN UR_BRAND G ON G.UR_BRAND_ID = B.UR_BRAND_ID AND G.USE_YN = 'Y'
+                     LEFT OUTER JOIN DP_BRAND DB ON DB.DP_BRAND_ID = B.DP_BRAND_ID AND DB.USE_YN = 'Y'
+                     LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND BGB ON G.UR_BRAND_ID = BGB.UR_BRAND_ID
+                     LEFT JOIN PS_EMPL_DISC_BRAND_GRP BG ON BG.PS_EMPL_DISC_BRAND_GRP_ID = BGB.PS_EMPL_DISC_BRAND_GRP_ID
+                     JOIN IL_GOODS_SHIPPING_TEMPLATE H ON H.IL_GOODS_ID = A.IL_GOODS_ID AND H.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID
+                     JOIN IL_SHIPPING_TEMPLATE HH ON HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND HH.DEL_YN = 'N'
+                   WHERE A.DISP_YN = 'Y'
+                     AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                     AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+                     GROUP BY A.IL_GOODS_ID
+            ) R
+           JOIN IL_GOODS A ON R.IL_GOODS_ID = A.IL_GOODS_ID
+           JOIN IL_ITEM B ON B.IL_ITEM_CD = A.IL_ITEM_CD
+           JOIN IL_ITEM_STORE_INFO C ON B.IL_ITEM_CD = C.IL_ITEM_CD
+        ) R2 JOIN (
+            SELECT DISTINCT(IL_ITEM_CD) AS IL_ITEM_CD
+            FROM IL_ITEM_WAREHOUSE IIW
+              JOIN UR_SUPPLIER_WAREHOUSE USW
+              ON IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+            WHERE USW.UR_WAREHOUSE_ID = (SELECT PS_VAL FROM PS_CONFIG WHERE ST_SHOP_ID = 1 AND USE_YN = 'Y' AND PS_KEY = 'WAREHOUSE_STORE_ID')
+        ) R3 ON R2.IL_ITEM_CD = R3.IL_ITEM_CD
+	</select>
+</mapper>
+
+

@@ -1,0 +1,188 @@
+<div class="wrap-location">
+	<h2 class="title">배송정보 내역 다운로드</h2>
+	<span class="location">배송정보 내역 다운로드</span>
+</div>
+<div class="fb__sect">
+	<form id="searchForm" name="searchForm">
+		<table class="datatable v-type">
+			<colgroup>
+				<col style="width:20%">
+				<col style="width:30%">
+				<col style="width:20%">
+				<col style="width:30%">
+			</colgroup>
+			<tbody>
+			<tr>
+				<th scope="row"><label for="searchSellersGroupCd">판매처</label></th>
+				<td colspan="3">
+					<div class="complex-condition">
+						<input type="text" id="searchSellersGroupCd" name="searchSellersGroupCd" class="fb__custom__select left-input" style="width: 160px;">
+						<div id="omSellersId" class="checkbox-wrapper fb__custom__checkbox"></div>
+					</div>
+				</td>
+			</tr>
+            <tr>
+               <th scope="row"><label>기간 검색</label></th>
+               <td colspan="3">
+                   <div class="complex-condition">
+                       <input id="searchPeriodType" name="searchPeriodType" type="text" class="fb__custom__select marginR5">
+                       <div class="datepicker-wrapper startdate-wrapper">
+                           <input type="text" id="searchStartDate" class="datepicker-input" name="searchStartDate" />
+						   <input id="searchStHour" name="searchStHour" type="text" class="fb__timepicker marginR5">
+                       </div>
+                       <div class="datepicker-wrapper">
+                           <input type="text" id="searchEndDate" class="datepicker-input" name="searchEndDate" />
+						   <input id="searchEdHour" name="searchEdHour" type="text" class="fb__timepicker marginR5">
+                       </div>
+                   </div>
+               </td>
+            </tr>
+			<tr>
+				<th scope="row"><label for="warehouseGroup">출고처</label></th>
+				<td>
+					<input type="text" id="warehouseGroup" name="warehouseGroup" class="fb__custom__select marginR5"  style="width:160px;">
+					<input type="text" id="warehouseId" name="warehouseId" class="fb__custom__select" style="width: 250px;">
+				</td>
+				<th scope="row"><label for="outmallType">수집몰 구분</label></th>
+				<td>
+					<input id="outmallType" name="outmallType" type="text" class="fb__custom__select marginR5">
+					<input id="ezadminType" name="ezadminType" type="text" class="fb__custom__select">
+				</td>
+			</tr>
+			</tbody>
+		</table>
+		<span class="btn-area">
+		<button id="fnExcelDownload" class="btn-point btn-l" type="button" onclick="$scope.fnOutmallShippingInfoDownload(this)">엑셀 다운로드</button>
+		<button id="fnGetDownloadHist" class="btn-point btn-l" type="button" onclick="$scope.fnGetDownloadHist()">다운로드 내역</button>
+	</span>
+	</form>
+</div>
+
+
+<div id="kendoPopup" style="display: none;">
+	<div id="contents" class="pop-contents">
+		<form id="downloadForm" name="downloadForm">
+			<table class="datatable v-type">
+				<colgroup>
+			       <col style="width:15%">
+	               <col style="width:40%">
+	               <col style="width:10%">
+	               <col style="width:35%">
+				</colgroup>
+				<tbody>
+				<tr>
+                <th scope="row"><label for="popupSellersGroupCd">판매처</label></th>
+	                <td colspan="3">
+	                    <div class="complex-condition">
+	                        <input type="text" id="popupSellersGroupCd" name="popupSellersGroupCd" class="fb__custom__select left-input" style="width: 160px;">
+							<div id="popupOmSellersId" class="checkbox-wrapper fb__custom__checkbox"></div>
+	                    </div>
+	                </td>
+	            </tr>
+	            <tr>
+	               <th scope="row"><label>다운로드 일시</label></th>
+	               <td colspan="3">
+	                   <div class="complex-condition">
+	                       <div class="datepicker-wrapper startdate-wrapper">
+	                           <input type="text" id="popupSearchStartDate" class="datepicker-input" name="popupSearchStartDate" />
+	                       </div>
+	                       <div class="datepicker-wrapper">
+	                           <input type="text" id="popupSearchEndDate" class="datepicker-input" name="popupSearchEndDate" />
+	                       </div>
+	                   </div>
+	               </td>
+	            </tr>
+	            <tr>
+	                <th scope="row"><label for="popupWarehouseGroup">출고처</label></th>
+	                <td>
+	                    <input type="text" id="popupWarehouseGroup" name="popupWarehouseGroup" class="fb__custom__select marginR5"  style="width:160px;">
+	                    <input type="text" id="popupWarehouseId" name="popupWarehouseId" class="fb__custom__select" style="width: 250px;">
+	                </td>
+	                <th scope="row"><label for="popupOutmallType">수집몰 구분</label></th>
+	                <td>
+	                    <div class="complex-condition">
+	                       <input id="popupOutmallType" name="popupOutmallType" type="text" class="fb__custom__select">
+	                    </div>
+	                </td>
+	            </tr>
+				</tbody>
+			</table>
+		</form>
+		<span class="btn-area align-center">
+	        <button id="fnSearch" class="btn-point btn-l" type="button" onclick="$scope.fnSearch()">조회</button>
+            <button id="fnClear" class="btn-white btn-l formClear-btn" type="button" onclick="$scope.fnClear()">초기화</button>
+   		</span>
+
+		<div class="fb__sect grid-sect new">
+		    <div class="wrap-tit">
+		        <div class="ea-title">
+		            <h3>목록</h3>
+		        </div>
+		        <div class="ea-title">
+		            <span>총 <em id="totalCnt">0</em> 건</span>
+		        </div>
+		    </div>
+		    <div id="downloadGrid"></div>
+		</div>
+	</div>
+
+</div>
+
+
+<!-- wrap-location -->
+<div class="wrap-location" style=" margin-top: 50px">
+	<h3 id="copyTitle">송장등록이력</h3>
+</div>
+<!-- wrap-location End-->
+
+<!-- Form Section-->
+<div class="fb__sect">
+	<form id="searchTrackNumHistForm" name="searchTrackNumHistForm" class="fb__sect__form inputForm" method="post" enctype="multipart/form-data" onsubmit="return false;">
+		<table class="datatable v-type">
+			<colgroup>
+				<col style="width: 12%">
+				<col style="width: 88%">
+			</colgroup>
+			<tbody>
+			<tr>
+				<th scope="row">기간 검색</th>
+				<td class="need-resize">
+					<input id="searchTrackNumHistPeriodType" name="searchTrackNumHistPeriodType" type="text" class="fb__custom__select marginR5">
+					<div class="datepicker-wrapper startdate-wrapper">
+						<input type="text" id="startDate" name="startDate" style="width: 120px">
+						<input id="startHour" name="startHour" type="text" class="fb__timepicker marginR5">
+					</div>
+					<div class="datepicker-wrapper">
+						<input type="text" id="endDate" name="endDate" style="width: 120px">
+						<input id="endHour" name="endHour" type="text" class="fb__timepicker marginR5">
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="trackNumHistWarehouseGroup">출고처</label></th>
+				<td>
+					<input type="text" id="trackNumHistWarehouseGroup" name="trackNumHistWarehouseGroup" class="fb__custom__select marginR5"  style="width:160px;">
+					<input type="text" id="trackNumHistWarehouseId" name="trackNumHistWarehouseId" class="fb__custom__select" style="width: 250px;">
+				</td>
+			</tr>
+			</tbody>
+		</table>
+		<span class="btn-area">
+			<button id="fnTrackNumHistSearch" class="set-btn-type4" type="button" onclick="$scope.fnTrackNumHistSearch()">조회</button>
+		</span>
+	</form>
+</div>
+<!-- Form Section End -->
+
+<!-- Grid Section -->
+<div class="fb__sect grid-sect new">
+	<div class="wrap-tit">
+		<div class="ea-title">
+			<h3>목록</h3>
+			<span>총 <em id="pageTotalText">0</em> 건
+			</span>
+		</div>
+	</div>
+	<div id="trackingNumberGrid"></div>
+</div>
+<!-- Grid Section End -->

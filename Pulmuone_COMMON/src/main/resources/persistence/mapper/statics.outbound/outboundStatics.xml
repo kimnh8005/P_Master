@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.statics.outbound.OutboundStaticsMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 출고 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.07   dgyoun    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutboundStaticsList" resultType="kr.co.pulmuone.v1.statics.outbound.dto.vo.OutboundStaticsVo">
+        /*outboundStatics.getOutboundStaticsList*/
+        -- 출고처/판매처 별 출고 통계
+        WITH LIST AS
+        (
+            SELECT
+                -- 출고처 기준
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'WAREHOUSE') ">
+                    ood.UR_WAREHOUSE_ID AS DIV1_PK -- 출고처 PK
+                    ,ood.GOODS_DELIVERY_TYPE AS DIV2_PK -- 배송유형 코드
+                </if>
+                -- 판매처 기준
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'SELLERS') ">
+                    oo.SELLERS_GROUP_CD AS DIV1_PK -- 판매처 그룹 코드
+                    ,oo.OM_SELLERS_ID AS DIV2_PK -- 판매처 PK
+                </if>
+
+                -- 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, ood.ORDER_IF_DT : 주문 I/F일자
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'ORDER_DT') ">
+                    ,DATE_FORMAT(ood2.CREATE_DT, '%Y-%m-%d') AS DT -- 일자
+                    ,DAY(ood2.CREATE_DT) AS DT_DAY -- 일
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'IC_DT') ">
+                    ,DATE_FORMAT(ood2.IC_DT, '%Y-%m-%d') AS DT -- 일자
+                    ,DAY(ood2.IC_DT) AS DT_DAY -- 일
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'IF_DT') ">
+                    ,DATE_FORMAT(ood.ORDER_IF_DT, '%Y-%m-%d') AS DT -- 일자
+                    ,DAY(ood.ORDER_IF_DT) AS DT_DAY -- 일
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'DI_DT') ">
+                    ,DATE_FORMAT(ood.DI_DT, '%Y-%m-%d') AS DT -- 일자
+                    ,DAY(ood.DI_DT) AS DT_DAY -- 일
+                </if>
+
+                <choose>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(exceptClaimOrderYn,'Y')">
+                        -- 취소 주문 제외
+                        ,COUNT(DISTINCT
+                        IF(
+                        ood.ORDER_CNT = IFNULL((SELECT SUM(ocd.CLAIM_CNT) FROM OD_CLAIM_DETL ocd INNER JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oc.CLAIM_YN = 'Y' AND oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.CANCEL') WHERE ocd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID AND ocd.CLAIM_STATUS_CD = 'CC') ,0)
+                        , NULL
+                        , ood.OD_SHIPPING_PRICE_ID)) AS CNT
+                    </when>
+                    <otherwise>
+                        ,COUNT(DISTINCT ood.OD_SHIPPING_PRICE_ID) AS CNT
+                    </otherwise>
+                </choose>
+            FROM OD_ORDER_DETL ood
+                JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+            WHERE
+                -- 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, ood.ORDER_IF_DT : 주문 I/F일자
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'ORDER_DT') ">
+                    ood2.CREATE_DT BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'IC_DT') ">
+                    ood2.IC_DT BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'IF_DT') ">
+                    ood.ORDER_IF_DT BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'DI_DT') ">
+                    ood.DI_DT BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59')
+                </if>
+
+                -- 공급업체
+                <if test="supplierList !=null and supplierList.size != 0">
+                    AND ood.UR_SUPPLIER_ID IN
+                    <foreach collection="supplierList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+
+                -- 보관방법
+                <if test="storageMethodList !=null and storageMethodList.size != 0">
+                    AND ood.STORAGE_TYPE_CD IN
+                    <foreach collection="storageMethodList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+
+                -- 출고처 그룹 코드
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseGrpCd) ">
+                    AND ood.UR_WAREHOUSE_GRP_CD = #{urWarehouseGrpCd}
+                </if>
+                -- 출고처
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId) ">
+                    AND ood.UR_WAREHOUSE_ID = #{urWarehouseId}
+                </if>
+                -- 판매처그룹
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd) ">
+                    AND oo.SELLERS_GROUP_CD = #{sellersGroupCd}
+                </if>
+                -- 판매처
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId) ">
+                    AND oo.OM_SELLERS_ID = #{omSellersId}
+                </if>
+            GROUP BY DIV1_PK, DIV2_PK,
+                -- 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, ood.ORDER_IF_DT : 주문 I/F일자
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'ORDER_DT') ">
+                    DATE_FORMAT(ood2.CREATE_DT, '%Y-%m-%d')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'IC_DT') ">
+                    DATE_FORMAT(ood2.IC_DT, '%Y-%m-%d')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'IF_DT') ">
+                    DATE_FORMAT(ood.ORDER_IF_DT, '%Y-%m-%d')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchDateType,'DI_DT') ">
+                    DATE_FORMAT(ood.DI_DT, '%Y-%m-%d')
+                </if>
+        )
+        SELECT
+            -- 출고처 기준
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'WAREHOUSE') ">
+                IFNULL(divt.WAREHOUSE_NM, '-') AS DIV1
+                ,IFNULL(FN_COMN_CODE_DIC(sub.DIV2_PK), '-') AS DIV2
+            </if>
+            -- 판매처 기준
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'SELLERS') ">
+                IFNULL(FN_COMN_CODE_DIC(sub.DIV1_PK), '-') AS DIV1
+                ,IFNULL(os.SELLERS_NM, '-') AS DIV2
+            </if>
+            ,sub.DIV1_PK
+            ,sub.DIV2_PK
+            ,IFNULL(d1.CNT, 0) AS DAY1_CNT
+            ,IFNULL(d2.CNT, 0) AS DAY2_CNT
+            ,IFNULL(d3.CNT, 0) AS DAY3_CNT
+            ,IFNULL(d4.CNT, 0) AS DAY4_CNT
+            ,IFNULL(d5.CNT, 0) AS DAY5_CNT
+            ,IFNULL(d6.CNT, 0) AS DAY6_CNT
+            ,IFNULL(d7.CNT, 0) AS DAY7_CNT
+            ,IFNULL(d8.CNT, 0) AS DAY8_CNT
+            ,IFNULL(d9.CNT, 0) AS DAY9_CNT
+            ,IFNULL(d10.CNT, 0) AS DAY10_CNT
+            ,IFNULL(d11.CNT, 0) AS DAY11_CNT
+            ,IFNULL(d12.CNT, 0) AS DAY12_CNT
+            ,IFNULL(d13.CNT, 0) AS DAY13_CNT
+            ,IFNULL(d14.CNT, 0) AS DAY14_CNT
+            ,IFNULL(d15.CNT, 0) AS DAY15_CNT
+            ,IFNULL(d16.CNT, 0) AS DAY16_CNT
+            ,IFNULL(d17.CNT, 0) AS DAY17_CNT
+            ,IFNULL(d18.CNT, 0) AS DAY18_CNT
+            ,IFNULL(d19.CNT, 0) AS DAY19_CNT
+            ,IFNULL(d20.CNT, 0) AS DAY20_CNT
+            ,IFNULL(d21.CNT, 0) AS DAY21_CNT
+            ,IFNULL(d22.CNT, 0) AS DAY22_CNT
+            ,IFNULL(d23.CNT, 0) AS DAY23_CNT
+            ,IFNULL(d24.CNT, 0) AS DAY24_CNT
+            ,IFNULL(d25.CNT, 0) AS DAY25_CNT
+            ,IFNULL(d26.CNT, 0) AS DAY26_CNT
+            ,IFNULL(d27.CNT, 0) AS DAY27_CNT
+            ,IFNULL(d28.CNT, 0) AS DAY28_CNT
+            ,IFNULL(d29.CNT, 0) AS DAY29_CNT
+            ,IFNULL(d30.CNT, 0) AS DAY30_CNT
+            ,IFNULL(d31.CNT, 0) AS DAY31_CNT
+            ,sub.SUM_CNT
+            ,sub.AVG_CNT
+        FROM (
+                SELECT
+                    li.DIV1_PK
+                    ,li.DIV2_PK
+                    ,SUM(CNT) AS SUM_CNT
+                    ,ROUND(SUM(CNT) / DAY(LAST_DAY('2021-04-01')), 1) AS AVG_CNT
+                FROM LIST li
+                GROUP BY li.DIV1_PK, li.DIV2_PK
+            ) sub
+            LEFT JOIN LIST d1 ON (d1.DIV1_PK = sub.DIV1_PK AND d1.DIV2_PK = sub.DIV2_PK AND d1.DT_DAY = 1)
+            LEFT JOIN LIST d2 ON (d2.DIV1_PK = sub.DIV1_PK AND d2.DIV2_PK = sub.DIV2_PK AND d2.DT_DAY = 2)
+            LEFT JOIN LIST d3 ON (d3.DIV1_PK = sub.DIV1_PK AND d3.DIV2_PK = sub.DIV2_PK AND d3.DT_DAY = 3)
+            LEFT JOIN LIST d4 ON (d4.DIV1_PK = sub.DIV1_PK AND d4.DIV2_PK = sub.DIV2_PK AND d4.DT_DAY = 4)
+            LEFT JOIN LIST d5 ON (d5.DIV1_PK = sub.DIV1_PK AND d5.DIV2_PK = sub.DIV2_PK AND d5.DT_DAY = 5)
+            LEFT JOIN LIST d6 ON (d6.DIV1_PK = sub.DIV1_PK AND d6.DIV2_PK = sub.DIV2_PK AND d6.DT_DAY = 6)
+            LEFT JOIN LIST d7 ON (d7.DIV1_PK = sub.DIV1_PK AND d7.DIV2_PK = sub.DIV2_PK AND d7.DT_DAY = 7)
+            LEFT JOIN LIST d8 ON (d8.DIV1_PK = sub.DIV1_PK AND d8.DIV2_PK = sub.DIV2_PK AND d8.DT_DAY = 8)
+            LEFT JOIN LIST d9 ON (d9.DIV1_PK = sub.DIV1_PK AND d9.DIV2_PK = sub.DIV2_PK AND d9.DT_DAY = 9)
+            LEFT JOIN LIST d10 ON (d10.DIV1_PK = sub.DIV1_PK AND d10.DIV2_PK = sub.DIV2_PK AND d10.DT_DAY = 10)
+            LEFT JOIN LIST d11 ON (d11.DIV1_PK = sub.DIV1_PK AND d11.DIV2_PK = sub.DIV2_PK AND d11.DT_DAY = 11)
+            LEFT JOIN LIST d12 ON (d12.DIV1_PK = sub.DIV1_PK AND d12.DIV2_PK = sub.DIV2_PK AND d12.DT_DAY = 12)
+            LEFT JOIN LIST d13 ON (d13.DIV1_PK = sub.DIV1_PK AND d13.DIV2_PK = sub.DIV2_PK AND d13.DT_DAY = 13)
+            LEFT JOIN LIST d14 ON (d14.DIV1_PK = sub.DIV1_PK AND d14.DIV2_PK = sub.DIV2_PK AND d14.DT_DAY = 14)
+            LEFT JOIN LIST d15 ON (d15.DIV1_PK = sub.DIV1_PK AND d15.DIV2_PK = sub.DIV2_PK AND d15.DT_DAY = 15)
+            LEFT JOIN LIST d16 ON (d16.DIV1_PK = sub.DIV1_PK AND d16.DIV2_PK = sub.DIV2_PK AND d16.DT_DAY = 16)
+            LEFT JOIN LIST d17 ON (d17.DIV1_PK = sub.DIV1_PK AND d17.DIV2_PK = sub.DIV2_PK AND d17.DT_DAY = 17)
+            LEFT JOIN LIST d18 ON (d18.DIV1_PK = sub.DIV1_PK AND d18.DIV2_PK = sub.DIV2_PK AND d18.DT_DAY = 18)
+            LEFT JOIN LIST d19 ON (d19.DIV1_PK = sub.DIV1_PK AND d19.DIV2_PK = sub.DIV2_PK AND d19.DT_DAY = 19)
+            LEFT JOIN LIST d20 ON (d20.DIV1_PK = sub.DIV1_PK AND d20.DIV2_PK = sub.DIV2_PK AND d20.DT_DAY = 20)
+            LEFT JOIN LIST d21 ON (d21.DIV1_PK = sub.DIV1_PK AND d21.DIV2_PK = sub.DIV2_PK AND d21.DT_DAY = 21)
+            LEFT JOIN LIST d22 ON (d22.DIV1_PK = sub.DIV1_PK AND d22.DIV2_PK = sub.DIV2_PK AND d22.DT_DAY = 22)
+            LEFT JOIN LIST d23 ON (d23.DIV1_PK = sub.DIV1_PK AND d23.DIV2_PK = sub.DIV2_PK AND d23.DT_DAY = 23)
+            LEFT JOIN LIST d24 ON (d24.DIV1_PK = sub.DIV1_PK AND d24.DIV2_PK = sub.DIV2_PK AND d24.DT_DAY = 24)
+            LEFT JOIN LIST d25 ON (d25.DIV1_PK = sub.DIV1_PK AND d25.DIV2_PK = sub.DIV2_PK AND d25.DT_DAY = 25)
+            LEFT JOIN LIST d26 ON (d26.DIV1_PK = sub.DIV1_PK AND d26.DIV2_PK = sub.DIV2_PK AND d26.DT_DAY = 26)
+            LEFT JOIN LIST d27 ON (d27.DIV1_PK = sub.DIV1_PK AND d27.DIV2_PK = sub.DIV2_PK AND d27.DT_DAY = 27)
+            LEFT JOIN LIST d28 ON (d28.DIV1_PK = sub.DIV1_PK AND d28.DIV2_PK = sub.DIV2_PK AND d28.DT_DAY = 28)
+            LEFT JOIN LIST d29 ON (d29.DIV1_PK = sub.DIV1_PK AND d29.DIV2_PK = sub.DIV2_PK AND d29.DT_DAY = 29)
+            LEFT JOIN LIST d30 ON (d30.DIV1_PK = sub.DIV1_PK AND d30.DIV2_PK = sub.DIV2_PK AND d30.DT_DAY = 30)
+            LEFT JOIN LIST d31 ON (d31.DIV1_PK = sub.DIV1_PK AND d31.DIV2_PK = sub.DIV2_PK AND d31.DT_DAY = 31)
+            -- 출고처 기준
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'WAREHOUSE') ">
+                LEFT JOIN UR_WAREHOUSE divt ON divt.UR_WAREHOUSE_ID = sub.DIV1_PK
+            </if>
+            -- 판매처 기준
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'SELLERS') ">
+                LEFT JOIN OM_SELLERS os ON (os.OM_SELLERS_ID = sub.DIV2_PK)
+            </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 미출 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.07   dgyoun    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMissOutboundStaticsList" resultType="kr.co.pulmuone.v1.statics.outbound.dto.vo.MissOutboundStaticsVo">
+        /*outboundStatics.getMissOutboundStaticsList*/
+        -- 미출 통계
+        WITH CLAIM AS
+        (
+            SELECT
+                ood.OD_ORDER_DETL_ID -- 주문 상세 PK
+                , SUM(ocd.CLAIM_CNT) AS CANCEL_CNT -- 취소 수량
+                , MIN(ocd.CA_DT) AS CA_DT
+                , MIN(ocd.EC_DT) AS EC_DT
+                , IFNULL(DATE_FORMAT(MIN(ocd.CA_DT),'%Y%m%d'), DATE_FORMAT(MIN(ocd.EC_DT),'%Y%m%d')) AS MISS_DT
+                , SUM(ocd.CLAIM_CNT) AS MISS_CLAIM_CNT
+            FROM OD_ORDER_DETL ood
+                JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                JOIN OD_CLAIM_DETL ocd ON (ocd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oc.CLAIM_YN = 'Y' AND ocd.PRIORITY_UNDELIVERED_YN = 'Y')
+            <where>
+                <if test="supplierList !=null and supplierList.size != 0">
+                    <!--공급업체-->
+                    AND ood.UR_SUPPLIER_ID IN
+                    <foreach collection="supplierList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+                <!-- 출고처 그룹 코드-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseGrpCd) ">
+                    AND ood.UR_WAREHOUSE_GRP_CD = #{urWarehouseGrpCd}
+                </if>
+                <!-- 출고처-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId) ">
+                    AND ood.UR_WAREHOUSE_ID = #{urWarehouseId}
+                </if>
+                <!-- 판매처그룹-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd) ">
+                    AND oo.SELLERS_GROUP_CD = #{sellersGroupCd}
+                </if>
+                <!-- 판매처-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId) ">
+                    AND oo.OM_SELLERS_ID = #{omSellersId}
+                </if>
+                <!-- 배송유형-->
+                <if test="searchDelivList !=null and searchDelivList.size != 0">
+                    AND ood.GOODS_DELIVERY_TYPE IN
+                    <foreach collection="searchDelivList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+            </where>
+                GROUP BY ood.OD_ORDER_DETL_ID, ood.OD_ORDER_DETL_ID
+        ), UNRELEASED AS
+		(
+			SELECT
+				ood.OD_ORDER_DETL_ID -- 주문 상세 PK
+				,iui.ODID -- 주문번호
+				,SUM(iui.MISS_CNT) AS MISS_CNT -- 취소 수량
+                ,iui.MISS_DT
+		    FROM OD_ORDER_DETL ood
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+			JOIN IF_UNRELEASED_INFO iui ON (iui.ODID = oo.ODID AND iui.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ)
+            <where>
+                <if test="supplierList !=null and supplierList.size != 0">
+                    <!--공급업체-->
+                    AND ood.UR_SUPPLIER_ID IN
+                    <foreach collection="supplierList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+                <!-- 출고처 그룹 코드-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseGrpCd) ">
+                    AND ood.UR_WAREHOUSE_GRP_CD = #{urWarehouseGrpCd}
+                </if>
+                <!-- 출고처-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId) ">
+                    AND ood.UR_WAREHOUSE_ID = #{urWarehouseId}
+                </if>
+                <!-- 판매처그룹-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd) ">
+                    AND oo.SELLERS_GROUP_CD = #{sellersGroupCd}
+                </if>
+                <!-- 판매처-->
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId) ">
+                    AND oo.OM_SELLERS_ID = #{omSellersId}
+                </if>
+                <!-- 배송유형-->
+                <if test="searchDelivList !=null and searchDelivList.size != 0">
+                    AND ood.GOODS_DELIVERY_TYPE IN
+                    <foreach collection="searchDelivList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+            </where>
+			GROUP BY
+                ood.OD_ORDER_DETL_ID, iui.IF_UNRELEASED_INFO_ID
+		)
+        SELECT
+            dt.DT -- 일자
+            ,dt.DELIVERY_GOODS_CNT -- 출고지시상품수량
+            ,dt.MISS_GOODS_CNT -- 미출발생상품수량
+            ,ROUND(dt.MISS_GOODS_CNT * 100 / dt.DELIVERY_GOODS_CNT) AS MISS_GOODS_RATE -- 상품미출률(%)
+            ,MISS_GOODS_PRICE -- 미출발생금액
+            ,DELIVERY_ORDER_CNT -- 출고지시주문건수
+            ,MISS_ORDER_CNT -- 미출발생주문건수
+            ,ROUND(dt.MISS_ORDER_CNT * 100 / dt.DELIVERY_ORDER_CNT) AS MISS_ORDER_RATE -- 주문미출률(%)
+        FROM (
+            SELECT
+                DATE_FORMAT(u.MISS_DT, '%Y.%m.%d') AS DT -- 일자
+                ,SUM(ood.ORDER_CNT - IFNULL(c.CANCEL_CNT,0)) AS DELIVERY_GOODS_CNT -- 출고지시상품수량
+                ,SUM(IFNULL(u.MISS_CNT, 0)) AS MISS_GOODS_CNT -- 미출발생상품수량
+                , SUM((CASE WHEN IFNULL(#{includeVatYn}, '') = 'Y' THEN ood.SALE_PRICE       <!-- (VAT포함) -->
+                    ELSE IF(ood.TAX_YN = 'Y', ROUND(ood.SALE_PRICE / 1.1), ood.SALE_PRICE)   <!-- (VAT제외) -->
+                    END) * IFNULL(u.MISS_CNT, 0)) AS MISS_GOODS_PRICE -- 미출발생금액
+                ,COUNT(ood.OD_ORDER_DETL_ID) + IFNULL(c2.CNT, 0) AS DELIVERY_ORDER_CNT -- 출고지시주문건수
+                ,COUNT(u.OD_ORDER_DETL_ID) AS MISS_ORDER_CNT -- 미출발생주문건수
+            FROM OD_ORDER_DETL ood
+                JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                LEFT JOIN CLAIM c ON (c.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                LEFT JOIN UNRELEASED u ON (u.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                LEFT JOIN (select COUNT(*) AS CNT, MISS_DT from CLAIM  GROUP BY MISS_DT) c2  ON ( c2.MISS_DT = u.MISS_DT )
+            WHERE
+                (
+                    u.MISS_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y%m%d') AND DATE_FORMAT(#{endDe}, '%Y%m%d')
+                    OR
+                    (
+                        (
+                            c.CA_DT BETWEEN DATE_FORMAT(#{startDe},'%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe},'%Y-%m-%d 23:59:59')
+                            OR
+                            c.EC_DT BETWEEN DATE_FORMAT(#{startDe},'%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe},'%Y-%m-%d 23:59:59')
+                        )
+                    )
+                )
+                AND IFNULL(c.MISS_CLAIM_CNT, 0) = 0
+                -- 공급업체
+                <if test="supplierList !=null and supplierList.size != 0">
+                    AND ood.UR_SUPPLIER_ID IN
+                    <foreach collection="supplierList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+                -- 출고처 그룹 코드
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseGrpCd) ">
+                    AND ood.UR_WAREHOUSE_GRP_CD = #{urWarehouseGrpCd}
+                </if>
+                -- 출고처
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId) ">
+                    AND ood.UR_WAREHOUSE_ID = #{urWarehouseId}
+                </if>
+                -- 판매처그룹
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd) ">
+                    AND oo.SELLERS_GROUP_CD = #{sellersGroupCd}
+                </if>
+                -- 판매처
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId) ">
+                    AND oo.OM_SELLERS_ID = #{omSellersId}
+                </if>
+                -- 배송유형
+                <if test="searchDelivList !=null and searchDelivList.size != 0">
+                    AND ood.GOODS_DELIVERY_TYPE IN
+                    <foreach collection="searchDelivList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+            GROUP BY u.MISS_DT
+        ) dt
+        ORDER BY dt.DT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 출고/미출 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.07   dgyoun    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutboundMissStaticsList" resultType="kr.co.pulmuone.v1.statics.outbound.dto.vo.OutboundStaticsVo">
+        /*outboundStatics.getOutboundMissStaticsList*/
+
+    </select>
+
+</mapper>

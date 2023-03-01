@@ -1,0 +1,1780 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.event.PromotionEventMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.11		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventListByUserVo" id="getEventListByUserMap">
+        <result column="EV_EVENT_ID" property="evEventId"/>
+        <result column="MALL_DIV" property="mallDiv"/>
+        <result column="EVENT_TP" property="eventType"/>
+        <result column="BNR_IMG_PATH" property="bannerImagePath"/>
+        <result column="BNR_IMG_ORIGIN_NM" property="bannerImageOriginalName"/>
+        <result column="WINNER_INFOR" property="winnerInformation"/>
+        <result column="WINNER_NOTICE" property="winnerNotice"/>
+        <result column="TITLE" property="title"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="END_YN" property="endYn"/>
+        <result column="EVENT_DRAW_TP" property="eventDrawType"/>
+        <result column="EVENT_BENEFIT_TP" property="eventBenefitType"/>
+        <result column="REMAIN_BENEFIT_CNT" property="remainBenefitCount"/>
+    </resultMap>
+
+    <select id="getEventListByUser" resultMap="getEventListByUserMap">
+        /* promotionEvent.getEventListByUser */
+        SELECT EE.EV_EVENT_ID
+            , EE.MALL_DIV
+            , EE.EVENT_TP
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    , EE.BNR_IMG_PATH_PC       AS BNR_IMG_PATH
+                    , EE.BNR_IMG_ORIGIN_NM_PC  AS BNR_IMG_ORIGIN_NM
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    , EE.BNR_IMG_PATH_MO       AS BNR_IMG_PATH
+                    , EE.BNR_IMG_ORIGIN_NM_MO  AS BNR_IMG_ORIGIN_NM
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    , EE.BNR_IMG_PATH_MO       AS BNR_IMG_PATH
+                    , EE.BNR_IMG_ORIGIN_NM_MO  AS BNR_IMG_ORIGIN_NM
+                </when>
+            </choose>
+            , EE.WINNER_INFOR
+            , EE.WINNER_NOTICE
+            , EE.TITLE
+            , DATE(EE.START_DT) AS START_DT
+            , (CASE WHEN EE.EVENT_TP = 'EVENT_TP.EXPERIENCE' THEN DATE(EX.FEEDBACK_END_DT) ELSE DATE(EE.END_DT) END) AS END_DT
+            , (CASE WHEN NOW() <![CDATA[>]]> (CASE WHEN EE.EVENT_TP = 'EVENT_TP.EXPERIENCE' THEN EX.FEEDBACK_END_DT ELSE EE.END_DT END) THEN 'Y' ELSE 'N' END) AS END_YN
+            , EE.EVENT_DRAW_TP
+            , EEN.EVENT_BENEFIT_TP AS EVENT_BENEFIT_TP
+            , IFNULL((CASE WHEN EEN.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON' THEN (SELECT COUNT(*) FROM EV_EVENT_COUPON EEC WHERE EEC.EV_EVENT_ID = EE.EV_EVENT_ID AND COUPON_TOTAL_CNT <![CDATA[ > ]]> COUPON_JOIN_CNT)
+                WHEN EEN.EVENT_BENEFIT_TP IN ('EVENT_BENEFIT_TP.POINT', 'EVENT_BENEFIT_TP.GIFT') THEN EEN.TOTAL_WIN_CNT - EEN.TOTAL_WIN_JOIN_CNT
+                END ), 0) AS REMAIN_BENEFIT_CNT
+        FROM EV_EVENT EE
+            LEFT OUTER JOIN EV_EVENT_NORMAL EEN ON EE.EV_EVENT_ID = EEN.EV_EVENT_ID
+            LEFT OUTER JOIN EV_EVENT_EXPERIENCE EX ON EE.EV_EVENT_ID = EX.EV_EVENT_ID
+        WHERE EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+            AND EE.DISP_YN = 'Y'
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(progress, "IN_PROGRESS")'>
+                AND NOW() BETWEEN EE.START_DT AND EE.END_DT
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(progress, "END")'>
+                AND NOW() <![CDATA[ > ]]> EE.END_DT
+            </when>
+        </choose>
+
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                AND EE.DISP_WEB_PC_YN = 'Y'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                AND EE.DISP_WEB_MOBILE_YN = 'Y'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                AND EE.DISP_APP_YN = 'Y'
+            </when>
+        </choose>
+
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "MEMBER")'>
+                AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_EXCEPT')
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "NONMEMBER")'>
+                AND EE.EV_EMPLOYEE_TP != 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "EMPLOYEE")'>
+                AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY')
+            </when>
+        </choose>
+
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(employeeOnlyYn, "Y")'>
+            AND EE.EV_EMPLOYEE_TP = 'EV_EMPLOYEE_TP.EMPLOYEE_ONLY'
+        </if>
+
+        ORDER BY EE.CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여현황 목록 조회 - my page
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.02		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventListFromMyPageVo" id="getEventListFromMyPageMap">
+        <result column="EV_EVENT_ID" property="evEventId"/>
+        <result column="BNR_IMG_PATH" property="bannerImagePath"/>
+        <result column="BNR_IMG_ORIGIN_NM" property="bannerImageOriginalName"/>
+        <result column="EVENT_TP" property="eventType"/>
+        <result column="TITLE" property="title"/>
+        <result column="START_DT" property="startDate"/>
+        <result column="END_DT" property="endDate"/>
+        <result column="USER_WINNER_YN" property="userWinnerYn"/>
+        <result column="STAMP_COUNT" property="stampCount"/>
+        <result column="STAMP_MAX_CNT" property="stampMaxCount"/>
+        <result column="STATUS" property="status"/>
+        <result column="WINNER_EXIST_YN" property="winnerExistYn"/>
+        <result column="WINNER_NOTICE" property="winnerNotice"/>
+        <result column="WINNER_INFOR" property="winnerInfor"/>
+        <result column="WINNER_INFOR_DT" property="winnerInforDate"/>
+        <result column="FEEDBACK_YN" property="feedbackYn"/>
+        <result column="IL_GOODS_ID" property="experienceIlGoodsId"/>
+    </resultMap>
+
+    <select id="getEventListFromMyPage" resultMap="getEventListFromMyPageMap">
+        /* promotionEvent.getEventLisFromMyPage */
+        SELECT *,
+            (CASE WHEN G2.STATUS_SORT = 0 THEN 'IN_PROGRESS' ELSE 'END' END) AS STATUS,
+            (CASE WHEN (SELECT COUNT(*) FROM FB_FEEDBACK FF WHERE FF.UR_USER_ID = #{urUserId} AND FF.EV_EVENT_ID = G2.EV_EVENT_ID) <![CDATA[ > ]]> 0 THEN 'Y' ELSE 'N' END) AS FEEDBACK_YN
+        FROM (
+            SELECT
+                EE.EV_EVENT_ID ,
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                        EE.BNR_IMG_PATH_PC       AS BNR_IMG_PATH ,
+                        EE.BNR_IMG_ORIGIN_NM_PC  AS BNR_IMG_ORIGIN_NM ,
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                        EE.BNR_IMG_PATH_MO       AS BNR_IMG_PATH ,
+                        EE.BNR_IMG_ORIGIN_NM_MO  AS BNR_IMG_ORIGIN_NM ,
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                        EE.BNR_IMG_PATH_MO       AS BNR_IMG_PATH ,
+                        EE.BNR_IMG_ORIGIN_NM_MO  AS BNR_IMG_ORIGIN_NM ,
+                    </when>
+                </choose>
+                EE.EVENT_TP ,
+                EE.TITLE ,
+                DATE(EE.START_DT) AS START_DT ,
+                DATE(EE.END_DT) AS END_DT ,
+                IFNULL((SELECT EJ.WINNER_YN FROM EV_EVENT_JOIN EJ WHERE EJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EJ.UR_USER_ID = #{urUserId} AND EJ.WINNER_YN = 'Y' LIMIT 1), 'N') AS USER_WINNER_YN,
+                IFNULL(
+                    (CASE WHEN EE.EVENT_TP = 'EVENT_TP.ATTEND'
+                        THEN (SELECT EJ.STAMP_CNT FROM EV_EVENT_JOIN EJ WHERE EJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EJ.UR_USER_ID = #{urUserId} ORDER BY EJ.STAMP_CNT DESC LIMIT 1)
+                    WHEN EE.EVENT_TP = 'EVENT_TP.MISSION'
+                        THEN (SELECT COUNT(*) FROM EV_EVENT_JOIN EJ WHERE EJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EJ.UR_USER_ID = #{urUserId})
+                    WHEN EE.EVENT_TP = 'EVENT_TP.PURCHASE'
+                        THEN (SELECT COUNT(*) FROM EV_EVENT_JOIN EJ WHERE EJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EJ.UR_USER_ID = #{urUserId} AND EJ.STAMP_CNT != 0)
+                    END )
+                    , 0) AS STAMP_COUNT,
+                IFNULL((SELECT STAMP_CNT2 FROM EV_EVENT_STAMP EES WHERE EES.EV_EVENT_ID = EE.EV_EVENT_ID), 0) AS STAMP_MAX_CNT,
+                (CASE WHEN (NOW() <![CDATA[ > ]]> EE.START_DT) AND (NOW() <![CDATA[ < ]]> EE.END_DT) THEN 0 ELSE 9 END) AS STATUS_SORT,
+                (CASE WHEN (EE.WINNER_NOTICE is not null) AND (char_length(EE.WINNER_NOTICE) <![CDATA[ > ]]> 0)  THEN 'Y' ELSE 'N' END) AS WINNER_EXIST_YN,
+                EE.WINNER_NOTICE,
+                EE.WINNER_INFOR,
+                EE.WINNER_INFOR_DT,
+                EX.IL_GOODS_ID,
+                G1.JOIN_DT
+            FROM EV_EVENT EE
+                INNER JOIN (
+                    SELECT EE.EV_EVENT_ID, EEJ.CREATE_DT AS JOIN_DT
+                    FROM EV_EVENT EE
+                        INNER JOIN EV_EVENT_JOIN EEJ ON EE.EV_EVENT_ID = EEJ.EV_EVENT_ID
+                    WHERE
+                        EEJ.UR_USER_ID = #{urUserId}
+                        AND EE.DEL_YN = 'N'
+                        AND EEJ.CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                    GROUP BY EE.EV_EVENT_ID
+                ) G1 ON EE.EV_EVENT_ID = G1.EV_EVENT_ID
+                LEFT OUTER JOIN EV_EVENT_EXPERIENCE EX ON EE.EV_EVENT_ID = EX.EV_EVENT_ID
+        ) G2
+        ORDER BY G2.STATUS_SORT, G2.JOIN_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일반 이벤트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.11		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.NormalByUserVo" id="getNormalByUserMap">
+        <result column="TITLE" property="title"/>
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="WINNER_INFOR" property="winnerInformation"/>
+        <result column="WINNER_NOTICE" property="winnerNotice"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DETL_HTML2" property="detailHtml2"/>
+        <result column="STYLE_ID" property="styleId"/>
+        <result column="NORMAL_EVENT_TP" property="normalEventType"/>
+        <result column="COMMENT_CODE_YN" property="commentCodeYn"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="USER_JOIN_CNT" property="userJoinCount"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="END_YN" property="endYn"/>
+        <result column="EVENT_TP" property="eventType"/>
+        <result column="EVENT_DRAW_TP" property="eventDrawType"/>
+        <result column="EVENT_BENEFIT_TP" property="eventBenefitType"/>
+        <result column="REMAIN_BENEFIT_CNT" property="remainBenefitCount"/>
+        <result column="APP_ONLY_EVENT_YN" property="appOnlyEventYn"/>
+    </resultMap>
+
+    <select id="getNormalByUser" resultMap="getNormalByUserMap">
+        /* promotionEvent.getNormalByUser */
+        SELECT EE.TITLE
+            , DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.WINNER_INFOR
+            , EE.WINNER_NOTICE
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    , EE.DETL_HTML_PC    AS DETL_HTML
+                    , EE.DETL_HTML_PC2   AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2   AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2   AS DETL_HTML2
+                </when>
+            </choose>
+            , EE.STYLE_ID
+            , EEN.NORMAL_EVENT_TP
+            , EEN.COMMENT_CODE_YN
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.EVENT_JOIN_TP
+            , EE.EVENT_DRAW_TP
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EENJ.UR_USER_ID = #{urUserId})
+                    WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EENJ.UR_USER_ID = #{urUserId} AND DATE(EENJ.CREATE_DT) = DATE(NOW()))
+                    ELSE '0' END) AS USER_JOIN_COUNT
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , (CASE WHEN END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+            , EE.EVENT_TP
+            , EEN.EVENT_BENEFIT_TP
+            , (CASE WHEN EEN.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON' THEN (SELECT COUNT(*) FROM EV_EVENT_COUPON WHERE EV_EVENT_ID = #{evEventId} AND COUPON_TOTAL_CNT <![CDATA[ > ]]> COUPON_JOIN_CNT)
+                WHEN EEN.EVENT_BENEFIT_TP IN ('EVENT_BENEFIT_TP.POINT', 'EVENT_BENEFIT_TP.GIFT') THEN EEN.TOTAL_WIN_CNT - EEN.TOTAL_WIN_JOIN_CNT
+                END ) AS REMAIN_BENEFIT_CNT
+            , (CASE WHEN EE.DISP_WEB_PC_YN = 'N' AND EE.DISP_WEB_MOBILE_YN = 'N' AND EE.DISP_APP_YN = 'Y' THEN 'Y' ELSE 'N' END) APP_ONLY_EVENT_YN
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_NORMAL EEN ON EE.EV_EVENT_ID = EEN.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일반 이벤트 댓글 구분값 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.11		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.CommentCodeByUserVo" id="getEventCodeByUserMap">
+        <result column="EV_EVENT_COMMENT_CODE_ID" property="evEventCommentCodeId"/>
+        <result column="COMMENT_VALUE" property="commentValue"/>
+    </resultMap>
+
+    <select id="getEventCommentCodeByUser" resultMap="getEventCodeByUserMap">
+        /* promotionEvent.getNormalCodeByUser */
+        SELECT EV_EVENT_COMMENT_CODE_ID
+            , COMMENT_VALUE
+        FROM EV_EVENT_COMMENT_CODE
+        WHERE EV_EVENT_ID = #{evEventId}
+        ORDER BY EV_EVENT_COMMENT_CODE_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일반 이벤트 댓글 Validation 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.12		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.NormalValidationVo" id="getNormalJoinValidationMap">
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="START_DT" property="startDateTime"/>
+        <result column="END_DT" property="endDateTime"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="COMMENT_CODE_YN" property="commentCodeYn"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="EVENT_DRAW_TP" property="eventDrawType"/>
+        <result column="EVENT_BENEFIT_TP" property="eventBenefitType"/>
+        <result column="PM_POINT_ID" property="pmPointId"/>
+        <result column="BENEFIT_NM" property="benefitName"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="EVENT_NOT_AVAILABLE_YN" property="eventNotAvailableYn"/>
+        <result column="END_YN" property="endYn"/>
+        <result column="NORMAL_EVENT_TP" property="normalEventType"/>
+        <result column="AWARD_RT" property="awardRate"/>
+        <result column="EXPECT_JOIN_USER_CNT" property="expectJoinUserCount"/>
+        <result column="JOIN_CONDITION" property="joinCondition"/>
+        <result column="EVENT_STAMP_ORDER_TP" property="eventStampOrderType"/>
+        <result column="ORDER_CNT" property="orderCount"/>
+        <result column="ORDER_PRICE" property="orderPrice"/>
+        <result column="GOODS_DELIVERY_TP" property="goodsDeliveryTp"/>
+        <result column="EVENT_TP" property="eventType"/>
+        <result column="REMAIN_BENEFIT_CNT" property="remainBenefitCount"/>
+        <result column="CICD_CNT" property="cicdCount"/>
+        <result column="CHECK_NEW_USER_YN" property="checkNewUserYn"/>
+        <result column="NEW_USER_YN" property="newUserYn"/>
+    </resultMap>
+
+    <select id="getNormalJoinValidation" resultMap="getNormalJoinValidationMap">
+        /* promotionEvent.getNormalJoinValidation */
+        SELECT DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.START_DT
+            , EE.END_DT
+            , EE.EVENT_JOIN_TP
+            , EE.EMPLOYEE_JOIN_YN
+            , EEN.COMMENT_CODE_YN
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                    (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EENJ.UR_USER_ID = #{urUserId})
+                WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                    (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EENJ.UR_USER_ID = #{urUserId} AND DATE(EENJ.CREATE_DT) = DATE(NOW()))
+                ELSE '0' END) AS USER_JOIN_COUNT
+            , EE.EVENT_DRAW_TP
+            , EEN.EVENT_BENEFIT_TP
+            , EEN.PM_POINT_ID
+            , (CASE WHEN EEN.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT' THEN
+                (SELECT PP.POINT_NM FROM PM_POINT PP WHERE PP.PM_POINT_ID = EEN.PM_POINT_ID)
+                ELSE 	EEN.BENEFIT_NM END) AS BENEFIT_NM
+            , (SELECT (CASE WHEN EVENT_JOIN_YN = 'Y' THEN 'Y' ELSE 'N' END) FROM UR_BUYER UB WHERE UR_USER_ID = #{urUserId}) AS EVENT_NOT_AVAILABLE_YN
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+            , EEN.NORMAL_EVENT_TP
+            , EEN.AWARD_RT
+            , EEN.EXPECT_JOIN_USER_CNT
+            , EEN.JOIN_CONDITION
+            , EEN.EVENT_STAMP_ORDER_TP
+            , EEN.ORDER_CNT
+            , EEN.ORDER_PRICE
+            , EEN.GOODS_DELIVERY_TYPE AS GOODS_DELIVERY_TP
+            , EE.EVENT_TP
+            , (CASE WHEN EEN.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.COUPON' THEN (SELECT COUNT(*) FROM EV_EVENT_COUPON WHERE EV_EVENT_ID = #{evEventId} AND COUPON_TOTAL_CNT <![CDATA[ > ]]> COUPON_JOIN_CNT)
+                WHEN EEN.EVENT_BENEFIT_TP IN ('EVENT_BENEFIT_TP.POINT', 'EVENT_BENEFIT_TP.GIFT') THEN EEN.TOTAL_WIN_CNT - EEN.TOTAL_WIN_JOIN_CNT
+                END ) AS REMAIN_BENEFIT_CNT
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EENJ.UR_USER_ID IN (
+                    SELECT UR_USER_ID
+                    FROM UR_BUYER
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    UNION ALL
+                    SELECT UR_USER_ID
+                    FROM UR_USER_DROP UUD
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    ))
+                WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND DATE(EENJ.CREATE_DT) = DATE(NOW()) AND EENJ.UR_USER_ID IN (
+                    SELECT UR_USER_ID
+                    FROM UR_BUYER
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    UNION ALL
+                    SELECT UR_USER_ID
+                    FROM UR_USER_DROP UUD
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    ) )
+                ELSE '0' END) AS CICD_CNT
+            , EE.CHECK_NEW_USER_YN AS CHECK_NEW_USER_YN /* 신규 회원 확인 유무 */
+            , (CASE WHEN EE.CHECK_NEW_USER_YN = 'Y' THEN
+                    (CASE WHEN (SELECT COUNT(*)
+                                  FROM UR_USER_DROP UUD
+                                 WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})) <![CDATA[>]]> 0 /* 탈퇴이력이 있는경우 */
+                          THEN 'N'
+                          WHEN (SELECT CREATE_DT
+                                FROM UR_USER UU
+                                WHERE UU.UR_USER_ID = #{urUserId}) <![CDATA[<]]> IFNULL(EE.CHECK_NEW_USER_DT, EE.START_DT) /* 회원 가입일이 신규회원 기준일자(이벤트 시작일자)보다 이전인경우 */
+                          THEN 'N'
+                          ELSE 'Y' END)
+                    ELSE '' END) AS NEW_USER_YN /* 신규 회원 체크 */
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_NORMAL EEN ON EE.EV_EVENT_ID = EEN.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여 저장
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.01		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEventJoin">
+        /* promotionEvent.addEventJoin */
+        INSERT INTO EV_EVENT_JOIN (
+            EV_EVENT_ID, UR_USER_ID, COMMENT_VALUE, COMMENT, STAMP_CNT,
+            CREATE_DT
+        )VALUES(
+            #{evEventId}, #{urUserId}, #{commentValue}, #{comment}, #{stampCount},
+            NOW()
+        )
+
+        <selectKey resultType="long" keyProperty="evEventJoinId" keyColumn="EV_EVENT_JOIN_ID" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.05		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="putEventJoin">
+        /* promotionEvent.putEventJoin */
+        UPDATE EV_EVENT_JOIN
+        SET WINNER_YN = #{winnerYn}
+            , EVENT_BENEFIT_TP = #{eventBenefitType}
+            , PM_POINT_ID = #{pmPointId}
+            , BENEFIT_NM = #{benefitName}
+            , EV_EVENT_ROULETTE_ITEM_ID = #{evEventRouletteItemId}
+        WHERE EV_EVENT_JOIN_ID = #{evEventJoinId}
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여 쿠폰 저장
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.01		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEventJoinCoupon">
+        /* promotionEvent.addEventJoinCoupon */
+        INSERT INTO EV_EVENT_JOIN_COUPON(
+            EV_EVENT_JOIN_ID, PM_COUPON_ID, COUPON_CNT, SORT)
+        VALUES(
+            #{evEventJoinId}, #{pmCouponId}, #{couponCount}, #{sort}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일반 이벤트 댓글 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.12		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventJoinByUserVo" id="getEventJoinByUserMap">
+        <result column="COMMENT_VALUE" property="commentValue"/>
+        <result column="COMMENT" property="comment"/>
+        <result column="LOGIN_ID" property="loginId"/>
+        <result column="CREATE_DT" property="createDate"/>
+        <result column="ADMIN_SECRET_YN" property="adminSecretYn"/>
+    </resultMap>
+
+    <select id="getNormalJoinByUser" resultMap="getEventJoinByUserMap">
+        /* promotionEvent.getNormalJoinByUser */
+        SELECT EENJ.COMMENT_VALUE
+            , EENJ.COMMENT
+            , UU.LOGIN_ID
+            , DATE_FORMAT(EENJ.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT
+            , EENJ.ADMIN_SECRET_YN
+        FROM EV_EVENT_JOIN EENJ
+            INNER JOIN UR_USER UU ON EENJ.UR_USER_ID = UU.UR_USER_ID
+        WHERE EV_EVENT_ID = #{evEventId}
+        ORDER BY EENJ.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 쿠폰 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.12		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventCouponVo" id="getEventCouponMap">
+        <result column="EV_EVENT_COUPON_ID" property="evEventCouponId"/>
+        <result column="PM_COUPON_ID" property="pmCouponId"/>
+        <result column="DISPLAY_COUPON_NM" property="displayCouponName"/>
+        <result column="COUPON_CNT" property="couponCount"/>
+        <result column="DISCOUNT_TP" property="discountType"/>
+        <result column="DISCOUNT_VAL" property="discountValue"/>
+        <result column="COUPON_TOTAL_CNT" property="couponTotalCount"/>
+        <result column="COUPON_JOIN_CNT" property="couponJoinCount"/>
+    </resultMap>
+
+    <select id="getEventCoupon" resultMap="getEventCouponMap">
+        /* promotionEvent.getEventCoupon */
+        SELECT E.EV_EVENT_COUPON_ID
+            , E.PM_COUPON_ID
+            , PC.DISPLAY_COUPON_NM
+            , E.COUPON_CNT
+            , PC.DISCOUNT_TP
+            , PC.DISCOUNT_VAL
+            , E.COUPON_TOTAL_CNT
+            , E.COUPON_JOIN_CNT
+        FROM EV_EVENT_COUPON E
+            INNER JOIN PM_COUPON PC ON E.PM_COUPON_ID = PC.PM_COUPON_ID
+        WHERE E.EV_EVENT_ID = #{evEventId}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEventDetailId) ">
+            AND E.EV_EVENT_DETL_ID = #{evEventDetailId}
+        </if>
+        ORDER BY E.EV_EVENT_COUPON_ID
+    </select>
+
+    <select id="getEventSelectCoupon" resultMap="getEventCouponMap">
+        /* promotionEvent.getEventSelectCoupon */
+        SELECT E.EV_EVENT_COUPON_ID
+        , E.PM_COUPON_ID
+        , PC.DISPLAY_COUPON_NM
+        , E.COUPON_CNT
+        , PC.DISCOUNT_TP
+        , PC.DISCOUNT_VAL
+        , E.COUPON_TOTAL_CNT
+        , E.COUPON_JOIN_CNT
+        FROM EV_EVENT_COUPON E
+        INNER JOIN PM_COUPON PC ON E.PM_COUPON_ID = PC.PM_COUPON_ID
+        WHERE E.EV_EVENT_ID = #{evEventId}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEventDetailId) ">
+            AND E.EV_EVENT_DETL_ID = #{evEventDetailId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(selectCouponId)">
+            AND FN_ENCRYPT(PC.PM_COUPON_ID) = #{selectCouponId}
+        </if>
+        ORDER BY E.EV_EVENT_COUPON_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프 이벤트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.13		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.StampByUserVo" id="getStampByUserMap">
+        <result column="EV_EVENT_STAMP_ID" property="evEventStampId"/>
+        <result column="TITLE" property="title"/>
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="WINNER_INFOR" property="winnerInformation"/>
+        <result column="WINNER_NOTICE" property="winnerNotice"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DETL_HTML2" property="detailHtml2"/>
+        <result column="STYLE_ID" property="styleId"/>
+        <result column="BTN_COLOR_CD" property="buttonColorCode"/>
+        <result column="DEFAULT_PATH" property="defaultPath"/>
+        <result column="DEFAULT_ORIGIN_NM" property="defaultOriginalName"/>
+        <result column="CHECK_PATH" property="checkPath"/>
+        <result column="CHECK_ORIGIN_NM" property="checkOriginalName"/>
+        <result column="BG_PATH" property="backgroundPath"/>
+        <result column="BG_ORIGIN_NM" property="backgroundOriginalName"/>
+        <result column="STAMP_CNT1" property="stampCount1"/>
+        <result column="STAMP_CNT2" property="stampCount2"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="EVENT_TP" property="eventType"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="ORDER_PRICE" property="orderPrice"/>
+        <result column="START_DT" property="startDateTime"/>
+        <result column="END_DT" property="endDateTime"/>
+        <result column="END_YN" property="endYn"/>
+        <result column="JOIN_CNT" property="joinCount"/>
+        <result column="APP_ONLY_EVENT_YN" property="appOnlyEventYn"/>
+    </resultMap>
+
+    <select id="getStampByUser" resultMap="getStampByUserMap">
+        /* promotionEvent.getStampByUser */
+        SELECT EES.EV_EVENT_STAMP_ID
+            , EE.TITLE
+            , DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.WINNER_INFOR
+            , EE.WINNER_NOTICE
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    , EE.DETL_HTML_PC    AS DETL_HTML
+                    , EE.DETL_HTML_PC2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+            </choose>
+            , EE.STYLE_ID
+            , EES.BTN_COLOR_CD
+            , EES.DEFAULT_PATH
+            , EES.DEFAULT_ORIGIN_NM
+            , EES.CHECK_PATH
+            , EES.CHECK_ORIGIN_NM
+            , EES.BG_PATH
+            , EES.BG_ORIGIN_NM
+            , EES.STAMP_CNT1
+            , EES.STAMP_CNT2
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.EVENT_JOIN_TP
+            , EE.EVENT_TP
+            , (CASE WHEN EE.EVENT_TP = 'EVENT_TP.PURCHASE' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId})
+                ELSE
+                    (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                        (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId})
+                    WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                        (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+                    ELSE '0' END)
+                END) AS USER_JOIN_COUNT
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , EES.ORDER_PRICE
+            , EE.START_DT
+            , EE.END_DT
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+            , (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId} AND EEJ.STAMP_CNT != 0) AS JOIN_CNT
+            , (CASE WHEN EE.DISP_WEB_PC_YN = 'N' AND EE.DISP_WEB_MOBILE_YN = 'N' AND EE.DISP_APP_YN = 'Y' THEN 'Y' ELSE 'N' END) APP_ONLY_EVENT_YN
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_STAMP EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프 이벤트 상세 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.StampDetailByUserVo" id="getStampDetailByUserMap">
+        <result column="STAMP_CNT" property="stampCount"/>
+        <result column="DEFAULT_PATH" property="defaultPath"/>
+        <result column="DEFAULT_ORIGIN_NM" property="defaultOriginalName"/>
+        <result column="CHECK_PATH" property="checkPath"/>
+        <result column="CHECK_ORIGIN_NM" property="checkOriginalName"/>
+        <result column="ICON_PATH" property="iconPath"/>
+        <result column="ICON_ORIGIN_NM" property="iconOriginalName"/>
+        <result column="STAMP_URL" property="stampUrl"/>
+    </resultMap>
+
+    <select id="getStampDetailByUser" resultMap="getStampDetailByUserMap">
+        /* promotionEvent.getStampDetailByUser */
+        SELECT STAMP_CNT
+            , DEFAULT_PATH
+            , DEFAULT_ORIGIN_NM
+            , CHECK_PATH
+            , CHECK_ORIGIN_NM
+            , ICON_PATH
+            , ICON_ORIGIN_NM
+            , STAMP_URL
+        FROM EV_EVENT_STAMP_DETL
+        WHERE EV_EVENT_STAMP_ID = #{evEventStampId}
+        ORDER BY STAMP_CNT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프 이벤트 참여 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStampJoinByUser" resultType="integer">
+        /* promotionEvent.getStampJoinByUser */
+        SELECT STAMP_CNT
+        FROM EV_EVENT_JOIN
+        WHERE EV_EVENT_ID = #{evEventId}
+            AND UR_USER_ID = #{urUserId}
+        ORDER BY STAMP_CNT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프 이벤트 Validation 참여 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.StampJoinByUserVo" id="getStampJoinByUserMap">
+        <result column="EV_EVENT_JOIN_ID" property="evEventStampJoinId"/>
+        <result column="STAMP_CNT" property="stampCount"/>
+    </resultMap>
+    <select id="getStampJoinValidationByUser" resultMap="getStampJoinByUserMap">
+        /* promotionEvent.getStampJoinValidationByUser */
+        SELECT EV_EVENT_JOIN_ID
+            , STAMP_CNT
+        FROM EV_EVENT_JOIN
+        WHERE EV_EVENT_ID = #{evEventId}
+            AND UR_USER_ID = #{urUserId}
+        ORDER BY STAMP_CNT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프 이벤트 Validation 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.StampValidationVo" id="getStampValidationMap">
+        <result column="EV_EVENT_STAMP_ID" property="evEventStampId"/>
+        <result column="EVENT_TP" property="eventType"/>
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="ORDER_PRICE" property="orderPrice"/>
+        <result column="START_DT" property="startDateTime"/>
+        <result column="END_DT" property="endDateTime"/>
+        <result column="STAMP_CNT2" property="stampCount2"/>
+        <result column="EVENT_NOT_AVAILABLE_YN" property="eventNotAvailableYn"/>
+        <result column="END_YN" property="endYn"/>
+        <result column="CICD_CNT" property="cicdCount"/>
+    </resultMap>
+
+    <select id="getStampValidation" resultMap="getStampValidationMap">
+        /* promotionEvent.getStampValidation */
+        SELECT EES.EV_EVENT_STAMP_ID
+            , EE.EVENT_TP
+            , DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.EVENT_JOIN_TP
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , EES.ORDER_PRICE
+            , EE.START_DT
+            , EE.END_DT
+            , EES.STAMP_CNT2
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+            (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId})
+            WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+            (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+            ELSE '0' END) AS USER_JOIN_COUNT
+            , (SELECT (CASE WHEN EVENT_JOIN_YN = 'Y' THEN 'Y' ELSE 'N' END) FROM UR_BUYER UB WHERE UR_USER_ID = #{urUserId}) AS EVENT_NOT_AVAILABLE_YN
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EENJ.UR_USER_ID IN (
+                SELECT UR_USER_ID
+                FROM UR_BUYER
+                WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                UNION ALL
+                SELECT UR_USER_ID
+                FROM UR_USER_DROP UUD
+                WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                ))
+                WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND DATE(EENJ.CREATE_DT) = DATE(NOW()) AND EENJ.UR_USER_ID IN (
+                SELECT UR_USER_ID
+                FROM UR_BUYER
+                WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                UNION ALL
+                SELECT UR_USER_ID
+                FROM UR_USER_DROP UUD
+                WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                ) )
+                ELSE '0' END) AS CICD_CNT
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_STAMP EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프 이벤트 상세 Validation 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.16		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.StampDetailValidation" id="getStampDetailValidationMap">
+        <result column="EV_EVENT_STAMP_DETL_ID" property="evEventStampDetlId"/>
+        <result column="STAMP_CNT" property="stampCount"/>
+        <result column="EVENT_BENEFIT_TP" property="eventBenefitType"/>
+        <result column="BENEFIT_ID" property="pmPointId"/>
+        <result column="BENEFIT_NM" property="benefitName"/>
+    </resultMap>
+
+    <select id="getStampDetailValidation" resultMap="getStampDetailValidationMap">
+        /* promotionEvent.getStampDetailValidation */
+        SELECT EV_EVENT_STAMP_DETL_ID
+            , STAMP_CNT
+            , EVENT_BENEFIT_TP
+            , BENEFIT_ID
+            , (CASE WHEN EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT' THEN
+                    (SELECT PC.POINT_NM FROM  PM_POINT PC WHERE PC.PM_POINT_ID = EES.BENEFIT_ID)
+                ELSE BENEFIT_NM
+                END ) AS BENEFIT_NM
+        FROM EV_EVENT_STAMP_DETL EES
+        WHERE EV_EVENT_STAMP_ID = #{evEventStampId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프(구매) 이벤트 참여 저장
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putStampJoin">
+        /* promotionEvent.putStampJoin */
+        UPDATE EV_EVENT_JOIN
+        SET STAMP_CNT = #{stampCount}
+        WHERE EV_EVENT_JOIN_ID = #{evEventJoinId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 룰렛 이벤트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.RouletteByUserVo" id="getRouletteByUserMap">
+        <result column="EV_EVENT_ROULETTE_ID" property="evEventRouletteId"/>
+        <result column="TITLE" property="title"/>
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="WINNER_INFOR" property="winnerInformation"/>
+        <result column="WINNER_NOTICE" property="winnerNotice"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DETL_HTML2" property="detailHtml2"/>
+        <result column="STYLE_ID" property="styleId"/>
+        <result column="START_BTN_PATH" property="startButtonPath"/>
+        <result column="START_BTN_ORIGIN_NM" property="startButtonOriginalName"/>
+        <result column="ARROW_PATH" property="arrowPath"/>
+        <result column="ARROW_ORIGIN_NM" property="arrowOriginalName"/>
+        <result column="BG_PATH" property="backgroundPath"/>
+        <result column="BG_ORIGIN_NM" property="backgroundOriginalName"/>
+        <result column="ROULETTE_PATH" property="roulettePath"/>
+        <result column="ROULETTE_CNT" property="rouletteCount"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+    <select id="getRouletteByUser" resultMap="getRouletteByUserMap">
+        /* promotionEvent.getRouletteByUser */
+        SELECT EES.EV_EVENT_ROULETTE_ID
+            , EE.TITLE
+            , DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.WINNER_INFOR
+            , EE.WINNER_NOTICE
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    , EE.DETL_HTML_PC    AS DETL_HTML
+                    , EE.DETL_HTML_PC2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+            </choose>
+            , EE.STYLE_ID
+            , EES.START_BTN_PATH
+            , EES.START_BTN_ORIGIN_NM
+            , EES.ARROW_PATH
+            , EES.ARROW_ORIGIN_NM
+            , EES.BG_PATH
+            , EES.BG_ORIGIN_NM
+            , EES.ROULETTE_PATH
+            , EES.ROULETTE_CNT
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.EVENT_JOIN_TP
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+            (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId})
+            WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+            (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+            ELSE '0' END) AS USER_JOIN_COUNT
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_ROULETTE EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 룰렛 이벤트 상세 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.RouletteItemByUserVo" id="getRouletteDetailByUserMap">
+        <result column="EV_EVENT_ROULETTE_ITEM_ID" property="evEventRouletteItemId"/>
+        <result column="EVENT_BENEFIT_TP" property="eventBenefitType"/>
+        <result column="BENEFIT_NM" property="benefitName"/>
+        <result column="BENEFIT_PRICE" property="benefitPrice"/>
+    </resultMap>
+
+    <select id="getRouletteDetailByUser" resultMap="getRouletteDetailByUserMap">
+        /* promotionEvent.getRouletteDetailByUser */
+        SELECT EV_EVENT_ROULETTE_ITEM_ID
+            , EVENT_BENEFIT_TP
+            , (CASE WHEN EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT' THEN
+                (SELECT PC.POINT_NM FROM  PM_POINT PC WHERE PC.PM_POINT_ID = EES.BENEFIT_ID)
+                ELSE BENEFIT_NM
+                END ) AS BENEFIT_NM
+            , (CASE WHEN EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT' THEN
+                (SELECT PC.ISSUE_VAL FROM  PM_POINT PC WHERE PC.PM_POINT_ID = EES.BENEFIT_ID)
+                END ) AS BENEFIT_PRICE
+        FROM EV_EVENT_ROULETTE_ITEM EES
+        WHERE EV_EVENT_ROULETTE_ID = #{evEventRouletteId}
+        ORDER BY EES.EV_EVENT_ROULETTE_ITEM_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 룰렛 이벤트 Validation 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.RouletteValidationVo" id="getRouletteValidationMap">
+        <result column="EV_EVENT_ROULETTE_ID" property="evEventRouletteId"/>
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="EVENT_TP" property="eventType"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="EVENT_NOT_AVAILABLE_YN" property="eventNotAvailableYn"/>
+        <result column="END_YN" property="endYn"/>
+        <result column="JOIN_CNT" property="joinCount"/>
+        <result column="EXCEPTION_USER_ROULETTE_CNT" property="exceptionUserRouletteCount"/>
+        <result column="CICD_CNT" property="cicdCount"/>
+    </resultMap>
+
+    <select id="getRouletteValidation" resultMap="getRouletteValidationMap">
+        /* promotionEvent.getRouletteValidation */
+        SELECT EES.EV_EVENT_ROULETTE_ID
+            , DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.EVENT_JOIN_TP
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , EE.EVENT_TP
+            , EES.EXCEPTION_USER_ROULETTE_CNT
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId})
+            WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+            ELSE '0' END) AS USER_JOIN_COUNT
+            , (SELECT (CASE WHEN EVENT_JOIN_YN = 'Y' THEN 'Y' ELSE 'N' END) FROM UR_BUYER UB WHERE UR_USER_ID = #{urUserId}) AS EVENT_NOT_AVAILABLE_YN
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+            , (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId}) AS JOIN_CNT
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EENJ.UR_USER_ID IN (
+                    SELECT UR_USER_ID
+                    FROM UR_BUYER
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    UNION ALL
+                    SELECT UR_USER_ID
+                    FROM UR_USER_DROP UUD
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    ))
+                WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                    (SELECT COUNT(*) FROM EV_EVENT_JOIN EENJ WHERE EENJ.EV_EVENT_ID = EE.EV_EVENT_ID AND DATE(EENJ.CREATE_DT) = DATE(NOW()) AND EENJ.UR_USER_ID IN (
+                    SELECT UR_USER_ID
+                    FROM UR_BUYER
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    UNION ALL
+                    SELECT UR_USER_ID
+                    FROM UR_USER_DROP UUD
+                    WHERE CI_CD = (SELECT CI_CD FROM UR_BUYER WHERE UR_USER_ID = #{urUserId})
+                    ) )
+                ELSE '0' END) AS CICD_CNT
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_ROULETTE EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 룰렛 이벤트 아이템 Validation 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.RouletteItemValidation" id="getRouletteDetailValidationMap">
+        <result column="EV_EVENT_ROULETTE_ITEM_ID" property="evEventRouletteItemId"/>
+        <result column="EVENT_BENEFIT_TP" property="eventBenefitType"/>
+        <result column="BENEFIT_ID" property="pmPointId"/>
+        <result column="BENEFIT_NM" property="benefitName"/>
+        <result column="AWARD_RT" property="awardRate"/>
+        <result column="AWARD_MAX_CNT" property="awardMaxCount"/>
+        <result column="WINNER_CNT" property="winnerCount"/>
+        <result column="ROWNUM" property="itemNumber"/>
+        <result column="EXPECT_JOIN_USER_CNT" property="expectJoinUserCount"/>
+    </resultMap>
+
+    <select id="getRouletteDetailValidation" resultMap="getRouletteDetailValidationMap">
+        /* promotionEvent.getStampDetailValidation */
+        SELECT EERI.EV_EVENT_ROULETTE_ITEM_ID
+            , EERI.EVENT_BENEFIT_TP
+            , EERI.BENEFIT_ID
+            , (CASE WHEN EERI.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT' THEN
+                (SELECT PC.POINT_NM FROM  PM_POINT PC WHERE PC.PM_POINT_ID = EERI.BENEFIT_ID)
+            ELSE EERI.BENEFIT_NM
+            END ) AS BENEFIT_NM
+            , EERI.AWARD_RT
+            , EERI.AWARD_MAX_CNT
+            , (SELECT JOIN_CNT FROM EV_EVENT_BENEFIT_CNT EERJ WHERE EERJ.EV_EVENT_ID = EER.EV_EVENT_ID AND EERJ.EV_EVENT_ROULETTE_ITEM_ID = EERI.EV_EVENT_ROULETTE_ITEM_ID) AS WINNER_CNT
+            , ROW_NUMBER () OVER () AS ROWNUM
+            , EER.EXPECT_JOIN_USER_CNT
+        FROM EV_EVENT_ROULETTE_ITEM EERI
+            INNER JOIN EV_EVENT_ROULETTE EER ON EERI.EV_EVENT_ROULETTE_ID = EER.EV_EVENT_ROULETTE_ID
+        WHERE EERI.EV_EVENT_ROULETTE_ID = #{evEventRouletteId}
+        ORDER BY EERI.EV_EVENT_ROULETTE_ITEM_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 설문 이벤트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.SurveyByUserVo" id="getSurveyByUserMap">
+        <result column="TITLE" property="title"/>
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="WINNER_INFOR" property="winnerInformation"/>
+        <result column="WINNER_NOTICE" property="winnerNotice"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DETL_HTML2" property="detailHtml2"/>
+        <result column="STYLE_ID" property="styleId"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="BTN_COLOR_CD" property="buttonColorCode"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="END_YN" property="endYn"/>
+        <result column="EVENT_DRAW_TP" property="eventDrawType"/>
+        <result column="APP_ONLY_EVENT_YN" property="appOnlyEventYn"/>
+    </resultMap>
+    <select id="getSurveyByUser" resultMap="getSurveyByUserMap">
+        /* promotionEvent.getSurveyByUser */
+        SELECT EE.TITLE
+            , DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.WINNER_INFOR
+            , EE.WINNER_NOTICE
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    , EE.DETL_HTML_PC    AS DETL_HTML
+                    , EE.DETL_HTML_PC2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+            </choose>
+            , EE.STYLE_ID
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.EVENT_JOIN_TP
+            , EE.EVENT_DRAW_TP
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId})
+            WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+            ELSE '0' END) AS USER_JOIN_COUNT
+            , EES.BTN_COLOR_CD
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+            , (CASE WHEN EE.DISP_WEB_PC_YN = 'N' AND EE.DISP_WEB_MOBILE_YN = 'N' AND EE.DISP_APP_YN = 'Y' THEN 'Y' ELSE 'N' END) APP_ONLY_EVENT_YN
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_SURVEY EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 설문 항목 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.SurveyQuestionByUserVo" id="getSurveyQuestionByUserMap">
+        <result column="EV_EVENT_SURVEY_QUESTION_ID" property="evEventSurveyQuestionId"/>
+        <result column="TITLE" property="title"/>
+        <result column="EVENT_SURVEY_TP" property="eventSurveyType"/>
+    </resultMap>
+
+    <select id="getSurveyQuestionByUser" resultMap="getSurveyQuestionByUserMap">
+        /* promotionEvent.getSurveyQuestionByUser */
+        SELECT EV_EVENT_SURVEY_QUESTION_ID
+            , TITLE
+            , EVENT_SURVEY_TP
+        FROM EV_EVENT_SURVEY_QUESTION
+        WHERE EV_EVENT_ID = #{evEventId}
+        ORDER BY SORT ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 설문 항목 아이템 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.17		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.SurveyItemByUserVo" id="getSurveyItemByUserMap">
+        <result column="EV_EVENT_SURVEY_ITEM_ID" property="evEventSurveyItemId"/>
+        <result column="ITEM" property="item"/>
+        <result column="DIRECT_INPUT_YN" property="directInputYn"/>
+        <result column="IMG_PATH" property="imagePath"/>
+        <result column="IMG_ORIGIN_NM" property="imageOriginalName"/>
+    </resultMap>
+
+    <select id="getSurveyItemByUser" resultMap="getSurveyItemByUserMap">
+        /* promotionEvent.getSurveyItemByUser */
+        SELECT EI.EV_EVENT_SURVEY_ITEM_ID
+            , EI.ITEM
+            , EI.DIRECT_INPUT_YN
+            , EIA.IMG_PATH
+            , EIA.IMG_ORIGIN_NM
+        FROM EV_EVENT_SURVEY_ITEM EI
+            LEFT OUTER JOIN EV_EVENT_SURVEY_ITEM_ATTC EIA ON EI.EV_EVENT_SURVEY_ITEM_ID = EIA.EV_EVENT_SURVEY_ITEM_ID
+        WHERE EV_EVENT_SURVEY_QUESTION_ID = #{evEventSurveyQuestionId}
+        ORDER BY EI.SORT ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 설문 이벤트 Validation 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.SurveyValidationVo" id="getSurveyValidationMap">
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="EVENT_DRAW_TP" property="eventDrawType"/>
+        <result column="EVENT_BENEFIT_TP" property="eventBenefitType"/>
+        <result column="PM_POINT_ID" property="pmPointId"/>
+        <result column="BENEFIT_NM" property="benefitName"/>
+        <result column="EVENT_NOT_AVAILABLE_YN" property="eventNotAvailableYn"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+
+    <select id="getSurveyValidation" resultMap="getSurveyValidationMap">
+        /* promotionEvent.getSurveyValidation */
+        SELECT DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.EVENT_JOIN_TP
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+            (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId})
+            WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+            (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = #{evEventId} AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+            ELSE '0' END) AS USER_JOIN_COUNT
+            , EE.EVENT_DRAW_TP
+            , EES.EVENT_BENEFIT_TP
+            , EES.PM_POINT_ID
+            , (CASE WHEN EES.EVENT_BENEFIT_TP = 'EVENT_BENEFIT_TP.POINT' THEN
+                (SELECT PC.POINT_NM FROM  PM_POINT PC WHERE PC.PM_POINT_ID = EES.PM_POINT_ID)
+                ELSE EES.BENEFIT_NM
+                END ) AS BENEFIT_NM
+            , (SELECT (CASE WHEN EVENT_JOIN_YN = 'Y' THEN 'Y' ELSE 'N' END) FROM UR_BUYER UB WHERE UR_USER_ID = #{urUserId}) AS EVENT_NOT_AVAILABLE_YN
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_SURVEY EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 설문 이벤트 참여 상세 저장
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.02		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSurveyJoinDetail">
+        /* promotionEvent.addSurveyJoinDetail */
+        INSERT INTO EV_EVENT_JOIN_SURVEY (
+            EV_EVENT_JOIN_ID, EV_EVENT_SURVEY_QUESTION_ID, EV_EVENT_SURVEY_ITEM_ID, OTHER_CMNT
+        ) VALUES
+        <foreach collection="list" item="vo" index="index"  open="" separator="," close="">
+            (
+            #{evEventJoinId}, #{vo.evEventSurveyQuestionId}, #{vo.evEventSurveyItemId}, #{vo.otherComment}
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 체험단 이벤트 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.19		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.ExperienceByUserVo" id="getExperienceByUserMap">
+        <result column="TITLE" property="title"/>
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="RECRUIT_START_DATE" property="recruitStartDate"/>
+        <result column="RECRUIT_END_DATE" property="recruitEndDate"/>
+        <result column="SELECT_START_DATE" property="selectStartDate"/>
+        <result column="SELECT_END_DATE" property="selectEndDate"/>
+        <result column="REVIEW_START_DATE" property="reviewStartDate"/>
+        <result column="REVIEW_END_DATE" property="reviewEndDate"/>
+        <result column="WINNER_INFOR" property="winnerInformation"/>
+        <result column="WINNER_NOTICE" property="winnerNotice"/>
+        <result column="DETL_HTML" property="detailHtml"/>
+        <result column="DETL_HTML2" property="detailHtml2"/>
+        <result column="STYLE_ID" property="styleId"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="BTN_COLOR_CD" property="buttonColorCode"/>
+        <result column="EVENT_DRAW_TP" property="eventDrawType"/>
+        <result column="RECRUIT_CLOSE_YN" property="recruitCloseYn"/>
+        <result column="COMMENT_CODE_YN" property="commentCodeYn"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+    <select id="getExperienceByUser" resultMap="getExperienceByUserMap">
+        /* promotionEvent.getExperienceByUser */
+        SELECT EE.TITLE
+            , DATE(EE.START_DT) AS START_DATE
+            , DATE(EES.FEEDBACK_END_DT) AS END_DATE
+            , DATE(EE.START_DT) AS RECRUIT_START_DATE
+            , DATE(EE.END_DT) AS RECRUIT_END_DATE
+            , DATE(EES.SELECT_START_DT) AS SELECT_START_DATE
+            , DATE(EES.SELECT_END_DT) AS SELECT_END_DATE
+            , DATE(EES.FEEDBACK_START_DT) AS REVIEW_START_DATE
+            , DATE(EES.FEEDBACK_END_DT) AS REVIEW_END_DATE
+            , EE.WINNER_INFOR
+            , EE.WINNER_NOTICE
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    , EE.DETL_HTML_PC    AS DETL_HTML
+                    , EE.DETL_HTML_PC2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    , EE.DETL_HTML_MO    AS DETL_HTML
+                    , EE.DETL_HTML_MO2    AS DETL_HTML2
+                </when>
+            </choose>
+            , EE.STYLE_ID
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.EVENT_JOIN_TP
+            , EE.EVENT_DRAW_TP
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId})
+                WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+                ELSE '0' END) AS USER_JOIN_COUNT
+            , EES.BTN_COLOR_CD
+            , EE.EVENT_DRAW_TP
+            , EES.RECRUIT_CLOSE_YN
+            , EES.COMMENT_CODE_YN
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , EES.IL_GOODS_ID
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_EXPERIENCE EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 체험단 이벤트 댓글 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.19		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getExperienceJoinByUser" resultMap="getEventJoinByUserMap">
+        /* promotionEvent.getExperienceJoinByUser */
+        SELECT EENJ.COMMENT
+            , UU.LOGIN_ID
+            , DATE_FORMAT(EENJ.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT
+            , EENJ.ADMIN_SECRET_YN
+        FROM EV_EVENT_JOIN EENJ
+            INNER JOIN UR_USER UU ON EENJ.UR_USER_ID = UU.UR_USER_ID
+        WHERE EV_EVENT_ID = #{evEventId}
+        ORDER BY EENJ.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 체험단 이벤트 Validation 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.19		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.ExperienceValidationVo" id="getExperienceValidationMap">
+        <result column="START_DATE" property="startDate"/>
+        <result column="END_DATE" property="endDate"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="DISP_WEB_PC_YN" property="displayWebPcYn"/>
+        <result column="DISP_WEB_MOBILE_YN" property="displayWebMobileYn"/>
+        <result column="DISP_APP_YN" property="displayAppYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="USER_JOIN_COUNT" property="userJoinCount"/>
+        <result column="EVENT_DRAW_TP" property="eventDrawType"/>
+        <result column="RECRUIT_CLOSE_YN" property="recruitCloseYn"/>
+        <result column="FIRST_COME_CNT" property="firstComeCount"/>
+        <result column="PM_COUPON_ID" property="pmCouponId"/>
+        <result column="USER_COUNT" property="userCount"/>
+        <result column="EVENT_NOT_AVAILABLE_YN" property="eventNotAvailableYn"/>
+        <result column="COMMENT_CODE_YN" property="commentCodeYn"/>
+        <result column="END_YN" property="endYn"/>
+    </resultMap>
+
+    <select id="getExperienceValidation" resultMap="getExperienceValidationMap">
+        /* promotionEvent.getExperienceValidation */
+        SELECT DATE(EE.START_DT) AS START_DATE
+            , DATE(EE.END_DT) AS END_DATE
+            , EE.EVENT_JOIN_TP
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.DISP_WEB_PC_YN
+            , EE.DISP_WEB_MOBILE_YN
+            , EE.DISP_APP_YN
+            , EE.EV_EMPLOYEE_TP
+            , (CASE WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.RANGE_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId})
+                WHEN EE.EVENT_JOIN_TP = 'EVENT_JOIN_TP.DAY_1' THEN
+                (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW()))
+                ELSE '0' END) AS USER_JOIN_COUNT
+            , EE.EVENT_DRAW_TP
+            , EES.RECRUIT_CLOSE_YN
+            , EES.FIRST_COME_CNT
+            , EES.PM_COUPON_ID
+            , EES.COMMENT_CODE_YN
+            , (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID) AS USER_COUNT
+            , (SELECT (CASE WHEN EVENT_JOIN_YN = 'Y' THEN 'Y' ELSE 'N' END) FROM UR_BUYER UB WHERE UR_USER_ID = #{urUserId}) AS EVENT_NOT_AVAILABLE_YN
+            , (CASE WHEN EE.END_DT <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_EXPERIENCE EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+        WHERE EE.EV_EVENT_ID = #{evEventId}
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+         * description 		: 체험단 이벤트 선착순 종료여부
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2020.11.19		이원호          최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+    <update id="putEventExperienceRecruitClose">
+        /* promotionEvent.putEventExperienceRecruitClose */
+        UPDATE EV_EVENT_EXPERIENCE
+        SET RECRUIT_CLOSE_YN='Y'
+        WHERE EV_EVENT_ID = #{evEventId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 등급 접근 기준 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.26		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventUserGroupByUserVo" id="userGroupByUserMap">
+        <result column="UR_GROUP_ID" property="urGroupId"/>
+        <result column="GROUP_MASTER_NM" property="groupMasterName"/>
+        <result column="GROUP_NM" property="groupName"/>
+    </resultMap>
+    <select id="getUserGroup" resultMap="userGroupByUserMap">
+        /* promotionEvent.getUserGroup */
+        SELECT EUG.UR_GROUP_ID
+            , UGM.GROUP_MASTER_NM
+            , UG.GROUP_NM
+        FROM EV_EVENT_USER_GROUP EUG
+            INNER JOIN UR_GROUP UG ON EUG.UR_GROUP_ID = UG.UR_GROUP_ID
+            INNER JOIN UR_GROUP_MASTER UGM ON UG.UR_GROUP_MASTER_ID = UGM.UR_GROUP_MASTER_ID
+        WHERE EV_EVENT_ID = #{evEventId}
+        ORDER BY UGM.START_DT, UG.GROUP_LEVEL_TP
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 스탬프 미션 이벤트 정보 조회 - 공통
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.10		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.MissionStampByUserVo" id="getMissionStampByUserMap">
+        <result column="EV_EVENT_ID" property="evEventId"/>
+        <result column="STAMP_CNT" property="stampCount"/>
+        <result column="EMPLOYEE_JOIN_YN" property="employeeJoinYn"/>
+        <result column="EV_EMPLOYEE_TP" property="evEmployeeType"/>
+        <result column="TOTAL_STAMP_CNT" property="totalStampCount"/>
+        <result column="JOIN_STAMP_CNT" property="joinStampCount"/>
+        <result column="ICON_PATH" property="iconPath"/>
+        <result column="STAMP_URL" property="stampUrl"/>
+        <result column="EVENT_JOIN_TP" property="eventJoinType"/>
+        <result column="USER_JOIN_TODAY_CNT" property="userJoinTodayCount"/>
+        <result column="USER_JOIN_ITEM_CNT" property="userJoinItemCount"/>
+    </resultMap>
+    <select id="getMissionStampByUser" resultMap="getMissionStampByUserMap">
+        /* promotionEvent.getMissionStampByUser */
+        SELECT EE.EV_EVENT_ID
+            , EESD.STAMP_CNT
+            , EE.EMPLOYEE_JOIN_YN
+            , EE.EV_EMPLOYEE_TP
+            , EES.STAMP_CNT2 AS TOTAL_STAMP_CNT
+            , (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId}) AS JOIN_STAMP_CNT
+            , EESD.ICON_PATH
+            , EESD.STAMP_URL
+            , EE.EVENT_JOIN_TP
+            , (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.UR_USER_ID = #{urUserId} AND DATE(EEJ.CREATE_DT) = DATE(NOW())) AS USER_JOIN_TODAY_CNT
+            , (SELECT COUNT(*) FROM EV_EVENT_JOIN EEJ WHERE EEJ.EV_EVENT_ID = EE.EV_EVENT_ID AND EEJ.STAMP_CNT = EESD.STAMP_CNT AND EEJ.UR_USER_ID = #{urUserId}) AS USER_JOIN_ITEM_CNT
+        FROM EV_EVENT EE
+            INNER JOIN EV_EVENT_STAMP EES ON EE.EV_EVENT_ID = EES.EV_EVENT_ID
+            INNER JOIN EV_EVENT_STAMP_DETL EESD ON EES.EV_EVENT_STAMP_ID = EESD.EV_EVENT_STAMP_ID
+        WHERE EE.EVENT_TP = 'EVENT_TP.MISSION'
+            AND EE.USE_YN = 'Y'
+            AND EE.DEL_YN = 'N'
+            AND NOW() BETWEEN EE.START_DT AND EE.END_DT
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                AND EE.DISP_WEB_PC_YN = 'Y'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                AND EE.DISP_WEB_MOBILE_YN = 'Y'
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                AND EE.DISP_APP_YN = 'Y'
+            </when>
+        </choose>
+
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "NONMEMBER")'>
+                AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_EXCEPT')
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userStatus, "MEMBER")'>
+                AND EE.EV_EMPLOYEE_TP IN ('EV_EMPLOYEE_TP.NO_LIMIT', 'EV_EMPLOYEE_TP.EMPLOYEE_EXCEPT')
+            </when>
+        </choose>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 타이틀 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.09		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventInfoFromMetaVo" id="getEventInfoFromMetaMap">
+        <result column="TITLE" property="title"/>
+        <result column="BNR_IMG_PATH" property="bannerImagePath"/>
+        <result column="DATE_INFO" property="dateInfo"/>
+    </resultMap>
+    <select id="getEventInfoFromMeta" resultMap="getEventInfoFromMetaMap">
+        /* promotionEvent.getEventInfoFromMeta */
+        SELECT TITLE
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "PC")'>
+                    , BNR_IMG_PATH_PC       AS BNR_IMG_PATH
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "MOBILE")'>
+                    , BNR_IMG_PATH_MO       AS BNR_IMG_PATH
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, "APP")'>
+                    , BNR_IMG_PATH_MO       AS BNR_IMG_PATH
+                </when>
+            </choose>
+            , CONCAT(DATE(START_DT), '~', DATE(END_DT)) AS DATE_INFO
+        FROM EV_EVENT
+        WHERE EV_EVENT_ID = #{evEventId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여 정보 조회 - 동시성 문제 해결
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.24		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventBenefitInfoVo" id="eventBenefitInfoResultMap">
+        <result column="EV_EVENT_BENEFIT_CNT_ID" property="evEventBenefitCntId"/>
+        <result column="AWARD_MAX_CNT" property="awardMaxCount"/>
+        <result column="JOIN_CNT" property="joinCount"/>
+    </resultMap>
+
+    <select id="getEventBenefitInfo" resultMap="eventBenefitInfoResultMap">
+        /* promotionEvent.getEventBenefitInfo */
+        SELECT EV_EVENT_BENEFIT_CNT_ID
+            , AWARD_MAX_CNT
+            , JOIN_CNT
+        FROM EV_EVENT_BENEFIT_CNT
+        WHERE EV_EVENT_ID = #{evEventId}
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEventRouletteItemId)'>
+                AND EV_EVENT_ROULETTE_ITEM_ID = #{evEventRouletteItemId}
+            </if>
+        FOR UPDATE
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여 정보 조회 - 동시성 문제 해결
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.24		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putEventBenefitInfoConcurrency">
+        /* promotionEvent.putEventBenefitInfoConcurrency */
+        UPDATE EV_EVENT_BENEFIT_CNT
+        SET JOIN_CNT = JOIN_CNT + 1
+        WHERE AWARD_MAX_CNT <![CDATA[>]]> JOIN_CNT
+            AND EV_EVENT_ID = #{evEventId}
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEventRouletteItemId)'>
+                AND EV_EVENT_ROULETTE_ITEM_ID = #{evEventRouletteItemId}
+            </if>
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 참여 정보 조회 - 잔여 참여횟수 확인용
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.26		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getEventBenefitCount" resultType="integer">
+        /* promotionEvent.getEventBenefitCount */
+        SELECT COUNT(*) AS CNT
+        FROM EV_EVENT_BENEFIT_CNT
+        WHERE EV_EVENT_ID = #{evEventId}
+            AND AWARD_MAX_CNT <![CDATA[>]]> JOIN_CNT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 혜택 - 쿠폰 - 동시성 적용
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.07		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getEventCouponConcurrency" resultType="string">
+        /* promotionEvent.getEventCouponConcurrency */
+        SELECT EV_EVENT_COUPON_ID
+        FROM EV_EVENT_COUPON
+        WHERE EV_EVENT_COUPON_ID = #{evEventCouponId}
+        FOR UPDATE
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 혜택 - 쿠폰 - 동시성 적용
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.07		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putEventCouponConcurrency">
+        /* promotionEvent.putEventCouponConcurrency */
+        UPDATE EV_EVENT_COUPON
+        SET COUPON_JOIN_CNT = COUPON_JOIN_CNT + 1
+        WHERE COUPON_TOTAL_CNT <![CDATA[>]]> COUPON_JOIN_CNT
+            AND EV_EVENT_COUPON_ID = #{evEventCouponId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일반 이벤트 혜택 - 적립금, 경품 - 동시성 적용
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getNormalBenefitConcurrency" resultType="string">
+        /* promotionEvent.getNormalBenefitConcurrency */
+        SELECT EV_EVENT_ID
+        FROM EV_EVENT_NORMAL
+        WHERE EV_EVENT_ID = #{evEventId}
+        FOR UPDATE
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 일반 이벤트 혜택 - 적립금, 경품 - 동시성 적용
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.08		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putNormalBenefitConcurrency">
+        /* promotionEvent.putNormalBenefitConcurrency */
+        UPDATE EV_EVENT_NORMAL
+        SET TOTAL_WIN_JOIN_CNT = TOTAL_WIN_JOIN_CNT + 1
+        WHERE TOTAL_WIN_CNT <![CDATA[>]]> TOTAL_WIN_JOIN_CNT
+            AND EV_EVENT_ID = #{evEventId}
+    </update>
+
+    <resultMap type="kr.co.pulmuone.v1.promotion.event.dto.vo.EventGroupByUserVo" id="getGroupByUserMap">
+        <result column="EV_EVENT_GROUP_ID" property="evEventGroupId"/>
+        <result column="GROUP_NM" property="groupName"/>
+        <result column="TEXT_COLOR" property="textColor"/>
+        <result column="EVENT_IMG_TP" property="eventImageType"/>
+        <result column="BG_CD" property="backgroundCode"/>
+        <result column="DESCRIPTION" property="description"/>
+        <result column="DISP_CNT" property="displayCount"/>
+    </resultMap>
+
+    <select id="getGroupByUser" resultMap="getGroupByUserMap">
+        /* promotionEvent.getGroupByUser */
+        SELECT EV_EVENT_GROUP_ID
+            , GROUP_NM
+            , TEXT_COLOR
+            , EVENT_IMG_TP
+            , BG_CD
+            , DESCRIPTION
+            , DISP_CNT
+        FROM EV_EVENT_GROUP
+        WHERE EV_EVENT_ID = #{evEventId}
+            AND USE_YN = 'Y'
+        ORDER BY GROUP_SORT
+    </select>
+
+    <select id="getGroupDetailByUser" resultType="long">
+        /* promotionEvent.getGroupDetailByUser */
+        SELECT IL_GOODS_ID
+        FROM EV_EVENT_GROUP_DETL
+        WHERE EV_EVENT_GROUP_ID = #{evEventGroupId}
+        ORDER BY GOODS_SORT
+    </select>
+
+    <select id="getReDirectEventId" resultType="long">
+        /* promotionEvent.getReDirectEventId */
+        SELECT EV_EVENT_ID_RE
+        FROM EV_EVENT_REDIRECT
+        WHERE EV_EVENT_ID = #{evEventId}
+        AND START_DT <![CDATA[<=]]> NOW()
+        AND END_DT <![CDATA[>=]]> NOW()
+        ORDER BY EV_EVENT_REDIRECT_ID DESC
+        LIMIT 1
+    </select>
+
+</mapper>

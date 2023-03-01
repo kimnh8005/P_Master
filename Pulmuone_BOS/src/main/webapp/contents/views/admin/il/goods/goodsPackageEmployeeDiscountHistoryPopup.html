@@ -1,0 +1,97 @@
+<form id="searchForm" name="searchForm">
+	<div class="fb__sect grid-sect">
+		<div class="wrap-tit" style="width: 100%">
+			<div class="ea-title">
+				<h3>목록</h3>
+			</div>
+			<div class="ea-title">
+				<span>총 <em id="countTotalSpan">0</em> 건 검색</span>
+			</div>
+		</div>
+		<div id="goodsPackageEmployeeDiscountHistoryGrid"> </div>
+	</div>
+</form>
+<script id="rowTemplate" type="text/x-kendo-tmpl">
+#
+	let displayAllow = ";";				//rowspan에 따른 구분, 시작일, 종료일 display 여부
+	let trClass = "";					//합계 CSS
+	let rowCountNum = 1;
+	let trBgColor = "\#FFFFFF";
+	let sumTrBgColor = "\#F5F5F5"
+
+	if (rowGroupNum > 1 && rowGroupNum <= rowCount+1) {		//개별할인 그룹별 아이디가 1보다 크고 전체그룹갯수+합계행 보다 같거나 작다면 rowspan
+		displayAllow = "none;";
+	}
+
+	if (rowGroupNum == 1) {
+		rowCountNum = rowCount+1;
+	}
+
+	if (todayRow) {		//현재 할인 정보라면
+		trBgColor = "\#ECF6E3";
+		sumTrBgColor = "\#ECF6E3";
+	}
+
+	let discountTypeName = "";
+	if(discountTypeCode == "GOODS_DISCOUNT_TP.NONE"){
+		discountTypeName = "기본";
+	}
+	else if(discountTypeCode == "GOODS_DISCOUNT_TP.EMPLOYEE"){
+		discountTypeName = "개별";
+	}
+
+	if(rowGroupNum != rowCount+1) {
+#
+	<tr style="background-color:#=trBgColor#">
+		<td style="display:#=displayAllow# text-align:center; border-right: 1px solid \#e5e5e5" rowSpan="#=rowCountNum#">
+			#=discountTypeName#							<!--구분 -->
+		</td>
+		<td style="display:#=displayAllow# text-align:center; border-right: 1px solid \#e5e5e5" rowSpan="#=rowCountNum#">
+			#=approvalStatusCodeName#					<!--상태 -->
+		</td>
+		<td style="display:#=displayAllow# text-align:center; border-right: 1px solid \#e5e5e5;" rowSpan="#=rowCountNum#">
+			#=discountStartDateTime#							<!-- 시작일/승인완료일 -->
+		</td>
+		<td style="display:#=displayAllow# text-align:center; border-right: 1px solid \#e5e5e5;" rowSpan="#=rowCountNum#">
+			#=discountEndDateTime#							<!-- 종료일 -->
+		</td>
+		<td style="display:#=displayAllow# text-align:center; border-right: 1px solid \#e5e5e5;" rowSpan="#=rowCountNum#">
+			#=apprReqInfo#									<!-- 승인요청자 -->
+		</td>
+		<td style="display:#=displayAllow# text-align:center; border-right: 1px solid \#e5e5e5;" rowSpan="#=rowCountNum#">
+			#=apprInfo#										<!-- 승인관리자 -->
+		</td>
+		<td style="text-align:left; border-right: 1px solid \#e5e5e5;">
+			#=goodsName#										<!-- 상품명 -->
+		</td>
+		<td style="text-align:right; border-right: 1px solid \#e5e5e5;">
+			#=kendo.toString(recommendedPrice, 'n0')#		<!-- 정상가 -->
+		</td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			#=kendo.toString(goodsQuantity, 'n0')#			<!-- 구성수량 -->
+		</td>
+		<td style="text-align:right; border-right: 1px solid \#e5e5e5;">
+			#=kendo.toString(recommendedTotalPrice, 'n0')#	<!-- 정상가총액 -->
+		</td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			#=kendo.toString(discountRatio, 'n0')#%		<!-- 할인율 -->
+		</td>
+		<td style="text-align:right; border-right: 1px solid \#e5e5e5;">
+			#=kendo.toString(discountSalePrice, 'n0')#		<!-- 임직원 할인가 -->
+		</td>
+	</tr>
+#
+	}
+	else {
+#
+	<tr style="background-color:#=sumTrBgColor#; font-weight: bold;">
+		<td style="text-align:center">합계</th>
+		<td style="text-align:right">#=kendo.toString(recommendedPrice, 'n0')#</th>
+		<td style="text-align:center">#=kendo.toString(goodsQuantity, 'n0')#</th>
+		<td style="text-align:right">#=kendo.toString(recommendedTotalPrice, 'n0')#</th>
+		<td colspan="2" style="text-align:right">#=kendo.toString(discountSalePrice, 'n0')#</th>
+	</tr>
+#
+	}
+#
+</script>

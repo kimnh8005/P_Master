@@ -1,0 +1,1959 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.dashboard.DashboardMapper">
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 대시보드리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.04.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectDashboardList" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+      /*dashboard.selectDashboardList*/
+      SELECT  UD.UR_USER_DASHBOARD_ID
+            , UD.UR_USER_ID
+            , UD.DASHBOARD_CARD_CD
+            , UD.X_AXIS
+            , UD.Y_AXIS
+            , UD.SORT
+            , UD.DISP_YN
+            , UD.CREATE_DT
+            , UD.MODIFY_DT
+            , DC.DASHBOARD_CARD_NM
+            , DC.DATA_URL
+            , DC.LINK_URL
+            , DC.CARD_WIDTH_RATIO
+      FROM    UR_USER_DASHBOARD UD
+            , PS_DASHBOARD_CONFIG DC
+      WHERE   UD.UR_USER_ID         = #{urUserId}
+        AND   UD.DISP_YN            = 'Y'
+        AND   DC.DASHBOARD_CARD_CD  = UD.DASHBOARD_CARD_CD
+        AND   DC.USE_YN             = 'Y'
+      ORDER BY CAST(UD.SORT AS SIGNED) ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 대시보드기본값등록
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.04.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addDashboardDefaultInfo" parameterType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+    /*dashboard.addDashboardDefaultInfo*/
+    INSERT INTO  UR_USER_DASHBOARD (
+          UR_USER_ID
+        , DASHBOARD_CARD_CD
+        , X_AXIS
+        , Y_AXIS
+        , SORT
+        , DISP_YN
+        , CREATE_DT
+    )
+    SELECT  #{urUserId}
+          , DASHBOARD_CARD_CD
+          , X_AXIS
+          , Y_AXIS
+          , SORT
+          , 'Y'
+          , NOW()
+    FROM    PS_DASHBOARD_CONFIG
+    WHERE   USE_YN = 'Y'
+    ORDER BY CAST(SORT AS SIGNED) ASC
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 대시보드변경
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.04.15   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putDashboardDefaultInfo" parameterType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+    /*dashboard.putDashboardDefaultInfo*/
+    UPDATE  UR_USER_DASHBOARD
+    SET     X_AXIS  = #{xAxis}
+          , Y_AXIS  = #{yAxis}
+          , SORT    = #{sort}
+          , DISP_YN = #{dispYn}
+          , MODIFY_DT = NOW()
+    WHERE   UR_USER_DASHBOARD_ID = #{urUserDashboardId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 대시보드-주문/매출현황
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.04.19   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getDashboardOrderSaleStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+    /*dashboard.getDashboardOrderSaleStatics*/
+    SELECT  IFNULL(SUM(TT.ORDER_SUM_COUNT), 0)        AS ORDER_SUM_COUNT
+          , IFNULL(SUM(TT.ORDER_SUM_PRICE), 0)        AS ORDER_SUM_PRICE
+          , IFNULL(SUM(TT.ORDER_PC_COUNT), 0)         AS ORDER_PC_COUNT
+          , IFNULL(SUM(TT.ORDER_PC_PRICE), 0)         AS ORDER_PC_PRICE
+          , IFNULL(SUM(TT.ORDER_MOBILE_COUNT), 0)     AS ORDER_MOBILE_COUNT
+          , IFNULL(SUM(TT.ORDER_MOBILE_PRICE), 0)     AS ORDER_MOBILE_PRICE
+          , IFNULL(SUM(TT.ORDER_MOBILE_APP_COUNT), 0) AS ORDER_MOBILE_APP_COUNT
+          , IFNULL(SUM(TT.ORDER_MOBILE_APP_PRICE), 0) AS ORDER_MOBILE_APP_PRICE
+          , IFNULL(SUM(TT.ORDER_ADMIN_COUNT), 0)      AS ORDER_ADMIN_COUNT
+          , IFNULL(SUM(TT.ORDER_ADMIN_PRICE), 0)      AS ORDER_ADMIN_PRICE
+          , IFNULL(SUM(TT.ORDER_OUT_COUNT), 0)        AS ORDER_OUT_COUNT
+          , IFNULL(SUM(TT.ORDER_OUT_PRICE), 0)        AS ORDER_OUT_PRICE
+          , IFNULL(SUM(TT.IC_SUM_COUNT), 0)           AS IC_SUM_COUNT
+          , IFNULL(SUM(TT.IC_SUM_PRICE), 0)           AS IC_SUM_PRICE
+          , IFNULL(SUM(TT.IC_PC_COUNT), 0)            AS IC_PC_COUNT
+          , IFNULL(SUM(TT.IC_PC_PRICE), 0)            AS IC_PC_PRICE
+          , IFNULL(SUM(TT.IC_MOBILE_COUNT), 0)        AS IC_MOBILE_COUNT
+          , IFNULL(SUM(TT.IC_MOBILE_PRICE), 0)        AS IC_MOBILE_PRICE
+          , IFNULL(SUM(TT.IC_MOBILE_APP_COUNT), 0)    AS IC_MOBILE_APP_COUNT
+          , IFNULL(SUM(TT.IC_MOBILE_APP_PRICE), 0)    AS IC_MOBILE_APP_PRICE
+          , IFNULL(SUM(TT.IC_ADMIN_COUNT), 0)         AS IC_ADMIN_COUNT
+          , IFNULL(SUM(TT.IC_ADMIN_PRICE), 0)         AS IC_ADMIN_PRICE
+          , IFNULL(SUM(TT.IC_OUT_COUNT), 0)           AS IC_OUT_COUNT
+          , IFNULL(SUM(TT.IC_OUT_PRICE), 0)           AS IC_OUT_PRICE
+    FROM    (
+            SELECT  T.ORDER_SUM_COUNT         AS ORDER_SUM_COUNT
+                  , T.ORDER_SUM_PRICE         AS ORDER_SUM_PRICE
+                  , T.ORDER_PC_COUNT          AS ORDER_PC_COUNT
+                  , T.ORDER_PC_PRICE          AS ORDER_PC_PRICE
+                  , T.ORDER_MOBILE_COUNT      AS ORDER_MOBILE_COUNT
+                  , T.ORDER_MOBILE_PRICE      AS ORDER_MOBILE_PRICE
+                  , T.ORDER_MOBILE_APP_COUNT  AS ORDER_MOBILE_APP_COUNT
+                  , T.ORDER_MOBILE_APP_PRICE  AS ORDER_MOBILE_APP_PRICE
+                  , T.ORDER_ADMIN_COUNT       AS ORDER_ADMIN_COUNT
+                  , T.ORDER_ADMIN_PRICE       AS ORDER_ADMIN_PRICE
+                  , T.ORDER_OUT_COUNT         AS ORDER_OUT_COUNT
+                  , T.ORDER_OUT_PRICE         AS ORDER_OUT_PRICE
+                  , 0                         AS IC_SUM_COUNT
+                  , 0                         AS IC_SUM_PRICE
+                  , 0                         AS IC_PC_COUNT
+                  , 0                         AS IC_PC_PRICE
+                  , 0                         AS IC_MOBILE_COUNT
+                  , 0                         AS IC_MOBILE_PRICE
+                  , 0                         AS IC_MOBILE_APP_COUNT
+                  , 0                         AS IC_MOBILE_APP_PRICE
+                  , 0                         AS IC_ADMIN_COUNT
+                  , 0                         AS IC_ADMIN_PRICE
+                  , 0                         AS IC_OUT_COUNT
+                  , 0                         AS IC_OUT_PRICE
+            FROM    (
+                    SELECT  1              AS ORDER_SUM_COUNT
+                          , PAYMENT_PRICE  AS ORDER_SUM_PRICE
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.W'   THEN 1 ELSE 0 END              AS ORDER_PC_COUNT
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.W'   THEN PAYMENT_PRICE ELSE 0 END  AS ORDER_PC_PRICE
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.M'   THEN 1 ELSE 0 END              AS ORDER_MOBILE_COUNT
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.M'   THEN PAYMENT_PRICE ELSE 0 END  AS ORDER_MOBILE_PRICE
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.APP' THEN 1 ELSE 0 END              AS ORDER_MOBILE_APP_COUNT
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.APP' THEN PAYMENT_PRICE ELSE 0 END  AS ORDER_MOBILE_APP_PRICE
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.A'   THEN 1 ELSE 0 END              AS ORDER_ADMIN_COUNT
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.A'   THEN PAYMENT_PRICE ELSE 0 END  AS ORDER_ADMIN_PRICE
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.O'   THEN 1 ELSE 0 END              AS ORDER_OUT_COUNT
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.O'   THEN PAYMENT_PRICE ELSE 0 END  AS ORDER_OUT_PRICE
+                    FROM    (
+                            SELECT  T1.SELLERS_GROUP_CD
+                                  , T1.AGENT_TYPE_CD
+                                  , CASE WHEN T2.PAYMENT_PRICE <![CDATA[ > ]]> 0 THEN T2.PAYMENT_PRICE + T2.POINT_PRICE ELSE T2.POINT_PRICE END AS PAYMENT_PRICE
+                                  , FN_ORDER_STATUS_CD(T1.OD_ORDER_ID) AS ORDER_STATUS_CD
+                            FROM    OD_ORDER T1
+                                          INNER JOIN OD_PAYMENT T2 ON T1.OD_ORDER_ID = T2.OD_ORDER_ID AND T2.OD_CLAIM_ID = 0
+                            WHERE   T1.ORDER_YN = 'Y'
+                          <choose>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "TD")'>
+                              AND   DATE(T1.CREATE_DT) <![CDATA[ >= ]]> DATE(NOW())
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "1H")'>
+                              AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -1 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "3H")'>
+                              AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -3 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "6H")'>
+                              AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -6 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "12H")'>
+                              AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -12 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "1D")'>
+                              AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -24 HOUR) AND NOW()
+                            </when>
+                            <otherwise>
+                              AND   DATE(T1.CREATE_DT) <![CDATA[ >= ]]> DATE(NOW())
+                            </otherwise>
+                          </choose>
+                          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallTp)'>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mallTp, "MALL_TP.MALL")'>
+                              AND   T1.SELLERS_GROUP_CD = 'SELLERS_GROUP.MALL'
+                            </if>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(mallTp, "MALL_TP.MALL")'>
+                              AND   T1.SELLERS_GROUP_CD != 'SELLERS_GROUP.MALL'
+                            </if>
+                          </if>
+                            ) ORD
+                    ) T
+            UNION ALL
+            SELECT  0                     AS ORDER_SUM_COUNT
+                  , 0                     AS ORDER_SUM_PRICE
+                  , 0                     AS ORDER_PC_COUNT
+                  , 0                     AS ORDER_PC_PRICE
+                  , 0                     AS ORDER_MOBILE_COUNT
+                  , 0                     AS ORDER_MOBILE_PRICE
+                  , 0                     AS ORDER_MOBILE_APP_COUNT
+                  , 0                     AS ORDER_MOBILE_APP_PRICE
+                  , 0                     AS ORDER_ADMIN_COUNT
+                  , 0                     AS ORDER_ADMIN_PRICE
+                  , 0                     AS ORDER_OUT_COUNT
+                  , 0                     AS ORDER_OUT_PRICE
+                  , T.IC_SUM_COUNT        AS IC_SUM_COUNT
+                  , T.IC_SUM_PRICE        AS IC_SUM_PRICE
+                  , T.IC_PC_COUNT         AS IC_PC_COUNT
+                  , T.IC_PC_PRICE         AS IC_PC_PRICE
+                  , T.IC_MOBILE_COUNT     AS IC_MOBILE_COUNT
+                  , T.IC_MOBILE_PRICE     AS IC_MOBILE_PRICE
+                  , T.IC_MOBILE_APP_COUNT AS IC_MOBILE_APP_COUNT
+                  , T.IC_MOBILE_APP_PRICE AS IC_MOBILE_APP_PRICE
+                  , T.IC_ADMIN_COUNT      AS IC_ADMIN_COUNT
+                  , T.IC_ADMIN_PRICE      AS IC_ADMIN_PRICE
+                  , T.IC_OUT_COUNT        AS IC_OUT_COUNT
+                  , T.IC_OUT_PRICE        AS IC_OUT_PRICE
+            FROM    (
+                    SELECT  1 AS IC_SUM_COUNT
+                          , PAYMENT_PRICE  AS IC_SUM_PRICE
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.W'   THEN 1 ELSE 0 END           AS IC_PC_COUNT
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.W'   THEN PAYMENT_PRICE ELSE 0 END  AS IC_PC_PRICE
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.M'   THEN 1 ELSE 0 END           AS IC_MOBILE_COUNT
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.M'   THEN PAYMENT_PRICE  ELSE 0 END  AS IC_MOBILE_PRICE
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.APP' THEN 1 ELSE 0 END           AS IC_MOBILE_APP_COUNT
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.APP' THEN PAYMENT_PRICE  ELSE 0 END  AS IC_MOBILE_APP_PRICE
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.A'   THEN 1 ELSE 0 END           AS IC_ADMIN_COUNT
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.A'   THEN PAYMENT_PRICE  ELSE 0 END  AS IC_ADMIN_PRICE
+                          , CASE WHEN AGENT_TYPE_CD = 'AGENT_TYPE.O'   THEN 1 ELSE 0 END           AS IC_OUT_COUNT
+                          , CASE WHEN  AGENT_TYPE_CD = 'AGENT_TYPE.O'   THEN PAYMENT_PRICE  ELSE 0 END  AS IC_OUT_PRICE
+                    FROM    (
+                            SELECT  T1.SELLERS_GROUP_CD
+                                  , T1.AGENT_TYPE_CD
+                                  , CASE WHEN T2.PAYMENT_PRICE <![CDATA[ > ]]> 0 THEN T2.PAYMENT_PRICE + T2.POINT_PRICE ELSE T2.POINT_PRICE END AS PAYMENT_PRICE
+                            FROM    OD_ORDER T1
+                                          INNER JOIN OD_PAYMENT T2  ON T1.OD_ORDER_ID = T2.OD_ORDER_ID AND T2.OD_CLAIM_ID = 0
+                                          INNER JOIN OD_ORDER_DT T3 ON T1.OD_ORDER_ID = T3.OD_ORDER_ID
+                            WHERE   T1.ORDER_YN = 'Y'
+                          <choose>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "TD")'>
+                              AND   DATE(T3.IC_DT) <![CDATA[ >= ]]> DATE(NOW())
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "1H")'>
+                              AND   T3.IC_DT BETWEEN DATE_ADD(now(), INTERVAL -1 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "3H")'>
+                              AND   T3.IC_DT BETWEEN DATE_ADD(now(), INTERVAL -3 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "6H")'>
+                              AND   T3.IC_DT BETWEEN DATE_ADD(now(), INTERVAL -6 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "12H")'>
+                              AND   T3.IC_DT BETWEEN DATE_ADD(now(), INTERVAL -12 HOUR) AND NOW()
+                            </when>
+                            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "1D")'>
+                              AND   T3.IC_DT BETWEEN DATE_ADD(now(), INTERVAL -24 HOUR) AND NOW()
+                            </when>
+                            <otherwise>
+                              AND   DATE(T3.IC_DT) <![CDATA[ >= ]]> DATE(NOW())
+                            </otherwise>
+                          </choose>
+                          <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallTp)'>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mallTp, "MALL_TP.MALL")'>
+                              AND   T1.SELLERS_GROUP_CD = 'SELLERS_GROUP.MALL'
+                            </if>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(mallTp, "MALL_TP.MALL")'>
+                              AND   T1.SELLERS_GROUP_CD != 'SELLERS_GROUP.MALL'
+                            </if>
+                          </if>
+                            ) IC_ORD
+                    ) T
+            ) TT
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 대시보드-클레임현황
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.04.19   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getDashboardClaimStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+    /*dashboard.getDashboardClaimStatics*/
+    WITH CLAIM_ORD AS (
+      SELECT  T1.SELLERS_GROUP_CD
+            , T2.PAID_PRICE
+            , T3.OD_CLAIM_ID
+            , T3.RETURNS_YN       <!-- 회수여부 -->
+            , T4.CLAIM_STATUS_CD  <!-- 클레임 상태 -->
+      FROM    OD_ORDER T1
+                    INNER JOIN OD_PAYMENT T2    ON T1.OD_ORDER_ID = T2.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM T3      ON T1.OD_ORDER_ID = T3.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM_DETL T4 ON T3.OD_CLAIM_ID = T4.OD_CLAIM_ID AND T4.CLAIM_STATUS_CD IN ('CA', 'RA', 'FA', 'RC')
+      WHERE   T1.ORDER_YN = 'Y'
+    <choose>
+      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "TD")'>
+        AND   DATE(T1.CREATE_DT) = DATE(NOW())
+      </when>
+      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "1H")'>
+        AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -1 HOUR) AND NOW()
+      </when>
+      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "3H")'>
+        AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -3 HOUR) AND NOW()
+      </when>
+      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "6H")'>
+        AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -6 HOUR) AND NOW()
+      </when>
+      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "12H")'>
+        AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -12 HOUR) AND NOW()
+      </when>
+      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPeriodSe, "1D")'>
+        AND   T1.CREATE_DT BETWEEN DATE_ADD(now(), INTERVAL -24 HOUR) AND NOW()
+      </when>
+      <otherwise>
+        AND   DATE(T1.CREATE_DT) = DATE(NOW())
+      </otherwise>
+    </choose>
+    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallTp)'>
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mallTp, "MALL_TP.MALL")'>
+        AND   T1.SELLERS_GROUP_CD = 'SELLERS_GROUP.MALL'
+      </if>
+      <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(mallTp, "MALL_TP.MALL")'>
+        AND   T1.SELLERS_GROUP_CD != 'SELLERS_GROUP.MALL'
+      </if>
+    </if>
+    )
+    SELECT  IFNULL(MAX(CA_COUNT), 0)        AS CA_COUNT         <!-- 취소요청건수 -->
+          , IFNULL(MAX(RA_COUNT), 0)        AS RA_COUNT         <!-- 반품요청건수 -->
+          , IFNULL(MAX(FA_COUNT), 0)        AS FA_COUNT         <!-- 환불대기건수 -->
+          , IFNULL(MAX(RC_RETURN_COUNT), 0) AS RC_RETURN_COUNT  <!-- 반품(회수)완료건수 -->
+          , IFNULL(MAX(RC_DIRECT_COUNT), 0) AS RC_DIRECT_COUNT  <!-- 반품(즉시)완료건수 -->
+    FROM    (
+            SELECT  COUNT(1)  AS CA_COUNT
+                  , 0     AS RA_COUNT
+                  , 0     AS FA_COUNT
+                  , 0     AS RC_RETURN_COUNT
+                  , 0     AS RC_DIRECT_COUNT
+            FROM    CLAIM_ORD
+            WHERE   CLAIM_STATUS_CD = 'CA'
+            GROUP BY OD_CLAIM_ID
+            UNION ALL
+            SELECT  0     AS CA_COUNT
+                  , COUNT(1)  AS RA_COUNT
+                  , 0     AS FA_COUNT
+                  , 0     AS RC_RETURN_COUNT
+                  , 0     AS RC_DIRECT_COUNT
+            FROM    CLAIM_ORD
+            WHERE   CLAIM_STATUS_CD = 'RA'
+            GROUP BY OD_CLAIM_ID
+            UNION ALL
+            SELECT  0     AS CA_COUNT
+                  , 0     AS RA_COUNT
+                  , COUNT(1)  AS FA_COUNT
+                  , 0     AS RC_RETURN_COUNT
+                  , 0     AS RC_DIRECT_COUNT
+            FROM    CLAIM_ORD
+            WHERE   CLAIM_STATUS_CD = 'FA'
+            GROUP BY OD_CLAIM_ID
+            UNION ALL
+            SELECT  0     AS CA_COUNT
+                  , 0     AS RA_COUNT
+                  , 0     AS FA_COUNT
+                  , COUNT(1)  AS RC_RETURN_COUNT
+                  , 0     AS RC_DIRECT_COUNT
+            FROM    CLAIM_ORD
+            WHERE   CLAIM_STATUS_CD = 'RC'
+              AND   RETURNS_YN  = 'Y'
+            GROUP BY OD_CLAIM_ID
+            UNION ALL
+            SELECT  0     AS CA_COUNT
+                  , 0     AS RA_COUNT
+                  , 0     AS FA_COUNT
+                  , 0     AS RC_RETURN_COUNT
+                  , COUNT(1)  AS RC_DIRECT_COUNT
+            FROM    CLAIM_ORD
+            WHERE   CLAIM_STATUS_CD = 'RC'
+              AND   RETURNS_YN  = 'N'
+            GROUP BY OD_CLAIM_ID
+            ) TT
+  </select>
+
+
+  <!-- #################################################################### -->
+  <!-- 전체건수 -->
+  <!-- #################################################################### -->
+  <select id="selectTotalCount" resultType="int">
+    /* dashboard.selectTotalCount */
+    SELECT FOUND_ROWS()
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description    : 대시보드-회원가입 현황
+      * @
+      * @ 수정일              수정자    수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.08.09        신선미    최초생성
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSignUpStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+        /*dashboard.getSignUpStatics*/
+        SELECT
+            COUNT(IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD,'') = '', UR_BUYER_ID, NULL)) NORMAL
+             , COUNT(IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD,'') = '' AND #{searchPeriodFrom} <![CDATA[ < ]]> UU.CREATE_DT,UR_BUYER_ID, NULL)) TODAY_NORMAL
+             , COUNT(IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD,'') != '',UR_BUYER_ID, NULL)) EMPLOYEE
+             , COUNT(IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD,'') != '' AND #{searchPeriodFrom} <![CDATA[ < ]]>UU.CREATE_DT,UR_BUYER_ID, NULL)) TODAY_EMPLOYEE
+             , COUNT(*) TOTAL
+             , COUNT(IF(#{searchPeriodFrom} <![CDATA[ < ]]> UU.CREATE_DT,UR_BUYER_ID, NULL)) TODAY_TOTAL
+        FROM UR_BUYER UB
+                 INNER JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID;
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description    : 대시보드-고객 문의 현황
+      * @
+      * @ 수정일              수정자    수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.08.09        신선미    최초생성
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <select id="getCustomerQnaStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+        /*dashboard.getCustomerQnaStatics*/
+        SELECT
+            COUNT(IF(QNA_TP = 'QNA_TP.PRODUCT', CS_QNA_ID, NULL)) PRODUCT
+            , COUNT(IF(QNA_TP = 'QNA_TP.PRODUCT' AND DELAY_YN = 'Y', CS_QNA_ID, NULL)) PRODUCT_DELAY
+            , COUNT(IF(QNA_TP = 'QNA_TP.ONETOONE', CS_QNA_ID, NULL)) ONETOONE
+            , COUNT(IF(QNA_TP = 'QNA_TP.ONETOONE' AND DELAY_YN = 'Y', CS_QNA_ID, NULL)) ONETOONE_DELAY
+        FROM CS_QNA
+        WHERE #{searchPeriodFrom} <![CDATA[ < ]]> CREATE_DT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 대시보드-고객 문의 현황(외부몰)
+     * @
+     * @ 수정일              수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.09        신선미    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOutMallQnaStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+        /*dashboard.getOutMallQnaStatics*/
+        SELECT
+            COUNT(IF(MALL_TP = 'MALL_TP.OUTSOURCE' AND DELAY_YN = 'Y', CS_OUTMALL_QNA_ID, NULL)) OUTMALL_DELAY
+            ,COUNT(IF(MALL_TP = 'MALL_TP.OUTSOURCE', CS_OUTMALL_QNA_ID, NULL)) OUTMALL
+        FROM CS_OUTMALL_QNA
+        WHERE #{searchPeriodFrom} <![CDATA[ < ]]> CREATE_DT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 대시보드-보상제 처리 현황
+     * @
+     * @ 수정일              수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.09        신선미    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getRewardApplyStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+        /*dashboard.getRewardApplyStatics*/
+        SELECT
+            COUNT(*) REWARD
+             , COUNT(IF(REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.COMPLETE',CS_REWARD_APPLY_ID, NULL)) COMPLETED_REWARD
+             , SUM(IF(REWARD_APPLY_STATUS = 'REWARD_APPLY_STATUS.COMPLETE' ,CS_REWARD_APPLY_ID, 0)) REWARD_PRICE
+        FROM CS_REWARD_APPLY
+        WHERE #{searchPeriodFrom} <![CDATA[ < ]]> CREATE_DT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 대시보드-부정거래 탐지
+    * @
+    * @ 수정일              수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.08.10        신선미    최초생성
+    * @
+   ────────────────────────────────────────────────────────────────────────-->
+    <select id="getIllegalDetectStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+        /*dashboard.getIllegalDetectStatics*/
+        SELECT
+            COUNT(IF(ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.TRANSACTION_NOT_CARD', ST_ILLEGAL_LOG_ID, null)) TRANSACTION_NOT_CARD
+             , COUNT(IF(ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.USER_JOIN', ST_ILLEGAL_LOG_ID, null)) USER_JOIN
+             , COUNT(IF(ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.LOGIN_FAIL', ST_ILLEGAL_LOG_ID, null)) LOGIN_FAIL
+             , COUNT(IF(ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_COUNT', ST_ILLEGAL_LOG_ID, null)) ORDER_COUNT
+             , COUNT(IF(ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_PRICE', ST_ILLEGAL_LOG_ID, null)) ORDER_PRICE
+             , COUNT(IF(ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.STOLEN_LOST_CARD', ST_ILLEGAL_LOG_ID, null)) STOLEN_LOST_CARD
+        FROM ST_ILLEGAL_LOG
+        WHERE #{searchPeriodFrom} <![CDATA[ < ]]> CREATE_DT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 기존의 대시보드 설정 삭제
+     * @
+     * @ 수정일              수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.12        최윤지    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delDashboardDefaultInfo">
+        /*dashboard.delDashboardDefaultInfo*/
+        DELETE FROM UR_USER_DASHBOARD
+        WHERE UR_USER_ID = #{urUserId}
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserDashboardId)'>
+        AND UR_USER_DASHBOARD_ID = #{urUserDashboardId}
+        </if>
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 대시보드-내 승인요청 현황
+    * @
+    * @ 수정일              수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.10.29        최윤지    최초생성
+    * @
+   ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMyApprovalRequestStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+    /*dashboard.getMyApprovalRequestStatics*/
+    SELECT
+           '승인요청' AS APPR_STAT
+        , IFNULL(APPR.ITEM_REGIST_CNT + APPR.ITEM_PRICE_CNT + APPR.GOODS_REGIST_CNT + APPR.GOODS_DISCOUNT_CNT + APPR.EXHIBIT_SELECT_CNT + APPR.EXHIBIT_GIFT_CNT + APPR.COUPON_CNT + APPR.POINT_CNT + APPR.CS_REFUND_CNT + APPR.ITEM_CLIENT_CNT + APPR.GOODS_CLIENT_CNT, 0) AS TOTAL_CNT
+        , IFNULL(APPR.ITEM_REGIST_CNT, 0) AS ITEM_REGIST_CNT
+        , IFNULL(APPR.ITEM_PRICE_CNT, 0) AS ITEM_PRICE_CNT
+        , IFNULL(APPR.GOODS_REGIST_CNT, 0) AS GOODS_REGIST_CNT
+        , IFNULL(APPR.GOODS_DISCOUNT_CNT, 0) AS GOODS_DISCOUNT_CNT
+        , IFNULL(APPR.EXHIBIT_SELECT_CNT, 0) AS EXHIBIT_SELECT_CNT
+        , IFNULL(APPR.EXHIBIT_GIFT_CNT, 0) AS EXHIBIT_GIFT_CNT
+        , IFNULL(APPR.COUPON_CNT, 0) AS COUPON_CNT
+        , IFNULL(APPR.POINT_CNT, 0) AS POINT_CNT
+        , IFNULL(APPR.CS_REFUND_CNT, 0) AS CS_REFUND_CNT
+        , IFNULL(APPR.ITEM_CLIENT_CNT, 0) AS ITEM_CLIENT_CNT
+        , IFNULL(APPR.GOODS_CLIENT_CNT, 0) AS GOODS_CLIENT_CNT
+    FROM (
+        SELECT
+        (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS ITEM_REGIST_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_PRICE_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS ITEM_PRICE_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS GOODS_REGIST_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_DISCOUNT_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS GOODS_DISCOUNT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM EV_EXHIBIT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND EXHIBIT_TP = 'EXHIBIT_TP.SELECT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS EXHIBIT_SELECT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM EV_EXHIBIT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS EXHIBIT_GIFT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM PM_COUPON
+            WHERE
+                APPR_REQ_USER_ID = 1
+                AND USE_YN = 'Y'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS COUPON_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM PM_POINT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND USE_YN = 'Y'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS POINT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM OD_CS_INFO
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND OD_CS_YN = 'Y'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS CS_REFUND_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS ITEM_CLIENT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+        ) AS GOODS_CLIENT_CNT
+    ) APPR
+    UNION ALL
+    SELECT
+        '승인반려' AS APPR_STAT
+        , IFNULL(APPR.ITEM_REGIST_CNT + APPR.ITEM_PRICE_CNT + APPR.GOODS_REGIST_CNT + APPR.GOODS_DISCOUNT_CNT + APPR.EXHIBIT_SELECT_CNT + APPR.EXHIBIT_GIFT_CNT + APPR.COUPON_CNT + APPR.POINT_CNT + APPR.CS_REFUND_CNT + APPR.ITEM_CLIENT_CNT + APPR.GOODS_CLIENT_CNT, 0) AS TOTAL_CNT
+        , IFNULL(APPR.ITEM_REGIST_CNT, 0) AS ITEM_REGIST_CNT
+        , IFNULL(APPR.ITEM_PRICE_CNT, 0) AS ITEM_PRICE_CNT
+        , IFNULL(APPR.GOODS_REGIST_CNT, 0) AS GOODS_REGIST_CNT
+        , IFNULL(APPR.GOODS_DISCOUNT_CNT, 0) AS GOODS_DISCOUNT_CNT
+        , IFNULL(APPR.EXHIBIT_SELECT_CNT, 0) AS EXHIBIT_SELECT_CNT
+        , IFNULL(APPR.EXHIBIT_GIFT_CNT, 0) AS EXHIBIT_GIFT_CNT
+        , IFNULL(APPR.COUPON_CNT, 0) AS COUPON_CNT
+        , IFNULL(APPR.POINT_CNT, 0) AS POINT_CNT
+        , IFNULL(APPR.CS_REFUND_CNT, 0) AS CS_REFUND_CNT
+        , IFNULL(APPR.ITEM_CLIENT_CNT, 0) AS ITEM_CLIENT_CNT
+        , IFNULL(APPR.GOODS_CLIENT_CNT, 0) AS GOODS_CLIENT_CNT
+    FROM (
+        SELECT
+        (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS ITEM_REGIST_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_PRICE_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS ITEM_PRICE_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS GOODS_REGIST_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_DISCOUNT_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS GOODS_DISCOUNT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM EV_EXHIBIT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND EXHIBIT_TP = 'EXHIBIT_TP.SELECT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS EXHIBIT_SELECT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM EV_EXHIBIT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS EXHIBIT_GIFT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM PM_COUPON
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND USE_YN = 'Y'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS COUPON_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM PM_POINT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND USE_YN = 'Y'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS POINT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM OD_CS_INFO
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND OD_CS_YN = 'Y'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS CS_REFUND_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS ITEM_CLIENT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+                AND APPR_STAT = 'APPR_STAT.DENIED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS GOODS_CLIENT_CNT
+    ) APPR
+    UNION ALL
+    SELECT
+        '승인완료' AS APPR_STAT
+        , IFNULL(APPR.ITEM_REGIST_CNT + APPR.ITEM_PRICE_CNT + APPR.GOODS_REGIST_CNT + APPR.GOODS_DISCOUNT_CNT + APPR.EXHIBIT_SELECT_CNT + APPR.EXHIBIT_GIFT_CNT + APPR.COUPON_CNT + APPR.POINT_CNT + APPR.CS_REFUND_CNT + APPR.ITEM_CLIENT_CNT + APPR.GOODS_CLIENT_CNT, 0) AS TOTAL_CNT
+        , IFNULL(APPR.ITEM_REGIST_CNT, 0) AS ITEM_REGIST_CNT
+        , IFNULL(APPR.ITEM_PRICE_CNT, 0) AS ITEM_PRICE_CNT
+        , IFNULL(APPR.GOODS_REGIST_CNT, 0) AS GOODS_REGIST_CNT
+        , IFNULL(APPR.GOODS_DISCOUNT_CNT, 0) AS GOODS_DISCOUNT_CNT
+        , IFNULL(APPR.EXHIBIT_SELECT_CNT, 0) AS EXHIBIT_SELECT_CNT
+        , IFNULL(APPR.EXHIBIT_GIFT_CNT, 0) AS EXHIBIT_GIFT_CNT
+        , IFNULL(APPR.COUPON_CNT, 0) AS COUPON_CNT
+        , IFNULL(APPR.POINT_CNT, 0) AS POINT_CNT
+        , IFNULL(APPR.CS_REFUND_CNT, 0) AS CS_REFUND_CNT
+        , IFNULL(APPR.ITEM_CLIENT_CNT, 0) AS ITEM_CLIENT_CNT
+        , IFNULL(APPR.GOODS_CLIENT_CNT, 0) AS GOODS_CLIENT_CNT
+    FROM (
+        SELECT
+        (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS ITEM_REGIST_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_PRICE_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS ITEM_PRICE_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS GOODS_REGIST_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_DISCOUNT_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS GOODS_DISCOUNT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM EV_EXHIBIT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND EXHIBIT_TP = 'EXHIBIT_TP.SELECT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS EXHIBIT_SELECT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM EV_EXHIBIT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS EXHIBIT_GIFT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM PM_COUPON
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND USE_YN = 'Y'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS COUPON_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM PM_POINT
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND USE_YN = 'Y'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS POINT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM OD_CS_INFO
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND OD_CS_YN = 'Y'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS CS_REFUND_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS ITEM_CLIENT_CNT
+        , (
+            SELECT
+                COUNT(1)
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_REQ_USER_ID = #{urUserId}
+                AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+                AND APPR_STAT = 'APPR_STAT.APPROVED'
+                AND DATE_FORMAT(APPR_REQ_DT, '%Y-%m-%d') BETWEEN DATE_ADD(CURDATE(), INTERVAL -6 DAY) AND CURDATE()
+        ) AS GOODS_CLIENT_CNT
+    ) APPR
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 대시보드-내 승인처리 목록
+    * @
+    * @ 수정일              수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.11.01        최윤지    최초생성
+    * @
+   ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMyApprovalAcceptStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+        /*dashboard.getMyApprovalAcceptStatics*/
+        SELECT
+            '승인요청' AS APPR_STAT
+            , IFNULL(APPR.ITEM_REGIST_CNT + APPR.ITEM_PRICE_CNT + APPR.GOODS_REGIST_CNT + APPR.GOODS_DISCOUNT_CNT + APPR.EXHIBIT_SELECT_CNT + APPR.EXHIBIT_GIFT_CNT + APPR.COUPON_CNT + APPR.POINT_CNT + APPR.CS_REFUND_CNT + APPR.ITEM_CLIENT_CNT + APPR.GOODS_CLIENT_CNT, 0) AS TOTAL_CNT
+            , IFNULL(APPR.ITEM_REGIST_CNT, 0) AS ITEM_REGIST_CNT
+            , IFNULL(APPR.ITEM_PRICE_CNT, 0) AS ITEM_PRICE_CNT
+            , IFNULL(APPR.GOODS_REGIST_CNT, 0) AS GOODS_REGIST_CNT
+            , IFNULL(APPR.GOODS_DISCOUNT_CNT, 0) AS GOODS_DISCOUNT_CNT
+            , IFNULL(APPR.EXHIBIT_SELECT_CNT, 0) AS EXHIBIT_SELECT_CNT
+            , IFNULL(APPR.EXHIBIT_GIFT_CNT, 0) AS EXHIBIT_GIFT_CNT
+            , IFNULL(APPR.COUPON_CNT, 0) AS COUPON_CNT
+            , IFNULL(APPR.POINT_CNT, 0) AS POINT_CNT
+            , IFNULL(APPR.CS_REFUND_CNT, 0) AS CS_REFUND_CNT
+            , IFNULL(APPR.ITEM_CLIENT_CNT, 0) AS ITEM_CLIENT_CNT
+            , IFNULL(APPR.GOODS_CLIENT_CNT, 0) AS GOODS_CLIENT_CNT
+        FROM (
+            SELECT
+            (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_APPR
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS ITEM_REGIST_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_PRICE_APPR
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_PRICE_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_PRICE_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS ITEM_PRICE_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_APPR
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS GOODS_REGIST_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_DISCOUNT_APPR
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_DISCOUNT_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_DISCOUNT_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS GOODS_DISCOUNT_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM EV_EXHIBIT
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND EXHIBIT_TP = 'EXHIBIT_TP.SELECT'
+                        AND DEL_YN = 'N'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM EV_EXHIBIT
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND EXHIBIT_TP = 'EXHIBIT_TP.SELECT'
+                        AND DEL_YN = 'N'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM EV_EXHIBIT
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND EXHIBIT_TP = 'EXHIBIT_TP.SELECT'
+                        AND DEL_YN = 'N'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS EXHIBIT_SELECT_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM EV_EXHIBIT
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                        AND DEL_YN = 'N'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM EV_EXHIBIT
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                        AND DEL_YN = 'N'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM EV_EXHIBIT
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                        AND DEL_YN = 'N'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS EXHIBIT_GIFT_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM PM_COUPON
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND USE_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM PM_COUPON
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND USE_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM PM_COUPON
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND USE_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS COUPON_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM PM_POINT
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND USE_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM PM_POINT
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND USE_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM PM_POINT
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND USE_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS POINT_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM OD_CS_INFO
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND OD_CS_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM OD_CS_INFO
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND OD_CS_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM OD_CS_INFO
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND OD_CS_YN = 'Y'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS CS_REFUND_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_APPR
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_ITEM_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS ITEM_CLIENT_CNT
+            , (
+                SELECT
+                    SUM(APPR_CNT)
+                FROM (
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_APPR
+                    WHERE
+                        (
+                            APPR_SUB_USER_ID = #{urUserId}
+                            OR APPR_SUB_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) != 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+                        AND APPR_STAT = 'APPR_STAT.REQUEST'
+                        AND IFNULL(APPR_SUB_USER_ID, 0) = 0
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                    UNION ALL
+                    SELECT
+                        COUNT(1) AS APPR_CNT
+                    FROM IL_GOODS_APPR
+                    WHERE
+                        (
+                            APPR_USER_ID = #{urUserId}
+                            OR APPR_USER_ID IN (
+                                SELECT
+                                    UR_USER_ID
+                                FROM UR_EMPLOYEE
+                                WHERE
+                                    GRANT_AUTH_USER_ID = #{urUserId}
+                                    AND GRANT_AUTH_STOP_YN = 'N'
+                                    AND CURDATE() BETWEEN GRANT_AUTH_START_DT AND GRANT_AUTH_END_DT
+                            )
+                        )
+                        AND APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+                        AND APPR_STAT = 'APPR_STAT.SUB_APPROVED'
+                        AND IFNULL(APPR_USER_ID, 0) != 0
+                ) AS APPR_CNT
+            ) AS GOODS_CLIENT_CNT
+        ) APPR
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 대시보드-담당자별 승인처리 현황
+    * @
+    * @ 수정일              수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.10.29        최윤지    최초생성
+    * @
+   ────────────────────────────────────────────────────────────────────────-->
+    <select id="getTotalApprovalAcceptStatics" resultType="kr.co.pulmuone.v1.dashboard.dto.vo.DashboardVo">
+        /*dashboard.getTotalApprovalAcceptStatics*/
+     SELECT
+        (
+            SELECT
+                CONCAT(FN_DECRYPT(USER_NM), '\n(', LOGIN_ID, ')')
+            FROM UR_USER
+            WHERE
+                UR_USER_ID = APPR.APPR_USER_ID
+        ) AS APPR_USER
+        , IFNULL(APPR.ITEM_REGIST_CNT + APPR.ITEM_PRICE_CNT + APPR.GOODS_REGIST_CNT + APPR.GOODS_DISCOUNT_CNT + APPR.EXHIBIT_SELECT_CNT + APPR.EXHIBIT_GIFT_CNT + APPR.COUPON_CNT + APPR.POINT_CNT + APPR.CS_REFUND_CNT + APPR.ITEM_CLIENT_CNT + APPR.GOODS_CLIENT_CNT, 0) AS TOTAL_CNT
+        , IFNULL(APPR.ITEM_REGIST_CNT, 0) AS ITEM_REGIST_CNT
+        , IFNULL(APPR.ITEM_PRICE_CNT, 0) AS ITEM_PRICE_CNT
+        , IFNULL(APPR.GOODS_REGIST_CNT, 0) AS GOODS_REGIST_CNT
+        , IFNULL(APPR.GOODS_DISCOUNT_CNT, 0) AS GOODS_DISCOUNT_CNT
+        , IFNULL(APPR.EXHIBIT_SELECT_CNT, 0) AS EXHIBIT_SELECT_CNT
+        , IFNULL(APPR.EXHIBIT_GIFT_CNT, 0) AS EXHIBIT_GIFT_CNT
+        , IFNULL(APPR.COUPON_CNT, 0) AS COUPON_CNT
+        , IFNULL(APPR.POINT_CNT, 0) AS POINT_CNT
+        , IFNULL(APPR.CS_REFUND_CNT, 0) AS CS_REFUND_CNT
+        , IFNULL(APPR.ITEM_CLIENT_CNT, 0) AS ITEM_CLIENT_CNT
+        , IFNULL(APPR.GOODS_CLIENT_CNT, 0) AS GOODS_CLIENT_CNT
+    FROM (
+        SELECT
+            APPR_USER_ID
+            , SUM(APPR.ITEM_REGIST_CNT) AS ITEM_REGIST_CNT
+            , SUM(APPR.ITEM_PRICE_CNT) AS ITEM_PRICE_CNT
+            , SUM(APPR.GOODS_REGIST_CNT) AS GOODS_REGIST_CNT
+            , SUM(APPR.GOODS_DISCOUNT_CNT) AS GOODS_DISCOUNT_CNT
+            , SUM(APPR.EXHIBIT_SELECT_CNT) AS EXHIBIT_SELECT_CNT
+            , SUM(APPR.EXHIBIT_GIFT_CNT) AS EXHIBIT_GIFT_CNT
+            , SUM(APPR.COUPON_CNT) AS COUPON_CNT
+            , SUM(APPR.POINT_CNT) AS POINT_CNT
+            , SUM(APPR.CS_REFUND_CNT) AS CS_REFUND_CNT
+            , SUM(APPR.ITEM_CLIENT_CNT) AS ITEM_CLIENT_CNT
+            , SUM(APPR.GOODS_CLIENT_CNT) AS GOODS_CLIENT_CNT
+        FROM (
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 1 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 1 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM IL_ITEM_PRICE_APPR
+            WHERE
+                APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 1 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_KIND_TP = 'APPR_KIND_TP.GOODS_REGIST'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 1 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM IL_GOODS_DISCOUNT_APPR
+            WHERE
+                APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 1 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM EV_EXHIBIT
+            WHERE
+                EXHIBIT_TP = 'EXHIBIT_TP.SELECT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 1 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM EV_EXHIBIT
+            WHERE
+                EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+                AND DEL_YN = 'N'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 1 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM PM_COUPON
+            WHERE
+                USE_YN = 'Y'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 1 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM PM_POINT
+            WHERE
+                USE_YN = 'Y'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 1 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM OD_CS_INFO
+            WHERE
+                OD_CS_YN = 'Y'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 1 AS ITEM_CLIENT_CNT
+                , 0 AS GOODS_CLIENT_CNT
+            FROM IL_ITEM_APPR
+            WHERE
+                APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+            UNION ALL
+            SELECT
+                CASE
+                    WHEN APPR_STAT = 'APPR_STAT.REQUEST' AND IFNULL(APPR_SUB_USER_ID, 0) != 0 THEN APPR_SUB_USER_ID
+                    ELSE APPR_USER_ID
+                END AS APPR_USER_ID
+                , 0 AS ITEM_REGIST_CNT
+                , 0 AS ITEM_PRICE_CNT
+                , 0 AS GOODS_REGIST_CNT
+                , 0 AS GOODS_DISCOUNT_CNT
+                , 0 AS EXHIBIT_SELECT_CNT
+                , 0 AS EXHIBIT_GIFT_CNT
+                , 0 AS COUPON_CNT
+                , 0 AS POINT_CNT
+                , 0 AS CS_REFUND_CNT
+                , 0 AS ITEM_CLIENT_CNT
+                , 1 AS GOODS_CLIENT_CNT
+            FROM IL_GOODS_APPR
+            WHERE
+                APPR_KIND_TP = 'APPR_KIND_TP.GOODS_CLIENT'
+                AND APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+                AND IFNULL(APPR_USER_ID, 0) != 0
+        ) APPR
+        GROUP BY APPR.APPR_USER_ID
+    ) APPR
+    </select>
+
+
+
+
+
+</mapper>

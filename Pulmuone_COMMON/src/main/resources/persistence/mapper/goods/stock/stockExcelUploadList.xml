@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.GoodsStockExcelUploadListMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드 내역 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getStockUploadList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockUploadListResultVo">
+	/* stockExcelUploadList.getStockUploadList */
+		SELECT
+			ISEUL.IL_STOCK_EXCEL_UPLOAD_LOG_ID									/* 로그 아이디 PK */
+			, DATE_FORMAT(ISEUL.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DT	/* 등록일 */
+			, CONCAT(ISEUL.SUCCESS_CNT,'건') AS SUCCESS_CNT						/* 성공건수 */
+			, CONCAT(ISEUL.FAIL_CNT,'건') AS FAIL_CNT							/* 실패건수 */
+			, FN_DECRYPT(CUU.USER_NM) AS USER_NM								/* 관리자명 */
+			, CUU.LOGIN_ID AS LOGIN_ID											/* 관리자 로그인 ID */
+		FROM
+			IL_STOCK_EXCEL_UPLOAD_LOG ISEUL
+			INNER JOIN UR_USER CUU
+				ON CUU.UR_USER_ID = ISEUL.CREATE_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				AND DATE_FORMAT(ISEUL.CREATE_DT,'%Y%m%d') <![CDATA[ >= ]]> #{startCreateDate} /* 시작일자 */
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+				AND DATE_FORMAT(ISEUL.CREATE_DT,'%Y%m%d') <![CDATA[ <= ]]> #{endCreateDate}   /* 종료일자 */
+			</if>
+		</where>
+		ORDER BY ISEUL.IL_STOCK_EXCEL_UPLOAD_LOG_ID DESC
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : ERP 재고 엑셀 업로드 내역 엑셀용 데이타 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.23  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStockUploadListExcelDownload" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockUploadListResultVo">
+    /* stockExcelUploadList.getStockUploadListExcelDownload */
+    SELECT IFNULL(IL_ITEM_CD,'') AS IL_ITEM_CD,/* 품목코드 */
+	       IFNULL(MSG,'') AS MSG /* 내역 */
+	  FROM IL_STOCK_EXCEL_UPLOAD_DETL_LOG
+	 <where>
+	   <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilStockExcelUploadLogId)">
+	     AND IL_STOCK_EXCEL_UPLOAD_LOG_ID = #{ilStockExcelUploadLogId} /* 재고 엑셀 업로드 로그 상세PK */
+	   </if>
+	     AND SUCCESS_YN = 'N' /* 성공실패Flag */
+	 </where>
+	 ORDER BY IL_STOCK_EXCEL_UPLOAD_DETL_LOG_ID DESC
+    </select>
+
+</mapper>

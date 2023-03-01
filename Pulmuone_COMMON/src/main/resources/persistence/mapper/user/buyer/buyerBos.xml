@@ -1,0 +1,1124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.buyer.BuyerMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.25		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerListResultVo">
+	    <result column="RNUM" 			property="rnum"/>
+		<result column="UR_USER_ID" 	property="urUserId" />
+		<result column="EMPLOYEE_YN" 	property="employeeYn" />
+		<result column="USER_NM" 		property="userName" />
+		<result column="LOGIN_ID" 		property="loginId" />
+		<result column="MOBILE" 		property="mobile" />
+		<result column="MAIL" 			property="mail" />
+		<result column="CREATE_DT" 		property="createDate" />
+		<result column="LAST_LOGIN_DT" 	property="lastLoginDate" />
+		<result column="SMS_YN" 		property="smsYn" />
+		<result column="MAIL_YN" 		property="mailYn" />
+		<result column="MARKETING_YN" 	property="marketingYn" />
+		<result column="PUSH_YN" 		property="pushYn" />
+		<result column="GROUP_NM" 		property="groupName" />
+		<result column="STATUS" 		property="status" />
+		<result column="GENDER_VIEW" 	property="genderView" />
+		<result column="ACCUMULATE_COUNT" property="accumulateCount" />
+		<result column="UR_ERP_EMPLOYEE_CD" property="urErpEmployeeCd" />
+		<result column="BDAY" property="bday" />
+	</resultMap>
+	<select id="getBuyerList" resultMap="getBuyerListResultMap">
+		/*	buyerBos.getBuyerList  */
+		SELECT
+			UB.UR_USER_ID
+			,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+			,FN_DECRYPT(UU.USER_NM) AS USER_NM
+			,UU.LOGIN_ID
+			,FN_DECRYPT(UB.MOBILE) AS MOBILE
+			,FN_DECRYPT(UB.MAIL) AS MAIL
+			,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+			,DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+			,UB.SMS_YN
+			,UB.MAIL_YN
+			,UB.MARKETING_YN
+			,IF((SELECT COUNT(*) FROM SN_DEVICE_INFO SDI WHERE SDI.UR_USER_ID = UB.UR_USER_ID AND SDI.PUSH_YN = 'Y') > 0 ,'Y','N') AS PUSH_YN
+			,UG.GROUP_NM
+			/*,FN_COMN_CODE_DIC(UB.STATUS) AS STATUS*/
+			,CASE WHEN UB.GENDER = 'M' THEN '남'
+			      WHEN UB.GENDER = 'F' THEN '여'
+			 ELSE '기타'
+			 END AS GENDER_VIEW
+			,T1.ACCUMULATE_COUNT
+			,UB.UR_ERP_EMPLOYEE_CD  AS UR_ERP_EMPLOYEE_CD
+			,UB.BDAY
+			,DIC_BUYER_STATUS.DIC_MST_NM AS STATUS
+			,(CAST(DATE_FORMAT(CURDATE(),'%Y') AS UNSIGNED)  - CAST(SUBSTR(UB.BDAY,1,4) AS UNSIGNED)) AS AGE /* 나이(21.09.27) */
+			,CONCAT(DATE_FORMAT(UB.BDAY,'%Y-%m-%d'),' (',(CAST(DATE_FORMAT(CURDATE(),'%Y') AS UNSIGNED)  - CAST(SUBSTR(UB.BDAY,1,4) AS UNSIGNED)),')') AS BDAY_VIEW
+		FROM
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csSearchBuyerType)">
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(csSearchBuyerType, "BUYER_TYPE.BUYER")'>
+						UR_BUYER UB
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(csSearchBuyerType, "BUYER_TYPE.MOVE")'>
+						UR_BUYER_MOVE UB
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(csSearchBuyerType)">
+				UR_BUYER UB
+			</if>
+			INNER JOIN UR_USER UU   ON UB.UR_USER_ID    = UU.UR_USER_ID
+			LEFT JOIN UR_GROUP UG   ON UB.UR_GROUP_ID 	= UG.UR_GROUP_ID
+			LEFT JOIN UR_ACCOUNT UA ON UU.UR_USER_ID    = UA.UR_USER_ID
+			LEFT JOIN (
+				SELECT UUB.UR_USER_ID
+					  , COUNT(UBL.UR_BUYER_BLACKLIST_ID ) AS ACCUMULATE_COUNT
+				FROM UR_USER UUB
+				INNER JOIN UR_BUYER UBB ON UUB.UR_USER_ID = UBB.UR_USER_ID
+				INNER JOIN UR_BUYER_BLACKLIST UBL ON UUB.UR_USER_ID = UBL.UR_USER_ID
+				GROUP BY UUB.UR_USER_ID, UBB.UR_BUYER_ID, UBB.MOBILE, UBB.MAIL
+			) T1 ON T1.UR_USER_ID = UU.UR_USER_ID
+			LEFT JOIN UR_ERP_EMPLOYEE UEE ON UEE.UR_ERP_EMPLOYEE_CD  = UB.UR_ERP_EMPLOYEE_CD
+			LEFT JOIN (
+				SELECT SCC.ST_COMN_CODE_ID
+						, GDM.DIC_MST_NM
+				FROM ST_COMN_CODE SCC
+				INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+				WHERE SCC.ST_COMN_CODE_MST_CD = 'BUYER_STATUS'
+			) DIC_BUYER_STATUS ON DIC_BUYER_STATUS.ST_COMN_CODE_ID = UB.STATUS
+		<where>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+						<choose>
+							<when test="condiValueArray.size > 1">
+								AND UU.USER_NM IN
+								<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+									(SELECT FN_ENCRYPT(#{condiValueArray}))
+								</foreach>
+							</when>
+							<otherwise>
+								AND UU.USER_NM =
+								<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+									SELECT FN_ENCRYPT(#{condiValueArray})
+								</foreach>
+							</otherwise>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+						AND
+						<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+							UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+						</foreach>
+					</if>
+				</when>
+				<otherwise>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+						AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+						AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserType)">
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUserType,'NORMAL')">
+								AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUserType,'EMPLOYEE')">
+								AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+							</when>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserGroup)">
+						AND UG.UR_GROUP_ID = #{searchUserGroup}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserStatus)">
+						AND UB.STATUS = #{searchUserStatus}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+							AND UU.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+						</if>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startLastLoginDate)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endLastLoginDate)">
+							AND UA.LAST_LOGIN_DT BETWEEN #{startLastLoginDate} AND #{endLastLoginDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+						</if>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(smsYn)">
+						AND UB.SMS_YN = #{smsYn}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mailYn)">
+						AND UB.MAIL_YN = #{mailYn}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(marketingYn)">
+						AND UB.MARKETING_YN = #{marketingYn}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pushYn)">
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pushYn,'Y')">
+								AND UU.UR_USER_ID IN (SELECT UR_USER_ID FROM SN_DEVICE_INFO WHERE PUSH_YN = 'Y' AND UR_USER_ID IS NOT NULL)
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pushYn,'N')">
+								AND UU.UR_USER_ID NOT IN (SELECT UR_USER_ID FROM SN_DEVICE_INFO WHERE PUSH_YN = 'Y' AND UR_USER_ID IS NOT NULL)
+							</when>
+						</choose>
+					</if>
+				</otherwise>
+			</choose>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(csFindKeyword)">
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(csSearchSelect, "SEARCH_TYPE.NAME")'>
+						AND FN_DECRYPT(UU.USER_NM) = #{csFindKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(csSearchSelect, "SEARCH_TYPE.ID")'>
+						AND UU.LOGIN_ID LIKE CONCAT(#{csFindKeyword}, '%')
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(csSearchSelect, "SEARCH_TYPE.MOBILE")'>
+						AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{csFindKeyword},'%')
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(csSearchSelect, "SEARCH_TYPE.MAIL")'>
+						AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{csFindKeyword},'%')
+					</when>
+				</choose>
+	        </if>
+		</where>
+		ORDER BY UB.UR_USER_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원리스트 엑셀
+	 * @ 참고 :엑셀에 로우넘이 INT로 받으면 널로 찍혀서 스트링으로 받아야 함.
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.25		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBuyerListExcel" resultMap="getBuyerListResultMap">
+		/*	buyerBos.getBuyerListExcel  */
+		SELECT
+			FORMAT(	RNUM, 0) AS RNUM
+			, UR_USER_ID
+			, EMPLOYEE_YN
+			, USER_NM
+			, LOGIN_ID
+			, MOBILE
+			, MAIL
+			, CREATE_DT
+			, LAST_LOGIN_DT
+			, SMS_YN
+			, MAIL_YN
+			, MARKETING_YN
+			, PUSH_YN
+			, GROUP_NM
+			, STATUS
+			, BDAY
+			, BDAY_VIEW
+			, GENDER_VIEW
+		FROM
+		(
+			SELECT
+			     ROW_NUMBER () OVER () AS RNUM
+				,TBL.UR_USER_ID
+				,IF(IFNULL(TBL.UR_ERP_EMPLOYEE_CD, '') = '','일반','임직원') AS EMPLOYEE_YN
+				,FN_DECRYPT(TBL.USER_NM) AS USER_NM
+				,TBL.LOGIN_ID
+				,FN_DECRYPT(TBL.MOBILE) AS MOBILE
+				,FN_DECRYPT(TBL.MAIL) AS MAIL
+				,DATE_FORMAT(TBL.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+				,DATE_FORMAT(TBL.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+				,IF(TBL.SMS_YN ='Y','수신','거부') AS SMS_YN
+	 			,IF(TBL.MAIL_YN ='Y','수신','거부') AS MAIL_YN
+	 			,IF(TBL.MARKETING_YN ='Y','동의','거부') AS MARKETING_YN
+	 			,IF((SELECT COUNT(*) FROM SN_DEVICE_INFO SDI WHERE SDI.UR_USER_ID = TBL.UR_USER_ID AND SDI.PUSH_YN = 'Y') > 0 ,'수신','거부') AS PUSH_YN
+	 			,TBL.GROUP_NM
+	 			,TBL.STATUS
+				,TBL.BDAY
+				,TBL.BDAY_VIEW
+				,TBL.GENDER_VIEW
+			FROM (
+				SELECT
+					UB.UR_USER_ID
+					,UB.UR_ERP_EMPLOYEE_CD
+					,UU.USER_NM
+					,UU.LOGIN_ID
+				 	,UB.MOBILE
+	 			 	,UB.MAIL
+	 				,UU.CREATE_DT
+	 				,UA.LAST_LOGIN_DT
+	 				,UB.SMS_YN
+	 				,UB.MAIL_YN
+	 				,UB.MARKETING_YN
+	 				,UG.GROUP_NM
+					,DIC_BUYER_STATUS.DIC_MST_NM AS STATUS
+					,CASE WHEN UB.GENDER = 'M' THEN '남'
+						  WHEN UB.GENDER = 'F' THEN '여'
+						  ELSE '기타'
+						  END AS GENDER_VIEW
+					,UB.BDAY
+					,CONCAT(DATE_FORMAT(UB.BDAY,'%Y-%m-%d'),' (',(CAST(DATE_FORMAT(CURDATE(),'%Y') AS UNSIGNED)  - CAST(SUBSTR(UB.BDAY,1,4) AS UNSIGNED)),')') AS BDAY_VIEW  /* 생년년월 (나이) */
+				FROM
+					UR_BUYER UB
+					INNER JOIN UR_USER UU   ON UB.UR_USER_ID    = UU.UR_USER_ID
+					LEFT JOIN UR_GROUP UG   ON UB.UR_GROUP_ID 	= UG.UR_GROUP_ID
+					LEFT JOIN UR_ACCOUNT UA ON UU.UR_USER_ID    = UA.UR_USER_ID
+					LEFT JOIN (
+						SELECT SCC.ST_COMN_CODE_ID
+							, GDM.DIC_MST_NM
+						FROM ST_COMN_CODE SCC
+						INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+						WHERE SCC.ST_COMN_CODE_MST_CD = 'BUYER_STATUS'
+					) DIC_BUYER_STATUS ON DIC_BUYER_STATUS.ST_COMN_CODE_ID = UB.STATUS
+				<where>
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+								<choose>
+								<when test="condiValueArray.size > 1">
+									AND UU.USER_NM IN
+									<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+										(SELECT FN_ENCRYPT(#{condiValueArray}))
+									</foreach>
+								</when>
+								<otherwise>
+									AND UU.USER_NM =
+									<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+										SELECT FN_ENCRYPT(#{condiValueArray})
+									</foreach>
+								</otherwise>
+							</choose>
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+								AND
+								<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+									UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+								</foreach>
+							</if>
+						</when>
+						<otherwise>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+								AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+								AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserType)">
+								<choose>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUserType,'NORMAL')">
+										AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+									</when>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUserType,'EMPLOYEE')">
+										AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+									</when>
+								</choose>
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserGroup)">
+							    AND UG.UR_GROUP_ID = #{searchUserGroup}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUserStatus)">
+							    AND UB.STATUS = #{searchUserStatus}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND UU.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startLastLoginDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endLastLoginDate)">
+									AND UA.LAST_LOGIN_DT BETWEEN #{startLastLoginDate} AND #{endLastLoginDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(smsYn)">
+						    	AND UB.SMS_YN = #{smsYn}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mailYn)">
+							    AND UB.MAIL_YN = #{mailYn}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(marketingYn)">
+								AND UB.MARKETING_YN = #{marketingYn}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pushYn)">
+								<choose>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pushYn,'Y')">
+										AND UU.UR_USER_ID IN (SELECT UR_USER_ID FROM SN_DEVICE_INFO WHERE PUSH_YN = 'Y' AND UR_USER_ID IS NOT NULL)
+									</when>
+									<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pushYn,'N')">
+										AND UU.UR_USER_ID NOT IN (SELECT UR_USER_ID FROM SN_DEVICE_INFO WHERE PUSH_YN = 'Y' AND UR_USER_ID IS NOT NULL)
+									</when>
+								</choose>
+							</if>
+						</otherwise>
+					</choose>
+				</where>
+				ORDER BY UU.UR_USER_ID DESC
+			) TBL
+			ORDER BY RNUM DESC
+		) TBL2
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원상세 - 쿠폰 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.25		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCouponListMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetCouponListResultVo">
+		<result column="RNUM"  		 		  property="rowNumber" />
+		<result column="PM_COUPON_ID"  		  property="pmCouponId" />
+		<result column="PM_COUPON_ISSUE_ID"   property="pmCouponIssueId" />
+		<result column="DISPLAY_COUPON_NAME"  property="displayCouponName" />
+		<result column="DISCOUNT_VAL_NAME"  property="discountValueName" />
+		<result column="MIN_PAYMENT_AMOUNT"  property="minPaymentAmount" />
+		<result column="VALIDITY_DATE"        property="validityDate" />
+		<result column="ISSUE_START_DATE"     property="issueStartDate" />
+		<result column="COUPON_USE_YN"        property="couponUseYn"  />
+		<result column="AVAILABLE_COUPON_YN"  property="availableCouponYn"  />
+		<result column="COUPON_TP_NM"  property="couponTpNm"  />
+	</resultMap>
+	<select id="getCouponList" resultMap="getCouponListMap">
+		/*	buyerBos.getCouponList  */
+		SELECT CPN.*
+		FROM(
+			SELECT
+				ROW_NUMBER () OVER ()    AS RNUM
+			    ,TBL.*
+			    ,CASE WHEN TBL.COUPON_USE_YN = '미사용' AND TBL.EXPIRATION_DT >= DATE_FORMAT(NOW(),'%Y%m%d') THEN 'Y'
+				         ELSE 'N'
+				         END AS AVAILABLE_COUPON_YN
+		  		, FN_COMN_CODE_DIC(TBL.COUPON_TP) AS COUPON_TP_NM
+			FROM(
+				SELECT PC.PM_COUPON_ID													AS  PM_COUPON_ID			/* 쿠폰PK */
+					, G1.PM_COUPON_ISSUE_ID												AS  PM_COUPON_ISSUE_ID		/* 발급번호 */
+					,PC.DISPLAY_COUPON_NM                                               AS  DISPLAY_COUPON_NAME 	/* 쿠폰명 */
+					, (CASE
+						WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.FIXED_DISCOUNT' AND PC.COUPON_TP <![CDATA[ <> ]]> 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN CONCAT( DISCOUNT_VAL , '원')
+						WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' AND PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT = 0 THEN '무료배송'
+						WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' AND PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT > 0 THEN CONCAT( PERCENTAGE_MAX_DISCOUNT_AMOUNT , '원')
+						WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.FIXED_DISCOUNT' AND PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN CONCAT( '판매가 ', DISCOUNT_VAL, '원')
+						ELSE CONCAT (DISCOUNT_VAL , '%') END) AS DISCOUNT_VAL_NAME
+					, PC.MIN_PAYMENT_AMOUNT
+		           	,CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN CONCAT (DATE(PC.VALIDITY_START_DT),' ~ ',DATE(PC.VALIDITY_END_DT))
+			 	   		ELSE CONCAT (DATE(G1.VALIDITY_START_DT),' ~ ',DATE(G1.EXPIRATION_DT))
+			 	   		END																AS  VALIDITY_DATE       	/* 사용기간  */
+		           	,G1.CREATE_DT				                                     	AS ISSUE_START_DATE     	/* 발행일 */
+		           	,G1.EXPIRATION_DT
+		           	,CASE WHEN G1.STATUS ='COUPON_STATUS.USE' THEN '사용'
+		                 WHEN G1.STATUS ='COUPON_STATUS.NOTUSE' THEN '미사용'
+		                 ELSE '' END                                                   	AS COUPON_USE_YN       		/* 쿠폰사용유무 */
+		            ,CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN DATE(PC.VALIDITY_START_DT)
+		                ELSE DATE(G1.VALIDITY_START_DT)
+		                END                                                             AS  VALIDITY_START_DATE     /* 유효기간 시작일 */
+		            ,CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.PERIOD' THEN DATE(PC.VALIDITY_END_DT)
+		                ELSE DATE(G1.EXPIRATION_DT)
+		                END                                                             AS  VALIDITY_END_DATE      	/* 유효기간 종료일 */
+			  		,PC.COUPON_TP
+		        FROM
+		        	PM_COUPON PC
+		            INNER JOIN (
+		                SELECT PM_COUPON_ISSUE_ID, PM_COUPON_ID, STATUS, COUNT(*) AS COUPON_CNT, DATE(VALIDITY_START_DT) AS VALIDITY_START_DT, DATE(EXPIRATION_DT) AS EXPIRATION_DT, DATE(CREATE_DT) AS CREATE_DT
+		                FROM PM_COUPON_ISSUE
+		                WHERE UR_USER_ID = #{urUserId}
+		                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponUseYn)">
+		                  /* 쿠폰 사용유무 */
+		                 AND STATUS =  (CASE WHEN  #{couponUseYn} ='Y' THEN  'COUPON_STATUS.USE' ELSE 'COUPON_STATUS.NOTUSE' END)
+		                </if>
+		                GROUP BY PM_COUPON_ISSUE_ID, PM_COUPON_ID, STATUS, DATE(VALIDITY_START_DT), DATE(EXPIRATION_DT), DATE(CREATE_DT)
+		            ) G1 ON G1.PM_COUPON_ID = PC.PM_COUPON_ID
+		        <where>
+		        	PC.APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.APPROVED_BY_SYSTEM')
+		        	<choose>
+			        	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponCondiType)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponCondiType,'COUPON_CODE')">
+								AND PC.PM_COUPON_ID = #{couponCondiValue}
+							</if>
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(couponCondiType,'COUPON_NAME')">
+								AND PC.DISPLAY_COUPON_NM LIKE CONCAT('%',#{couponCondiValue},'%')
+							</if>
+						</when>
+					</choose>
+				  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueFromDate)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueToDate)">
+				        	AND G1.CREATE_DT BETWEEN #{issueFromDate} AND #{issueToDate}
+						</if>
+					</if>
+				</where>
+			)TBL
+			<where>
+			  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useFromDate)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useToDate)">
+					AND ((#{useFromDate} <![CDATA[ <= ]]> TBL.VALIDITY_START_DATE AND #{useToDate} BETWEEN TBL.VALIDITY_START_DATE AND TBL.VALIDITY_END_DATE)
+						OR (#{useFromDate} <![CDATA[ <= ]]> TBL.VALIDITY_START_DATE AND #{useToDate} <![CDATA[ >= ]]> TBL.VALIDITY_END_DATE)
+						OR (#{useFromDate} BETWEEN TBL.VALIDITY_START_DATE AND TBL.VALIDITY_END_DATE AND #{useToDate} BETWEEN TBL.VALIDITY_START_DATE AND TBL.VALIDITY_END_DATE )
+						OR (#{useFromDate} BETWEEN TBL.VALIDITY_START_DATE AND #{useToDate} <![CDATA[ >= ]]> TBL.VALIDITY_END_DATE))
+					</if>
+				</if>
+			</where>
+		) AS CPN
+		ORDER BY CPN.RNUM DESC
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 단일조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.26		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerResultVo">
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="USER_NM" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="KAKAO_LOGIN_YN" property="kakaoLoginYn" />
+		<result column="NAVER_LOGIN_YN" property="naverLoginYn" />
+		<result column="GOOGLE_LOGIN_YN" property="googleLoginYn" />
+		<result column="FACEBOOK_LOGIN_YN" property="facebookLoginYn" />
+		<result column="APPLE_LOGIN_YN" property="appleLoginYn" />
+		<result column="BDAY" property="bday" />
+		<result column="GENDER" property="gender" />
+		<result column="GENDER_VIEW" property="genderView" />
+		<result column="FOREIGNER_YN" property="foreignerYn" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="STATUS" property="status" />
+		<result column="GROUP_NM" property="groupName" />
+		<result column="SMS_YN" property="smsYn" />
+		<result column="MAIL_YN" property="mailYn" />
+		<result column="MARKETING_YN" property="marketingYn" />
+		<result column="SMS_YN_DT" property="smsYnDate" />
+		<result column="MAIL_YN_DT" property="mailYnDate" />
+		<result column="MARKETING_YN_DT" property="marketingYnDate" />
+		<result column="PUSH_YN" property="pushYn" />
+		<result column="PUSH_YN_DT" property="pushYnDate" />
+		<result column="DEVICE_CNT" property="deviceCount" />
+		<result column="A_EXECUTE_DT" property="aexecuteDate" />
+		<result column="A_CLAUSE_CREATE_DT" property="aclauseCreateDate" />
+		<result column="B_EXECUTE_DT" property="bexecuteDate" />
+		<result column="B_CLAUSE_CREATE_DT" property="bclauseCreateDate" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="LAST_LOGIN_DT" property="lastLoginDate" />
+		<result column="RECOMM_USER_NM" property="recommendUserName" />
+		<result column="RECOMM_USER_ID" property="recommendUserId" />
+		<result column="RECOMM_CNT" property="recommendCount" />
+		<result column="BLACKLIST" property="blackList" />
+		<result column="MALICIOUS_CLAIM_CNT" property="maliciousClaimCount" />
+		<result column="MALICIOUS_CLAIM_DT" property="maliciousClaimDate" />
+		<result column="UR_BUYER_STATUS_LOG_ID" property="urBuyerStatusLogId" />
+		<result column="ADDRESS" property="address" />
+		<result column="EMPLOYEE_INFO" property="employeeInfo" />
+		<result column="UR_ERP_EMPLOYEE_CD" property="urErpEmployeeCd" />
+		<result column="ERP_REGAL_NM" property="erpRegalName" />
+		<result column="ERP_POSITION_NM" property="erpPositionName" />
+		<result column="PERSONAL_INFORMATION_ACCESS_YN" property="personalInformationAccessYn" />
+	</resultMap>
+	<select id="getBuyer" resultMap="getBuyerResultMap">
+		/* buyerBos.getBuyer */
+		SELECT
+			UU.UR_USER_ID
+			,FN_DECRYPT(UU.USER_NM) AS USER_NM
+			,UU.LOGIN_ID
+			,IF((SELECT COUNT(*) FROM UR_SOCIAL WHERE UR_USER_ID = UU.UR_USER_ID AND PROVIDER = 'SNS_PROVIDER.KAKAO') > 0,'O','X') AS KAKAO_LOGIN_YN
+			,IF((SELECT COUNT(*) FROM UR_SOCIAL WHERE UR_USER_ID = UU.UR_USER_ID AND PROVIDER = 'SNS_PROVIDER.NAVER') > 0,'O','X') AS NAVER_LOGIN_YN
+			,IF((SELECT COUNT(*) FROM UR_SOCIAL WHERE UR_USER_ID = UU.UR_USER_ID AND PROVIDER = 'SNS_PROVIDER.GOOGLE') > 0,'O','X') AS GOOGLE_LOGIN_YN
+			,IF((SELECT COUNT(*) FROM UR_SOCIAL WHERE UR_USER_ID = UU.UR_USER_ID AND PROVIDER = 'SNS_PROVIDER.FACEBOOK') > 0,'O','X') AS FACEBOOK_LOGIN_YN
+			,IF((SELECT COUNT(*) FROM UR_SOCIAL WHERE UR_USER_ID = UU.UR_USER_ID AND PROVIDER = 'SNS_PROVIDER.APPLE') > 0,'O','X') AS APPLE_LOGIN_YN
+			,UB.BDAY
+			,UB.GENDER
+			,CASE WHEN UB.GENDER = 'M' THEN '남'
+			      WHEN UB.GENDER = 'F' THEN '여'
+			 ELSE '기타'
+			 END AS GENDER_VIEW
+			,UB.FOREIGNER_YN
+			,FN_DECRYPT(UB.MOBILE) AS MOBILE
+			,FN_DECRYPT(UB.MAIL) AS MAIL
+			,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+			,FN_COMN_CODE_DIC(UB.STATUS) AS STATUS
+			,UG.GROUP_NM
+			,UB.SMS_YN
+			,UB.MAIL_YN
+			,UB.MARKETING_YN
+			,DATE_FORMAT(UB.SMS_YN_DT, '%Y%m%d_%h:%i:%s') AS SMS_YN_DT
+			,DATE_FORMAT(UB.MAIL_YN_DT, '%Y%m%d_%h:%i:%s') AS MAIL_YN_DT
+			,DATE_FORMAT(UB.MARKETING_YN_DT, '%Y%m%d_%h:%i:%s') AS MARKETING_YN_DT
+			,IF((SELECT COUNT(*) FROM SN_DEVICE_INFO WHERE UR_USER_ID = UB.UR_USER_ID AND PUSH_YN = 'Y') > 0 ,'Y','N') AS PUSH_YN
+			,CASE WHEN (SELECT COUNT(*) FROM SN_DEVICE_INFO WHERE UR_USER_ID = UB.UR_USER_ID AND PUSH_YN = 'Y') > 0
+				THEN (SELECT PUSH_AUTH_DT FROM SN_DEVICE_INFO WHERE UR_USER_ID = UU.UR_USER_ID AND PUSH_YN = 'Y' ORDER BY SN_DEVICE_INFO_ID DESC limit 1)
+				ELSE NULL
+				END AS PUSH_YN_DT
+			,(SELECT COUNT(*) FROM SN_DEVICE_INFO WHERE UR_USER_ID = UB.UR_USER_ID) AS DEVICE_CNT
+			,(SELECT DATE_FORMAT(EXECUTE_DT, '%Y%m%d') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY' ORDER BY EXECUTE_DT DESC LIMIT 1) AS A_EXECUTE_DT
+			,(SELECT DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY' ORDER BY EXECUTE_DT DESC LIMIT 1) AS A_CLAUSE_CREATE_DT
+			,(SELECT DATE_FORMAT(EXECUTE_DT, '%Y%m%d') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'TERMS_CONDITIONS_SERVICE' ORDER BY EXECUTE_DT DESC LIMIT 1) AS B_EXECUTE_DT
+			,(SELECT DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'TERMS_CONDITIONS_SERVICE' ORDER BY EXECUTE_DT DESC LIMIT 1) AS B_CLAUSE_CREATE_DT
+			,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+			,DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+			,(SELECT CONCAT(FN_DECRYPT(USER_NM)) FROM UR_USER WHERE UR_USER_ID = UB.RECOMM_USER_ID) AS RECOMM_USER_NM
+			,(SELECT CONCAT(LOGIN_ID) FROM UR_USER WHERE UR_USER_ID = UB.RECOMM_USER_ID) AS RECOMM_USER_ID
+			,(SELECT COUNT(*)FROM UR_BUYER WHERE RECOMM_USER_ID = UU.UR_USER_ID ) AS  RECOMM_CNT
+			,IF((SELECT COUNT(*) FROM UR_BUYER_BLACKLIST UBB WHERE UBB.UR_USER_ID = UU.UR_USER_ID ) != '0','Y','N') AS BLACKLIST
+			,(SELECT COUNT(*) FROM UR_BUYER_MALICIOUS_CLAIM WHERE UR_USER_ID = UU.UR_USER_ID GROUP BY UR_USER_ID ) AS MALICIOUS_CLAIM_CNT
+			,(SELECT DATE_FORMAT(CREATE_DT, '%Y-%m-%d') FROM UR_BUYER_MALICIOUS_CLAIM WHERE UR_USER_ID = UU.UR_USER_ID ORDER BY CREATE_DT DESC limit 1) AS MALICIOUS_CLAIM_DT
+			,UB.EVENT_JOIN_YN
+			,(SELECT UR_BUYER_STATUS_LOG_ID FROM UR_BUYER_STATUS_LOG WHERE UR_USER_ID = UU.UR_USER_ID ORDER BY UR_BUYER_STATUS_LOG_ID DESC limit 1) AS UR_BUYER_STATUS_LOG_ID
+		 	,CONCAT('[',FN_DECRYPT(USA.RECEIVER_ZIP_CD),'] ',FN_DECRYPT(USA.RECEIVER_ADDR1),' ',FN_DECRYPT(USA.RECEIVER_ADDR2)) AS ADDRESS
+		 	,CONCAT ( IFNULL(ERP_REGAL_NM,''),'/',IFNULL(ERP_POSITION_NM,'') ) AS EMPLOYEE_INFO
+		 	,UB.UR_ERP_EMPLOYEE_CD  AS UR_ERP_EMPLOYEE_CD
+		 	,ERP_REGAL_NM
+		 	,ERP_POSITION_NM
+		 	,#{personalInformationAccessYn} AS PERSONAL_INFORMATION_ACCESS_YN
+		FROM
+			UR_USER UU
+			JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+			JOIN UR_GROUP UG ON UB.UR_GROUP_ID = UG.UR_GROUP_ID
+			LEFT JOIN UR_ACCOUNT UA ON UU.UR_USER_ID    = UA.UR_USER_ID
+			LEFT JOIN UR_SHIPPING_ADDR USA ON UU.UR_USER_ID = USA.UR_USER_ID AND USA.DEFAULT_YN = 'Y'
+			LEFT JOIN UR_ERP_EMPLOYEE UEE ON UEE.UR_ERP_EMPLOYEE_CD  = UB.UR_ERP_EMPLOYEE_CD
+		WHERE
+			UU.UR_USER_ID = #{urUserId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 상태변경 이력
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerGroupChangeHistoryListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerGroupChangeHistoryListResultVo">
+		<result column="GROUP_NM" property="groupName" />
+		<result column="CREATE_DT" property="createDate" />
+	</resultMap>
+	<select id="getBuyerGroupChangeHistoryList" resultMap="getBuyerGroupChangeHistoryListResultMap">
+		/*	buyerBos.getBuyerGroupChangeHistoryList  */
+		SELECT
+		    TBL.GROUP_NM
+		    ,TBL.CREATE_DT
+		FROM
+		((      SELECT
+		            UG.GROUP_NM
+		            ,DATE_FORMAT(UCL.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		            ,1 AS SORT
+		        FROM
+		            UR_CHANGE_LOG UCL
+		            JOIN UR_GROUP UG ON FN_DECRYPT(UCL.AFTER_DATA) = UG.UR_GROUP_ID
+		        WHERE
+		            COLUMN_NM = 'urGroupId'
+		            AND UR_USER_ID = #{urUserId})
+		    UNION
+		        (SELECT
+		            UG.GROUP_NM
+		            ,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		            ,2 AS SORT
+		        FROM
+		            UR_CHANGE_LOG UCL
+		            JOIN UR_GROUP UG ON FN_DECRYPT(UCL.BEFORE_DATA) = UG.UR_GROUP_ID
+		            JOIN UR_USER UU ON UU.UR_USER_ID = UCL.UR_USER_ID
+		        WHERE
+		            UCL.COLUMN_NM = 'urGroupId'
+		            AND UCL.UR_USER_ID = #{urUserId}
+		        ORDER BY UCL.CREATE_DT
+		        LIMIT 1)) TBL
+		ORDER BY TBL.SORT,TBL.CREATE_DT DESC
+	</select>
+
+	 <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원 상태변경 이력없는 회원 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.01     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getBuyerGroupChangeHistoryListForNoChangeLog" resultMap="getBuyerGroupChangeHistoryListResultMap">
+        /*  buyerBos.getBuyerGroupChangeHistoryListForNoChangeLog  */
+        SELECT
+		    UG.GROUP_NM
+		    ,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		FROM
+		    UR_USER UU
+		    JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+		    JOIN UR_GROUP UG ON UB.UR_GROUP_ID = UG.UR_GROUP_ID
+		WHERE
+		    UU.UR_USER_ID = #{urUserId}
+    </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 나를 추천한 추천인 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerRecommendListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerRecommendListResultVo">
+		<result column="RECOMM_USER_NM" property="recommendName" />
+		<result column="RECOMM_USER_ID" property="recommendId" />
+		<result column="CREATE_DT" property="recommendCreateDate" />
+	</resultMap>
+	<select id="getBuyerRecommendList" resultMap="getBuyerRecommendListResultMap">
+		/*	buyerBos.getBuyerRecommendList  */
+		SELECT
+			CONCAT(FN_DECRYPT(UU.USER_NM)) AS RECOMM_USER_NM
+			,CONCAT(UU.LOGIN_ID) AS RECOMM_USER_ID
+			,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		FROM
+			UR_BUYER UB
+			JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+		WHERE
+			UB.RECOMM_USER_ID = #{urUserId}
+		ORDER BY UU.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.03		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putBuyer">
+		/* buyerBos.putBuyer */
+		UPDATE UR_BUYER
+		SET
+
+		    GENDER			=	#{gender}
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(personalInformationAccessYn)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(personalInformationAccessYn,'Y')">
+					,BDAY			=	#{bday}
+					,MOBILE			= 	FN_ENCRYPT(#{mobile})
+					,MAIL			= 	FN_ENCRYPT(#{mail})
+					,LOWER_MAIL     =   FN_ENCRYPT(LOWER(#{mail}))
+				</when>
+			</choose>
+		</if>
+
+			,SMS_YN			=	#{smsYn}
+			,MAIL_YN		=	#{mailYn}
+			,MARKETING_YN	=	#{marketingYn}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(smsYn)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(smsYn,'Y')">
+						,SMS_YN_DT	=	SYSDATE()
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(smsYn,'N')">
+						,SMS_YN_DT	=	NULL
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mailYn)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mailYn,'Y')">
+						,MAIL_YN_DT	=	SYSDATE()
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mailYn,'N')">
+						,MAIL_YN_DT	=	NULL
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(marketingYn)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(marketingYn,'Y')">
+						,MARKETING_YN_DT	=	SYSDATE()
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(marketingYn,'N')">
+						,MARKETING_YN_DT	=	NULL
+					</when>
+				</choose>
+			</if>
+			,EVENT_JOIN_YN 	= 	#{eventJoinYn}
+		WHERE
+			UR_USER_ID = #{urUserId}
+		;
+
+		<!-- PUSH 수신동의 update  -->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pushYn)">
+		UPDATE SN_DEVICE_INFO
+		SET
+			PUSH_YN = #{pushYn}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pushYn,'Y')">
+					,PUSH_AUTH_DT	=	SYSDATE()
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pushYn,'N')">
+					,PUSH_AUTH_DT	=	NULL
+				</when>
+			</choose>
+		WHERE 1=1
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+					AND UR_USER_ID = #{urUserId}
+				</when>
+				<otherwise>
+					AND 1 = 2
+				</otherwise>
+			</choose>
+		</if>
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 단일조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.07		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerMoveResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerResultVo">
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="USER_NM" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="BDAY" property="bday" />
+		<result column="GENDER" property="gender" />
+		<result column="FOREIGNER_YN" property="foreignerYn" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="STATUS" property="status" />
+		<result column="GROUP_NM" property="groupName" />
+		<result column="SMS_YN" property="smsYn" />
+		<result column="MAIL_YN" property="mailYn" />
+		<result column="MARKETING_YN" property="marketingYn" />
+		<result column="SMS_YN_DT" property="smsYnDate" />
+		<result column="MAIL_YN_DT" property="mailYnDate" />
+		<result column="MARKETING_YN_DT" property="marketingYnDate" />
+		<result column="PUSH_YN" property="pushYn" />
+		<result column="PUSH_YN_DT" property="pushYnDate" />
+		<result column="DEVICE_CNT" property="deviceCount" />
+		<result column="A_EXECUTE_DT" property="aexecuteDate" />
+		<result column="A_CLAUSE_CREATE_DT" property="aclauseCreateDate" />
+		<result column="B_EXECUTE_DT" property="bexecuteDate" />
+		<result column="B_CLAUSE_CREATE_DT" property="bclauseCreateDate" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="LAST_LOGIN_DT" property="lastLoginDate" />
+		<result column="RECOMM_USER_NM" property="recommendUserName" />
+		<result column="RECOMM_USER_ID" property="recommendUserId" />
+		<result column="RECOMM_CNT" property="recommendCount" />
+		<result column="BLACKLIST" property="blackList" />
+		<result column="MALICIOUS_CLAIM_CNT" property="maliciousClaimCount" />
+		<result column="MALICIOUS_CLAIM_DT" property="maliciousClaimDate" />
+		<result column="UR_BUYER_STATUS_LOG_ID" property="urBuyerStatusLogId" />
+		<result column="ADDRESS" property="address" />
+		<result column="PERSONAL_INFORMATION_ACCESS_YN" property="personalInformationAccessYn" />
+	</resultMap>
+	<select id="getBuyerMove" resultMap="getBuyerMoveResultMap">
+		/* buyerBos.getBuyerMove */
+		SELECT
+			UU.UR_USER_ID
+			,FN_DECRYPT(UUM.USER_NM) AS USER_NM
+			,UU.LOGIN_ID
+			,IF((SELECT COUNT(*) FROM UR_SOCIAL WHERE UR_USER_ID = UU.UR_USER_ID AND PROVIDER = 'SNS_PROVIDER.KAKAO') > 0,'O','X') AS KAKAO_LOGIN_YN
+			,IF((SELECT COUNT(*) FROM UR_SOCIAL WHERE UR_USER_ID = UU.UR_USER_ID AND PROVIDER = 'SNS_PROVIDER.NAVER') > 0,'O','X') AS NAVER_LOGIN_YN
+			,UB.BDAY
+			,UB.GENDER
+			,UB.FOREIGNER_YN
+			,FN_DECRYPT(UB.MOBILE) AS MOBILE
+			,FN_DECRYPT(UB.MAIL) AS MAIL
+			,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+			,FN_COMN_CODE_DIC(UB.STATUS) AS STATUS
+			,UG.GROUP_NM
+			<!--  회원유형정보- 임직원테이블 설계완료되면 추가 -->
+			,UB.SMS_YN
+			,UB.MAIL_YN
+			,UB.MARKETING_YN
+			,DATE_FORMAT(UB.SMS_YN_DT, '%Y%m%d_%h:%i:%s') AS SMS_YN_DT
+			,DATE_FORMAT(UB.MAIL_YN_DT, '%Y%m%d_%h:%i:%s') AS MAIL_YN_DT
+			,DATE_FORMAT(UB.MARKETING_YN_DT, '%Y%m%d_%h:%i:%s') AS MARKETING_YN_DT
+			,IF((SELECT COUNT(*) FROM SN_DEVICE_INFO WHERE UR_USER_ID = UB.UR_USER_ID AND PUSH_YN = 'Y') > 0 ,'Y','N') AS PUSH_YN
+			,CASE WHEN (SELECT COUNT(*) FROM SN_DEVICE_INFO WHERE UR_USER_ID = UB.UR_USER_ID AND PUSH_YN = 'Y') > 0
+				THEN (SELECT PUSH_AUTH_DT FROM SN_DEVICE_INFO WHERE UR_USER_ID = UU.UR_USER_ID AND PUSH_YN = 'Y' ORDER BY SN_DEVICE_INFO_ID DESC limit 1)
+				ELSE NULL
+				END AS PUSH_YN_DT
+			,(SELECT COUNT(*) FROM SN_DEVICE_INFO WHERE UR_USER_ID = UB.UR_USER_ID) AS DEVICE_CNT
+			,(SELECT DATE_FORMAT(EXECUTE_DT, '%Y%m%d') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY' ORDER BY EXECUTE_DT DESC LIMIT 1) AS A_EXECUTE_DT
+			,(SELECT DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY' ORDER BY EXECUTE_DT DESC LIMIT 1) AS A_CLAUSE_CREATE_DT
+			,(SELECT DATE_FORMAT(EXECUTE_DT, '%Y%m%d') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'TERMS_CONDITIONS_SERVICE' ORDER BY EXECUTE_DT DESC LIMIT 1) AS B_EXECUTE_DT
+			,(SELECT DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') FROM UR_CLAUSE_AGREE_LOG WHERE UR_USER_ID = UU.UR_USER_ID AND PS_CLAUSE_GRP_CD = 'TERMS_CONDITIONS_SERVICE' ORDER BY EXECUTE_DT DESC LIMIT 1) AS B_CLAUSE_CREATE_DT
+			,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+			,DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+			,(SELECT CONCAT(FN_DECRYPT(UU.USER_NM)) FROM UR_USER WHERE UR_USER_ID = UB.RECOMM_USER_ID) AS RECOMM_USER_NM
+			,(SELECT CONCAT(LOGIN_ID) FROM UR_USER WHERE UR_USER_ID = UB.RECOMM_USER_ID) AS RECOMM_USER_ID
+			,(SELECT COUNT(*)FROM UR_BUYER WHERE RECOMM_USER_ID = UU.UR_USER_ID ) AS  RECOMM_CNT
+			,IF((SELECT COUNT(*) FROM UR_BUYER_BLACKLIST UBB WHERE UBB.UR_USER_ID = UU.UR_USER_ID ) != '0','Y','N') AS BLACKLIST
+			,(SELECT COUNT(*) FROM UR_BUYER_MALICIOUS_CLAIM WHERE UR_USER_ID = UU.UR_USER_ID GROUP BY UR_USER_ID ) AS MALICIOUS_CLAIM_CNT
+			,(SELECT DATE_FORMAT(CREATE_DT, '%Y-%m-%d') FROM UR_BUYER_MALICIOUS_CLAIM WHERE UR_USER_ID = UU.UR_USER_ID ORDER BY CREATE_DT DESC limit 1) AS MALICIOUS_CLAIM_DT
+			,UB.EVENT_JOIN_YN
+			,(SELECT UR_BUYER_STATUS_LOG_ID FROM UR_BUYER_STATUS_LOG WHERE UR_USER_ID = UU.UR_USER_ID ORDER BY UR_BUYER_STATUS_LOG_ID DESC limit 1) AS UR_BUYER_STATUS_LOG_ID
+		 	,CONCAT('[',FN_DECRYPT(USA.RECEIVER_ZIP_CD),'] ',FN_DECRYPT(USA.RECEIVER_ADDR1),' ', FN_DECRYPT(USA.RECEIVER_ADDR2)) AS ADDRESS
+		 	,#{personalInformationAccessYn} AS PERSONAL_INFORMATION_ACCESS_YN
+		FROM
+			UR_USER_MOVE UUM
+			JOIN UR_USER UU ON UU.UR_USER_ID = UUM.UR_USER_ID
+			LEFT JOIN UR_BUYER_MOVE UB ON UU.UR_USER_ID = UB.UR_USER_ID
+			LEFT JOIN UR_GROUP UG ON UB.UR_GROUP_ID = UG.UR_GROUP_ID
+			LEFT JOIN UR_ACCOUNT UA ON UU.UR_USER_ID    = UA.UR_USER_ID
+			LEFT JOIN UR_SHIPPING_ADDR USA ON UU.UR_USER_ID = USA.UR_USER_ID AND USA.DEFAULT_YN = 'Y'
+		WHERE
+			UU.UR_USER_ID = #{urUserId}
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 개인정보 이력관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.29		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserChangeHistoryListMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetUserChangeHistoryResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="UR_CHANGE_LOG_ID" property="urChangeLogId" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="USER_NAME" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="COLUMN_LABEL" property="columnLabel" />
+		<result column="BEFORE_DATA" property="beforeData" />
+		<result column="AFTER_DATA" property="afterData" />
+		<result column="COLUMN_NAME" property="columnName" />
+		<result column="CHANGE_USER_NAME" property="changeUserName" />
+		<result column="CHANGED_DATE" property="changedDate" />
+	</resultMap>
+
+
+	<sql id="getUserChangeHistory">
+		SELECT
+		@ROWNUM := @ROWNUM +1 AS RNUM
+		,TBL.*
+		FROM (
+		SELECT
+		UCL.UR_CHANGE_LOG_ID
+		, UCL.UR_USER_ID
+		, FN_DECRYPT(UU1.USER_NM) AS USER_NAME
+		, UU1.LOGIN_ID
+		, UCL.COLUMN_LABEL
+		, FN_DECRYPT(UCL.BEFORE_DATA) AS BEFORE_DATA
+		, FN_DECRYPT(UCL.AFTER_DATA) AS AFTER_DATA
+		, UCL.COLUMN_NM AS COLUMN_NAME
+		, FN_DECRYPT(UU2.USER_NM) AS CHANGE_USER_NAME
+		, DATE_FORMAT(UCL.CREATE_DT, '%Y-%m-%d %T') AS CHANGED_DATE
+		FROM UR_CHANGE_LOG UCL
+		INNER JOIN UR_USER UU1
+		ON UCL.UR_USER_ID = UU1.UR_USER_ID
+		INNER JOIN UR_USER UU2
+		ON UCL.CREATE_ID = UU2.UR_USER_ID
+		JOIN (SELECT @ROWNUM := 0) R
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UU1.USER_NM) IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND
+					<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+						UU1.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startModifyDate)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endModifyDate)">
+						AND UCL.CREATE_DT BETWEEN #{startModifyDate} AND #{endModifyDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+					</if>
+				</if>
+			</otherwise>
+		</choose>
+		ORDER BY UCL.CREATE_DT ASC
+		) TBL
+		ORDER BY RNUM DESC
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 개인정보 이력관리 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.29		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserChangeHistoryList" resultMap="getUserChangeHistoryListMap">
+		/*	buyerBos.getUserChangeHistoryList  */
+		<include refid="getUserChangeHistory" />
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 개인정보 이력조회 리스트카운트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.29		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserChangeHistoryListCount" resultType="int" >
+		/*	buyerBos.getUserChangeHistoryListCount	*/
+		SELECT	COUNT(*) AS TOTAL
+		FROM 	(
+		<include refid="getUserChangeHistory" />
+		) AS BLACK_LIST_USER
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기존비밀번호 임시비밀번호로 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.26		천혜현          최초생성
+	 * @ 2020.11.05		천혜현	   임시 비밀번호 유효시간 추가(1시간)
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPasswordClear">
+		/*	buyerBos.putPasswordClear	*/
+		UPDATE UR_CERTIFICATION
+		SET
+			PASSWORD = #{password}
+			,TMPRR_YN = 'Y'
+			,TMPRR_EXPIRATION_DT = DATE_ADD(NOW(), INTERVAL 1 HOUR)
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호 실패 횟수 초기화
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.26		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putCertificationFailCntClear">
+		/*	buyerBos.putCertificationFailCntClear	*/
+		UPDATE UR_CERTIFICATION SET
+			FAIL_CNT = 0
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 악성클레임 히스토리 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserMaliciousClaimHistoryListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetUserMaliciousClaimHistoryListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="ST_CLASSIFICATION_NAME" property="stClassificationName" />
+		<result column="MALICIOUS_CLAIM_REASON" property="maliciousClaimReason" />
+		<result column="MALICIOUS_CLAIM_CREATE_DT" property="maliciousClaimCreateDate" />
+	</resultMap>
+	<select id="getUserMaliciousClaimHistoryList" resultMap="getUserMaliciousClaimHistoryListResultMap">
+		/*	buyerBos.getUserMaliciousClaimHistoryList  */
+		SELECT
+			@ROWNUM := @ROWNUM +1 AS RNUM
+			,TBL.*
+		FROM (
+			SELECT
+				FN_DIC(SC.GB_DIC_MST_ID,'1') AS ST_CLASSIFICATION_NAME
+				,UBMC.REASON AS MALICIOUS_CLAIM_REASON
+				,DATE_FORMAT(UBMC.CREATE_DT, '%Y-%m-%d') AS MALICIOUS_CLAIM_CREATE_DT
+			FROM
+				UR_BUYER_MALICIOUS_CLAIM UBMC
+				JOIN ST_CLASSIFICATION SC ON UBMC.ST_CLASSIFICATION_ID = SC.ST_CLASSIFICATION_ID
+				JOIN (SELECT @ROWNUM := 0) R
+			WHERE
+				UR_USER_ID = #{urUserId}
+		)TBL
+		ORDER BY RNUM DESC
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원별 적립금 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.14		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetPointInfoVo" id="getPointInfoResultMap" >
+		<result column="RNUM"  property="rowNumber" />
+		<result column="PAYMENT_TYPE_NAME"  property="paymentTypeName" />
+		<result column="POINT_DETAIL_TYPE_NAME"  property="pointDetailTypeName" />
+		<result column="AMOUNT"  property="amount"  />
+		<result column="VALIDITY_START_DATE"  property="validityStartDay"  />
+		<result column="VALIDITY_END_DATE"  property="validityEndDay"  />
+		<result column="CREATE_DT"  property="createDate"  />
+		<result column="TOTAL_POINT"  property="totalPoint"  />
+		<result column="POINT_PROCESS_TP"   property="pointProcessType"  />
+		<result column="CMNT"  property="cmnt"  />
+		<result column="ODID"  property="odid"  />
+	</resultMap>
+
+	<select id="getPointInfo" resultMap="getPointInfoResultMap">
+		/* buyerBos.getPointInfo */
+		SELECT
+			ROW_NUMBER () OVER ()    AS RNUM
+			, A.PAYMENT_TP
+			, (CASE WHEN B.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SDNC', 'POINT_SETTLEMENT_TP.SDVC') THEN '적립'
+				WHEN B.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNP', 'POINT_SETTLEMENT_TP.SWVP') THEN '사용'
+				WHEN B.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNE', 'POINT_SETTLEMENT_TP.SWVE') THEN '소멸'
+				ELSE '기타' END) AS PAYMENT_TYPE_NAME
+			,IF(B.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE'), IFNULL(PP.POINT_USED_MSG,A.CMNT), '') AS CMNT
+			, A.AMOUNT
+			, CASE WHEN B.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPRO' AND  B.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN A.REF_NO1
+				   WHEN B.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WPPA' AND  B.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWNP' THEN A.REF_NO1
+				   WHEN B.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DVRO' AND  B.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDVC' THEN A.REF_NO1
+				   WHEN B.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVPA' AND  B.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWVP' THEN A.REF_NO1
+		           WHEN B.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPCR' AND  B.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN A.REF_NO1
+				   ELSE ''
+			  END AS ODID
+			, B.POINT_PROCESS_TP
+			, B.POINT_PROCESS_TP
+			, DATE(B.AVAILABLE_DT) AS VALIDITY_START_DATE
+			, DATE(B.EXPIRATION_DT) AS VALIDITY_END_DATE
+			, DATE(A.CREATE_DT) AS CREATE_DT
+		FROM PM_POINT_USED A
+			<!-- INNER JOIN PM_POINT_USED_DETL B ON A.PM_POINT_USED_ID = B.PM_POINT_USED_ID AND B.CLOSE_YN = 'N' -->
+			LEFT JOIN (SELECT PM_POINT_USED_DETL_ID
+							, REF_DPRO_POINT_USED_DETL_ID
+							, PM_POINT_USED_ID
+						 	, POINT_SETTLEMENT_TP
+						 	, POINT_PROCESS_TP
+						 	, AVAILABLE_DT
+						 	, EXPIRATION_DT
+						 	, CLOSE_YN
+					     FROM PM_POINT_USED_DETL
+					 GROUP BY PM_POINT_USED_ID ) B ON A.PM_POINT_USED_ID = B.PM_POINT_USED_ID
+			LEFT OUTER JOIN PM_POINT PP ON A.PM_POINT_ID = PP.PM_POINT_ID
+		WHERE A.UR_USER_ID = #{urUserId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(paymentType,'1')">
+			AND B.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNP', 'POINT_SETTLEMENT_TP.SWVP')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(paymentType,'2')">
+			AND B.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SDNC', 'POINT_SETTLEMENT_TP.SDVC')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(paymentType,'3')">
+			AND B.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNE', 'POINT_SETTLEMENT_TP.SWVE')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+			AND B.POINT_PROCESS_TP = #{searchPointDetailType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointContent)">
+		    AND IF(B.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE'), PP.POINT_USED_MSG , '') LIKE CONCAT('%',#{pointContent},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mileageStartCreateDate)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mileageEndCreateDate)">
+				AND A.CREATE_DT BETWEEN #{mileageStartCreateDate} AND #{mileageEndCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			</if>
+		</if>
+		ORDER BY RNUM DESC
+	</select>
+
+</mapper>
+

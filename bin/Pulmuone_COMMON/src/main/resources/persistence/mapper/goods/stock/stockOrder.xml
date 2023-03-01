@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.GoodsStockOrderMapper">
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 품목별 출고처 관리 조회
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.2.4   이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getIlItemWarehouseIdInfo" parameterType="java.util.Map" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockOrderResultVo">
+  /* stockOrder.getIlItemWarehouseIdInfo */
+		SELECT
+			IIW.IL_ITEM_WAREHOUSE_ID /* 품목별 출고처ID */
+			, UW.STOCK_ORDER_YN /* 재고연동여부 */
+			, IIW.UNLIMIT_STOCK_YN /* 미연동 재고 무제한 사용여부 */
+			, IG.GOODS_TP
+			, IG.SALE_TP
+			, UW.PS_SHIPPING_PATTERN_ID
+			, IFNULL(
+				CASE
+					WHEN UW.STOCK_ORDER_YN = 'Y' THEN (
+						CASE
+							WHEN IIS_TODAY.IL_ITEM_WAREHOUSE_ID IS NOT NULL THEN (
+								CASE
+									WHEN IG.GOODS_TP = 'GOODS_TYPE.DISPOSAL' THEN IIS_TODAY.D0_ORDER_DISCARD_QTY
+									WHEN DATE_DIFF = 0 THEN IIS_TODAY.D0_ORDER_QTY
+									WHEN DATE_DIFF = 1 THEN IIS_TODAY.D1_ORDER_QTY
+									WHEN DATE_DIFF = 2 THEN IIS_TODAY.D2_ORDER_QTY
+									WHEN DATE_DIFF = 3 THEN IIS_TODAY.D3_ORDER_QTY
+									WHEN DATE_DIFF = 4 THEN IIS_TODAY.D4_ORDER_QTY
+									WHEN DATE_DIFF = 5 THEN IIS_TODAY.D5_ORDER_QTY
+									WHEN DATE_DIFF = 6 THEN IIS_TODAY.D6_ORDER_QTY
+									WHEN DATE_DIFF = 7 THEN IIS_TODAY.D7_ORDER_QTY
+									WHEN DATE_DIFF = 8 THEN IIS_TODAY.D8_ORDER_QTY
+									WHEN DATE_DIFF = 9 THEN IIS_TODAY.D9_ORDER_QTY
+									WHEN DATE_DIFF = 10 THEN IIS_TODAY.D10_ORDER_QTY
+									WHEN DATE_DIFF = 11 THEN IIS_TODAY.D11_ORDER_QTY
+									WHEN DATE_DIFF = 12 THEN IIS_TODAY.D12_ORDER_QTY
+									WHEN DATE_DIFF = 13 THEN IIS_TODAY.D13_ORDER_QTY
+									WHEN DATE_DIFF = 14 THEN IIS_TODAY.D14_ORDER_QTY
+									WHEN DATE_DIFF = 15 THEN IIS_TODAY.D15_ORDER_QTY
+									WHEN DATE_DIFF > 15 THEN
+								         CASE WHEN IIW.PRE_ORDER_YN = 'Y' AND US.SUPPLIER_CD = 'PF' THEN IIS_TODAY.D15_ORDER_QTY
+								              ELSE 0
+								         END
+									ELSE 0
+								END
+							)
+							ELSE (
+								CASE
+									WHEN IG.GOODS_TP = 'GOODS_TYPE.DISPOSAL' THEN IIS_YESTERDAY.D0_ORDER_DISCARD_QTY
+									WHEN DATE_DIFF = 0 THEN IIS_YESTERDAY.D1_ORDER_QTY
+									WHEN DATE_DIFF = 1 THEN IIS_YESTERDAY.D2_ORDER_QTY
+									WHEN DATE_DIFF = 2 THEN IIS_YESTERDAY.D3_ORDER_QTY
+									WHEN DATE_DIFF = 3 THEN IIS_YESTERDAY.D4_ORDER_QTY
+									WHEN DATE_DIFF = 4 THEN IIS_YESTERDAY.D5_ORDER_QTY
+									WHEN DATE_DIFF = 5 THEN IIS_YESTERDAY.D6_ORDER_QTY
+									WHEN DATE_DIFF = 6 THEN IIS_YESTERDAY.D7_ORDER_QTY
+									WHEN DATE_DIFF = 7 THEN IIS_YESTERDAY.D8_ORDER_QTY
+									WHEN DATE_DIFF = 8 THEN IIS_YESTERDAY.D9_ORDER_QTY
+									WHEN DATE_DIFF = 9 THEN IIS_YESTERDAY.D10_ORDER_QTY
+									WHEN DATE_DIFF = 10 THEN IIS_YESTERDAY.D11_ORDER_QTY
+									WHEN DATE_DIFF = 11 THEN IIS_YESTERDAY.D12_ORDER_QTY
+									WHEN DATE_DIFF = 12 THEN IIS_YESTERDAY.D13_ORDER_QTY
+									WHEN DATE_DIFF = 13 THEN IIS_YESTERDAY.D14_ORDER_QTY
+									WHEN DATE_DIFF = 14 THEN IIS_YESTERDAY.D15_ORDER_QTY
+									WHEN DATE_DIFF = 15 THEN IIS_YESTERDAY.D15_ORDER_QTY
+									WHEN DATE_DIFF > 15 THEN
+								         CASE WHEN IIW.PRE_ORDER_YN = 'Y' AND US.SUPPLIER_CD = 'PF' THEN IIS_TODAY.D15_ORDER_QTY
+								              ELSE 0
+								         END
+									ELSE 0
+								END
+							)
+						END
+					)
+					WHEN IIW.UNLIMIT_STOCK_YN = 'Y' THEN 99999
+					ELSE IIW.NOT_IF_STOCK_CNT
+				END
+				, 0) AS AVAILABLE_ORDER_CNT
+			FROM IL_GOODS IG
+			INNER JOIN IL_ITEM II
+				ON II.IL_ITEM_CD = IG.IL_ITEM_CD
+			INNER JOIN UR_WAREHOUSE UW
+				ON UW.UR_WAREHOUSE_ID = IG.UR_WAREHOUSE_ID
+			INNER JOIN UR_SUPPLIER US
+				ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+			INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+				ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+				AND USW.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+			INNER JOIN IL_ITEM_WAREHOUSE IIW
+				ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+				AND IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+			LEFT JOIN IL_ITEM_STOCK IIS_TODAY
+				ON IIS_TODAY.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+				AND IIS_TODAY.BASE_DT = CURDATE()
+			LEFT JOIN IL_ITEM_STOCK IIS_YESTERDAY
+				ON IIS_YESTERDAY.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+				AND IIS_YESTERDAY.BASE_DT = DATE_ADD(CURDATE(), INTERVAL -1 DAY)
+			JOIN (
+				SELECT
+					DATEDIFF(#{scheduleDt}, CURDATE()) AS DATE_DIFF
+			) DT
+		WHERE
+			IG.IL_GOODS_ID = #{ilGoodsId} /* 상품ID */
+  </select>
+
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : ERP 재고 저장
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.2.4   이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addErpStockOrder">
+  /* stockOrder.addErpStockOrder */
+  INSERT INTO IL_ITEM_ERP_STOCK
+         (
+            IL_ITEM_WAREHOUSE_ID
+          , BASE_DT
+          , STOCK_TP
+          , STOCK_QTY
+          , SCHEDULE_DT
+          , MEMO
+          , CREATE_ID
+          , CREATE_DT
+         )
+         VALUES
+		(
+		  #{ilItemWarehouseId, javaType=long, jdbcType=INTEGER}
+		, #{scheduleDt}
+		, #{stockTp}
+		, #{orderQty, javaType=long, jdbcType=INTEGER}
+		, #{scheduleDt}
+		, #{memo}
+		, #{createId}
+		, NOW()
+		)
+		<selectKey resultType="long" keyProperty="ilItemErpStockId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : ERP 재고 이력저장
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.2.10   이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addErpStockOrderHistory">
+  /* stockOrder.addErpStockOrderHistory */
+  INSERT INTO IL_ITEM_ERP_STOCK_HISTORY
+         (
+            IL_ITEM_ERP_STOCK_ID
+          , IL_ITEM_WAREHOUSE_ID
+          , BASE_DT
+          , STOCK_TP
+          , STOCK_QTY
+          , SCHEDULE_DT
+          , MEMO
+          , CREATE_ID
+          , CREATE_DT
+         )
+     SELECT IL_ITEM_ERP_STOCK_ID
+	      , IL_ITEM_WAREHOUSE_ID
+	      , BASE_DT
+	      , STOCK_TP
+	      , STOCK_QTY
+	      , SCHEDULE_DT
+	      , MEMO
+	      , CREATE_ID
+	      , CREATE_DT
+	  FROM IL_ITEM_ERP_STOCK
+	 WHERE IL_ITEM_ERP_STOCK_ID = #{ilItemErpStockId}
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 재고수량 재계산 프로시저
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.2.4   이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="spItemStockCaculated" statementType="CALLABLE" parameterType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockOrderResultVo">
+	/* stockOrder.spItemStockCaculated */
+	CALL SP_ITEM_STOCK_CACULATED(
+		#{ilItemWarehouseId, javaType=long, jdbcType=INTEGER}
+	)
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 미연동 재고 수량 조회
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.2.4   이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getNotIfStockCnt" resultType="int">
+  /* stockOrder.getNotIfStockCnt */
+  SELECT NOT_IF_STOCK_CNT /* 미연동 재고 수량 */
+    FROM IL_ITEM_WAREHOUSE
+   WHERE IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId}
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 미연동 재고 수량 수정
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.2.4   이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putNotIfStockCnt">
+  /* stockOrder.putNotIfStockCnt */
+  UPDATE IL_ITEM_WAREHOUSE
+     SET NOT_IF_STOCK_CNT = #{orderQty, javaType=long, jdbcType=INTEGER} /* 미연동 재고 수량 */
+   WHERE IL_ITEM_WAREHOUSE_ID = #{ilItemWarehouseId} /* 품목별 출고처ID */
+  </update>
+
+</mapper>

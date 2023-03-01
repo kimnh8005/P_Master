@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.discount.BatchItemPriceGoodsDiscountDeniedMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * 할인승인 상태가 '승인요청'상태이고 할인 시작일이 이미 도래한 상품 할인 승인 내역에 대해서 '폐기'처리
+	 *
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.14   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="updateGoodsDiscountApprPastStartDateDenied">
+		/* itemPriceGoodsDiscountDenied.updateGoodsDiscountApprPastStartDateDenied */
+		UPDATE IL_GOODS_DISCOUNT_APPR IGDA
+		,	(
+			SELECT
+				*
+			FROM
+				IL_GOODS_DISCOUNT_APPR
+			WHERE
+				APPR_STAT = 'APPR_STAT.REQUEST'
+			AND	DISCOUNT_START_DT &lt;= #{toDateTime}
+		) UPT_IGDA
+		SET
+			IGDA.APPR_STAT = #{apprStat}
+			, IGDA.MODIFY_DT = NOW()
+			, IGDA.MODIFY_ID = '0'
+			, IGDA.APPR_CHG_USER_ID = '0'
+			, IGDA.APPR_CHG_DT = NOW()
+			, IGDA.STANDARD_PRICE_CHG = IFNULL((
+				SELECT
+					STANDARD_PRICE
+				FROM IL_GOODS_PRICE
+				WHERE
+					IL_GOODS_ID = UPT_IGDA.IL_GOODS_ID
+					AND USE_YN = 'Y'
+					AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+				LIMIT 1
+			), 0)
+			, IGDA.RECOMMENDED_PRICE_CHG = IFNULL((
+				SELECT
+					RECOMMENDED_PRICE
+				FROM IL_GOODS_PRICE
+				WHERE
+					IL_GOODS_ID = UPT_IGDA.IL_GOODS_ID
+					AND USE_YN = 'Y'
+					AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+				LIMIT 1
+			), 0)
+		WHERE
+			IGDA.IL_GOODS_DISCOUNT_APPR_ID = UPT_IGDA.IL_GOODS_DISCOUNT_APPR_ID
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * 할인승인 상태가 '승인요청'상태이고 할인 시작일이 이미 도래한 상품 할인 승인 내역에 대해서 '폐기' 히스토리 입력
+	 *
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.14   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="insertGoodsDiscountApprHistoryPastStartDateDenied">
+		/* itemPriceGoodsDiscountDenied.updateGoodsDiscountApprHistoryPastStartDateDenied */
+		INSERT INTO IL_GOODS_DISCOUNT_APPR_STATUS_HISTORY (
+			IL_GOODS_DISCOUNT_APPR_ID
+		,	PREV_APPR_STAT
+		,	APPR_STAT
+		,	STATUS_CMNT
+		,	APPR_SUB_USER_ID
+		,	APPR_USER_ID
+		,	CREATE_DT
+		,	CREATE_ID
+		)
+		SELECT
+			IGDA.IL_GOODS_DISCOUNT_APPR_ID
+		,	IGDA.APPR_STAT
+		,	#{apprStat}
+		,	'배치에 의한 자동 폐기 처리'
+		,	IGDA.APPR_SUB_USER_ID
+		,	IGDA.APPR_USER_ID
+		,	NOW()
+		,	'0'
+		FROM
+			IL_GOODS_DISCOUNT_APPR IGDA
+		WHERE
+			APPR_STAT = 'APPR_STAT.REQUEST'
+		AND	DISCOUNT_START_DT &lt;= #{toDateTime}
+	</insert>
+
+	<update id="updateItemPriceApprPastStartDateDenied">
+		/* itemPriceGoodsDiscountDenied.updateItemPriceApprPastStartDateDenied */
+		UPDATE IL_ITEM_PRICE_APPR IIPA
+			, (
+			SELECT
+			*
+			FROM
+			IL_ITEM_PRICE_APPR
+			WHERE
+			APPR_STAT = 'APPR_STAT.REQUEST'
+			AND START_DT <![CDATA[<=]]> #{toDateTime}
+			) IIPA_SUB
+		SET
+			IIPA.APPR_STAT = #{apprStat}
+			, IIPA.MODIFY_DT = NOW()
+			, IIPA .MODIFY_ID = '0'
+			, IIPA.APPR_CHG_USER_ID = '0'
+			, IIPA.APPR_CHG_DT = NOW()
+			, IIPA.STANDARD_PRICE_CHG = IFNULL((
+				SELECT
+					STANDARD_PRICE
+				FROM IL_ITEM_PRICE
+				WHERE
+					IL_ITEM_CD = IIPA_SUB.IL_ITEM_CD
+					AND NOW() BETWEEN START_DT AND END_DT
+				LIMIT 1
+			), 0)
+			, IIPA.RECOMMENDED_PRICE_CHG = IFNULL((
+				SELECT
+					RECOMMENDED_PRICE
+				FROM IL_ITEM_PRICE
+				WHERE
+					IL_ITEM_CD = IIPA_SUB.IL_ITEM_CD
+					AND NOW() BETWEEN START_DT AND END_DT
+				LIMIT 1
+			), 0)
+			WHERE
+				IIPA.IL_ITEM_PRICE_APPR_ID  = IIPA_SUB.IL_ITEM_PRICE_APPR_ID
+	</update>
+
+	<insert id="insertItemPriceApprHistoryPastStartDateDenied">
+		/* itemPriceGoodsDiscountDenied.insertItemPriceApprHistoryPastStartDateDenied */
+		INSERT INTO IL_ITEM_PRICE_APPR_STATUS_HISTORY (
+			IL_ITEM_PRICE_APPR_ID
+			, PREV_APPR_STAT
+			, APPR_STAT
+			, STATUS_CMNT
+			, APPR_SUB_USER_ID
+			, APPR_USER_ID
+			, CREATE_DT
+			, CREATE_ID
+		)
+		SELECT
+			IIPA.IL_ITEM_PRICE_APPR_ID
+			, IIPA.APPR_STAT
+			, #{apprStat}
+			, '배치에 의한 자동 폐기 처리'
+			, IIPA.APPR_SUB_USER_ID
+			, IIPA.APPR_USER_ID
+			, NOW()
+			, '0'
+		FROM
+			IL_ITEM_PRICE_APPR IIPA
+		WHERE APPR_STAT  = 'APPR_STAT.REQUEST'
+		AND IIPA.START_DT <![CDATA[<=]]> #{toDateTime}
+	</insert>
+
+</mapper>

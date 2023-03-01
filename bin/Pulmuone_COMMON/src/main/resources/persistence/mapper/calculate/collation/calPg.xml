@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.collation.CalPgMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부문 구문 전체 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOuIdAllList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.vo.SettleOuMngVo">
+		/*	employee.getOuIdAllList  */
+		SELECT
+			OU_ID,
+			OU_NM,
+			USE_YN,
+			CREATE_DT
+		FROM
+			CA_SETTLE_OU_MNG
+		ORDER BY OU_ID ASC
+	</select>
+
+	<sql id="findCalPgItem">
+		<where>
+			1=1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grantAuthEmployeeNumber)">
+				AND U.LOGIN_ID = #{grantAuthEmployeeNumber}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+				AND DATE_FORMAT(OPC.CREATE_DT, '%Y%m%d') BETWEEN #{dateSearchStart} AND #{dateSearchEnd}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findPgGubn)">
+				AND PG_SERVICE = #{findPgGubn}
+			</if>
+		</where>
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 거래 내역 대사 카운트 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPgListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.collation.dto.CalPgListDto">
+		SELECT
+			COUNT(*) AS CNT
+		FROM
+			OD_PG_COMPARE_UPLOAD_INFO OPC
+		LEFT JOIN (SELECT COUNT(*) AS CNT ,OPCD.OD_PG_COMPARE_UPLOAD_INFO_ID FROM OD_PG_COMPARE_UPLOAD_DETAIL OPCD GROUP BY OPCD.OD_PG_COMPARE_UPLOAD_INFO_ID) DT ON DT.OD_PG_COMPARE_UPLOAD_INFO_ID = OPC.OD_PG_COMPARE_UPLOAD_INFO_ID
+		INNER JOIN UR_USER U ON OPC.CREATE_ID  = U.UR_USER_ID
+		<include refid="findCalPgItem" />
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 거래 내역 대사 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPgList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalPgListDto" parameterType="kr.co.pulmuone.v1.calculate.collation.dto.CalPgListRequestDto">
+		SELECT
+		 	FN_COMN_CODE_DIC(OPC.PG_SERVICE) AS pgServiceName
+		 	, OPC.SUCCESS_CNT
+		 	, OPC.FAIL_CNT
+			, (OPC.SUCCESS_CNT + OPC.FAIL_CNT) AS PG_TOTAL_CNT
+		 	, OPC.CREATE_DT
+		 	, OPC.CREATE_ID
+		 	, FN_DECRYPT(U.USER_NM ) AS USER_NM
+		 	, OPC.OD_PG_COMPARE_UPLOAD_INFO_ID
+		 FROM OD_PG_COMPARE_UPLOAD_INFO OPC
+		 INNER JOIN UR_USER U ON OPC.CREATE_ID  = U.UR_USER_ID
+		<include refid="findCalPgItem" />
+		ORDER BY OPC.CREATE_DT DESC
+		<include refid="_common.pageLimit"/>
+	</select>
+
+
+	<insert id="addOdOrderMaster">
+		/*	calPg.addOdOrderMaster  */
+		INSERT INTO OD_PG_COMPARE_UPLOAD_INFO (
+			PG_SERVICE,
+			FAIL_NM,
+			CREATE_DT,
+			CREATE_ID
+		)
+		VALUES	(
+			#{pgUploadGubun},
+			#{originNm},
+			NOW(),
+			#{createId}
+		)
+		<selectKey resultType="Long" keyProperty="odPgCompareUploadInfoId" order="AFTER">
+            SELECT IFNULL(MAX(OD_PG_COMPARE_UPLOAD_INFO_ID), 1)  FROM OD_PG_COMPARE_UPLOAD_INFO
+        </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 거래내역 업로드 상세 정보 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.28		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOdPgCompareUploadDetail">
+		/*	calOutmall.addOdPgCompareUploadDetail  */
+		INSERT INTO OD_PG_COMPARE_UPLOAD_DETAIL (
+			OD_PG_COMPARE_UPLOAD_INFO_ID,
+			PG_SERVICE,
+			TYPE,
+			ODID,
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(tid)">
+			TID,
+			</if>
+			APPROVAL_DT,
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(transAmt)">
+			TRANS_AMT,
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deductAmt)">
+			DEDUCT_AMT,
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(accountAmt)">
+			ACCOUNT_AMT,
+			</if>
+			SUCCESS_YN,
+			CREATE_DT,
+			CREATE_ID
+		)
+		VALUES	(
+			#{odPgCompareUploadInfoId},
+			#{pgService},
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(type)">
+					#{type},
+				</when>
+				<otherwise>
+					'-',
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(odid)">
+					#{odid},
+				</when>
+				<otherwise>
+					'-',
+				</otherwise>
+			</choose>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(tid)">
+			#{tid},
+			</if>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalDt)">
+					#{approvalDt},
+				</when>
+				<otherwise>
+					DATE_FORMAT('2099-12-31', '%Y-%m-%d'),
+				</otherwise>
+			</choose>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(transAmt)">
+			#{transAmt},
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deductAmt)">
+			#{deductAmt},
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(accountAmt)">
+			#{accountAmt},
+			</if>
+			#{successYn},
+			NOW(),
+			#{createId}
+		)
+		<selectKey resultType="Long" keyProperty="odPgCompareUploadDetailId" order="AFTER">
+            SELECT IFNULL(MAX(OD_PG_COMPARE_UPLOAD_DETAIL_ID), 1)  FROM OD_PG_COMPARE_UPLOAD_DETAIL
+        </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 거래내역 업로드 상세 정보
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.28		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOdPgCompareUploadDetailInfo">
+		/*	calOutmall.addOdPgCompareUploadDetailInfo  */
+		INSERT INTO OD_PG_COMPARE_UPLOAD_DETAIL_INFO (
+			OD_PG_COMPARE_UPLOAD_DETAIL_ID,
+			COMMISSION,
+			VAT,
+			GIVE_DT,
+			ESCROW_COMMISSION,
+			ESCROW_VAT,
+			M_POINT,
+			M_POINT_COMMISSION,
+			M_POINT_VAT,
+			MARKETING_COMMISSION,
+			MARKETING_VAT,
+			CERTIFICATION_COMMISSION,
+			CERTIFICATION_VAT,
+			FREE_COMMISSION,
+			CARD_NM,
+			CARD_AUTH_NUM,
+			CARD_QUOTA,
+			BANK_NM,
+			BANK_ACCOUNT_NUMBER,
+			ACCOUNT_DT
+		)
+		VALUES	(
+			#{odPgCompareUploadDetailId},
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(commission)">
+					#{commission},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(vat)">
+					#{vat},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(giveDt)">
+					#{giveDt},
+				</when>
+				<otherwise>
+					DATE_FORMAT('2099-12-31', '%Y-%m-%d'),
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(escrowCommission)">
+					#{escrowCommission},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(escrowVat)">
+					#{escrowVat},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mPoint)">
+					#{mPoint},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mPointCommission)">
+					#{mPointCommission},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mPointVat)">
+					#{mPointVat},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(marketingCommission)">
+					#{marketingCommission},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(marketingVat)">
+					#{marketingVat},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(certificationCommission)">
+					#{certificationCommission},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(certificationVat)">
+					#{certificationVat},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(freeCommission)">
+					#{freeCommission},
+				</when>
+				<otherwise>
+					NULL,
+				</otherwise>
+			</choose>
+			#{cardNm},
+			#{cardAuthNum},
+			#{cardQuota},
+			#{bankNm},
+			#{bankAccountNumber},
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(accountDt)">
+					#{accountDt}
+				</when>
+				<otherwise>
+					NULL
+				</otherwise>
+			</choose>
+		)
+	</insert>
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 업로드 정보 수정
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.28		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPgCountInfo">
+		/*	calPg.putPgCountInfo */
+		UPDATE OD_PG_COMPARE_UPLOAD_INFO
+		SET SUCCESS_CNT = #{successCnt},
+			FAIL_CNT = #{failCnt}
+		WHERE OD_PG_COMPARE_UPLOAD_INFO_ID = #{odPgCompareUploadInfoId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 거래내역 대사 업로드 실패내역 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.01		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCalPgUploadFailList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalPgFailListDto">
+		/* calPg.getCalPgUploadFailList */
+		SELECT IFNULL(opd.ODID, '') AS ODID
+			, IFNULL(opd.TID, '') AS TID
+			, IFNULL(DATE_FORMAT(opd.APPROVAL_DT,'%Y-%m-%d'), '') AS APPROVAL_DT
+			, IFNULL(opd.TRANS_AMT, '') AS TRANS_AMT
+			, IFNULL(opd.DEDUCT_AMT, '') AS DEDUCT_AMT
+			, IFNULL(opd.ACCOUNT_AMT, '') AS ACCOUNT_AMT
+			, IFNULL(opdi.COMMISSION, '') AS COMMISSION
+			, IFNULL(opdi.VAT, '') AS VAT
+			, IFNULL(DATE_FORMAT(opdi.GIVE_DT, '%Y-%m-%d'), '') AS GIVE_DT
+			, IFNULL(opdi.ESCROW_COMMISSION, '') AS ESCROW_COMMISSION
+			, IFNULL(opdi.ESCROW_VAT, '') AS ESCROW_VAT
+			, IFNULL(opdi.M_POINT, '') AS M_POINT
+			, IFNULL(opdi.M_POINT_COMMISSION, '') AS M_POINT_COMMISSION
+			, IFNULL(opdi.M_POINT_VAT, '') AS M_POINT_VAT
+			, IFNULL(opdi.MARKETING_COMMISSION, '') AS MARKETING_COMMISSION
+			, IFNULL(opdi.MARKETING_VAT, '') AS MARKETING_VAT
+			, IFNULL(opdi.CERTIFICATION_COMMISSION, '') AS CERTIFICATION_COMMISSION
+			, IFNULL(opdi.CERTIFICATION_VAT, '') AS CERTIFICATION_VAT
+			, IFNULL(opdi.FREE_COMMISSION, '') AS FREE_COMMISSION
+			, IFNULL(opdi.CARD_NM, '') AS CARD_NM
+			, IFNULL(opdi.CARD_AUTH_NUM, '') AS CARD_AUTH_NUM
+			, IFNULL(opdi.CARD_QUOTA, '') AS CARD_QUOTA
+			, IFNULL(opdi.BANK_NM, '') AS BANK_NM
+			, IFNULL(opdi.BANK_ACCOUNT_NUMBER, '') AS BANK_ACCOUNT_NUMBER
+			, IFNULL(DATE_FORMAT(opdi.ACCOUNT_DT, '%Y-%m-%d'), '') AS ACCOUNT_DT
+		FROM OD_PG_COMPARE_UPLOAD_DETAIL opd
+		JOIN OD_PG_COMPARE_UPLOAD_DETAIL_INFO opdi ON opd.OD_PG_COMPARE_UPLOAD_DETAIL_ID = opdi.OD_PG_COMPARE_UPLOAD_DETAIL_ID
+		WHERE opd.SUCCESS_YN = 'N'
+		AND opd.OD_PG_COMPARE_UPLOAD_INFO_ID = #{odPgCompareUploadInfoId}
+	</select>
+
+</mapper>

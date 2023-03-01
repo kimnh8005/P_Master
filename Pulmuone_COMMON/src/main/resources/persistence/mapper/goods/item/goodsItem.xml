@@ -1,0 +1,2289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemMapper">
+
+    <!-- 품목상세 resultMap -->
+    <resultMap id="getGoodsIdByItemInfoResultMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemInfoVo">
+        <result column="GOODS_ID" property="goodsId" />
+        <result column="ITEM_CODE" property="itemCode" />
+        <result column="ITEM_TYPE" property="itemType" />
+        <result column="ITEM_NAME" property="itemName" />
+        <result column="ITEM_BARCODE" property="itemBarcode" />
+        <result column="ERP_IF_YN" property="erpIfYn" />
+        <result column="ERP_STOCK_IF_YN" property="erpStockIfYn" />
+        <result column="CATEGORY_STANDARD_ID" property="categoryStandardId" />
+        <result column="SUPPLIER_ID" property="supplierId" />
+        <result column="BRAND_ID" property="brandId" />
+        <result column="STORAGE_METHOD_TYPE" property="storageMethodType" />
+        <result column="TAX_YN" property="taxYn" />
+        <result column="ITEM_PRICE_ID" property="itemPriceId" />
+        <result column="ITEM_PRICE_START_DATE" property="itemPriceStartDate" />
+        <result column="ITEM_PRICE_END_DATE" property="itemPriceEndDate" />
+        <result column="ITEM_STANDARD_PRICE" property="itemStandardPrice" />
+        <result column="ITEM_RECOMMENDED_PRICE" property="itemRecommendedPrice" />
+    </resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 상품ID 별 품목상세 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.08     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <!-- 상품ID 별 품목상세 조회 -->
+    <select id="getGoodsIdByItemInfo" resultMap="getGoodsIdByItemInfoResultMap">
+        /* goodsItem.getGoodsIdByItemInfo */
+        SELECT
+               G.IL_GOODS_ID AS GOODS_ID /* 상품 ID */
+             , I.IL_ITEM_CD AS ITEM_CODE /* 품목코드 */
+             , I.ITEM_TP AS ITEM_TYPE /* 품목유형 */
+             , I.ITEM_NM AS ITEM_NAME /* 품목명 */
+             , I.ITEM_BARCODE AS ITEM_BARCODE /* 품목 바코드 */
+             , I.ERP_IF_YN AS ERP_IF_YN /* ERP 연동여부 */
+             , I.ERP_STOCK_IF_YN AS ERP_STOCK_IF_YN /* ERP 재고연동여부 */
+             , I.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID /* 표준 카테고리 ID */
+             , I.UR_SUPPLIER_ID AS SUPPLIER_ID /* 공급업체 ID */
+             , I.UR_BRAND_ID AS BRAND_ID /* 브랜드 ID */
+             , I.STORAGE_METHOD_TP AS STORAGE_METHOD_TYPE /* 보관방법유형 */
+             , I.TAX_YN AS TAX_YN /* 과세구분 */
+             , IP.IL_ITEM_PRICE_ID AS ITEM_PRICE_ID /* 품목가격 ID */
+             , IP.START_DT AS ITEM_PRICE_START_DATE /* 품목가격 적용 시작일 */
+             , IP.END_DT AS ITEM_PRICE_END_DATE /* 품목가격 적용 종료일 */
+             , IP.STANDARD_PRICE AS ITEM_STANDARD_PRICE /* 품목 원가 */
+             , IP.RECOMMENDED_PRICE AS ITEM_RECOMMENDED_PRICE /* 품목 정상가 */
+          FROM IL_GOODS G
+          JOIN IL_ITEM I
+            ON I.IL_ITEM_CD = G.IL_ITEM_CD
+          JOIN IL_ITEM_PRICE IP
+            ON IP.IL_ITEM_CD = I.IL_ITEM_CD
+           AND NOW() BETWEEN IP.START_DT AND IP.END_DT
+         WHERE G.IL_GOODS_ID = #{goodsId}
+         ORDER BY IP.CREATE_DT DESC
+         LIMIT 1
+    </select>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목코드 별 상품 리스트 조회(묶음 상품 제외)
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.16     강윤경          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getGoodsIdListByItemCd" resultMap="getGoodsIdByItemInfoResultMap">
+        /* goodsItem.getGoodsIdByItemInfo */
+        SELECT
+               IL_GOODS_ID AS GOODS_ID /* 상품 ID */
+          FROM IL_GOODS
+         WHERE IL_ITEM_CD = #{ilItemCode}
+         	AND GOODS_TP != 'GOODS_TYPE.PACKAGE' /* 묶음 상품 제외 */
+
+    </select>
+
+    <!-- 마스터 품목 리스트 관련 로직 Start -->
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 마스터 품목 리스트 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.14     임상건          최초생성
+     * @ 2020.10.21     박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.goods.item.dto.vo.MasterItemListVo" id="getItemListResultMap">
+        <result column="RNUM"                           property="rowNumber"/>
+        <result column="IL_ITEM_CODE"                   property="ilItemCode"/>
+        <result column="IL_ITEM_BARCODE"                property="itemBarcode"/>
+        <result column="ITEM_NAME"                      property="itemName"/>
+        <result column="ERP_IF_YN"                      property="erpLinkIfYn"/>
+        <result column="ERP_IF_YN_NAME"                 property="erpLinkIfYnName"/>
+
+        <result column="ITEM_TYPE"                      property="itemType"/>
+        <result column="ITEM_TYPE_NAME"                 property="itemTypeName"/>
+        <result column="SUPPLIER_NAME"                  property="supplierName"/>
+        <result column="BRAND_NAME"                     property="brandName"/>
+        <result column="DP_BRAND_NAME"                  property="dpBrandName"/>
+        <result column="DISTRIBUTION_PERIOD"            property="distributionPeriod"/>
+        <result column="STORAGE_METHOD_NAME"            property="storageMethodName"/>
+        <result column="STANDARD_CATEGORY_FULL_NAME"    property="standardCategoryFullName"/>
+        <result column="SIZE_UNIT_NAME"                 property="sizeUnitName"/>
+        <result column="PO_TYPE_NAME"                   property="poTypeName"/>
+        <result column="UR_WAREHOUSE_ID"                property="urWarehouseId"/>
+        <result column="WAREHOUSE_NAME"                 property="warehouseName"/>
+        <result column="WAREHOUSE_ADDRESS"              property="warehouseAddress"/>
+        <result column="PRE_ORDER_YN"                   property="preOrderYn" />
+        <result column="STOCK_ORDER_YN"                 property="stockOrderYn" />
+        <result column="STORE_YN"                       property="storeYn" />
+        <result column="SUPPLIER_CD"                    property="supplierCode" />
+        <result column="MALL_DIV_ID"                    property="mallDivId" />
+        <result column="PACKAGE_COUNT"                  property="packageCount" />
+        <result column="ERP_O2O_EXPOSURE_TP"            property="erpO2oExposureTp" />
+        <result column="EXTINCTION_YN"            		property="extinctionYn" />
+        <result column="PO_TP_NM"            			property="poTpNm" />
+        <result column="CREATE_DT"            			property="createDt" />
+        <result column="MODIFY_DT"            			property="modifyDt" />
+        <result column="SYSTEM_MODIFY_DT"            	property="systemModifyDt" />
+        <result column="ERP_ITEM_BARCODE"            	property="erpItemBarcode" />
+        <result column="ERP_PRODUCT_TP"            		property="erpProductTp" />
+        <result column="ERP_CATEGORY"            		property="erpCategory" />
+        <result column="ERP_ITEM_GRP"            		property="erpItemGrp" />
+        <result column="ERP_STORAGE_METHOD"            	property="erpStorageMethod" />
+        <result column="ERP_ORIGIN_NM"            		property="erpOriginNm" />
+        <result column="BOS_ORIGIN_NM"            		property="bosOriginNm" />
+        <result column="BOX_VOLUME"            			property="boxVolume" />
+        <result column="PCS_PER_BOX"            		property="pcsPerBox" />
+        <result column="UOM"            				property="uom" />
+        <result column="SIZE_PER_PACKAGE"            	property="sizePerPackage" />
+        <result column="SIZE_UNIT"            			property="sizeUnit" />
+        <result column="QTY_PER_PACKAGE"            	property="qtyPerPackage" />
+        <result column="PACKAGE_UNIT"            		property="packageUnit" />
+        <result column="PDM_GROUP_CD"            		property="pdmGroupCd" />
+        <result column="TAX_NM"            				property="taxNm" />
+        <result column="PRICE_START_DT"            		property="priceStartDt" />
+        <result column="PRICE_END_DT"            		property="priceEndDt" />
+        <result column="STANDARD_PRICE"            		property="standardPrice" />
+        <result column="RECOMMENDED_PRICE"            	property="recommendedPrice" />
+        <result column="MARGIN_RATIO"            		property="marginRatio" />
+        <result column="SPEC_MASTER_NM"            		property="specMasterNm" />
+        <result column="NUTRITION_DISP_YN"            	property="nutritionDispYn" />
+        <result column="RETURN_PERIOD_NM"            	property="returnPeriodNm" />
+        <result column="UNDELIVERABLE_AREA_TP_NM"       property="undeliverableAreaTpNm" />
+        <result column="VIDEO_URL"       				property="videoUrl" />
+        <result column="ERP_PO_TYPE"                    property="erpPoType"/>
+        <result column="ERP_ITEM_NM"                    property="erpItemNm"/>
+        <result column="ERP_SUPPLIER_NM"                property="erpSupplierName"/>
+        <result column="PRICE_APPR_TARGET_YN"           property="priceApprTargetYn"/>
+		<result column="IL_GOODS_ID"            		property="ilGoodsId" />
+		<result column="GOODS_NM"            			property="goodsNm" />
+		<result column="ITEM_STATUS_TP"					property="itemStatusTp" />
+		<result column="ITEM_REGIST_APPR_REQ_USER_ID"	property="itemRegistApprReqUserId" />
+		<result column="ITEM_REGIST_APPR_STAT"			property="itemRegistApprStat" />
+		<result column="ITEM_REGIST_APPR_STAT_NM"		property="itemRegistApprStatNm" />
+		<result column="ITEM_CLIENT_APPR_REQ_USER_ID"	property="itemClientApprReqUserId" />
+		<result column="ITEM_CLIENT_APPR_STAT"			property="itemClientApprStat" />
+		<result column="ITEM_CLIENT_APPR_STAT_NM"		property="itemClientApprStatNm" />
+		<result column="APPR_STAT_NM"		property="approvalStatusName" />
+    </resultMap>
+
+    <select id="getItemList" resultMap="getItemListResultMap">
+        /* goodsItem.getItemList */
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilCategoryStandardId)">
+        WITH RECURSIVE  CTE AS (   /* 해당 표준 카테고리 ID 와 하위 depth 의 모든 표준 카테고리 ID 를 recursive 쿼리로 조회 */
+            SELECT  IL_CTGRY_STD_ID, PRNTS_CTGRY_ID
+              FROM  IL_CTGRY_STD
+             WHERE  DEL_YN = 'N'
+               AND  IL_CTGRY_STD_ID = #{ilCategoryStandardId}
+            UNION ALL
+            SELECT  t.IL_CTGRY_STD_ID, t.PRNTS_CTGRY_ID
+              FROM  IL_CTGRY_STD t
+        INNER JOIN  CTE cte
+                ON  cte.IL_CTGRY_STD_ID = t.PRNTS_CTGRY_ID
+        )
+        </if>
+        SELECT
+            TBL.*
+			, (
+				SELECT
+					COUNT(1)
+				FROM
+					IL_GOODS IG
+					INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING PACKAGE
+						ON PACKAGE.IL_GOODS_ID = IG.IL_GOODS_ID
+					INNER JOIN IL_GOODS TARGET
+						ON TARGET.IL_GOODS_ID = PACKAGE.TARGET_GOODS_ID
+				WHERE
+					IG.GOODS_TP = 'GOODS_TYPE.PACKAGE'
+					AND TARGET.IL_ITEM_CD = TBL.IL_ITEM_CODE
+					AND TARGET.UR_WAREHOUSE_ID = TBL.UR_WAREHOUSE_ID
+			) AS PACKAGE_COUNT /* 묶음 상품 갯수 */
+			, (
+				SELECT
+					COUNT(1)
+				FROM
+					IL_GOODS IG
+				WHERE
+					IG.GOODS_TP = 'GOODS_TYPE.NORMAL'
+					AND IG.IL_ITEM_CD = TBL.IL_ITEM_CODE
+					AND IG.UR_WAREHOUSE_ID = TBL.UR_WAREHOUSE_ID
+			) AS GOODS_COUNT /* 일반상품 등록 갯수 */
+        FROM
+        (
+            SELECT
+                  A.IL_ITEM_CD                                AS  IL_ITEM_CODE                  /*품목코드*/
+                , IFNULL(A.ITEM_BARCODE, '')                  AS  IL_ITEM_BARCODE               /*품목바코드*/
+                , A.ITEM_NM                                   AS  ITEM_NAME                     /*마스터 품목명*/
+                , A.ERP_IF_YN                                 AS  ERP_IF_YN                     /*ERP 연동여부*/
+                , A.ITEM_TP                                   AS  ITEM_TYPE                     /*마스터 품목유형*/
+                , FN_COMN_CODE_DIC(A.ITEM_TP)				  AS  ITEM_TYPE_NAME				/*마스터 품목유형명 */
+                , C.COMP_NM                                   AS  SUPPLIER_NAME                 /*공급업체*/
+                , D.BRAND_NM                                  AS  BRAND_NAME                    /*표준 브랜드*/
+                , J.DP_BRAND_NM								  AS  DP_BRAND_NAME					/*전시 브랜드*/
+                , IFNULL(A.DISTRIBUTION_PERIOD, '')           AS  DISTRIBUTION_PERIOD           /*유통기간*/
+                , G.NAME                                      AS  STORAGE_METHOD_NAME           /*보관방법*/
+                , FN_CTGRY_STD_FULL_NAME(A.IL_CTGRY_STD_ID)   AS  STANDARD_CATEGORY_FULL_NAME   /*표준 카테고리 출력명*/
+                , CASE WHEN  A.SIZE_UNIT_ETC IS NOT NULL AND TRIM(A.SIZE_UNIT_ETC) != ''
+                       THEN  CONCAT(A.SIZE_PER_PACKAGE, ' ', A.SIZE_UNIT_ETC )
+                       ELSE  CONCAT(A.SIZE_PER_PACKAGE, ' ', H.NAME )
+                   END                                        AS  SIZE_UNIT_NAME                /*용량 (중량) 단위*/
+                ,  IFNULL(E.PO_TP_NM, '')                     AS  PO_TYPE_NAME                  /*발주유형명*/
+                ,  F.UR_WAREHOUSE_ID                          AS  UR_WAREHOUSE_ID               /*출고처 PK*/
+                ,  F.WAREHOUSE_NAME                           AS  WAREHOUSE_NAME                /*출고처명*/
+                ,  F.WAREHOUSE_ADDRESS                        AS  WAREHOUSE_ADDRESS             /*출고처 주소*/
+                ,  F.PRE_ORDER_YN                             AS  PRE_ORDER_YN                  /*선주문 가능여부*/
+                ,  F.STOCK_ORDER_YN                           AS  STOCK_ORDER_YN                /*해당 출고처의 재고발주여부*/
+                ,  F.STORE_YN                                                                   /*해당 출고처의 매장(가맹점)여부*/
+                ,  B.SUPPLIER_CD                                                                /*해당 공급업체의 코드*/
+                ,  I.ST_COMN_CODE_ID                          AS  MALL_DIV_ID                   /*해당 브랜드의 MALL_DIV_ID(베이비밀, 잇슬림 구분자로 사용) */
+                ,  A.ERP_O2O_EXPOSURE_TP
+                ,  A.EXTINCTION_YN
+                ,  F.PO_TP_NM
+				, CASE
+					WHEN A.ERP_IF_YN = 'Y' THEN (
+						CASE
+							WHEN A.ERP_REGAL_CD = 'PFF' THEN '미승인'
+							WHEN A.ERP_REGAL_CD = 'OGH' THEN '미승인'
+							ELSE '승인'
+						END
+					)
+					ELSE '승인'
+				END AS PRICE_APPR_TARGET_YN
+				, A.ITEM_STATUS_TP AS ITEM_STATUS_TP											/* 품목 상태 */
+				, IRIIA.APPR_REQ_USER_ID AS ITEM_REGIST_APPR_REQ_USER_ID						/* 품목 등록 승인 상태 코드 */
+				, IRIIA.APPR_STAT AS ITEM_REGIST_APPR_STAT										/* 품목 등록 승인 상태 코드 */
+				, IRIIA.APPR_STAT_NAME AS ITEM_REGIST_APPR_STAT_NM								/* 품목 등록 승인 상태명 */
+				, ICIIA.APPR_REQ_USER_ID AS ITEM_CLIENT_APPR_REQ_USER_ID						/* 품목 거래처 수정 승인 상태 코드 */
+				, ICIIA.APPR_STAT AS ITEM_CLIENT_APPR_STAT										/* 품목 거래처 수정 승인 상태 코드 */
+				, ICIIA.APPR_STAT_NAME AS ITEM_CLIENT_APPR_STAT_NM								/* 품목 거래처 수정 승인 상태명 */
+            FROM       IL_ITEM A
+            INNER JOIN  UR_SUPPLIER  B
+                   ON  A.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+            INNER JOIN  UR_COMPANY   C
+                   ON  B.UR_COMPANY_ID = C.UR_COMPANY_ID
+            INNER JOIN  UR_BRAND     D
+                   ON  A.UR_BRAND_ID = D.UR_BRAND_ID
+            LEFT JOIN  (
+                SELECT  T3.IL_ITEM_CD       AS  IL_ITEM_CD
+                      , T2.UR_WAREHOUSE_ID  AS  UR_WAREHOUSE_ID
+                      , T2.WAREHOUSE_NM     AS  WAREHOUSE_NAME
+                      , CONCAT( T2.ADDRESS1, ' ', IFNULL(T2.ADDRESS2, '') )  AS  WAREHOUSE_ADDRESS
+                      , T3.PRE_ORDER_YN     AS  PRE_ORDER_YN
+                      , T2.STOCK_ORDER_YN   AS  STOCK_ORDER_YN
+                      , T2.STORE_YN
+                      , T3.IL_PO_TP_ID
+                      , T4.PO_TP
+                      -- , FN_COMN_CODE_DIC(T4.PO_TP) AS PO_TP_NM
+                      , T4.PO_TP_NM
+                  FROM UR_SUPPLIER_WAREHOUSE   T1
+                 INNER JOIN UR_WAREHOUSE       T2
+                    ON  T1.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID
+                 INNER JOIN IL_ITEM_WAREHOUSE  T3
+                    ON T1.UR_SUPPLIER_WAREHOUSE_ID = T3.UR_SUPPLIER_WAREHOUSE_ID
+                 LEFT JOIN IL_PO_TP T4
+                    ON T3.IL_PO_TP_ID = T4.IL_PO_TP_ID
+            )  F
+                   ON  A.IL_ITEM_CD = F.IL_ITEM_CD
+            LEFT JOIN  IL_PO_TP     E
+                   ON  F.IL_PO_TP_ID = E.IL_PO_TP_ID
+            LEFT JOIN (
+                SELECT  A.ST_COMN_CODE_ID  AS CODE
+                      , B.DIC_MST_NM       AS NAME
+                 FROM  ST_COMN_CODE  A
+           INNER JOIN  GB_DIC_MST    B
+                   ON  A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE  A.ST_COMN_CODE_MST_CD = 'ERP_STORAGE_TYPE'
+                  AND  A.USE_YN = UPPER('Y')
+            ) G
+                   ON A.STORAGE_METHOD_TP = G.CODE
+            LEFT JOIN (
+                SELECT  A.ST_COMN_CODE_ID  AS CODE
+                      , B.DIC_MST_NM       AS NAME
+                 FROM  ST_COMN_CODE  A
+           INNER JOIN  GB_DIC_MST    B
+                   ON  A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE  A.ST_COMN_CODE_MST_CD = 'UNIT_TYPE'
+                  AND  A.USE_YN = UPPER('Y')
+            ) H
+                   ON A.SIZE_UNIT = H.CODE
+            LEFT JOIN (
+				SELECT
+					ST_COMN_CODE_ID
+				,	ATTR2
+				FROM
+					ST_COMN_CODE
+				WHERE
+					ST_COMN_CODE_MST_CD = 'MALL_DIV'
+			) I ON I.ATTR2 = A.UR_BRAND_ID
+			LEFT JOIN  DP_BRAND     J
+                   ON  A.DP_BRAND_ID = J.DP_BRAND_ID
+			LEFT JOIN (
+				SELECT
+					IIA.IL_ITEM_CD
+					, IIA.APPR_REQ_USER_ID
+					, IIA.APPR_STAT
+					, DIC.NAME AS APPR_STAT_NAME
+				FROM
+					IL_ITEM_APPR IIA
+					LEFT JOIN (
+						SELECT
+							SCC.ST_COMN_CODE_ID AS CODE
+							, GDM.DIC_MST_NM AS NAME
+						FROM
+							ST_COMN_CODE SCC
+							INNER JOIN GB_DIC_MST GDM
+								ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+						WHERE
+							SCC.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+							AND SCC.USE_YN = UPPER('Y')
+					) DIC
+						ON IIA.APPR_STAT = DIC.CODE
+				WHERE
+					IIA.IL_ITEM_APPR_ID IN (
+						SELECT
+							MAX(IL_ITEM_APPR_ID) AS IL_ITEM_APPR_ID
+						FROM
+							IL_ITEM_APPR
+						WHERE
+							APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+						GROUP BY IL_ITEM_CD
+					)
+			) IRIIA
+				ON IRIIA.IL_ITEM_CD = A.IL_ITEM_CD
+			LEFT JOIN (
+				SELECT
+					IIA.IL_ITEM_CD
+					, IIA.APPR_REQ_USER_ID
+					, IIA.APPR_STAT
+					, DIC.NAME AS APPR_STAT_NAME
+				FROM
+					IL_ITEM_APPR IIA
+					LEFT JOIN (
+						SELECT
+							SCC.ST_COMN_CODE_ID AS CODE
+							, GDM.DIC_MST_NM AS NAME
+						FROM
+							ST_COMN_CODE SCC
+							INNER JOIN GB_DIC_MST GDM
+								ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+						WHERE
+							SCC.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+							AND SCC.USE_YN = UPPER('Y')
+					) DIC
+						ON IIA.APPR_STAT = DIC.CODE
+				WHERE
+					IIA.IL_ITEM_APPR_ID IN (
+						SELECT
+							MAX(IL_ITEM_APPR_ID) AS IL_ITEM_APPR_ID
+						FROM
+							IL_ITEM_APPR
+						WHERE
+							APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+						GROUP BY IL_ITEM_CD
+					)
+					AND IIA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+			) ICIIA
+				ON ICIIA.IL_ITEM_CD = A.IL_ITEM_CD
+            <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemStatusTp)">
+				A.ITEM_STATUS_TP = #{itemStatusTp}
+			</if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+                <choose>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '')">
+                        AND (
+							A.IL_ITEM_CD IN
+                            <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                #{data}
+                            </foreach>
+
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+                                    OR A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+                                    OR A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <otherwise>
+                                    OR A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                    OR A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </otherwise>
+                            </choose>
+                        )
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '1')">
+						AND
+                   		 A.IL_ITEM_CD IN
+                        <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                            #{data}
+                        </foreach>
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '2')">
+                        AND (
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+                   					A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+                   					A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <otherwise>
+                   					A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                    OR
+                   					A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </otherwise>
+                            </choose>
+                        )
+                    </when>
+                </choose>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+                AND A.ITEM_NM LIKE CONCAT('%', #{itemName}, '%')
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpLinkIfYn)">
+                AND A.ERP_IF_YN = #{erpLinkIfYn}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilCategoryStandardId)">
+                AND EXISTS ( SELECT  T1.IL_CTGRY_STD_ID
+                               FROM  CTE  T1
+                              WHERE  A.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID   )
+            </if>
+
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateType,'registerDate')">
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+                        AND DATE_FORMAT(A.CREATE_DT, '%Y%m%d') <![CDATA[ >= ]]> #{startDate}
+                        AND DATE_FORMAT(A.CREATE_DT, '%Y%m%d') <![CDATA[ <= ]]> #{endDate}
+                    </if>
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateType,'modifiedDate')">
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+                        AND DATE_FORMAT(A.MODIFY_DT, '%Y%m%d') <![CDATA[ >= ]]> #{startDate}
+                        AND DATE_FORMAT(A.MODIFY_DT, '%Y%m%d') <![CDATA[ <= ]]> #{endDate}
+                    </if>
+                </when>
+            </choose>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+            AND A.UR_SUPPLIER_ID = #{urSupplierId}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+            AND F.UR_WAREHOUSE_ID = #{warehouseId}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBrandId)">
+            AND A.UR_BRAND_ID = #{urBrandId}
+            </if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)">
+            AND A.DP_BRAND_ID = #{dpBrandId}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(preOrderAvailable)">
+            AND F.PRE_ORDER_YN = #{preOrderAvailable}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storageMethod)">
+            AND A.STORAGE_METHOD_TP IN
+                <foreach item="data" index="index" collection="storageMethodArray" open="(" separator="," close=")">
+                    #{data}
+                </foreach>
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalDiv)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(approvalDiv,'Y')">
+						AND (
+							A.ERP_IF_YN = 'N'
+							OR A.ERP_REGAL_CD IS NULL
+							OR A.ERP_REGAL_CD NOT IN ('PFF', 'OGH')
+						)
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(approvalDiv,'N')">
+						AND A.ERP_IF_YN = 'Y'
+						AND A.ERP_REGAL_CD IN ('PFF', 'OGH')
+					</when>
+					<otherwise>
+					</otherwise>
+				</choose>
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(masterItemType,'MASTER_ITEM_TYPE.ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterItemType)">
+            AND A.ITEM_TP IN
+                <foreach item="data" index="index" collection="masterItemTypeArray" open="(" separator="," close=")">
+                    #{data}
+                </foreach>
+            </if>
+
+			AND (
+				(A.ITEM_TP = 'MASTER_ITEM_TYPE.SHOP_ONLY' AND F.STORE_YN = 'Y')
+				OR (A.ITEM_TP != 'MASTER_ITEM_TYPE.SHOP_ONLY' AND B.SUPPLIER_CD != 'OG')
+				OR (A.ITEM_TP != 'MASTER_ITEM_TYPE.SHOP_ONLY' AND B.SUPPLIER_CD = 'OG' AND F.STORE_YN != 'Y')
+			)
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+				AND B.UR_SUPPLIER_ID IN
+				<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+                  		#{data}
+ 	            		</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+				AND F.UR_WAREHOUSE_ID IN
+				<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+              		#{data}
+          		</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userVo.companyType, 'COMPANY_TYPE.CLIENT')">
+				AND A.ITEM_STATUS_TP = 'ITEM_STATUS_TP.REGISTER'
+			</if>
+
+            </where>
+
+            ORDER BY A.CREATE_DT DESC
+        ) TBL
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 마스터 품목 리스트 엑셀 다운로드
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.14     임상건          최초생성
+     * @ 2020.10.21     박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getItemListExcel" resultMap="getItemListResultMap">
+        /* goodsItem.getItemListExcel */
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilCategoryStandardId)">
+        WITH RECURSIVE  CTE AS (   /* 해당 표준 카테고리 ID 와 하위 depth 의 모든 표준 카테고리 ID 를 recursive 쿼리로 조회 */
+            SELECT  IL_CTGRY_STD_ID, PRNTS_CTGRY_ID
+              FROM  IL_CTGRY_STD
+             WHERE  DEL_YN = 'N'
+               AND  IL_CTGRY_STD_ID = #{ilCategoryStandardId}
+            UNION ALL
+            SELECT  t.IL_CTGRY_STD_ID, t.PRNTS_CTGRY_ID
+              FROM  IL_CTGRY_STD t
+        INNER JOIN  CTE cte
+                ON  cte.IL_CTGRY_STD_ID = t.PRNTS_CTGRY_ID
+        )
+        </if>
+
+        SELECT
+              TBL.*
+        FROM
+        (
+            SELECT
+            	A.IL_ITEM_CD                                AS  IL_ITEM_CODE                  /*품목코드*/
+                , IFNULL(A.ITEM_BARCODE, '')                  AS  IL_ITEM_BARCODE               /*품목바코드*/
+                , A.ITEM_NM                                   AS  ITEM_NAME                     /*마스터 품목명*/
+                , A.ERP_IF_YN                                 AS  ERP_IF_YN                     /*ERP 연동여부*/
+                , IF(A.ERP_IF_YN = 'Y', '연동', '미연동') 		  AS  ERP_IF_YN_NAME
+                , A.CREATE_DT                                 AS  CREATE_DT                     /*등록일자*/
+                , A.MODIFY_DT                                 AS  MODIFY_DT                     /*관리자 수정일자*/
+                , A.MODIFY_DT                                 AS  SYSTEM_MODIFY_DT              /*TODO : 시스템 수정일자*/
+                , IFNULL(A.ERP_ITEM_BARCODE, '')              AS  ERP_ITEM_BARCODE              /*ERP품목바코드*/
+                , IFNULL(A.ERP_PRODUCT_TP, '')           	  AS  ERP_PRODUCT_TP           		/*상품관리유형*/
+                , A.ITEM_TP                                   AS  ITEM_TYPE                     /*마스터 품목유형*/
+                , FN_COMN_CODE_DIC(A.ITEM_TP)				  AS  ITEM_TYPE_NAME				/*마스터 품목유형명 */
+                , C.COMP_NM                                   AS  SUPPLIER_NAME                 /*공급업체*/
+                , D.BRAND_NM                                  AS  BRAND_NAME                    /*표준 브랜드*/
+                , J.DP_BRAND_NM								  AS  DP_BRAND_NAME					/*전시 브랜드*/
+                , IFNULL(A.ERP_ITEM_GRP, '')           	 	  AS  ERP_ITEM_GRP           		/*상품군(ERP)*/
+                , IFNULL(A.DISTRIBUTION_PERIOD, '')           AS  DISTRIBUTION_PERIOD           /*유통기간*/
+                , IFNULL(A.ERP_STORAGE_METHOD, '')            AS  ERP_STORAGE_METHOD           	/*보관방법(ERP)*/
+                , IFNULL(G.NAME, '')                          AS  STORAGE_METHOD_NAME           /*보관방법(BOS)*/
+                , IFNULL(A.ERP_ORIGIN_NM, '')            	  AS  ERP_ORIGIN_NM           		/*원산지(ERP)*/
+                , FN_COMN_CODE_DIC(A.ORIGIN_TP) AS BOS_ORIGIN_NM /* 원산지(BOS) */
+				, CASE
+					WHEN A.ERP_CTGRY_LV4_ID IS NOT NULL AND A.ERP_CTGRY_LV4_ID != '' THEN CONCAT(A.ERP_CTGRY_LV1_ID, ' > ', A.ERP_CTGRY_LV2_ID, ' > ', A.ERP_CTGRY_LV3_ID, ' > ', A.ERP_CTGRY_LV4_ID)
+					WHEN A.ERP_CTGRY_LV3_ID IS NOT NULL AND A.ERP_CTGRY_LV3_ID != '' THEN CONCAT(A.ERP_CTGRY_LV1_ID, ' > ', A.ERP_CTGRY_LV2_ID, ' > ', A.ERP_CTGRY_LV3_ID)
+					WHEN A.ERP_CTGRY_LV2_ID IS NOT NULL AND A.ERP_CTGRY_LV2_ID != '' THEN CONCAT(A.ERP_CTGRY_LV1_ID, ' > ', A.ERP_CTGRY_LV2_ID)
+					ELSE IFNULL(A.ERP_CTGRY_LV1_ID, '')
+				END AS ERP_CATEGORY /* ERP카테고리 */
+                , FN_CTGRY_STD_FULL_NAME(A.IL_CTGRY_STD_ID)   AS  STANDARD_CATEGORY_FULL_NAME   /*표준 카테고리 출력명*/
+                , CASE WHEN  A.SIZE_UNIT_ETC IS NOT NULL AND TRIM(A.SIZE_UNIT_ETC) != ''
+                       THEN  CONCAT(A.SIZE_PER_PACKAGE, ' ', A.SIZE_UNIT_ETC )
+                       ELSE  CONCAT(A.SIZE_PER_PACKAGE, ' ', H.NAME )
+                   END                                        AS  SIZE_UNIT_NAME                /*용량 (중량) 단위*/
+				, CASE
+					WHEN A.SIZE_PER_PACKAGE IS NULL THEN ''
+					ELSE TRIM(A.SIZE_PER_PACKAGE)+0
+				END AS SIZE_PER_PACKAGE /* 포장단위별 용량 */
+                , CASE
+			 		WHEN A.SIZE_UNIT_ETC IS NOT NULL AND TRIM(A.SIZE_UNIT_ETC) != '' THEN A.SIZE_UNIT_ETC
+					ELSE FN_COMN_CODE_DIC(A.SIZE_UNIT)
+				END AS SIZE_UNIT /* 용량(중량)단위 */
+               	, CONCAT(IFNULL(TRIM(A.BOX_WIDTH)+0, '-'), ' X ', IFNULL(TRIM(A.BOX_DEPTH)+0, '-'), ' X ', IFNULL(TRIM(A.BOX_HEIGHT)+0, '-')) AS BOX_VOLUME /* 박스체적 */
+                , IFNULL(A.PCS_PER_BOX, '') AS PCS_PER_BOX /* 박스입수량 */
+                , IFNULL(A.OMS, '') AS UOM /* UOM */
+                , IFNULL(A.QTY_PER_PACKAGE, '') AS QTY_PER_PACKAGE /* 구성정보 용량 */
+				, CASE
+					WHEN A.PACKAGE_UNIT_ETC IS NOT NULL AND TRIM(A.PACKAGE_UNIT_ETC) != '' THEN A.PACKAGE_UNIT_ETC
+					ELSE IFNULL(FN_COMN_CODE_DIC(A.PACKAGE_UNIT), '')
+				END AS PACKAGE_UNIT /* 구성정보 단위 */
+                , IFNULL(A.PDM_GROUP_CD, '') AS PDM_GROUP_CD /* PDM 그룹코드 */
+                , CASE
+					WHEN A.TAX_YN = 'Y' THEN '과세'
+					WHEN A.TAX_YN = 'N' THEN '면세'
+					ELSE ''
+				END AS TAX_NM /* 과세구분 */
+				, IIP.START_DT AS PRICE_START_DT /* 가격시작일 */
+				, IIP.END_DT AS PRICE_END_DT /* 가격종료일 */
+				, IIP.STANDARD_PRICE AS STANDARD_PRICE /* 원가 */
+				, IIP.RECOMMENDED_PRICE AS RECOMMENDED_PRICE /* 정상가 */
+                , CONCAT((
+	                CASE
+						WHEN A.TAX_YN = 'N' THEN TRUNCATE(((CAST(IIP.RECOMMENDED_PRICE AS SIGNED) - CAST(IIP.STANDARD_PRICE AS SIGNED)))/IIP.RECOMMENDED_PRICE*100, 0)
+						ELSE TRUNCATE(((CAST(IIP.RECOMMENDED_PRICE AS SIGNED) - (CAST(IIP.STANDARD_PRICE AS SIGNED)*1.1)))/IIP.RECOMMENDED_PRICE*100, 0)
+					END
+				), '%') AS MARGIN_RATIO /* 마진율 */
+				, ISM.SPEC_MASTER_NM AS SPEC_MASTER_NM /* 상품정보고시 상품군 */
+				, A.NUTRITION_DISP_YN AS NUTRITION_DISP_YN /* 영양정보 표시 */
+				, CASE
+					WHEN A.RETURN_PERIOD > 0 THEN CONCAT(A.RETURN_PERIOD, '일')
+					ELSE '불가'
+				END AS RETURN_PERIOD_NM /* 반품가능기간 */
+                , FN_COMN_CODE_DIC(A.UNDELIVERABLE_AREA_TP) AS UNDELIVERABLE_AREA_TP_NM /* 배송불가지역 */
+                , IFNULL(A.VIDEO_URL, '') AS VIDEO_URL /* 동영상 URL */
+                ,  IFNULL(E.PO_TP_NM, '')                     AS  PO_TYPE_NAME                  /*발주유형명*/
+                ,  F.UR_WAREHOUSE_ID                          AS  UR_WAREHOUSE_ID               /*출고처 PK*/
+                ,  IFNULL(F.WAREHOUSE_NAME, '')                          AS  WAREHOUSE_NAME                /*출고처명*/
+                ,  IFNULL(F.WAREHOUSE_ADDRESS, '')                       AS  WAREHOUSE_ADDRESS             /*출고처 주소*/
+                ,  IFNULL(F.PRE_ORDER_YN, '')                             AS  PRE_ORDER_YN                  /*선주문 가능여부*/
+                ,  IFNULL(F.STOCK_ORDER_YN, '')                           AS  STOCK_ORDER_YN                /*해당 출고처의 재고발주여부*/
+                ,  IFNULL(F.STORE_YN, '')                                 AS  STORE_YN                                  /*해당 출고처의 매장(가맹점)여부*/
+                ,  B.SUPPLIER_CD                                                                /*해당 공급업체의 코드*/
+                ,  I.ST_COMN_CODE_ID                          AS  MALL_DIV_ID                   /*해당 브랜드의 MALL_DIV_ID(베이비밀, 잇슬림 구분자로 사용) */
+                , IFNULL(A.ERP_O2O_EXPOSURE_TP, '')           AS  ERP_O2O_EXPOSURE_TP           /*매장전용유형*/
+                ,  A.EXTINCTION_YN
+                ,  F.PO_TP_NM
+                , IFNULL(A.ERP_PO_TYPE, '') AS ERP_PO_TYPE /* ERP 발주유형 */
+                , IFNULL(A.ERP_ITEM_NM, '') AS ERP_ITEM_NM /* ERP 품목명 */
+                , IFNULL(A.ERP_SUPPLIER_NM, '') AS ERP_SUPPLIER_NM  /* ERP 공급업체명 */
+				, CASE
+					WHEN A.ERP_IF_YN = 'Y' THEN (
+						CASE
+							WHEN A.ERP_REGAL_CD = 'PFF' THEN '미승인'
+							WHEN A.ERP_REGAL_CD = 'OGH' THEN '미승인'
+							ELSE '승인'
+						END
+					)
+					ELSE '승인'
+				END AS PRICE_APPR_TARGET_YN
+				, IRIIA.APPR_STAT AS ITEM_REGIST_APPR_STAT										/* 품목 등록 승인 상태 코드 */
+				, IRIIA.APPR_STAT_NAME AS ITEM_REGIST_APPR_STAT_NM								/* 품목 등록 승인 상태명 */
+				, ICIIA.APPR_STAT AS ITEM_CLIENT_APPR_STAT										/* 품목 거래처 수정 승인 상태 코드 */
+				, ICIIA.APPR_STAT_NAME AS ITEM_CLIENT_APPR_STAT_NM								/* 품목 거래처 수정 승인 상태명 */
+				, CASE
+					WHEN IRIIA.APPR_STAT IS NOT NULL AND IRIIA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+						THEN CONCAT('품목등록/', IRIIA.APPR_STAT_NAME)
+					WHEN ICIIA.APPR_STAT IS NOT NULL AND ICIIA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+						THEN CONCAT('거래처 품목수정/', ICIIA.APPR_STAT_NAME)
+					WHEN IRIIA.APPR_STAT IS NOT NULL
+						THEN CONCAT('상품등록/', IRIIA.APPR_STAT_NAME)
+					ELSE ''
+				END AS APPR_STAT_NM
+            FROM       IL_ITEM A
+            INNER JOIN  UR_SUPPLIER  B
+                   ON  A.UR_SUPPLIER_ID = B.UR_SUPPLIER_ID
+            INNER JOIN  UR_COMPANY   C
+                   ON  B.UR_COMPANY_ID = C.UR_COMPANY_ID
+            INNER JOIN  UR_BRAND     D
+                   ON  A.UR_BRAND_ID = D.UR_BRAND_ID
+            LEFT JOIN  (
+                SELECT  T3.IL_ITEM_CD       AS  IL_ITEM_CD
+                      , T2.UR_WAREHOUSE_ID  AS  UR_WAREHOUSE_ID
+                      , T2.WAREHOUSE_NM     AS  WAREHOUSE_NAME
+                      , CONCAT( T2.ADDRESS1, ' ', IFNULL(T2.ADDRESS2, '') )  AS  WAREHOUSE_ADDRESS
+                      , T3.PRE_ORDER_YN     AS  PRE_ORDER_YN
+                      , T2.STOCK_ORDER_YN   AS  STOCK_ORDER_YN
+                      , T2.STORE_YN
+                      , T3.IL_PO_TP_ID
+                      , T4.PO_TP
+                      -- , FN_COMN_CODE_DIC(T4.PO_TP) AS PO_TP_NM
+                      , T4.PO_TP_NM
+                  FROM UR_SUPPLIER_WAREHOUSE   T1
+                 INNER JOIN UR_WAREHOUSE       T2
+                    ON  T1.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID
+                 INNER JOIN IL_ITEM_WAREHOUSE  T3
+                    ON T1.UR_SUPPLIER_WAREHOUSE_ID = T3.UR_SUPPLIER_WAREHOUSE_ID
+                 LEFT JOIN IL_PO_TP T4
+                    ON T3.IL_PO_TP_ID = T4.IL_PO_TP_ID
+            )  F
+                   ON  A.IL_ITEM_CD = F.IL_ITEM_CD
+            LEFT JOIN  IL_PO_TP     E
+                   ON  F.IL_PO_TP_ID = E.IL_PO_TP_ID
+            LEFT JOIN (
+                SELECT  A.ST_COMN_CODE_ID  AS CODE
+                      , B.DIC_MST_NM       AS NAME
+                 FROM  ST_COMN_CODE  A
+           INNER JOIN  GB_DIC_MST    B
+                   ON  A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE  A.ST_COMN_CODE_MST_CD = 'ERP_STORAGE_TYPE'
+                  AND  A.USE_YN = UPPER('Y')
+            ) G
+                   ON A.STORAGE_METHOD_TP = G.CODE
+            LEFT JOIN (
+                SELECT  A.ST_COMN_CODE_ID  AS CODE
+                      , B.DIC_MST_NM       AS NAME
+                 FROM  ST_COMN_CODE  A
+           INNER JOIN  GB_DIC_MST    B
+                   ON  A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                WHERE  A.ST_COMN_CODE_MST_CD = 'UNIT_TYPE'
+                  AND  A.USE_YN = UPPER('Y')
+            ) H
+                   ON A.SIZE_UNIT = H.CODE
+            LEFT JOIN (
+				SELECT
+					ST_COMN_CODE_ID
+				,	ATTR2
+				FROM
+					ST_COMN_CODE
+				WHERE
+					ST_COMN_CODE_MST_CD = 'MALL_DIV'
+			) I ON I.ATTR2 = A.UR_BRAND_ID
+			LEFT JOIN  DP_BRAND     J
+                   ON  A.DP_BRAND_ID = J.DP_BRAND_ID
+            INNER JOIN IL_ITEM_PRICE IIP
+            	ON IIP.IL_ITEM_CD = A.IL_ITEM_CD
+            	AND CURDATE() BETWEEN DATE_FORMAT(IIP.START_DT, '%Y-%m-%d') AND DATE_FORMAT(IIP.END_DT, '%Y-%m-%d')
+            INNER JOIN IL_SPEC_MASTER ISM
+            	ON ISM.IL_SPEC_MASTER_ID = A.IL_SPEC_MASTER_ID
+			LEFT JOIN (
+				SELECT
+					IIA.IL_ITEM_CD
+					, IIA.APPR_STAT
+					, DIC.NAME AS APPR_STAT_NAME
+				FROM
+					IL_ITEM_APPR IIA
+					LEFT JOIN (
+						SELECT
+							SCC.ST_COMN_CODE_ID AS CODE
+							, GDM.DIC_MST_NM AS NAME
+						FROM
+							ST_COMN_CODE SCC
+							INNER JOIN GB_DIC_MST GDM
+								ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+						WHERE
+							SCC.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+							AND SCC.USE_YN = UPPER('Y')
+					) DIC
+						ON IIA.APPR_STAT = DIC.CODE
+				WHERE
+					IIA.IL_ITEM_APPR_ID IN (
+						SELECT
+							MAX(IL_ITEM_APPR_ID) AS IL_ITEM_APPR_ID
+						FROM
+							IL_ITEM_APPR
+						WHERE
+							APPR_KIND_TP = 'APPR_KIND_TP.ITEM_REGIST'
+						GROUP BY IL_ITEM_CD
+					)
+			) IRIIA
+				ON IRIIA.IL_ITEM_CD = A.IL_ITEM_CD
+			LEFT JOIN (
+				SELECT
+					IIA.IL_ITEM_CD
+					, IIA.APPR_STAT
+					, DIC.NAME AS APPR_STAT_NAME
+				FROM
+					IL_ITEM_APPR IIA
+					LEFT JOIN (
+						SELECT
+							SCC.ST_COMN_CODE_ID AS CODE
+							, GDM.DIC_MST_NM AS NAME
+						FROM
+							ST_COMN_CODE SCC
+							INNER JOIN GB_DIC_MST GDM
+								ON SCC.GB_DIC_MST_ID = GDM.GB_DIC_MST_ID
+						WHERE
+							SCC.ST_COMN_CODE_MST_CD = 'APPR_STAT'
+							AND SCC.USE_YN = UPPER('Y')
+					) DIC
+						ON IIA.APPR_STAT = DIC.CODE
+				WHERE
+					IIA.IL_ITEM_APPR_ID IN (
+						SELECT
+							MAX(IL_ITEM_APPR_ID) AS IL_ITEM_APPR_ID
+						FROM
+							IL_ITEM_APPR
+						WHERE
+							APPR_KIND_TP = 'APPR_KIND_TP.ITEM_CLIENT'
+						GROUP BY IL_ITEM_CD
+					)
+					AND IIA.APPR_STAT IN ('APPR_STAT.REQUEST', 'APPR_STAT.SUB_APPROVED')
+			) ICIIA
+				ON ICIIA.IL_ITEM_CD = A.IL_ITEM_CD
+            <where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemStatusTp)">
+				A.ITEM_STATUS_TP = #{itemStatusTp}
+			</if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+                <choose>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '')">
+                        AND (
+                            A.IL_ITEM_CD IN
+                            <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                #{data}
+                            </foreach>
+
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+                                    OR A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+                                    OR A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <otherwise>
+                                    OR A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                    OR A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </otherwise>
+                            </choose>
+                        )
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '1')">
+						AND
+                   		 A.IL_ITEM_CD IN
+                        <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                            #{data}
+                        </foreach>
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '2')">
+                        AND (
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+                   					A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+                   					A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </when>
+                                <otherwise>
+                   					A.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                    OR
+                   					A.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                </otherwise>
+                            </choose>
+                        )
+                    </when>
+                </choose>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+                AND A.ITEM_NM LIKE CONCAT(#{itemName},'%')
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpLinkIfYn)">
+                AND A.ERP_IF_YN = #{erpLinkIfYn}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilCategoryStandardId)">
+                AND EXISTS ( SELECT  T1.IL_CTGRY_STD_ID
+                               FROM  CTE  T1
+                              WHERE  A.IL_CTGRY_STD_ID = T1.IL_CTGRY_STD_ID   )
+            </if>
+
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateType,'registerDate')">
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+                        AND DATE_FORMAT(A.CREATE_DT, '%Y%m%d') <![CDATA[ >= ]]> #{startDate}
+                        AND DATE_FORMAT(A.CREATE_DT, '%Y%m%d') <![CDATA[ <= ]]> #{endDate}
+                    </if>
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateType,'modifiedDate')">
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+                        AND DATE_FORMAT(A.MODIFY_DT, '%Y%m%d') <![CDATA[ >= ]]> #{startDate}
+                        AND DATE_FORMAT(A.MODIFY_DT, '%Y%m%d') <![CDATA[ <= ]]> #{endDate}
+                    </if>
+                </when>
+            </choose>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+            AND A.UR_SUPPLIER_ID = #{urSupplierId}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+            AND F.UR_WAREHOUSE_ID = #{warehouseId}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBrandId)">
+            AND A.UR_BRAND_ID = #{urBrandId}
+            </if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)">
+            	AND A.DP_BRAND_ID = #{dpBrandId}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(preOrderAvailable)">
+            AND F.PRE_ORDER_YN = #{preOrderAvailable}
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storageMethod)">
+            AND A.STORAGE_METHOD_TP IN
+                <foreach item="data" index="index" collection="storageMethodArray" open="(" separator="," close=")">
+                    #{data}
+                </foreach>
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalDiv)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(approvalDiv,'Y')">
+						AND (
+							A.ERP_IF_YN = 'N'
+							OR A.ERP_REGAL_CD IS NULL
+							OR A.ERP_REGAL_CD NOT IN ('PFF', 'OGH')
+						)
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(approvalDiv,'N')">
+						AND A.ERP_IF_YN = 'Y'
+						AND A.ERP_REGAL_CD IN ('PFF', 'OGH')
+					</when>
+					<otherwise>
+					</otherwise>
+				</choose>
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(masterItemType,'MASTER_ITEM_TYPE.ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterItemType)">
+            AND A.ITEM_TP IN
+                <foreach item="data" index="index" collection="masterItemTypeArray" open="(" separator="," close=")">
+                    #{data}
+                </foreach>
+            </if>
+
+			AND (
+				(A.ITEM_TP = 'MASTER_ITEM_TYPE.SHOP_ONLY' AND F.STORE_YN = 'Y')
+				OR (A.ITEM_TP != 'MASTER_ITEM_TYPE.SHOP_ONLY' AND B.SUPPLIER_CD != 'OG')
+				OR (A.ITEM_TP != 'MASTER_ITEM_TYPE.SHOP_ONLY' AND B.SUPPLIER_CD = 'OG' AND F.STORE_YN != 'Y')
+			)
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+				AND B.UR_SUPPLIER_ID IN
+				<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+                  		#{data}
+ 	            		</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+				AND F.UR_WAREHOUSE_ID IN
+				<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+              		#{data}
+          		</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userVo.companyType, 'COMPANY_TYPE.CLIENT')">
+				AND A.ITEM_STATUS_TP = 'ITEM_STATUS_TP.REGISTER'
+			</if>
+
+            </where>
+
+            ORDER BY A.CREATE_DT DESC
+        ) TBL
+    </select>
+
+	<select id="getItemGoodsPackageList" resultMap="getItemListResultMap">
+        /* goodsItem.getItemGoodsPackageList */
+		SELECT
+			GOODS.IL_ITEM_CD,
+			GOODS.IL_GOODS_ID,
+			GOODS.GOODS_NM,
+			IGPG.BASE_GOODS_YN
+		FROM IL_ITEM ITEM
+		INNER JOIN IL_GOODS GOODS
+			ON GOODS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+			AND GOODS.GOODS_TP = 'GOODS_TYPE.PACKAGE'
+		INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPG
+			ON GOODS.IL_GOODS_ID = IGPG.IL_GOODS_ID
+			AND IGPG.BASE_GOODS_YN = 'Y'
+		WHERE ITEM.IL_ITEM_CD  = #{ilItemCode}
+    </select>
+
+    <!-- 마스터 품목 리스트 관련 로직 End -->
+
+	<!--───────────────────────────────────────────────────────────────────────
+    * description    : 품목등록 승인관리 목록
+    * @
+    * @ 수정일       	수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.02.17  박승현    최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalItemRegistList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemApprovalResultVo">
+        /* goodsItem.getApprovalItemRegistList */
+		SELECT
+			IIA.IL_ITEM_APPR_ID, IIA.IL_ITEM_CD AS IL_ITEM_CODE, IIA.APPR_KIND_TP AS APPR_KIND_TYPE
+			, IFNULL( CASE WHEN  II.ERP_IF_YN = 'Y'  THEN II.ERP_ITEM_BARCODE
+		    			ELSE  II.ITEM_BARCODE
+						END , '')                          AS  IL_ITEM_BARCODE               /*품목바코드*/
+			<choose>
+			     <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprKindType) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprKindType,'APPR_KIND_TP.ITEM_CLIENT')"> <!-- 승인종류 유형코드 -->
+                    , IF(IIA.ITEM_NM IS NOT NULL, IIA.ITEM_NM, II.ITEM_NM) AS ITEM_NAME      /*마스터 품목명*/
+			     </when>
+			     <otherwise>
+			        , II.ITEM_NM                                   AS  ITEM_NAME                     /*마스터 품목명*/
+			     </otherwise>
+		     </choose>
+		    , II.ERP_IF_YN                                 AS  ERP_IF_YN                     /*ERP 연동여부*/
+		    , II.ITEM_TP                                   AS  ITEM_TYPE                     /*마스터 품목유형*/
+		    , FN_COMN_CODE_DIC(II.ITEM_TP)				  AS  ITEM_TYPE_NAME				/*마스터 품목유형명 */
+		    , UC.COMP_NM                                   AS  SUPPLIER_NAME                 /*공급업체*/
+			, GROUP_CONCAT(UW.WAREHOUSE_NAME separator '&lt;br&gt;') AS  WAREHOUSE_NAME                /*출고처명*/
+		    , IIP.STANDARD_PRICE AS STANDARD_PRICE
+			, IIP.RECOMMENDED_PRICE AS RECOMMENDED_PRICE
+			, CASE
+					WHEN II.TAX_YN = 'Y' THEN TRUNCATE(((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.1))) / IIP.RECOMMENDED_PRICE * 100, 0)
+					ELSE TRUNCATE(((IIP.RECOMMENDED_PRICE - IIP.STANDARD_PRICE)) / IIP.RECOMMENDED_PRICE * 100, 0)
+				END AS MARGIN_RATE
+			, IIA.APPR_STAT
+			, FN_COMN_CODE_DIC(IIA.APPR_STAT) AS APPR_STAT_NAME
+			, REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID
+			, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+			, IIA.APPR_REQ_DT AS APPROVAL_REQUEST_DT
+			, SUBUU.LOGIN_ID AS APPROVAL_SUB_USER_ID
+			, FN_DECRYPT(SUBUU.USER_NM) AS APPROVAL_SUB_USER_NAME
+			, SUBGUU.LOGIN_ID AS APPROVAL_SUB_GRANT_USER_ID
+			, FN_DECRYPT(SUBGUU.USER_NM) AS APPROVAL_SUB_GRANT_USER_NAME
+			, SUBCHG.LOGIN_ID AS APPROVAL_SUB_CHANGE_USER_ID
+			, FN_DECRYPT(SUBCHG.USER_NM) AS APPROVAL_SUB_CHANGE_USER_NAME
+			, IIA.APPR_SUB_CHG_DT AS APPROVAL_SUB_CHANGE_DT
+			, APPRUU.LOGIN_ID AS APPROVAL_USER_ID
+			, FN_DECRYPT(APPRUU.USER_NM) AS APPROVAL_USER_NAME
+			, APPRGUU.LOGIN_ID AS APPROVAL_GRANT_USER_ID
+			, FN_DECRYPT(APPRGUU.USER_NM) AS APPROVAL_GRANT_USER_NAME
+			, CHGUU.LOGIN_ID AS APPROVAL_CHANGE_USER_ID
+			, FN_DECRYPT(CHGUU.USER_NM) AS APPROVAL_CHANGE_USER_NAME
+			, IIA.APPR_CHG_DT AS APPROVAL_CHANGE_DT
+			, CASE
+				WHEN IIA.APPR_STAT = 'APPR_STAT.DENIED' THEN IFNULL((
+					SELECT
+						STATUS_CMNT
+					FROM
+						IL_ITEM_APPR_STATUS_HISTORY IIASH
+					WHERE
+						IIASH.IL_ITEM_APPR_ID = IIA.IL_ITEM_APPR_ID
+						AND IIASH.APPR_STAT = 'APPR_STAT.DENIED'
+					ORDER BY IIASH.IL_ITEM_APPR_STATUS_HISTORY_ID DESC
+					LIMIT 1
+				), '')
+				ELSE ''
+			END AS APPR_STAT_CMNT
+		FROM IL_ITEM_APPR IIA
+		INNER JOIN IL_ITEM II
+			ON II.IL_ITEM_CD = IIA.IL_ITEM_CD
+		INNER JOIN UR_SUPPLIER US
+			ON II.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+			ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		INNER JOIN (
+					SELECT  T3.IL_ITEM_CD       AS  IL_ITEM_CD
+						, T1.WAREHOUSE_NM     AS  WAREHOUSE_NAME
+						, T1.UR_WAREHOUSE_ID  AS  UR_WAREHOUSE_ID
+					FROM UR_WAREHOUSE   T1
+					INNER JOIN UR_SUPPLIER_WAREHOUSE       T2
+		            	ON  T1.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID
+					INNER JOIN IL_ITEM_WAREHOUSE  T3
+		            	ON T2.UR_SUPPLIER_WAREHOUSE_ID = T3.UR_SUPPLIER_WAREHOUSE_ID
+				) UW
+			ON IIA.IL_ITEM_CD = UW.IL_ITEM_CD
+		INNER JOIN IL_ITEM_PRICE IIP
+			ON IIP.IL_ITEM_CD = II.IL_ITEM_CD
+			AND NOW() BETWEEN IIP.START_DT AND IIP.END_DT
+		LEFT OUTER JOIN UR_USER SUBUU
+			ON IIA.APPR_SUB_USER_ID = SUBUU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON IIA.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT JOIN UR_EMPLOYEE SUBGUE
+			ON SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+			AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+			AND SUBUE.GRANT_AUTH_USER_ID = SUBGUE.UR_USER_ID
+			AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+		LEFT JOIN UR_USER SUBGUU
+			ON SUBGUE.UR_USER_ID = SUBGUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER SUBCHG
+			ON IIA.APPR_SUB_CHG_USER_ID = SUBCHG.UR_USER_ID
+		LEFT OUTER JOIN UR_USER APPRUU
+			ON IIA.APPR_USER_ID = APPRUU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE APPRUE
+			ON IIA.APPR_USER_ID = APPRUE.UR_USER_ID
+		LEFT JOIN UR_EMPLOYEE APPRGUE
+			ON APPRUE.GRANT_AUTH_USER_ID IS NOT NULL
+			AND APPRUE.GRANT_AUTH_STOP_YN = 'N'
+			AND APPRUE.GRANT_AUTH_USER_ID = APPRGUE.UR_USER_ID
+			AND CURDATE() BETWEEN APPRUE.GRANT_AUTH_START_DT AND APPRUE.GRANT_AUTH_END_DT
+		LEFT JOIN UR_USER APPRGUU
+			ON APPRGUE.UR_USER_ID = APPRGUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER CHGUU
+			ON IIA.APPR_CHG_USER_ID = CHGUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER REQUU
+			ON IIA.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE
+			IIA.APPR_STAT != 'APPR_STAT.DISPOSAL'
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(selectConditionType)">
+			<choose>
+            	<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, "singleSection")'>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprKindType)"> <!-- 승인종류 유형코드 -->
+						AND IIA.APPR_KIND_TP = #{apprKindType}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCodeKind)">
+					<choose>
+			  		    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '')">
+						AND (
+								II.IL_ITEM_CD IN
+							<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+								#{data}
+							</foreach>
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+								OR II.ERP_ITEM_BARCODE IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+								OR II.ITEM_BARCODE IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<otherwise>
+								OR II.ITEM_BARCODE IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								OR II.ERP_ITEM_BARCODE IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</otherwise>
+							</choose>
+						)
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '1')">
+							AND II.IL_ITEM_CD IN
+							<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+								#{data}
+							</foreach>
+	                    </when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '2')">
+							AND (
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+									II.ERP_ITEM_BARCODE IN
+										<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+											#{data}
+										</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+									II.ITEM_BARCODE IN
+										<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+											#{data}
+										</foreach>
+								</when>
+								<otherwise>
+									II.ITEM_BARCODE IN
+										<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+											#{data}
+										</foreach>
+									OR II.ERP_ITEM_BARCODE IN
+										<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+											#{data}
+										</foreach>
+								</otherwise>
+							</choose>
+							)
+						</when>
+						</choose>
+						</if>
+		            </when>
+				    <otherwise>
+				        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprKindType)"> <!-- 승인종류 유형코드 -->
+							AND IIA.APPR_KIND_TP = #{apprKindType}
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+							AND II.ITEM_NM LIKE CONCAT('%', #{itemName}, '%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpLinkIfYn)">
+							AND II.ERP_IF_YN = #{erpLinkIfYn}
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+							AND II.UR_SUPPLIER_ID = #{urSupplierId}
+				        </if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+							AND UW.UR_WAREHOUSE_ID = #{warehouseId}
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(masterItemType,'MASTER_ITEM_TYPE.ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterItemType)">
+							AND II.ITEM_TP IN
+							<foreach item="data" index="index" collection="masterItemTypeArray" open="(" separator="," close=")">
+								#{data}
+							</foreach>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchApprovalStatus,'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprovalStatus)">
+							AND IIA.APPR_STAT IN
+							<foreach item="data" index="index" collection="approvalStatusArray" open="(" separator="," close=")">
+								#{data}
+							</foreach>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUserType)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUser)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'ID')">
+									AND REQUU.LOGIN_ID = #{searchApprReqUser}
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'NAME')">
+									AND FN_DECRYPT(REQUU.USER_NM) = #{searchApprReqUser}
+								</when>
+							</choose>
+							</if>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUserType)">
+						    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUser)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'ID')">
+									AND (
+										SUBUU.LOGIN_ID = #{searchApprChgUser}
+										OR
+										APPRUU.LOGIN_ID = #{searchApprChgUser}
+									    OR
+										SUBGUU.LOGIN_ID = #{searchApprChgUser}
+										OR
+										APPRGUU.LOGIN_ID = #{searchApprChgUser}
+										)
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'NAME')">
+									AND (
+										FN_DECRYPT(SUBUU.USER_NM) = #{searchApprChgUser}
+										OR
+										FN_DECRYPT(APPRUU.USER_NM) = #{searchApprChgUser}
+									    OR
+										FN_DECRYPT(SUBGUU.USER_NM) = #{searchApprChgUser}
+				                        OR
+										FN_DECRYPT(APPRGUU.USER_NM) = #{searchApprChgUser}
+										)
+								</when>
+							</choose>
+							</if>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqStartDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqEndDate)">
+								AND IIA.APPR_REQ_DT BETWEEN #{approvalReqStartDate} AND #{approvalReqEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+							</if>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgStartDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgEndDate)">
+								AND (
+									IIA.APPR_SUB_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+									OR
+									IIA.APPR_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+									)
+							</if>
+						</if>
+				    </otherwise>
+				</choose>
+			</if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+				AND II.UR_SUPPLIER_ID IN
+				<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+                  		#{data}
+ 	            	</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+				AND UW.UR_WAREHOUSE_ID IN
+				<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+                  		#{data}
+ 	            	</foreach>
+			</if>
+		GROUP BY IIA.IL_ITEM_APPR_ID
+		ORDER BY IIA.APPR_REQ_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목등록 상태이력 등록
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.08		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemRegistStatusHistory">
+		/*	goodsItem.addItemRegistStatusHistory */
+		INSERT INTO IL_ITEM_APPR_STATUS_HISTORY
+		(
+			IL_ITEM_APPR_ID
+			<!-- , STATUS -->
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+			, STATUS_CMNT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+			, PREV_APPR_STAT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+			, APPR_STAT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			, APPR_SUB_USER_ID
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			, APPR_USER_ID
+			</if>
+			, CREATE_DT
+			, CREATE_ID
+		)
+		VALUES
+		(
+			#{taskPk}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+			,#{statusComment}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+			,#{prevApprStat}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+			,#{apprStat}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			,#{apprSubUserId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			,#{apprUserId}
+			</if>
+			,NOW()
+			,#{userVo.userId}
+		)
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목등록 승인 요청철회
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.17		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putCancelRequestApprovalItemRegist">
+		/*	goodsItem.putCancelRequestApprovalItemRegist	*/
+		UPDATE IL_ITEM_APPR
+		SET
+			APPR_STAT = #{apprStat}
+			, APPR_SUB_USER_ID = null
+			, APPR_SUB_CHG_USER_ID = null
+			, APPR_SUB_CHG_DT = null
+			, APPR_USER_ID = null
+			, APPR_CHG_USER_ID = null
+			, APPR_CHG_DT = null
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+		WHERE IL_ITEM_APPR_ID = #{taskPk}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목등록 승인처리
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.17		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putApprovalProcessItemRegist">
+		/*	goodsItem.putApprovalProcessItemRegist	*/
+		UPDATE IL_ITEM_APPR
+		SET
+			APPR_STAT = #{apprStat}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.SUB_APPROVED')">
+			, APPR_SUB_CHG_DT = NOW()
+			, APPR_SUB_CHG_USER_ID = #{userVo.userId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.APPROVED')">
+			, APPR_CHG_DT = NOW()
+			, APPR_CHG_USER_ID = #{userVo.userId}
+			</if>
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+		WHERE IL_ITEM_APPR_ID = #{taskPk}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+    * description    : 품목가격 승인관리 목록
+    * @
+    * @ 수정일       	수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.02.22  박승현    최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalItemPriceList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemApprovalResultVo">
+        /* goodsItem.getApprovalItemPriceList */
+		SELECT
+			IIPA.IL_ITEM_PRICE_APPR_ID, IIPA.IL_ITEM_CD AS IL_ITEM_CODE, IIPA.START_DT
+			, IIPA.STANDARD_PRICE, IIPA.RECOMMENDED_PRICE
+			, CASE
+					WHEN II.TAX_YN = 'Y' THEN TRUNCATE(((IIPA.RECOMMENDED_PRICE - (IIPA.STANDARD_PRICE * 1.1))) / IIPA.RECOMMENDED_PRICE * 100, 0)
+					ELSE TRUNCATE(((IIPA.RECOMMENDED_PRICE - IIPA.STANDARD_PRICE)) / IIPA.RECOMMENDED_PRICE * 100, 0)
+				END AS MARGIN_RATE
+			, IFNULL( CASE WHEN  II.ERP_IF_YN = 'Y'  THEN II.ERP_ITEM_BARCODE
+		    			ELSE  II.ITEM_BARCODE
+						END , '')                          AS  IL_ITEM_BARCODE               /*품목바코드*/
+		    , II.ITEM_NM                                   AS  ITEM_NAME                     /*마스터 품목명*/
+		    , II.ERP_IF_YN                                 AS  ERP_IF_YN                     /*ERP 연동여부*/
+		    , II.ITEM_TP                                   AS  ITEM_TYPE                     /*마스터 품목유형*/
+		    , FN_COMN_CODE_DIC(II.ITEM_TP)				  AS  ITEM_TYPE_NAME				 /*마스터 품목유형명 */
+		    , UC.COMP_NM                                   AS  SUPPLIER_NAME                 /*공급업체*/
+			, GROUP_CONCAT(UW.WAREHOUSE_NAME separator '&lt;br&gt;') AS  WAREHOUSE_NAME            /*출고처명*/
+		    , CASE
+				WHEN APPR_STAT = 'APPR_STAT.REQUEST' THEN IIP.STANDARD_PRICE  /*목록 조회 시점 원가*/
+				WHEN APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN IIP.STANDARD_PRICE  /*목록 조회 시점 원가*/
+				ELSE IIPA.STANDARD_PRICE_CHG  /*상태 처리 시점 원가*/
+			END AS STANDARD_PRICE_CHG
+			, CASE
+				WHEN APPR_STAT = 'APPR_STAT.REQUEST' THEN IIP.RECOMMENDED_PRICE  /*목록 조회 시점 정상가*/
+				WHEN APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN IIP.RECOMMENDED_PRICE  /*목록 조회 시점 정상가*/
+				ELSE IIPA.RECOMMENDED_PRICE_CHG  /*상태 처리 시점 정상가*/
+			END AS RECOMMENDED_PRICE_CHG
+			, CASE
+				WHEN APPR_STAT = 'APPR_STAT.REQUEST' OR APPR_STAT = 'APPR_STAT.SUB_APPROVED'    /*목록 조회 시점*/
+				THEN
+					CASE
+		              WHEN II.TAX_YN = 'Y' THEN TRUNCATE(((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.1))) / IIP.RECOMMENDED_PRICE * 100, 0)
+		              ELSE TRUNCATE(((IIP.RECOMMENDED_PRICE - IIP.STANDARD_PRICE)) / IIP.RECOMMENDED_PRICE * 100, 0)
+		            END
+				ELSE /*상태 처리 시점*/
+					CASE
+		              WHEN II.TAX_YN = 'Y' THEN TRUNCATE(((IIPA.RECOMMENDED_PRICE_CHG - (IIPA.STANDARD_PRICE_CHG * 1.1))) / IIPA.RECOMMENDED_PRICE_CHG * 100, 0)
+		              ELSE TRUNCATE(((IIPA.RECOMMENDED_PRICE_CHG - IIPA.STANDARD_PRICE_CHG)) / IIPA.RECOMMENDED_PRICE_CHG * 100, 0)
+		            END
+			END AS MARGIN_RATE_CHG
+			, IIPA.APPR_STAT
+			, FN_COMN_CODE_DIC(IIPA.APPR_STAT) AS APPR_STAT_NAME
+			, REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID
+			, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+			, IIPA.APPR_REQ_DT AS APPROVAL_REQUEST_DT
+			, SUBUU.LOGIN_ID AS APPROVAL_SUB_USER_ID
+			, FN_DECRYPT(SUBUU.USER_NM) AS APPROVAL_SUB_USER_NAME
+			, SUBGUU.LOGIN_ID AS APPROVAL_SUB_GRANT_USER_ID
+			, FN_DECRYPT(SUBGUU.USER_NM) AS APPROVAL_SUB_GRANT_USER_NAME
+			, SUBCHG.LOGIN_ID AS APPROVAL_SUB_CHANGE_USER_ID
+			, FN_DECRYPT(SUBCHG.USER_NM) AS APPROVAL_SUB_CHANGE_USER_NAME
+			, IIPA.APPR_SUB_CHG_DT AS APPROVAL_SUB_CHANGE_DT
+			, APPRUU.LOGIN_ID AS APPROVAL_USER_ID
+			, FN_DECRYPT(APPRUU.USER_NM) AS APPROVAL_USER_NAME
+			, APPRGUU.LOGIN_ID AS APPROVAL_GRANT_USER_ID
+			, FN_DECRYPT(APPRGUU.USER_NM) AS APPROVAL_GRANT_USER_NAME
+			, CHGUU.LOGIN_ID AS APPROVAL_CHANGE_USER_ID
+			, FN_DECRYPT(CHGUU.USER_NM) AS APPROVAL_CHANGE_USER_NAME
+			, IIPA.APPR_CHG_DT AS APPROVAL_CHANGE_DT
+			, CASE
+				WHEN IIPA.APPR_STAT = 'APPR_STAT.DENIED' THEN IFNULL((
+					SELECT
+						STATUS_CMNT
+					FROM
+						IL_ITEM_PRICE_APPR_STATUS_HISTORY IIPASH
+					WHERE
+						IIPASH.IL_ITEM_PRICE_APPR_ID = IIPA.IL_ITEM_PRICE_APPR_ID
+						AND IIPASH.APPR_STAT = 'APPR_STAT.DENIED'
+					ORDER BY IIPASH.IL_ITEM_PRICE_APPR_STATUS_HISTORY_ID DESC
+					LIMIT 1
+				), '')
+				ELSE ''
+			END AS APPR_STAT_CMNT
+		FROM IL_ITEM_PRICE_APPR IIPA
+		INNER JOIN IL_ITEM II
+			ON II.IL_ITEM_CD = IIPA.IL_ITEM_CD
+		INNER JOIN UR_SUPPLIER US
+			ON II.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC
+			ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		INNER JOIN (
+					SELECT  T3.IL_ITEM_CD       AS  IL_ITEM_CD
+						, T1.WAREHOUSE_NM     AS  WAREHOUSE_NAME
+						, T1.UR_WAREHOUSE_ID  AS  UR_WAREHOUSE_ID
+					FROM UR_WAREHOUSE   T1
+					INNER JOIN UR_SUPPLIER_WAREHOUSE       T2
+		            	ON  T1.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID
+					INNER JOIN IL_ITEM_WAREHOUSE  T3
+		            	ON T2.UR_SUPPLIER_WAREHOUSE_ID = T3.UR_SUPPLIER_WAREHOUSE_ID
+				) UW
+			ON IIPA.IL_ITEM_CD = UW.IL_ITEM_CD
+		INNER JOIN IL_ITEM_PRICE IIP
+			ON IIP.IL_ITEM_CD = II.IL_ITEM_CD
+			AND NOW() BETWEEN IIP.START_DT AND IIP.END_DT
+		LEFT OUTER JOIN UR_USER SUBUU
+			ON IIPA.APPR_SUB_USER_ID = SUBUU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+			ON IIPA.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+		LEFT JOIN UR_EMPLOYEE SUBGUE
+			ON SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+			AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+			AND SUBUE.GRANT_AUTH_USER_ID = SUBGUE.UR_USER_ID
+			AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+		LEFT JOIN UR_USER SUBGUU
+			ON SUBGUE.UR_USER_ID = SUBGUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER SUBCHG
+			ON IIPA.APPR_SUB_CHG_USER_ID = SUBCHG.UR_USER_ID
+		LEFT OUTER JOIN UR_USER APPRUU
+			ON IIPA.APPR_USER_ID = APPRUU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE APPRUE
+			ON IIPA.APPR_USER_ID = APPRUE.UR_USER_ID
+		LEFT JOIN UR_EMPLOYEE APPRGUE
+			ON APPRUE.GRANT_AUTH_USER_ID IS NOT NULL
+			AND APPRUE.GRANT_AUTH_STOP_YN = 'N'
+			AND APPRUE.GRANT_AUTH_USER_ID = APPRGUE.UR_USER_ID
+			AND CURDATE() BETWEEN APPRUE.GRANT_AUTH_START_DT AND APPRUE.GRANT_AUTH_END_DT
+		LEFT JOIN UR_USER APPRGUU
+			ON APPRGUE.UR_USER_ID = APPRGUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER CHGUU
+			ON IIPA.APPR_CHG_USER_ID = CHGUU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER REQUU
+			ON IIPA.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE
+			IIPA.APPR_STAT != 'APPR_STAT.DISPOSAL'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(selectConditionType)">
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, "singleSection")'> <!-- 단일조건 검색 -->
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+                        <choose>
+                            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '1')"> <!-- 품목 코드 -->
+                                AND II.IL_ITEM_CD IN
+                                <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                    #{data}
+                                </foreach>
+                            </when>
+                            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '2')"> <!-- 품목 바코드 -->
+                                AND (
+                                    II.ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                    OR II.ERP_ITEM_BARCODE IN
+                                    <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+                                        #{data}
+                                    </foreach>
+                                )
+                            </when>
+                        </choose>
+                    </if>
+                </when>
+                <otherwise> <!-- 복수조건 검색 -->
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+                        AND II.ITEM_NM LIKE CONCAT('%', #{itemName}, '%')
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+                        AND II.UR_SUPPLIER_ID = #{urSupplierId}
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+                        AND UW.UR_WAREHOUSE_ID = #{warehouseId}
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUserType)">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUser)">
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'ID')">
+                                    AND REQUU.LOGIN_ID = #{searchApprReqUser}
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'NAME')">
+                                    AND FN_DECRYPT(REQUU.USER_NM) = #{searchApprReqUser}
+                                </when>
+                            </choose>
+                        </if>
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUserType)">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUser)">
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'ID')">
+                                    AND (
+                                    SUBUU.LOGIN_ID = #{searchApprChgUser}
+                                    OR
+                                    APPRUU.LOGIN_ID = #{searchApprChgUser}
+                                    OR
+									SUBGUU.LOGIN_ID = #{searchApprChgUser}
+									OR
+									APPRGUU.LOGIN_ID = #{searchApprChgUser}
+                                    )
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'NAME')">
+                                    AND (
+                                    FN_DECRYPT(SUBUU.USER_NM) = #{searchApprChgUser}
+                                    OR
+                                    FN_DECRYPT(APPRUU.USER_NM) = #{searchApprChgUser}
+                                    OR
+									FN_DECRYPT(SUBGUU.USER_NM) = #{searchApprChgUser}
+			                        OR
+									FN_DECRYPT(APPRGUU.USER_NM) = #{searchApprChgUser}
+                                    )
+                                </when>
+                            </choose>
+                        </if>
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchApprovalStatus,'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprovalStatus)">
+                        AND IIPA.APPR_STAT IN
+                        <foreach item="data" index="index" collection="approvalStatusArray" open="(" separator="," close=")">
+                            #{data}
+                        </foreach>
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(masterItemType,'MASTER_ITEM_TYPE.ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterItemType)">
+                        AND II.ITEM_TP IN
+                        <foreach item="data" index="index" collection="masterItemTypeArray" open="(" separator="," close=")">
+                            #{data}
+                        </foreach>
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpLinkIfYn)">
+                        AND II.ERP_IF_YN = #{erpLinkIfYn}
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqStartDate)">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqEndDate)">
+                            AND IIPA.APPR_REQ_DT BETWEEN #{approvalReqStartDate} AND #{approvalReqEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                        </if>
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgStartDate)">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgEndDate)">
+                            AND (
+                            IIPA.APPR_SUB_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                            OR
+                            IIPA.APPR_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                            )
+                        </if>
+                    </if>
+                </otherwise>
+            </choose>
+            </if>
+        GROUP BY IIPA.IL_ITEM_PRICE_APPR_ID
+        ORDER BY IIPA.APPR_REQ_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목가격 상태이력 등록
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.22		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemPriceStatusHistory">
+		/*	goodsItem.addItemPriceStatusHistory */
+		INSERT INTO IL_ITEM_PRICE_APPR_STATUS_HISTORY
+		(
+			IL_ITEM_PRICE_APPR_ID
+			<!-- , STATUS -->
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+			, STATUS_CMNT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+			, PREV_APPR_STAT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+			, APPR_STAT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			, APPR_SUB_USER_ID
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			, APPR_USER_ID
+			</if>
+			, CREATE_DT
+			, CREATE_ID
+		)
+		VALUES
+		(
+			#{taskPk}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+			,#{statusComment}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+			,#{prevApprStat}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+			,#{apprStat}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			,#{apprSubUserId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			,#{apprUserId}
+			</if>
+			,NOW()
+			,#{userVo.userId}
+		)
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목가격 승인 요청철회
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.22		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putCancelRequestApprovalItemPrice">
+		/*	goodsItem.putCancelRequestApprovalItemPrice	*/
+		UPDATE IL_ITEM_PRICE_APPR T1
+		SET
+			APPR_STAT = #{apprStat}
+			, APPR_SUB_USER_ID = null
+			, APPR_SUB_CHG_USER_ID = null
+			, APPR_SUB_CHG_DT = null
+			, APPR_USER_ID = null
+			, APPR_CHG_USER_ID = null
+			, APPR_CHG_DT = null
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+			, STANDARD_PRICE_CHG = IFNULL((
+				SELECT
+					STANDARD_PRICE
+				FROM IL_ITEM_PRICE
+				WHERE
+					IL_ITEM_CD = T1.IL_ITEM_CD
+					AND NOW() BETWEEN START_DT AND END_DT
+				LIMIT 1
+			), 0)
+			, RECOMMENDED_PRICE_CHG = IFNULL((
+				SELECT
+					RECOMMENDED_PRICE
+				FROM IL_ITEM_PRICE
+				WHERE
+					IL_ITEM_CD = T1.IL_ITEM_CD
+					AND NOW() BETWEEN START_DT AND END_DT
+				LIMIT 1
+			), 0)
+		WHERE
+			T1.IL_ITEM_PRICE_APPR_ID = #{taskPk}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목가격 승인처리
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.22		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putApprovalProcessItemPrice">
+		/*	goodsItem.putApprovalProcessItemPrice	*/
+		UPDATE IL_ITEM_PRICE_APPR IIPA
+		SET
+			APPR_STAT = #{apprStat}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.SUB_APPROVED')">
+			, APPR_SUB_CHG_DT = NOW()
+			, APPR_SUB_CHG_USER_ID = #{userVo.userId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.APPROVED')">
+			, APPR_CHG_DT = NOW()
+			, APPR_CHG_USER_ID = #{userVo.userId}
+			</if>
+			, STANDARD_PRICE_CHG = IFNULL((
+				SELECT
+					STANDARD_PRICE
+				FROM IL_ITEM_PRICE
+				WHERE
+					IL_ITEM_CD = IIPA.IL_ITEM_CD
+					AND NOW() BETWEEN START_DT AND END_DT
+				LIMIT 1
+			), 0)
+			, RECOMMENDED_PRICE_CHG = IFNULL((
+				SELECT
+					RECOMMENDED_PRICE
+				FROM IL_ITEM_PRICE
+				WHERE
+					IL_ITEM_CD = IIPA.IL_ITEM_CD
+					AND NOW() BETWEEN START_DT AND END_DT
+				LIMIT 1
+			), 0)
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+		WHERE
+			IIPA.IL_ITEM_PRICE_APPR_ID = #{taskPk}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목가격 폐기처리
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.23		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putDisposalApprovalItemPrice">
+		/*	goodsItem.putDisposalApprovalItemPrice	*/
+		UPDATE IL_ITEM_PRICE_APPR
+		SET
+			APPR_STAT = #{apprStat}
+			, MODIFY_DT = NOW()
+			, MODIFY_ID = #{userVo.userId}
+			, APPR_DISPOSAL_YN = 'Y'
+		WHERE IL_ITEM_PRICE_APPR_ID = #{taskPk}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목가격 승인상태값 변경시, 해당 시점 품목 가격 조회
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.23		박승현	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalItemPriceChangeNowInfo" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.ItemApprovalPriceVo">
+    	/*	approvalAuth.getApprovalItemPriceChangeNowInfo	*/
+    	SELECT
+			IIPA.IL_ITEM_PRICE_APPR_ID
+			, IIPA.IL_ITEM_CD AS IL_ITEM_CD
+			, IIPA.APPR_STAT AS APPR_STAT
+    		, IIP.STANDARD_PRICE AS STANDARD_PRICE_CHG
+			, IIP.RECOMMENDED_PRICE AS RECOMMENDED_PRICE_CHG
+			, CASE
+					WHEN II.TAX_YN = 'Y' THEN TRUNCATE(((IIP.RECOMMENDED_PRICE - (IIP.STANDARD_PRICE * 1.1))) / IIP.RECOMMENDED_PRICE * 100, 0)
+					ELSE TRUNCATE(((IIP.RECOMMENDED_PRICE - IIP.STANDARD_PRICE)) / IIP.RECOMMENDED_PRICE * 100, 0)
+				END AS MARGIN_RATE
+		FROM IL_ITEM_PRICE_APPR IIPA
+		INNER JOIN IL_ITEM II
+			ON II.IL_ITEM_CD = IIPA.IL_ITEM_CD
+		INNER JOIN IL_ITEM_PRICE IIP
+			ON IIP.IL_ITEM_CD = II.IL_ITEM_CD
+			AND NOW() BETWEEN IIP.START_DT AND IIP.END_DT
+		WHERE IIPA.IL_ITEM_PRICE_APPR_ID = #{taskPk}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description		: 반려사유 조회
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.14		이원호	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalDeniedInfo" resultType="string">
+        /*	goodsItem.getApprovalDeniedInfo	*/
+        SELECT STATUS_CMNT
+        FROM IL_ITEM_PRICE_APPR_STATUS_HISTORY
+        WHERE IL_ITEM_PRICE_APPR_ID = #{ilItemPriceApprId}
+            AND APPR_STAT = 'APPR_STAT.DENIED'
+        ORDER BY IL_ITEM_PRICE_APPR_STATUS_HISTORY_ID DESC
+        LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목가격(IL_ITEM_PRICE_ORIG) 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		원종한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="selectItemPriceOrigByItemPriceOrigId" resultType="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceOrigVo">
+	/* goodsItem.selectItemPriceOrigByItemPriceOrigId */
+		SELECT
+			IL_ITEM_PRICE_ORIG_ID AS IL_ITEM_PRICE_ORIGINAL_ID
+			, IL_ITEM_CD AS IL_ITEM_CODE
+			, START_DT AS START_DATE
+			, STANDARD_PRICE
+			, RECOMMENDED_PRICE
+			, CREATE_ID
+			, CREATE_DT
+			, MODIFY_ID
+			, MODIFY_DT
+			, SYSTEM_UPDATE_YN
+			, MANAGER_UPDATE_YN
+		FROM IL_ITEM_PRICE_ORIG
+		WHERE
+			IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOrigId}
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자에 의해 설정된 이전 품목가격(IL_ITEM_PRICE_ORIG) 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		원종한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="selectPrevItemPriceOrigByItemPriceOrigId" resultType="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceOrigVo">
+	/* goodsItem.selectPrevItemPriceOrigByItemPriceOrigId */
+		SELECT
+			T1.*
+		FROM (
+			SELECT
+				IL_ITEM_PRICE_ORIG_ID AS IL_ITEM_PRICE_ORIGINAL_ID
+				, IL_ITEM_CD AS IL_ITEM_CODE
+				, START_DT AS START_DATE
+				, STANDARD_PRICE
+				, RECOMMENDED_PRICE
+			FROM IL_ITEM_PRICE_ORIG
+			WHERE
+				IL_ITEM_PRICE_ORIG_ID = (
+					SELECT
+						A.IL_ITEM_PRICE_ORIG_ID
+					FROM IL_ITEM_PRICE_ORIG A
+						INNER JOIN IL_ITEM_PRICE_ORIG B
+							ON B.IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOrigId}
+							AND B.IL_ITEM_CD = A.IL_ITEM_CD
+					WHERE
+						A.MANAGER_UPDATE_YN = 'Y'
+						AND A.START_DT <![CDATA[ < ]]> B.START_DT
+					ORDER BY A.START_DT DESC
+					LIMIT 1
+				)
+			UNION ALL
+			SELECT
+				IL_ITEM_PRICE_ORIG_ID AS IL_ITEM_PRICE_ORIGINAL_ID
+				, IL_ITEM_CD AS IL_ITEM_CODE
+				, START_DT AS START_DATE
+				, STANDARD_PRICE
+				, RECOMMENDED_PRICE
+			FROM IL_ITEM_PRICE_ORIG
+			WHERE
+				IL_ITEM_PRICE_ORIG_ID = (
+					SELECT
+						A.IL_ITEM_PRICE_ORIG_ID
+					FROM IL_ITEM_PRICE_ORIG A
+						INNER JOIN IL_ITEM_PRICE_ORIG B
+							ON B.IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOrigId}
+							AND B.IL_ITEM_CD = A.IL_ITEM_CD
+					ORDER BY A.START_DT ASC
+					LIMIT 1
+				)
+		) T1
+		ORDER BY T1.START_DATE DESC
+		LIMIT 1
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 승인완료건에 대한 품목 가격 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.14		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemPriceOrigByApproval" >
+	/* goodsItem.addItemPriceOrigByApproval */
+		INSERT INTO IL_ITEM_PRICE_ORIG (
+			IL_ITEM_CD         /* 품목 PK    */
+			, START_DT           /* 적용 시작일	*/
+			, STANDARD_PRICE     /* 원가       */
+			, RECOMMENDED_PRICE  /* 정상가     */
+			, CREATE_ID
+			, CREATE_DT
+			, SYSTEM_UPDATE_YN
+			, MANAGER_UPDATE_YN
+		)
+		VALUES(
+			#{ilItemCode}
+			, #{startDate}
+			, #{standardPrice}
+			, #{recommendedPrice}
+			, #{createId}
+			, NOW()
+			, #{systemUpdateYn}
+			, #{managerUpdateYn}
+		)
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 승인완료건에 대한 품목 가격 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		원종한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="updateItemPriceOrigByItemPriceOrigId" >
+	/* goodsItem.updateItemPriceOrigByItemPriceOrigId */
+		UPDATE IL_ITEM_PRICE_ORIG
+		SET
+			STANDARD_PRICE = #{standardPrice}
+			, RECOMMENDED_PRICE = #{recommendedPrice}
+			, MODIFY_ID = #{modifyId}
+			, MODIFY_DT = NOW()
+			, SYSTEM_UPDATE_YN = #{systemUpdateYn}
+			, MANAGER_UPDATE_YN = #{managerUpdateYn}
+		WHERE
+			IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOriginalId}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 승인완료시 원가 보정된 품목가격 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		원종한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovedItemPriceOrigInfo" resultType="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceOrigVo">
+	/* goodsItem.getApprovedItemPriceOrigInfo */
+		SELECT
+			IFNULL(IIPO.IL_ITEM_PRICE_ORIG_ID, 0) AS IL_ITEM_PRICE_ORIGINAL_ID
+			, IIPA.IL_ITEM_CD AS IL_ITEM_CODE
+			, IIPA.START_DT AS START_DATE
+			, CASE
+				WHEN
+					ITEM.ERP_IF_YN = 'Y'
+					AND (
+						SUPPLIER.SUPPLIER_CD = 'FM'
+						OR (
+							ITEM.ERP_REGAL_CD = 'PGS'
+							AND ITEM.ERP_PRODUCT_TP = '상품'
+							AND SUPPLIER.SUPPLIER_CD IN ('FD', 'DM', 'PG', 'CA')
+						)
+						OR (
+							ITEM.ERP_REGAL_CD = 'PGS'
+							AND ITEM.ERP_PRODUCT_TP = '제품'
+							AND SUPPLIER.SUPPLIER_CD = 'FD'
+						)
+					) THEN PRICE.STANDARD_PRICE
+				ELSE IIPA.STANDARD_PRICE
+			END AS STANDARD_PRICE
+			, IIPA.RECOMMENDED_PRICE AS RECOMMENDED_PRICE
+			, IIPA.APPR_REQ_USER_ID AS CREATE_ID
+			, IIPA.APPR_REQ_USER_ID AS MODIFY_ID
+			, IIPO.SYSTEM_UPDATE_YN AS SYSTEM_UPDATE_YN
+			, IIPO.MANAGER_UPDATE_YN AS MANAGER_UPDATE_YN
+		FROM IL_ITEM_PRICE_APPR IIPA
+			INNER JOIN IL_ITEM ITEM
+				ON ITEM.IL_ITEM_CD = IIPA.IL_ITEM_CD
+			INNER JOIN IL_ITEM_PRICE PRICE
+				ON PRICE.IL_ITEM_CD = ITEM.IL_ITEM_CD
+				AND IIPA.START_DT BETWEEN PRICE.START_DT AND PRICE.END_DT
+			INNER JOIN UR_SUPPLIER SUPPLIER
+				ON SUPPLIER.UR_SUPPLIER_ID = ITEM.UR_SUPPLIER_ID
+			LEFT JOIN IL_ITEM_PRICE_ORIG IIPO
+				ON IIPO.IL_ITEM_CD = IIPA.IL_ITEM_CD
+				AND IIPO.START_DT = IIPA.START_DT
+		WHERE
+			IIPA.IL_ITEM_PRICE_APPR_ID = #{taskPk}
+		LIMIT 1
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 승인완료건에 의해 보정해야할 필요가 있는 미래 품목가격 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		원종한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemPriceOrigInfoForApprovalSync" resultType="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceOrigVo">
+	/* goodsItem.getItemPriceOrigInfoForApprovalSync */
+		SELECT
+			IIPO.IL_ITEM_PRICE_ORIG_ID AS IL_ITEM_PRICE_ORIGINAL_ID
+			, IIPO.IL_ITEM_CD AS IL_ITEM_CODE
+			, IIPO.START_DT AS START_DATE
+			, IIPO.STANDARD_PRICE AS STANDARD_PRICE
+			, #{recommendedPrice} AS RECOMMENDED_PRICE
+			, IIPO.SYSTEM_UPDATE_YN AS SYSTEM_UPDATE_YN
+			, IIPO.MANAGER_UPDATE_YN AS MANAGER_UPDATE_YN
+			, IIPO.MODIFY_ID = #{modifyId}
+			, IIPO.MODIFY_DT = NOW()
+		FROM IL_ITEM_PRICE_ORIG IIPO
+			INNER JOIN IL_ITEM ITEM
+				ON ITEM.IL_ITEM_CD = IIPO.IL_ITEM_CD
+			INNER JOIN UR_SUPPLIER SUPPLIER
+				ON SUPPLIER.UR_SUPPLIER_ID = ITEM.UR_SUPPLIER_ID
+		WHERE
+			IIPO.IL_ITEM_CD = #{ilItemCode}
+			AND ITEM.ERP_IF_YN = 'Y'
+			AND (
+				SUPPLIER.SUPPLIER_CD = 'FM'
+				OR (
+					ITEM.ERP_REGAL_CD = 'PGS'
+					AND ITEM.ERP_PRODUCT_TP = '상품'
+					AND SUPPLIER.SUPPLIER_CD IN ('FD', 'DM', 'PG', 'CA')
+				)
+				OR (
+					ITEM.ERP_REGAL_CD = 'PGS'
+					AND ITEM.ERP_PRODUCT_TP = '제품'
+					AND SUPPLIER.SUPPLIER_CD = 'FD'
+				)
+			)
+			AND IIPO.RECOMMENDED_PRICE != #{recommendedPrice}
+			AND IIPO.START_DT <![CDATA[ >= ]]> CURRENT_DATE()
+			AND IIPO.START_DT <![CDATA[ > ]]> #{startDate}
+			AND IIPO.START_DT <![CDATA[ < ]]> IFNULL((
+				SELECT
+					MIN(START_DT) AS START_DT
+				FROM IL_ITEM_PRICE_ORIG
+				WHERE
+					IL_ITEM_CD = #{ilItemCode}
+					AND MANAGER_UPDATE_YN = 'Y'
+					AND START_DT <![CDATA[ > ]]> #{startDate}
+			), '2999-12-31')
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목가격 삭제에 의해 보정해야할 필요가 있는 미래 품목가격 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		원종한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getItemPriceOrigInfoForDeleteSync" resultType="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceOrigVo">
+        /* goodsItem.getItemPriceOrigInfoForDeleteSync */
+		SELECT
+			IIPO.IL_ITEM_PRICE_ORIG_ID AS IL_ITEM_PRICE_ORIGINAL_ID
+			, IIPO.IL_ITEM_CD AS IL_ITEM_CODE
+			, IIPO.START_DT AS START_DATE
+			, IIPO.STANDARD_PRICE AS STANDARD_PRICE
+			, REF.RECOMMENDED_PRICE AS RECOMMENDED_PRICE
+			, IIPO.SYSTEM_UPDATE_YN AS SYSTEM_UPDATE_YN
+			, IIPO.MANAGER_UPDATE_YN AS MANAGER_UPDATE_YN
+			, IIPO.MODIFY_ID = #{modifyId}
+			, IIPO.MODIFY_DT = NOW()
+		FROM IL_ITEM_PRICE_ORIG IIPO
+			INNER JOIN IL_ITEM ITEM
+				ON ITEM.IL_ITEM_CD = IIPO.IL_ITEM_CD
+			INNER JOIN UR_SUPPLIER SUPPLIER
+				ON SUPPLIER.UR_SUPPLIER_ID = ITEM.UR_SUPPLIER_ID
+			, (
+				SELECT
+					T1.*
+				FROM (
+					SELECT
+						IL_ITEM_CD
+						, START_DT
+						, STANDARD_PRICE
+						, RECOMMENDED_PRICE
+					FROM IL_ITEM_PRICE_ORIG
+					WHERE
+						IL_ITEM_PRICE_ORIG_ID = (
+							SELECT
+								A.IL_ITEM_PRICE_ORIG_ID
+							FROM IL_ITEM_PRICE_ORIG A
+								INNER JOIN IL_ITEM_PRICE_ORIG B
+									ON B.IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOrigId}
+									AND B.IL_ITEM_CD = A.IL_ITEM_CD
+							WHERE
+								A.MANAGER_UPDATE_YN = 'Y'
+								AND A.START_DT <![CDATA[ < ]]> B.START_DT
+							ORDER BY A.START_DT DESC
+							LIMIT 1
+						)
+					UNION ALL
+					SELECT
+						IL_ITEM_CD
+						, START_DT
+						, STANDARD_PRICE
+						, RECOMMENDED_PRICE
+					FROM IL_ITEM_PRICE_ORIG
+					WHERE
+						IL_ITEM_PRICE_ORIG_ID = (
+							SELECT
+								A.IL_ITEM_PRICE_ORIG_ID
+							FROM IL_ITEM_PRICE_ORIG A
+								INNER JOIN IL_ITEM_PRICE_ORIG B
+									ON B.IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOrigId}
+									AND B.IL_ITEM_CD = A.IL_ITEM_CD
+							ORDER BY A.START_DT ASC
+							LIMIT 1
+						)
+				) T1
+				ORDER BY T1.START_DT DESC
+				LIMIT 1
+			) REF
+		WHERE
+			IIPO.IL_ITEM_CD = #{ilItemCode}
+			AND ITEM.ERP_IF_YN = 'Y'
+			AND (
+				SUPPLIER.SUPPLIER_CD = 'FM'
+				OR (
+					ITEM.ERP_REGAL_CD = 'PGS'
+					AND ITEM.ERP_PRODUCT_TP = '상품'
+					AND SUPPLIER.SUPPLIER_CD IN ('FD', 'DM', 'PG', 'CA')
+				)
+				OR (
+					ITEM.ERP_REGAL_CD = 'PGS'
+					AND ITEM.ERP_PRODUCT_TP = '제품'
+					AND SUPPLIER.SUPPLIER_CD = 'FD'
+				)
+			)
+			AND IIPO.IL_ITEM_PRICE_ORIG_ID != #{ilItemPriceOrigId}
+			AND IIPO.RECOMMENDED_PRICE != REF.RECOMMENDED_PRICE
+			AND IIPO.START_DT <![CDATA[ >= ]]> CURRENT_DATE()
+			AND IIPO.START_DT <![CDATA[ > ]]> REF.START_DT
+			AND IIPO.START_DT <![CDATA[ < ]]> IFNULL((
+				SELECT
+					MIN(START_DT) AS START_DT
+				FROM IL_ITEM_PRICE_ORIG
+				WHERE
+					IL_ITEM_CD = #{ilItemCode}
+					AND MANAGER_UPDATE_YN = 'Y'
+					AND START_DT <![CDATA[ > ]]> #{startDate}
+			), '2999-12-31')
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목가격정보 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.17		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="delItemPriceOrigByItemPriceOrigId" >
+        /* goodsItem.delItemPriceOrigByItemPriceOrigId */
+        DELETE FROM IL_ITEM_PRICE_ORIG
+        WHERE IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOrigId}
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description		: 품목 가격 승인 정보 저장
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.17		이원호	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemPriceApprove" parameterType="kr.co.pulmuone.v1.goods.item.dto.ItemPriceApprovalRequestDto" useGeneratedKeys="true" keyProperty="ilItemPriceApprId">
+        /*	goodsItem.addItemPriceApprove	*/
+        INSERT INTO IL_ITEM_PRICE_APPR (
+            IL_ITEM_CD, START_DT, STANDARD_PRICE, STANDARD_PRICE_CHG, RECOMMENDED_PRICE,
+            RECOMMENDED_PRICE_CHG, PRICE_MANAGE_TP, APPR_STAT, APPR_REQ_DT, APPR_REQ_USER_ID,
+            APPR_SUB_USER_ID, APPR_USER_ID, CREATE_DT, CREATE_ID)
+        VALUES(
+            #{ilItemCode}, #{priceApplyStartDate}, #{standardPrice}, #{standardPriceChange}, #{recommendedPrice},
+            #{recommendedPriceChange}, #{priceManageTp}, #{approvalStatus}, CURRENT_TIMESTAMP, #{approvalRequestUserId},
+            #{approvalSubUserId}, #{approvalUserId}, CURRENT_TIMESTAMP, #{createId}
+        )
+    </insert>
+
+</mapper>

@@ -1,0 +1,965 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.buyer.UserBuyerMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 이메일 중복 체크
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.03		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="checkDuplicateMail" resultType="int">
+		/*	buyer.checkDuplicateMail  */
+		SELECT
+			COUNT(*)
+		FROM(
+				SELECT
+					MAIL
+				FROM
+					UR_BUYER
+				WHERE
+				    LOWER_MAIL = (SELECT FN_ENCRYPT (LOWER(#{mail})))
+					AND UR_USER_ID != #{urUserId}
+			UNION
+				SELECT
+					MAIL
+				FROM
+					UR_BUYER_MOVE
+				WHERE
+					LOWER_MAIL = (SELECT FN_ENCRYPT (LOWER(#{mail})))
+					AND UR_USER_ID != #{urUserId}
+			) A
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 환불계좌 관리 -  상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.08		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getRefundBankResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.CommonGetRefundBankResultVo">
+		<result column="UR_REFUND_BANK_ID" property="urRefundBankId" />
+		<result column="BANK_CD" property="bankCode" />
+		<result column="BANK_NM" property="bankName" />
+		<result column="HOLDER_NM" property="holderName" />
+		<result column="ACCT_NO" property="accountNumber" />
+	</resultMap>
+	<select id="getRefundBank" resultMap="getRefundBankResultMap">
+		/*	buyer.getRefundBank	*/
+		SELECT
+			A.UR_REFUND_BANK_ID
+			,A.BANK_CD
+			,FN_COMN_CODE_DIC(A.BANK_CD) AS BANK_NM
+			,FN_DECRYPT(A.HOLDER_NM) AS HOLDER_NM
+		  	,FN_DECRYPT(A.ACCT_NO) AS ACCT_NO
+		FROM
+			UR_REFUND_BANK A
+		WHERE
+			A.UR_USER_ID = #{urUserId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 환불계좌 관리 -  추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.08		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addRefundBank">
+		/*	buyer.addRefundBank	*/
+		INSERT INTO UR_REFUND_BANK (
+		  UR_USER_ID,
+		  BANK_CD,
+		  ACCT_NO,
+		  HOLDER_NM
+		)
+		VALUES
+		  (
+		    #{urUserId},
+		    #{bankCode},
+		    FN_ENCRYPT(#{accountNumber}),
+		    FN_ENCRYPT(#{holderName})
+		  )
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 환불계좌 관리 -  수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.08		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putRefundBank">
+		/*	buyer.putRefundBank	*/
+		UPDATE
+		  UR_REFUND_BANK
+		SET
+		  BANK_CD = #{bankCode},
+		  ACCT_NO =  FN_ENCRYPT(#{accountNumber}),
+		  HOLDER_NM = FN_ENCRYPT(#{holderName})
+		WHERE
+			UR_REFUND_BANK_ID = #{urRefundBankId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @ 2021.02.01		최윤지			배송요청사항, 배송출입정보 추가
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getShippingAddressListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.CommonGetShippingAddressListResultVo">
+		<result column="UR_SHIPPING_ADDR_ID" property="urShippingAddrId" />
+		<result column="SHIPPING_NM" property="shippingName" />
+		<result column="RECEIVER_NM" property="receiverName" />
+		<result column="RECEIVER_MO" property="receiverMobile" />
+		<result column="RECEIVER_ZIP_CD" property="receiverZipCode" />
+		<result column="RECEIVER_ADDR1" property="receiverAddress1" />
+		<result column="RECEIVER_ADDR2" property="receiverAddress2" />
+		<result column="RECEIVER_ADDR" property="receiverAddress" />
+		<result column="DEFAULT_YN" property="defaultYn" />
+		<result column="BUILDING_CD" property="buildingCode" />
+		<result column="SHIPPING_CMNT" property="shippingCmnt" />
+		<result column="ACCESS_INFORMATION_TP" property="accessInformationType" />
+		<result column="ACCESS_INFORMATION_TP_NAME" property="accessInformationTypeName" />
+		<result column="ACCESS_INFORMATION_PASSWORD" property="accessInformationPassword" />
+	</resultMap>
+	<select id="getShippingAddressList" resultMap="getShippingAddressListResultMap">
+		/* buyer.getShippingAddressList */
+		SELECT
+			A.UR_SHIPPING_ADDR_ID
+			,A.SHIPPING_NM
+			,FN_DECRYPT(A.RECEIVER_NM) AS RECEIVER_NM
+			,FN_DECRYPT(A.RECEIVER_MO) AS RECEIVER_MO
+			,FN_DECRYPT(A.RECEIVER_ZIP_CD) AS RECEIVER_ZIP_CD
+			,FN_DECRYPT(A.RECEIVER_ADDR1) AS RECEIVER_ADDR1
+			,FN_DECRYPT(A.RECEIVER_ADDR2) AS RECEIVER_ADDR2
+			,CONCAT(FN_DECRYPT(A.RECEIVER_ADDR1),' ',IFNULL(FN_DECRYPT(A.RECEIVER_ADDR2),'')) AS RECEIVER_ADDR
+			,A.DEFAULT_YN
+			,FN_DECRYPT(A.BUILDING_CD) AS BUILDING_CD
+			,A.SHIPPING_CMNT
+			,ACCESS_INFORMATION_TP
+			,FN_COMN_CODE_DIC(A.ACCESS_INFORMATION_TP) AS ACCESS_INFORMATION_TP_NAME
+			,FN_DECRYPT(A.ACCESS_INFORMATION_PASSWORD) AS ACCESS_INFORMATION_PASSWORD
+		FROM
+			UR_SHIPPING_ADDR A
+		WHERE
+			A.UR_USER_ID = #{urUserId}
+		ORDER BY A.DEFAULT_YN DESC, A.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getShippingAddressListCount" resultType="int">
+		/* buyer.getShippingAddressListCount */
+		SELECT
+			COUNT(*)
+		FROM
+			UR_SHIPPING_ADDR A
+		WHERE
+			A.UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 단일 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getShippingAddressResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.CommonGetShippingAddressResultVo">
+		<result column="UR_SHIPPING_ADDR_ID" property="urShippingAddrId" />
+		<result column="DEFAULT_YN" property="defaultYn" />
+		<result column="SHIPPING_NM" property="shippingName" />
+		<result column="RECEIVER_NM" property="receiverName" />
+		<result column="RECEIVER_MO" property="receiverMobile" />
+		<result column="RECEIVER_TEL" property="receiverTelephone" />
+		<result column="RECEIVER_ZIP_CD" property="receiverZipCode" />
+		<result column="RECEIVER_ADDR1" property="receiverAddress1" />
+		<result column="RECEIVER_ADDR2" property="receiverAddress2" />
+		<result column="BUILDING_CD" property="buildingCode" />
+		<result column="SHIPPING_CMNT" property="shippingComment" />
+		<result column="ACCESS_INFORMATION_TP" property="accessInformationType" />
+		<result column="ACCESS_INFORMATION_NM" property="accessInformationName" />
+		<result column="ACCESS_INFORMATION_PASSWORD" property="accessInformationPassword" />
+	</resultMap>
+	<select id="getShippingAddress" resultMap="getShippingAddressResultMap">
+		/* buyer.getShippingAddress */
+		SELECT
+			A.UR_SHIPPING_ADDR_ID
+			,A.DEFAULT_YN
+			,A.SHIPPING_NM
+			,FN_DECRYPT(A.RECEIVER_NM) AS RECEIVER_NM
+			,FN_DECRYPT(A.RECEIVER_MO) AS RECEIVER_MO
+			,FN_DECRYPT(A.RECEIVER_TEL) AS RECEIVER_TEL
+			,FN_DECRYPT(A.RECEIVER_ZIP_CD) AS RECEIVER_ZIP_CD
+			,FN_DECRYPT(A.RECEIVER_ADDR1) AS RECEIVER_ADDR1
+			,FN_DECRYPT(A.RECEIVER_ADDR2) AS RECEIVER_ADDR2
+			,FN_DECRYPT(A.BUILDING_CD) AS BUILDING_CD
+			,A.SHIPPING_CMNT
+			,ACCESS_INFORMATION_TP
+			,FN_COMN_CODE_DIC(ACCESS_INFORMATION_TP) AS ACCESS_INFORMATION_NM
+			,FN_DECRYPT(A.ACCESS_INFORMATION_PASSWORD) AS ACCESS_INFORMATION_PASSWORD
+		FROM
+			UR_SHIPPING_ADDR A
+		WHERE
+			A.UR_SHIPPING_ADDR_ID = #{urShippingAddrId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putShippingAddress">
+		/* buyer.putShippingAddress */
+		UPDATE UR_SHIPPING_ADDR
+		SET
+			DEFAULT_YN			= #{defaultYn}
+			,RECEIVER_NM		= FN_ENCRYPT(#{receiverName})
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(receiverTelephone)">
+					,RECEIVER_TEL = FN_ENCRYPT(#{receiverTelephone})
+				</when>
+				<otherwise>
+					,RECEIVER_TEL = NULL
+				</otherwise>
+			</choose>
+			,RECEIVER_MO		= FN_ENCRYPT(#{receiverMobile})
+			,RECEIVER_ZIP_CD	= FN_ENCRYPT(#{receiverZipCode})
+			,RECEIVER_ADDR1		= FN_ENCRYPT(#{receiverAddress1})
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(receiverAddress2)">
+					,RECEIVER_ADDR2 = FN_ENCRYPT(#{receiverAddress2})
+				</when>
+				<otherwise>
+					,RECEIVER_ADDR2 = NULL
+				</otherwise>
+			</choose>
+			,BUILDING_CD            =  FN_ENCRYPT(#{buildingCode})
+			,SHIPPING_CMNT 			= #{shippingComment}
+			,ACCESS_INFORMATION_TP	= #{accessInformationType}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(accessInformationPassword)">
+					,ACCESS_INFORMATION_PASSWORD = FN_ENCRYPT(#{accessInformationPassword})
+				</when>
+				<otherwise>
+					,ACCESS_INFORMATION_PASSWORD = NULL
+				</otherwise>
+			</choose>
+		<where>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urShippingAddrId)">
+					UR_SHIPPING_ADDR_ID = #{urShippingAddrId}
+				</when>
+				<otherwise>
+					UR_USER_ID = #{urUserId}
+					AND DEFAULT_YN = 'Y'
+					LIMIT 1
+				</otherwise>
+			</choose>
+		</where>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addShippingAddress">
+		/* buyer.addShippingAddress */
+		INSERT INTO UR_SHIPPING_ADDR(
+			UR_USER_ID
+			,DEFAULT_YN
+			,RECEIVER_NM
+			,RECEIVER_MO
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(receiverTelephone)">
+			,RECEIVER_TEL
+			</if>
+			,RECEIVER_ZIP_CD
+			,RECEIVER_ADDR1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(receiverAddress2)">
+			,RECEIVER_ADDR2
+			</if>
+			,BUILDING_CD
+			,SHIPPING_CMNT
+			,ACCESS_INFORMATION_TP
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(accessInformationPassword)">
+			,ACCESS_INFORMATION_PASSWORD
+			</if>
+		)
+		VALUES(
+			#{urUserId}
+			,#{defaultYn}
+			, (select FN_ENCRYPT(#{receiverName}))
+			, (select FN_ENCRYPT(#{receiverMobile}))
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(receiverTelephone)">
+			, (select FN_ENCRYPT(#{receiverTelephone}))
+			</if>
+			, (select FN_ENCRYPT(#{receiverZipCode}))
+			, (select FN_ENCRYPT(#{receiverAddress1}))
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(receiverAddress2)">
+			,(select FN_ENCRYPT(#{receiverAddress2}))
+			</if>
+			, (select FN_ENCRYPT(#{buildingCode}))
+			,#{shippingComment}
+			,#{accessInformationType}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(accessInformationPassword)">
+			,(select FN_ENCRYPT(#{accessInformationPassword}))
+			</if>
+		)
+
+		<selectKey resultType="long" keyProperty="urShippingAddrId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기존 기본배송지 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putShippingAddressDefault">
+		/* buyer.putShippingAddressDefault */
+		UPDATE UR_SHIPPING_ADDR
+		SET
+			DEFAULT_YN	= 'N'
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 계정약관동의리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getChangeClauseNoAgreeListMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetChangeClauseNoAgreeListResultVo" >
+		<result column="CLAUSE_TITLE"       property="clauseTitle"  />
+		<result column="PS_CLAUSE_GRP_CD" property="psClauseGrpCd"  />
+		<result column="CLAUSE_GRP_NAME"    property="clauseGrpName"  />
+		<result column="EXECUTE_DATE"       property="executeDate"  />
+		<result column="MANDATORY_YN"       property="mandatoryYn"  />
+		<result column="CLAUSE_CONTENT"     property="clauseContent"  />
+		<result column="CLAUSE_INFO"        property="clauseInfo"  />
+	</resultMap>
+	<select id="getChangeClauseNoAgreeList" resultMap="getChangeClauseNoAgreeListMap">
+		/*	buyer.getChangeClauseNoAgreeList  계정약관동의리스트	*/
+		SELECT CLAUSE.* FROM (
+			SELECT
+			        PCG.CLAUSE_TITLE
+						 , PCG.PS_CLAUSE_GRP_CD
+						, PCG.CLAUSE_GRP_NM      AS  CLAUSE_GRP_NAME
+						, T1.EXECUTE_DT          AS EXECUTE_DATE
+						, PCG.MANDATORY_YN
+						,T1.CONTENT              AS  CLAUSE_CONTENT
+						,T1.CLAUSE_INFO
+					FROM
+						PS_CLAUSE_GRP PCG
+					INNER JOIN (
+							SELECT
+								PS_CLAUSE_GRP_CD, EXECUTE_DT, CONTENT,CLAUSE_DESCRIPTION,CLAUSE_INFO,MANDATORY_YN
+							FROM
+								(
+									SELECT
+										PS_CLAUSE_GRP_CD, EXECUTE_DT, CONTENT ,CLAUSE_INFO,CLAUSE_DESCRIPTION,MANDATORY_YN, ROW_NUMBER() OVER(
+											PARTITION BY PS_CLAUSE_GRP_CD
+										ORDER BY
+											EXECUTE_DT DESC
+										) AS RANKING
+									FROM
+										PS_CLAUSE
+								) T
+							WHERE RANKING = 1
+						) T1 ON PCG.PS_CLAUSE_GRP_CD =T1.PS_CLAUSE_GRP_CD
+					WHERE PCG.USE_YN = 'Y'
+					AND EXECUTE_DT <![CDATA[ < ]]>     NOW()
+					AND T1.MANDATORY_YN ='Y'
+					AND PCG.MANDATORY_YN='Y'
+
+		) CLAUSE
+		LEFT JOIN UR_CLAUSE_AGREE_LOG AGREE ON ( CLAUSE.PS_CLAUSE_GRP_CD = AGREE.PS_CLAUSE_GRP_CD AND CLAUSE.EXECUTE_DATE = AGREE.EXECUTE_DT AND AGREE.UR_USER_ID = #{urUserId} )
+		WHERE AGREE.UR_USER_ID IS NULL
+		ORDER BY CASE WHEN CLAUSE.PS_CLAUSE_GRP_CD = 'TERMS_CONDITIONS_SERVICE' THEN 1
+			          WHEN CLAUSE.PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY' THEN 2
+			          WHEN CLAUSE.PS_CLAUSE_GRP_CD = 'MARKETING_RECEIPT_AGREEMENT' THEN 3 ELSE 4
+			          END
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 광고성 수신 SMS 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putMaketingReceiptAgreementSms" parameterType="String" >
+		/*	buyer.putMaketingReceiptAgreementSms 	*/
+		UPDATE UR_BUYER
+			SET SMS_YN_DT = NOW()
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 광고성 수신 EMAIL 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putMaketingReceiptAgreementMail" parameterType="String">
+		/*	buyer.putMaketingReceiptAgreementMail  	*/
+		UPDATE UR_BUYER
+			SET  MAIL_YN_DT = NOW()
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기본배송지 주소
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBasicShippingAddressMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetShippingAddressListResultVo" >
+		<result column="UR_SHIPPING_ADDR_ID" property="shippingAddressId" />
+		<result column="RECEIVER_NM" property="receiverName" />
+		<result column="RECEIVER_ZIP_CD" property="receiverZipCode" />
+		<result column="RECEIVER_ADDR1" property="receiverAddress1" />
+		<result column="RECEIVER_ADDR2" property="receiverAddress2" />
+		<result column="BUILDING_CODE" property="buildingCode" />
+		<result column="RECEIVER_MO" property="receiverMobile" />
+		<result column="ACCESS_INFORMATION_TYPE" property="accessInformationType" />
+		<result column="ACCESS_INFORMATION_PASSWORD" property="accessInformationPassword" />
+		<result column="SHIPPING_COMMENT" property="shippingComment" />
+	</resultMap>
+	<select id="getBasicShippingAddress" parameterType="String" resultMap="getBasicShippingAddressMap" >
+		/*	buyer.getBasicShippingAddress  기본배송지 주소	*/
+		SELECT
+			A.UR_SHIPPING_ADDR_ID
+			, FN_DECRYPT(A.RECEIVER_NM) AS RECEIVER_NM
+			, FN_DECRYPT(A.RECEIVER_ZIP_CD) AS RECEIVER_ZIP_CD
+			, FN_DECRYPT(A.RECEIVER_ADDR1) AS RECEIVER_ADDR1
+			, FN_DECRYPT(A.RECEIVER_ADDR2) AS RECEIVER_ADDR2
+			, FN_DECRYPT(A.BUILDING_CD) AS BUILDING_CODE
+			, FN_DECRYPT(A.RECEIVER_MO) AS RECEIVER_MO
+			, A.ACCESS_INFORMATION_TP AS ACCESS_INFORMATION_TYPE
+			, FN_DECRYPT(A.ACCESS_INFORMATION_PASSWORD)   AS ACCESS_INFORMATION_PASSWORD
+			, A.SHIPPING_CMNT AS SHIPPING_COMMENT
+		FROM
+			UR_SHIPPING_ADDR A
+		WHERE A.UR_USER_ID = #{urUserId}
+		ORDER BY A.DEFAULT_YN DESC, A.CREATE_DT DESC
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getShippingAddressLimitListMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetShippingAddressListResultVo" >
+		<result column="RECEIVER_NM" property="receiverName" />
+		<result column="RECEIVER_ZIP_CD" property="receiverZipCode" />
+		<result column="RECEIVER_ADDR1" property="receiverAddress1" />
+		<result column="RECEIVER_ADDR2" property="receiverAddress2" />
+		<result column="BUILDING_CODE" property="buildingCode" />
+		<result column="RECEIVER_MO" property="receiverMobile" />
+		<result column="ACCESS_INFORMATION_TYPE" property="accessInformationType" />
+		<result column="ACCESS_INFORMATION_PASSWORD" property="accessInformationPassword" />
+		<result column="SHIPPING_COMMENT" property="shippingComment" />
+	</resultMap>
+	<select id="getShippingAddressLimitList" resultMap="getShippingAddressLimitListMap" >
+		/*	buyer.getShippingAddressLimitList  배송지 목록 조회	*/
+		SELECT
+			  FN_DECRYPT(A.RECEIVER_NM) AS RECEIVER_NM
+			, FN_DECRYPT(A.RECEIVER_ZIP_CD) AS RECEIVER_ZIP_CD
+			, FN_DECRYPT(A.RECEIVER_ADDR1) AS RECEIVER_ADDR1
+			, FN_DECRYPT(A.RECEIVER_ADDR2) AS RECEIVER_ADDR2
+			, FN_DECRYPT(A.BUILDING_CD) AS BUILDING_CODE
+			, FN_DECRYPT(A.RECEIVER_MO) AS RECEIVER_MO
+			, A.ACCESS_INFORMATION_TP AS ACCESS_INFORMATION_TYPE
+			, FN_DECRYPT(A.ACCESS_INFORMATION_PASSWORD) AS ACCESS_INFORMATION_PASSWORD
+			, A.SHIPPING_CMNT AS SHIPPING_COMMENT
+		FROM
+			UR_SHIPPING_ADDR A
+		WHERE A.UR_USER_ID = #{urUserId}
+		ORDER BY A.DEFAULT_YN DESC, A.CREATE_DT DESC
+		LIMIT 0, #{limitCount}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 검색어 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.16		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserSearchWordLog" parameterType="java.util.ArrayList">
+		/*	buyer.delUserSearchWordLog	*/
+		DELETE
+		FROM UR_USER_SEARCH_WORD_LOG
+		WHERE
+		UR_USER_SEARCH_WORD_LOG_ID IN
+		<foreach collection="list" item="urUserSearchWordLogId" separator="," open="(" close=")">
+			#{urUserSearchWordLogId}
+		</foreach>
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 최근검색어 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserSearchWordLogListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetSearchWordResultVo">
+		<result column="UR_USER_SEARCH_WORD_LOG_ID" property="urUserSearchWordLogId" />
+		<result column="SEARCH_WORD" property="searchWord" />
+	</resultMap>
+	<select id="getUserSearchWordLogList" resultMap="getUserSearchWordLogListResultMap">
+		/*	buyer.getUserSearchWordLogList  */
+		SELECT
+			UR_USER_SEARCH_WORD_LOG_ID
+			,SEARCH_WORD
+		FROM
+			UR_USER_SEARCH_WORD_LOG
+		WHERE
+			UR_USER_ID = #{urUserId}
+		ORDER BY CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 최근검색어 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUserSearchWordLog">
+		/*	buyer.addUserSearchWordLog  */
+		INSERT INTO UR_USER_SEARCH_WORD_LOG(
+			UR_USER_ID
+			,SEARCH_WORD
+		) VALUES(
+			#{urUserId}
+			,#{keyword}
+		)
+		ON DUPLICATE KEY UPDATE
+    		CREATE_DT = NOW()
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 신규회원특가 쿠폰 조회 - 회원
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.03		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNewBuyerSpecialsCouponByUser" resultType="integer">
+		/*	buyer.getNewBuyerSpecialsCouponByUser	*/
+		SELECT
+			PC.DISCOUNT_VAL AS SALE_PRICE
+		FROM
+			PM_COUPON PC
+			JOIN PM_COUPON_COVERAGE PCC ON PC.PM_COUPON_ID = PCC.PM_COUPON_ID
+			JOIN PM_COUPON_ISSUE PCI ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+		WHERE
+			PCC.COVERAGE_ID = #{ilGoodsId}
+			AND PCI.UR_USER_ID = #{urUserId}
+			AND PCC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS'
+			AND PCC.INCLUDE_YN = 'Y'
+			AND PC.USE_YN = 'Y'
+			AND PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT'
+			AND PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+			AND NOW() BETWEEN PCI.VALIDITY_START_DT AND PCI.EXPIRATION_DT
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceInfo)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'pc')">
+						AND PC.USE_PC_YN = 'Y'
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'mobile')">
+						AND PC.USE_MO_WEB_YN = 'Y'
+					</when>
+				</choose>
+			</if>
+			<if test="isApp">
+				AND PC.USE_MO_APP_YN = 'Y'
+			</if>
+		LIMIT 1
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기존 기본배송지 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delShippingAddress" parameterType="long">
+		/* commonBuyer.delShippingAddress */
+		DELETE FROM UR_SHIPPING_ADDR
+		WHERE  UR_SHIPPING_ADDR_ID = #{urShippingAddrId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기본배송지 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		김경민          최초생성
+	 * @ 2021.02.10		이원호          수정
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putShippingAddressSetDefault">
+		/* commonBuyer.putShippingAddressSetDefault */
+		UPDATE UR_SHIPPING_ADDR
+		SET    DEFAULT_YN	= 'Y'
+		WHERE UR_SHIPPING_ADDR_ID = #{urShippingAddrId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기본배송지 초기화
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.10		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putShippingAddressSetInit">
+		/* commonBuyer.putShippingAddressSetInit */
+		UPDATE UR_SHIPPING_ADDR
+		SET    DEFAULT_YN	= 'N'
+		WHERE  UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지관리 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getShippingAddressListFromMyPageMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.ShippingAddressListFromMyPageResultVo">
+		<result column="UR_SHIPPING_ADDR_ID" property="urShippingAddrId" />
+		<result column="DEFAULT_YN" property="defaultYn" />
+		<result column="SHIPPING_NAME" property="shippingName" />
+		<result column="RECEIVER_NAME" property="receiverName" />
+		<result column="RECEIVER_MOBILE" property="receiverMobile" />
+		<result column="RECEIVER_TEL" property="receiverTelephone" />
+		<result column="RECEIVER_ZIP_CD" property="receiverZipCode" />
+		<result column="RECEIVER_ADDRESS1" property="receiverAddress1" />
+		<result column="RECEIVER_ADDRESS2" property="receiverAddress2" />
+		<result column="BUILDING_CODE" property="buildingCode" />
+		<result column="SHIPPING_COMMENT" property="shippingComment" />
+		<result column="ACCESS_INFORMATION_TYPE" property="accessInformationType" />
+		<result column="ACCESS_INFORMATION_NAME" property="accessInformationName" />
+		<result column="ACCESS_INFORMATION_PASSWORD" property="accessInformationPassword" />
+	</resultMap>
+	<select id="getShippingAddressListFromMyPage" resultMap="getShippingAddressListFromMyPageMap">
+		/* commonBuyer.getShippingAddressListFromMyPage */
+		SELECT
+ 			A.UR_SHIPPING_ADDR_ID
+			,A.DEFAULT_YN
+			,A.SHIPPING_NM                     AS SHIPPING_NAME
+			,FN_DECRYPT( A.RECEIVER_NM )       AS RECEIVER_NAME
+			,FN_DECRYPT( A.RECEIVER_ADDR1 )    AS RECEIVER_ADDRESS1
+			,FN_DECRYPT( A.RECEIVER_ADDR2 )    AS RECEIVER_ADDRESS2
+			,FN_DECRYPT( A.BUILDING_CD)        AS BUILDING_CODE
+			,FN_DECRYPT( A.RECEIVER_MO )       AS RECEIVER_MOBILE
+			,FN_DECRYPT( A.RECEIVER_TEL )      AS RECEIVER_TEL
+			,FN_DECRYPT( A.RECEIVER_ZIP_CD )   AS RECEIVER_ZIP_CD
+			,A.SHIPPING_CMNT                   AS SHIPPING_COMMENT
+			,ACCESS_INFORMATION_TP             AS ACCESS_INFORMATION_TYPE
+			,FN_COMN_CODE_DIC(ACCESS_INFORMATION_TP) AS ACCESS_INFORMATION_NAME
+			,FN_DECRYPT( A.ACCESS_INFORMATION_PASSWORD ) AS ACCESS_INFORMATION_PASSWORD
+		FROM
+			UR_SHIPPING_ADDR A
+		WHERE
+			A.UR_USER_ID = #{urUserId}
+		ORDER BY DEFAULT_YN DESC, UR_SHIPPING_ADDR_ID DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송지 목록에서 주문배송지로 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.01		최윤지          최초생성
+	 * @ 2021.03.24		최윤지			기본배송지 설정 제거
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putShippingAddressIntoOrderShippingZone">
+		/*	buyer.putShippingAddressIntoOrderShippingZone */
+        UPDATE OD_SHIPPING_ZONE OSZ
+        INNER JOIN OD_ORDER OO ON OO.OD_ORDER_ID = OSZ.OD_ORDER_ID
+	 	INNER JOIN UR_SHIPPING_ADDR USA ON USA.UR_USER_ID  = OO.UR_USER_ID
+           SET
+               RECV_NM = FN_ENCRYPT(#{receiverName})
+              ,RECV_HP = FN_ENCRYPT(#{receiverMobile})
+              ,RECV_ZIP_CD = FN_ENCRYPT(#{receiverZipCode})
+              ,RECV_ADDR1 = FN_ENCRYPT(#{receiverAddress1})
+              ,RECV_ADDR2 = FN_ENCRYPT(#{receiverAddress2})
+              ,RECV_BLD_NO = #{buildingCode}
+              ,DELIVERY_MSG = #{shippingComment}
+              ,DOOR_MSG_CD = #{accessInformationType}
+              ,DOOR_MSG = FN_ENCRYPT(#{accessInformationPassword})
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+				,OSZ.UR_STORE_ID = #{urStoreId}
+			</if>
+         WHERE OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+         	AND USA.UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공통코드조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCommonCodeMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.CodeInfoVo">
+		<result column="CODE" property="code" />
+		<result column="NAME" property="name" />
+	</resultMap>
+	<select id="getCommonCode" resultMap="getCommonCodeMap">
+		/* commonBuyer.getShippingAddressInfo */
+	  SELECT A.ST_COMN_CODE_ID AS  CODE
+             ,B.DIC_NM AS NAME
+      FROM ST_COMN_CODE A
+		INNER JOIN GB_DIC B
+        ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+     WHERE A.ST_COMN_CODE_MST_CD = #{stCommonCodeMasterCode}
+       AND A.USE_YN = #{useYn}
+     ORDER BY SORT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 환불계좌 관리 -  삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.01		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delRefundBank">
+		/*	commonBuyer.delRefundBank	*/
+		DELETE FROM UR_REFUND_BANK
+		WHERE UR_REFUND_BANK_ID = #{urRefundBankId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 마이페이지 회원정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.26		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.user.buyer.dto.vo.BuyerFromMypageResultVo" id="getBuyerFromMypageResultMap">
+		<result column="USER_NM"  property="userName" />
+		<result column="MOBILE"  property="mobile" />
+		<result column="LOGIN_ID"  property="loginId"  />
+		<result column="MAIL"  property="mail"  />
+		<result column="RECOMM_USER_ID"  property="recommendationUserId"  />
+		<result column="UR_SOCIAL_ID_NAVER"  property="urSocialIdNaver"  />
+		<result column="UR_SOCIAL_ID_KAKAO"  property="urSocialIdKakao"  />
+		<result column="UR_SOCIAL_ID_GOOGLE"  property="urSocialIdGoogle"  />
+		<result column="UR_SOCIAL_ID_FACEBOOK"  property="urSocialIdFacebook"  />
+		<result column="UR_SOCIAL_ID_APPLE"  property="urSocialIdApple"  />
+		<result column="RECENTLY_VIEW_YN"  property="recentlyViewYn"  />
+		<result column="MAIL_YN"  property="mailYn"  />
+		<result column="SMS_YN"  property="smsYn"  />
+		<result column="MARKETING_YN"  property="marketingYn"  />
+		<result column="ERP_REGAL_NM"  property="erpRegalName"  />
+		<result column="ERP_ORGANIZATION_NM"  property="erOrganizationName"  />
+	</resultMap>
+
+	<select id="getBuyerFromMypage" resultMap="getBuyerFromMypageResultMap">
+		/*	buyer.getBuyerFromMypage	*/
+		SELECT
+			FN_DECRYPT(UU.USER_NM) AS USER_NM
+			, FN_DECRYPT(UB.MOBILE) AS MOBILE
+			, UU.LOGIN_ID
+			, FN_DECRYPT(UB.MAIL) AS MAIL
+			, UUR.LOGIN_ID AS RECOMM_USER_ID
+			, USN.SOCIAL_ID AS UR_SOCIAL_ID_NAVER
+			, USK.SOCIAL_ID AS UR_SOCIAL_ID_KAKAO
+			, USG.SOCIAL_ID AS UR_SOCIAL_ID_GOOGLE
+			, USF.SOCIAL_ID AS UR_SOCIAL_ID_FACEBOOK
+			, USA.SOCIAL_ID AS UR_SOCIAL_ID_APPLE
+			, UB.RECENTLY_VIEW_YN AS RECENTLY_VIEW_YN
+			, UB.MAIL_YN AS MAIL_YN
+			, UB.SMS_YN AS SMS_YN
+			, UB.MARKETING_YN AS MARKETING_YN
+			, UEE.ERP_REGAL_NM
+			, UEE.ERP_ORGANIZATION_NM
+		FROM UR_USER UU
+			INNER JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+			LEFT OUTER JOIN UR_SOCIAL USN ON UU.UR_USER_ID = USN.UR_USER_ID AND USN.PROVIDER = 'SNS_PROVIDER.NAVER'
+			LEFT OUTER JOIN UR_SOCIAL USK ON UU.UR_USER_ID = USK.UR_USER_ID AND USK.PROVIDER = 'SNS_PROVIDER.KAKAO'
+			LEFT OUTER JOIN UR_SOCIAL USG ON UU.UR_USER_ID = USG.UR_USER_ID AND USG.PROVIDER = 'SNS_PROVIDER.GOOGLE'
+			LEFT OUTER JOIN UR_SOCIAL USF ON UU.UR_USER_ID = USF.UR_USER_ID AND USF.PROVIDER = 'SNS_PROVIDER.FACEBOOK'
+			LEFT OUTER JOIN UR_SOCIAL USA ON UU.UR_USER_ID = USA.UR_USER_ID AND USA.PROVIDER = 'SNS_PROVIDER.APPLE'
+			LEFT OUTER JOIN UR_USER UUR ON UB.RECOMM_USER_ID = UUR.UR_USER_ID
+			LEFT OUTER JOIN UR_ERP_EMPLOYEE UEE ON UB.UR_ERP_EMPLOYEE_CD = UEE.UR_ERP_EMPLOYEE_CD
+		WHERE UU.UR_USER_ID = #{urUserId}
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 마이페이지 회원정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.26		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserFromMypage">
+		/*	buyer.putUserFromMypage	*/
+		UPDATE UR_USER
+		SET USER_NM = FN_ENCRYPT(#{userName})
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+	<update id="putBuyerFromMypage">
+		/*	buyer.putBuyerFromMypage	*/
+		UPDATE UR_BUYER
+		SET
+		MAIL=FN_ENCRYPT(#{mail})
+		,LOWER_MAIL=FN_ENCRYPT(LOWER(#{mail}))
+		,MOBILE=FN_ENCRYPT(#{mobile})
+		,SMS_YN=#{smsYn}
+		,MAIL_YN=#{mailYn}
+		,MARKETING_YN=#{marketingYn}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(smsYn)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(smsYn,'Y')">
+					,SMS_YN_DT	=	SYSDATE()
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(smsYn,'N')">
+					,SMS_YN_DT	=	NULL
+				</when>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mailYn)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mailYn,'Y')">
+					,MAIL_YN_DT	=	SYSDATE()
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(mailYn,'N')">
+					,MAIL_YN_DT	=	NULL
+				</when>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(marketingYn)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(marketingYn,'Y')">
+					,MARKETING_YN_DT	=	SYSDATE()
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(marketingYn,'N')">
+					,MARKETING_YN_DT	=	NULL
+				</when>
+			</choose>
+		</if>
+		,RECENTLY_VIEW_YN=#{recentlyViewYn}
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공통 코드 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBankCodeAttr1" resultType="kr.co.pulmuone.v1.user.buyer.dto.vo.CodeInfoVo">
+		/* buyer.getBankCodeAttr1 */
+		SELECT A.ATTR1 AS code
+			,B.DIC_NM AS name
+		FROM ST_COMN_CODE A
+			INNER JOIN GB_DIC B	ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+		WHERE A.ST_COMN_CODE_MST_CD = 'BANK_CODE'
+			AND A.ST_COMN_CODE_ID = #{stComnCodeId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 사용 카드 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.08		천혜현         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserPaymentInfo" resultType="HashMap">
+		/* buyer.getUserPaymentInfo */
+		SELECT
+			PA_PAY_CD AS psPayCd
+			,CARD_CD AS cardCode
+		FROM
+			UR_ACCOUNT
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 사용 결제정보 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserPaymentInfo">
+		/*	buyer.putUserPaymentInfo	*/
+		UPDATE UR_ACCOUNT
+		SET PA_PAY_CD = #{psPayCd}
+		, CARD_CD = #{cardCode}
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+
+</mapper>
+

@@ -1,0 +1,1364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.order.CalGoodsMapper">
+
+	<sql id="searchDetailDate">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CAL_DT")'><!-- 정산처리일자 -->
+					AND ood.DI_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+					AND ood2.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+					AND ood2.IC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="serchSettleDetailDate">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CAL_DT")'><!-- 정산처리일자 -->
+					AND issi.SETTLE_DT  BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+					AND ood2.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+					AND ood2.IC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="searchClaimDetailDate">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CAL_DT")'><!-- 정산처리일자 -->
+					AND (ocd.RC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						OR
+						ocd.EC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND))
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+					AND ood2.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+					AND ood2.IC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+    <sql id="serchSettleClaimDetailDate">
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CAL_DT")'><!-- 정산처리일자 -->
+                    AND issi.SETTLE_DT  BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+                    AND ood2.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+                    AND ood2.IC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                </when>
+            </choose>
+        </if>
+    </sql>
+
+	<sql id="searchDetailSellersDetail">
+		AND oo.OM_SELLERS_ID IN
+		<foreach collection="omSellersIdList" item="sellersDetail" index="index" separator="," open="(" close=")">
+			#{sellersDetail}
+		</foreach>
+	</sql>
+
+	<sql id="searchFindKeyword">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+			AND oo.SELLERS_GROUP_CD = #{sellersGroup} 		<!-- 판매처 그룹 코드 -->
+		</if>
+		<if test="omSellersIdList.size() > 0">
+			<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+		</if>
+		<choose>
+			<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpSendYn, "Y")'>
+				AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF' <!--통합ERP I/F Y-->
+			</when>
+			<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpSendYn, "N")'>
+				AND uw.ORDER_CHANGE_TP != 'ORDER_CHANGE_TP.ORDER_IF' <!--통합ERP I/F N-->
+			</when>
+		</choose>
+		<if test="goodsTypeList.size() > 0">
+			<include refid="searchGoodsType" />	<!-- 상품유형 조회 -->
+		</if>
+		<if test="paymentMethodCodeList.size() > 0">
+			<include refid="searchPaymentMethodCode" />	<!-- 결제수단 조회 -->
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId)">
+			AND ood.UR_SUPPLIER_ID = #{supplierId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+			AND ood.UR_WAREHOUSE_GRP_CD = #{warehouseGroup}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+			AND ood.UR_WAREHOUSE_ID = #{warehouseId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+			AND oo.UR_STORE_ID = #{urStoreId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "OD_ORDER_ID")'><!-- 주문번호 -->
+					AND oo.ODID = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "IL_ITEM_CD")'><!-- 품목코드 -->
+					AND ood.IL_ITEM_CD = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "ITEM_BARCODE")'><!-- 품목바코드 -->
+					AND ood.ITEM_BARCODE = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "IL_GOODS_ID")'><!-- 상품코드 -->
+					AND ood.IL_GOODS_ID = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "GOODS_NM")'><!-- 상품명 -->
+					AND ood.GOODS_NM LIKE CONCAT('%', #{findKeyword},'%')
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="searchGoodsType">
+		AND ood.GOODS_TP_CD IN
+		<foreach collection="goodsTypeList" item="goodsType" index="index" separator="," open="(" close=")">
+			#{goodsType}
+		</foreach>
+	</sql>
+
+	<sql id="searchPaymentMethodCode">
+		AND oo.ORDER_PAYMENT_TYPE IN
+		<foreach collection="paymentMethodCodeList" item="paymentMethodCode" index="index" separator="," open="(" close=")">
+			#{paymentMethodCode}
+		</foreach>
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 상품 정산 카운트 조회
+         * @ 수정일			수정자		  수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.03.05		이명수	  		최초생성
+        ────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListRequestDto">
+		/*	calGoods.getGoodsListCount  */
+		SELECT
+			SUM(y.CNT) AS CNT
+		FROM
+		(
+		<if test='salesGubunList.size() == 0 or salesGubunList.contains("S")'>
+			SELECT
+				COUNT(*) AS CNT
+			FROM IF_SALES_SETTLE_INFO issi
+			JOIN OD_ORDER_DETL ood ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ
+			JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+			LEFT JOIN (
+				SELECT
+					ood.OD_ORDER_DETL_ID
+					, SUM(ocd.CLAIM_CNT) AS CLAIM_CNT
+					, SUM(ocd.DIRECT_PRICE) AS DISCOUNT_PRICE
+					, SUM(ocd.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+					, SUM(ocd.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+				FROM OD_ORDER_DETL ood
+				JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+				JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+				JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+				JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND (ocd.CLAIM_STATUS_CD IN ('CC') OR ocd.PRIORITY_UNDELIVERED_YN = 'Y' OR ( ocd.PRIORITY_UNDELIVERED_YN = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) > 0))
+				JOIN IF_SALES_SETTLE_INFO issi ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER'
+				WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+				AND issi.OD_CLAIM_DETL_ID = 0
+				<include refid="serchSettleDetailDate" />	<!-- 기간조회 -->
+				<include refid="searchFindKeyword" />		<!-- 검색어 조회 -->
+				GROUP BY ood.OD_ORDER_DETL_ID
+			) claim ON ood.OD_ORDER_DETL_ID = claim.OD_ORDER_DETL_ID
+			WHERE (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)) > 0
+			AND issi.SETTLE_TYPE = 'ORDER'
+			AND issi.OD_CLAIM_DETL_ID = 0
+			AND ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+			<include refid="serchSettleDetailDate" />	<!-- 기간조회 -->
+			<include refid="searchFindKeyword" />		<!-- 검색어 조회 -->
+		</if>
+
+		<if test="salesGubunList.size() != 1">
+			UNION ALL
+		</if>
+
+		<if test='salesGubunList.size() == 0 or salesGubunList.contains("R")'>
+			SELECT
+				COUNT(*) AS CNT
+			FROM IF_SALES_SETTLE_INFO issi
+			JOIN OD_ORDER_DETL ood ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ
+			JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+			JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+			JOIN OD_CLAIM_DETL ocd ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.CLAIM_STATUS_CD IN ('RC', 'EC') AND IFNULL(ocd.PRIORITY_UNDELIVERED_YN,'N') = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) = 0)
+			WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+			AND issi.SETTLE_TYPE = 'RETURN'
+			AND ocd.OD_CLAIM_DETL_ID = issi.OD_CLAIM_DETL_ID
+			<include refid="serchSettleClaimDetailDate" />	<!-- 기간조회 -->
+			<include refid="searchFindKeyword" />			<!-- 검색어 조회 -->
+		</if>
+		) y
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품정산내역  조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.30		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsList" resultType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListDto" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListRequestDto">
+		/* calGoods.getGoodsList */
+		SELECT
+			z.ORDER_TYPE
+			, z.AGENT_TYPE_CD
+			, IFNULL(DATE_FORMAT(z.SETTLE_DT, '%Y-%m-%d'),'') AS GOODS_SETTLE_DT
+			, IFNULL(DATE_FORMAT(z.CREATE_DT, '%Y-%m-%d'),'') AS GOODS_ORDER_DT
+			, IFNULL(DATE_FORMAT(z.PAYMENT_DT, '%Y-%m-%d'),'') AS PAYMENT_DT
+			, z.ORDER_PAYMENT_TYPE
+			, z.SELLERS_NM
+			, z.ODID
+			, z.OD_ORDER_DETL_SEQ  AS OD_ORDER_DETL_ID
+			, z.COMP_NM 		AS UR_SUPPLIER_ID
+			, z.WAREHOUSE_NM AS WAREHOUSE_NAME
+			, IFNULL(z.STORE_NAME, '') AS STORE_NAME
+			, z.IL_ITEM_CD
+			, z.ITEM_BARCODE
+			, z.IL_GOODS_ID
+			, z.GOODS_NM
+			, z.GOODS_TP_CD
+			, z.ORDER_CNT
+			, z.RECOMMENDED_PRICE
+			, z.DISCOUNT_PRICE
+			, z.SALE_PRICE
+			, z.GOODS_COUPON_PRICE
+			, z.CART_COUPON_PRICE
+			, CASE
+				WHEN z.ORDER_TYPE = '반품' THEN CASE
+													WHEN (z.SALE_PRICE * z.ORDER_CNT) > 0 THEN CAST( (z.SALE_PRICE * z.ORDER_CNT) AS SIGNED) * -1
+													ELSE 0
+												END
+			  	ELSE (z.SALE_PRICE * z.ORDER_CNT)
+			  END AS ORDER_PRICE
+			, CASE
+				WHEN z.ORDER_TYPE = '반품' THEN CASE
+													WHEN ( (z.SALE_PRICE * z.ORDER_CNT) + z.GOODS_COUPON_PRICE + z.CART_COUPON_PRICE ) > 0 THEN CAST( ((z.SALE_PRICE * z.ORDER_CNT) + z.GOODS_COUPON_PRICE + z.CART_COUPON_PRICE) AS SIGNED) * -1
+													ELSE 0
+			  									END
+				ELSE (z.SALE_PRICE * z.ORDER_CNT) - z.GOODS_COUPON_PRICE - z.CART_COUPON_PRICE
+			   END AS PAID_PRICE_GOODS
+			, IFNULL(z.SALES_PRICE,0) 	AS TAXABLE_PRICE
+			, IFNULL(z.NON_TAXABLE_PRICE,0)     AS NON_TAXABLE_PRICE
+			, IFNULL(IF(z.TAX_YN = 'Y', z.SALES_PRICE-z.NON_TAXABLE_PRICE, 0),0) AS VAT
+			, z.TAX_YN
+			, z.ORDER_CHANGE_YN
+			, z.COLLECTION_MALL_ID 	AS OUTMALL_ID
+			, z.COLLECTION_MALL_DETAIL_ID 	AS OUTMALL_DETAIL_ID
+			, z.TOTAL_TAXABLE_PRICE
+			, z.TOTAL_SALE_PRICE
+			, CASE
+				WHEN z.ORDER_TYPE = '반품' THEN z.TOTAL_SALE_NON_TAX_PRICE * -1
+				ELSE z.TOTAL_SALE_NON_TAX_PRICE
+			  END AS TOTAL_SALE_NON_TAX_PRICE
+			, z.DIRECT_PRICE
+			, z.DISCOUNT_EMPLOYEE_PRICE
+			, IFNULL(z.PG_SERVICE_NM ,'') AS PG_SERVICE_NM
+		FROM
+		(
+			SELECT
+				cgo.ORDER_TYPE
+				, CASE
+					WHEN ORDER_COPY_YN = 'Y' THEN CASE
+													WHEN ORDER_COPY_SAL_IF_YN = 'Y' THEN CONCAT((SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID), ' (주문복사/매출만연동)')
+													ELSE CONCAT((SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID), ' (주문복사)')
+												  END
+					WHEN ORDER_CREATE_YN = 'Y' THEN CONCAT((SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID), ' (주문생성)')
+					ELSE (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID)
+				  END AS AGENT_TYPE_CD
+				, cgo.SETTLE_DT
+				, cgo.CREATE_DT
+				, cgo.PAYMENT_DT
+				, (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.PAY_TP_DIC_MST_ID) AS ORDER_PAYMENT_TYPE
+				, CASE
+					WHEN cgo.AGENT_TYPE_CD = 'AGENT_TYPE.O' THEN (SELECT SELLERS_NM FROM OM_SELLERS WHERE OM_SELLERS_ID = cgo.OM_SELLERS_ID)
+					ELSE '통합몰'
+				  END AS SELLERS_NM
+				, cgo.ODID
+				, cgo.OD_ORDER_DETL_SEQ
+				, uc.COMP_NM
+				, cgo.WAREHOUSE_NM
+				, cgo.IL_ITEM_CD
+				, cgo.ITEM_BARCODE
+				, cgo.IL_GOODS_ID
+				, cgo.GOODS_NM
+				, (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.GOODS_TYPE_DIC_MST_ID) AS GOODS_TP_CD
+				, cgo.ORDER_CNT
+				, cgo.RECOMMENDED_PRICE
+				, cgo.SALE_PRICE
+				, cgo.GOODS_COUPON_PRICE
+				, cgo.CART_COUPON_PRICE
+				, IF(cgo.TAX_YN = 'Y', ROUND(cgo.SETTLE_PRICE * 1.1, 8), cgo.SETTLE_PRICE) AS SALES_PRICE
+				, cgo.SETTLE_PRICE AS NON_TAXABLE_PRICE
+				, cgo.TAX_YN
+				, cgo.ORDER_CHANGE_YN
+				, cgo.COLLECTION_MALL_ID
+				, cgo.COLLECTION_MALL_DETAIL_ID
+				, cgo.DISCOUNT_PRICE
+				, cgo.OD_ORDER_DETL_ID
+				, cgo.OD_CLAIM_DETL_ID
+				, (SELECT NM FROM UR_STORE WHERE UR_STORE_ID = cgo.UR_STORE_ID) AS STORE_NAME
+				, cgo.TOTAL_SALE_PRICE
+				, cgo.TOTAL_SALE_NON_TAX_PRICE
+				, cgo.DIRECT_PRICE
+				, cgo.DISCOUNT_EMPLOYEE_PRICE
+				, cgo.OD_ORDER_ID
+				, (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.PG_ACCOUNT_TYPE_DIC_MST_ID) AS PG_SERVICE_NM
+				, cgo.TOTAL_TAXABLE_PRICE
+			FROM
+			(
+				SELECT
+					y.ORDER_TYPE
+					, y.OD_ORDER_ID
+					, y.OD_ORDER_DETL_ID
+					, y.UR_SUPPLIER_ID
+					, y.AGENT_TYPE_CD
+					, y.SETTLE_DT
+					, y.CREATE_DT
+					, y.ORDER_PAYMENT_TYPE
+					, y.ODID
+					, y.OD_ORDER_DETL_SEQ
+					, y.WAREHOUSE_NM
+					, y.IL_ITEM_CD
+					, y.ITEM_BARCODE
+					, y.IL_GOODS_ID
+					, y.GOODS_NM
+					, y.GOODS_TP_CD
+					, y.ORDER_CNT
+					, y.RECOMMENDED_PRICE
+					, y.SALE_PRICE
+					, y.GOODS_COUPON_PRICE
+					, y.CART_COUPON_PRICE
+					, y.SETTLE_PRICE
+					, y.TAX_YN
+					, y.COLLECTION_MALL_ID
+					, y.COLLECTION_MALL_DETAIL_ID
+					, y.OM_SELLERS_ID
+					, y.PAYMENT_DT
+					, y.DISCOUNT_PRICE
+					, y.OD_CLAIM_DETL_ID
+					, y.ORDER_CHANGE_YN
+					, y.ORDER_COPY_YN
+					, y.ORDER_COPY_SAL_IF_YN
+					, y.ORDER_COPY_ODID
+					, y.ORDER_CREATE_YN
+					, y.UR_STORE_ID
+					, y.TOTAL_SALE_PRICE
+					, y.TOTAL_SALE_NON_TAX_PRICE
+					, y.DISCOUNT_EMPLOYEE_PRICE
+					, y.DIRECT_PRICE
+					, y.AGENT_TYPE_DIC_MST_ID
+					, y.PAY_TP_DIC_MST_ID
+					, y.GOODS_TYPE_DIC_MST_ID
+					, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = y.PG_SERVICE AND ST_COMN_CODE_MST_CD = 'PG_ACCOUNT_TYPE') AS PG_ACCOUNT_TYPE_DIC_MST_ID
+					, SUM(IFNULL(y.SETTLE_PRICE,0)) OVER() AS TOTAL_TAXABLE_PRICE
+				FROM
+				(
+					<if test='salesGubunList.size() == 0 or salesGubunList.contains("S")'>
+						SELECT
+							'매출' AS ORDER_TYPE
+							, oo.OD_ORDER_ID
+							, ood.OD_ORDER_DETL_ID
+							, ood.UR_SUPPLIER_ID
+							, oo.AGENT_TYPE_CD
+							, issi.SETTLE_DT
+							, oo.CREATE_DT
+							, oo.ORDER_PAYMENT_TYPE
+							, oo.ODID
+							, ood.OD_ORDER_DETL_SEQ
+							, uw.WAREHOUSE_NM
+							, ood.IL_ITEM_CD
+							, ood.ITEM_BARCODE
+							, ood.IL_GOODS_ID
+							, ood.GOODS_NM
+							, ood.GOODS_TP_CD
+							, ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0) AS ORDER_CNT
+							, ood.RECOMMENDED_PRICE
+							, ood.SALE_PRICE
+							, ood.GOODS_COUPON_PRICE - IFNULL(claim.GOODS_COUPON_PRICE, 0) AS GOODS_COUPON_PRICE
+							, ood.CART_COUPON_PRICE - IFNULL(claim.CART_COUPON_PRICE, 0) AS CART_COUPON_PRICE
+							, IFNULL(issi.SETTLE_PRICE, 0) AS SETTLE_PRICE
+							, ood.TAX_YN
+							, oo.COLLECTION_MALL_ID
+							, ood.COLLECTION_MALL_DETAIL_ID
+							, oo.OM_SELLERS_ID
+							, ood2.IC_DT AS PAYMENT_DT
+							, ood.DIRECT_PRICE - IFNULL(claim.DISCOUNT_PRICE, 0) AS DISCOUNT_PRICE
+							, NULL AS OD_CLAIM_DETL_ID
+							, IF(uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF', 'Y', 'N') AS ORDER_CHANGE_YN
+							, IFNULL(oo.ORDER_COPY_YN, 'N')									AS ORDER_COPY_YN
+							, IFNULL(oo.ORDER_COPY_SAL_IF_YN, 'N')							AS ORDER_COPY_SAL_IF_YN
+							, IFNULL(oo.ORDER_COPY_ODID, '')								AS ORDER_COPY_ODID
+							, IFNULL(oo.ORDER_CREATE_YN, 'N')								AS ORDER_CREATE_YN
+							, oo.UR_STORE_ID
+							, CASE
+								WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+								WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)))
+								WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)))
+								ELSE 0
+							  END AS TOTAL_SALE_PRICE
+							, CASE
+								WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+								WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND( (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))) * 10 / 11, 8 )
+								WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND( (ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))) * 10 / 11, 8 )
+								WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))
+								WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))
+								ELSE 0
+							  END AS TOTAL_SALE_NON_TAX_PRICE
+							, IF(ood.OD_ORDER_DETL_DEPTH_ID != 3, IFNULL(OODC.DISCOUNT_PRICE,0), 0) AS DISCOUNT_EMPLOYEE_PRICE
+							, IF(ood.OD_ORDER_DETL_DEPTH_ID != 3, CASE
+																	WHEN IFNULL(OODC.DISCOUNT_PRICE,0) > 0 THEN 0
+																	WHEN IFNULL(OODC.DISCOUNT_PRICE,0) = 0 THEN IFNULL(ood.DIRECT_PRICE,0)
+																  END, IFNULL(ood.DIRECT_PRICE,0)) AS DIRECT_PRICE
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.AGENT_TYPE_CD AND ST_COMN_CODE_MST_CD = 'AGENT_TYPE') AS AGENT_TYPE_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.ORDER_PAYMENT_TYPE AND ST_COMN_CODE_MST_CD = 'PAY_TP') AS PAY_TP_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = ood.GOODS_TP_CD AND ST_COMN_CODE_MST_CD = 'GOODS_TYPE') AS GOODS_TYPE_DIC_MST_ID
+							, (SELECT MAX(opm.PG_SERVICE)
+								FROM OD_PAYMENT op
+								INNER JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID AND opm.STATUS = 'IC' AND opm.TYPE = 'G'
+								WHERE op.OD_ORDER_ID = oo.OD_ORDER_ID) AS PG_SERVICE
+						FROM IF_SALES_SETTLE_INFO issi
+						JOIN OD_ORDER_DETL ood ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ
+						JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+						JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+						JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+						LEFT JOIN (
+							SELECT
+								ood.OD_ORDER_DETL_ID
+							, SUM(ocd.CLAIM_CNT) AS CLAIM_CNT
+							, SUM(ocd.DIRECT_PRICE) AS DISCOUNT_PRICE
+							, SUM(ocd.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+							, SUM(ocd.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+							FROM OD_ORDER_DETL ood
+							JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+							JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+							JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+							JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+							JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND (ocd.CLAIM_STATUS_CD IN ('CC') OR ocd.PRIORITY_UNDELIVERED_YN = 'Y' OR ( ocd.PRIORITY_UNDELIVERED_YN = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) > 0))
+							JOIN IF_SALES_SETTLE_INFO issi ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER'
+							WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+							AND issi.OD_CLAIM_DETL_ID = 0
+							<include refid="serchSettleDetailDate" />	<!-- 기간조회 -->
+							<include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+							GROUP BY ood.OD_ORDER_DETL_ID
+						) claim ON ood.OD_ORDER_DETL_ID = claim.OD_ORDER_DETL_ID
+						LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT OODC ON oo.OD_ORDER_ID = OODC.OD_ORDER_ID AND ood.OD_ORDER_DETL_ID = OODC.OD_ORDER_DETL_ID AND OODC.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+						WHERE (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)) > 0
+						AND issi.SETTLE_TYPE = 'ORDER'
+						AND issi.OD_CLAIM_DETL_ID = 0
+						AND ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+						<include refid="serchSettleDetailDate" />	<!-- 기간조회 -->
+						<include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+					</if>
+
+					<if test="salesGubunList.size() != 1">
+						UNION ALL
+					</if>
+
+					<if test='salesGubunList.size() == 0 or salesGubunList.contains("R")'>
+						SELECT
+							'반품' AS ORDER_TYPE
+							, oo.OD_ORDER_ID
+							, ood.OD_ORDER_DETL_ID
+							, ood.UR_SUPPLIER_ID
+							, oo.AGENT_TYPE_CD
+							, issi.SETTLE_DT
+							, oo.CREATE_DT
+							, oo.ORDER_PAYMENT_TYPE
+							, oo.ODID
+							, ood.OD_ORDER_DETL_SEQ
+							, uw.WAREHOUSE_NM
+							, ood.IL_ITEM_CD
+							, ood.ITEM_BARCODE
+							, ood.IL_GOODS_ID
+							, ood.GOODS_NM
+							, ood.GOODS_TP_CD
+							, (ocd.CLAIM_CNT * -1) AS ORDER_CNT
+							, CAST(ood.RECOMMENDED_PRICE AS SIGNED) * -1 AS RECOMMENDED_PRICE
+							, CAST(ocd.SALE_PRICE AS SIGNED) * -1 as SALE_PRICE
+							, CAST(ocd.GOODS_COUPON_PRICE AS SIGNED) * -1 AS GOODS_COUPON_PRICE
+							, CAST(ocd.CART_COUPON_PRICE AS SIGNED) * -1 AS CART_COUPON_PRICE
+							, (issi.SETTLE_PRICE * -1) AS SETTLE_PRICE
+							, ood.TAX_YN
+							, oo.COLLECTION_MALL_ID
+							, ood.COLLECTION_MALL_DETAIL_ID
+							, oo.OM_SELLERS_ID
+							, IFNULL(ocd.FC_DT, ocd.EC_DT) AS PAYMENT_DT
+							, CAST(ocd.DIRECT_PRICE AS SIGNED) * -1 AS DISCOUNT_PRICE
+							, ocd.OD_CLAIM_DETL_ID
+							, IF(uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF', 'Y', 'N') AS ORDER_CHANGE_YN
+							, IFNULL(oo.ORDER_COPY_YN, 'N')									AS ORDER_COPY_YN
+							, IFNULL(oo.ORDER_COPY_SAL_IF_YN, 'N')							AS ORDER_COPY_SAL_IF_YN
+							, IFNULL(oo.ORDER_COPY_ODID, '')								AS ORDER_COPY_ODID
+							, IFNULL(oo.ORDER_CREATE_YN, 'N')								AS ORDER_CREATE_YN
+							, oo.UR_STORE_ID
+							, CASE
+								WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+								WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN CAST((ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT) AS SIGNED) * -1
+								WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN CAST((ood.SALE_PRICE * ocd.CLAIM_CNT) AS SIGNED) * -1
+								ELSE 0
+							  END AS TOTAL_SALE_PRICE
+							, CASE
+								WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+								WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND( ((ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT) * 10 / 11), 8 )
+								WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND( ((ood.SALE_PRICE * ocd.CLAIM_CNT) * 10 / 11), 8 )
+								WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT)
+								WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * ocd.CLAIM_CNT)
+								ELSE 0
+							  END AS TOTAL_SALE_NON_TAX_PRICE
+							, IFNULL(CAST(OCDC.DISCOUNT_PRICE AS SIGNED) * -1,0)  AS DISCOUNT_EMPLOYEE_PRICE
+							, CASE
+								WHEN IFNULL(OCDC.DISCOUNT_PRICE,0) > 0 THEN 0
+								WHEN IFNULL(OCDC.DISCOUNT_PRICE,0) = 0 THEN IFNULL(CAST(ocd.DIRECT_PRICE AS SIGNED) * -1,0)
+							  END AS DIRECT_PRICE
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.AGENT_TYPE_CD AND ST_COMN_CODE_MST_CD = 'AGENT_TYPE') AS AGENT_TYPE_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.ORDER_PAYMENT_TYPE AND ST_COMN_CODE_MST_CD = 'PAY_TP') AS PAY_TP_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = ood.GOODS_TP_CD AND ST_COMN_CODE_MST_CD = 'GOODS_TYPE') AS GOODS_TYPE_DIC_MST_ID
+							, (SELECT MAX(opm.PG_SERVICE)
+								FROM OD_PAYMENT op
+								INNER JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID AND opm.STATUS = 'IC' AND opm.TYPE = 'G'
+								WHERE op.OD_ORDER_ID = oo.OD_ORDER_ID) AS PG_SERVICE
+						FROM IF_SALES_SETTLE_INFO issi
+						JOIN OD_ORDER_DETL ood ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ
+						JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+						JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+						JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+						JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+						JOIN OD_CLAIM_DETL ocd ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.CLAIM_STATUS_CD IN ('RC', 'EC') AND IFNULL(ocd.PRIORITY_UNDELIVERED_YN,'N') = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) = 0)
+						LEFT OUTER JOIN OD_CLAIM_DETL_DISCOUNT OCDC ON ocd.OD_CLAIM_ID = OCDC.OD_CLAIM_ID AND ocd.OD_CLAIM_DETL_ID = OCDC.OD_CLAIM_DETL_ID AND OCDC.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+						WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+						AND issi.SETTLE_TYPE = 'RETURN'
+						AND ocd.OD_CLAIM_DETL_ID = issi.OD_CLAIM_DETL_ID
+						<include refid="serchSettleClaimDetailDate" />	<!-- 기간조회 -->
+						<include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+					</if>
+				) y
+				ORDER BY y.SETTLE_DT, y.ODID, y.OD_ORDER_DETL_SEQ, y.ORDER_TYPE
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+					<include refid="_common.pageLimit"/>
+				</if>
+			) cgo
+			JOIN UR_SUPPLIER usu ON cgo.UR_SUPPLIER_ID = usu.UR_SUPPLIER_ID
+			JOIN UR_COMPANY uc ON uc.UR_COMPANY_ID = usu.UR_COMPANY_ID AND uc.USE_YN = 'Y' AND uc.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+		) z
+	</select>
+
+	<select id="getGoodsNotIfListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListRequestDto">
+		/*	calGoods.getGoodsNotIfListCount  */
+		SELECT
+			SUM(y.CNT) AS CNT
+		FROM
+		(
+		<if test='salesGubunList.size() == 0 or salesGubunList.contains("S")'>
+			SELECT
+				COUNT(*) AS CNT
+			FROM OD_ORDER oo
+			JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+			LEFT JOIN (
+				SELECT
+					ood.OD_ORDER_DETL_ID
+					, SUM(ocd.CLAIM_CNT) AS CLAIM_CNT
+					, SUM(ocd.DIRECT_PRICE) AS DISCOUNT_PRICE
+					, SUM(ocd.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+					, SUM(ocd.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+				FROM OD_ORDER oo
+				JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+				JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+				JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+				JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND (ocd.CLAIM_STATUS_CD IN ('CC') OR ocd.PRIORITY_UNDELIVERED_YN = 'Y' OR ( ocd.PRIORITY_UNDELIVERED_YN = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) > 0))
+				WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+				AND oo.ORDER_YN = 'Y'
+				<include refid="searchDetailDate" />	<!-- 기간조회 -->
+				<include refid="searchFindKeyword" />		<!-- 검색어 조회 -->
+				GROUP BY ood.OD_ORDER_DETL_ID
+			) claim ON ood.OD_ORDER_DETL_ID = claim.OD_ORDER_DETL_ID
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(supplierId,4)">
+				JOIN OD_ORDER_DETL_DAILY oodd ON oodd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID
+				JOIN UR_STORE us ON us.UR_STORE_ID = oodd.UR_STORE_ID
+			</if>
+			WHERE (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)) > 0
+			AND oo.ORDER_YN = 'Y'
+			AND ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+			<include refid="searchDetailDate" />	<!-- 기간조회 -->
+			<include refid="searchFindKeyword" />		<!-- 검색어 조회 -->
+		</if>
+
+		<if test="salesGubunList.size() != 1">
+			UNION ALL
+		</if>
+
+		<if test='salesGubunList.size() == 0 or salesGubunList.contains("R")'>
+			SELECT
+				COUNT(*) AS CNT
+			FROM OD_ORDER oo
+			JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+			JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+			JOIN OD_CLAIM_DETL ocd ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.CLAIM_STATUS_CD IN ('RC', 'EC') AND IFNULL(ocd.PRIORITY_UNDELIVERED_YN,'N') = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) = 0)
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(supplierId,4)">
+				JOIN OD_ORDER_DETL_DAILY oodd ON oodd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID
+				JOIN UR_STORE us ON us.UR_STORE_ID = oodd.UR_STORE_ID
+			</if>
+			WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+			AND oo.ORDER_YN = 'Y'
+			<include refid="searchClaimDetailDate" />	<!-- 기간조회 -->
+			<include refid="searchFindKeyword" />			<!-- 검색어 조회 -->
+		</if>
+		) y
+	</select>
+
+	<select id="getGoodsNotIfList" resultType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListDto" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListRequestDto">
+		/* calGoods.getGoodsNotIfList */
+		SELECT
+			z.ORDER_TYPE
+			, z.AGENT_TYPE_CD
+			, IFNULL(DATE_FORMAT(z.SETTLE_DT, '%Y-%m-%d'),'') AS GOODS_SETTLE_DT
+			, IFNULL(DATE_FORMAT(z.CREATE_DT, '%Y-%m-%d'),'') AS GOODS_ORDER_DT
+			, IFNULL(DATE_FORMAT(z.PAYMENT_DT, '%Y-%m-%d'),'') AS PAYMENT_DT
+			, z.ORDER_PAYMENT_TYPE
+			, z.SELLERS_NM
+			, z.ODID
+			, z.OD_ORDER_DETL_SEQ  AS OD_ORDER_DETL_ID
+			, z.COMP_NM 		AS UR_SUPPLIER_ID
+			, z.WAREHOUSE_NM AS WAREHOUSE_NAME
+			, IFNULL(z.STORE_NAME, '') AS STORE_NAME
+			, z.IL_ITEM_CD
+			, z.ITEM_BARCODE
+			, z.IL_GOODS_ID
+			, z.GOODS_NM
+			, z.GOODS_TP_CD
+			, z.ORDER_CNT
+			, z.RECOMMENDED_PRICE
+			, z.DISCOUNT_PRICE
+			, z.SALE_PRICE
+			, z.GOODS_COUPON_PRICE
+			, z.CART_COUPON_PRICE
+			, CASE
+			WHEN z.ORDER_TYPE = '반품' THEN CASE
+			WHEN (z.SALE_PRICE * z.ORDER_CNT) > 0 THEN CAST( (z.SALE_PRICE * z.ORDER_CNT) AS SIGNED) * -1
+			ELSE 0
+			END
+			ELSE (z.SALE_PRICE * z.ORDER_CNT)
+			END AS ORDER_PRICE
+			, CASE
+			WHEN z.ORDER_TYPE = '반품' THEN CASE
+			WHEN ( (z.SALE_PRICE * z.ORDER_CNT) + z.GOODS_COUPON_PRICE + z.CART_COUPON_PRICE ) > 0 THEN CAST( ((z.SALE_PRICE * z.ORDER_CNT) + z.GOODS_COUPON_PRICE + z.CART_COUPON_PRICE) AS SIGNED) * -1
+			ELSE 0
+			END
+			ELSE (z.SALE_PRICE * z.ORDER_CNT) - z.GOODS_COUPON_PRICE - z.CART_COUPON_PRICE
+			END AS PAID_PRICE_GOODS
+			, IFNULL(z.SALES_PRICE,0) 	AS TAXABLE_PRICE
+			, IFNULL(z.NON_TAXABLE_PRICE,0)     AS NON_TAXABLE_PRICE
+			, IFNULL(IF(z.TAX_YN = 'Y', z.SALES_PRICE-z.NON_TAXABLE_PRICE, 0),0) AS VAT
+			, z.TAX_YN
+			, z.ORDER_CHANGE_YN
+			, z.COLLECTION_MALL_ID 	AS OUTMALL_ID
+			, z.COLLECTION_MALL_DETAIL_ID 	AS OUTMALL_DETAIL_ID
+			, z.TOTAL_TAXABLE_PRICE
+			, z.TOTAL_SALE_PRICE
+			, CASE
+			WHEN z.ORDER_TYPE = '반품' THEN z.TOTAL_SALE_NON_TAX_PRICE * -1
+			ELSE z.TOTAL_SALE_NON_TAX_PRICE
+			END AS TOTAL_SALE_NON_TAX_PRICE
+			, z.DIRECT_PRICE
+			, z.DISCOUNT_EMPLOYEE_PRICE
+			, IFNULL(z.PG_SERVICE_NM ,'') AS PG_SERVICE_NM
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(supplierId,4)">
+					, FN_DECRYPT(z.BUYER_NM) AS BUYER_NM
+					, z.BRANCH_STORE_ID
+					, z.BRANCH_STORE_NM
+				</when>
+				 <otherwise>
+					 , '' AS BUYER_NM
+					 , '' AS BRANCH_STORE_ID
+					 , '' AS BRANCH_STORE_NM
+				 </otherwise>
+			</choose>
+		FROM
+		(
+			SELECT
+				cgo.ORDER_TYPE
+				, CASE
+				WHEN ORDER_COPY_YN = 'Y' THEN CASE
+				WHEN ORDER_COPY_SAL_IF_YN = 'Y' THEN CONCAT((SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID), ' (주문복사/매출만연동)')
+				ELSE CONCAT((SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID), ' (주문복사)')
+				END
+				WHEN ORDER_CREATE_YN = 'Y' THEN CONCAT((SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID), ' (주문생성)')
+				ELSE (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID)
+				END AS AGENT_TYPE_CD
+				, cgo.SETTLE_DT
+				, cgo.CREATE_DT
+				, cgo.PAYMENT_DT
+				, (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.AGENT_TYPE_DIC_MST_ID) AS ORDER_PAYMENT_TYPE
+				, CASE
+				WHEN cgo.AGENT_TYPE_CD = 'AGENT_TYPE.O' THEN (SELECT SELLERS_NM FROM OM_SELLERS WHERE OM_SELLERS_ID = cgo.OM_SELLERS_ID)
+				ELSE '통합몰'
+				END AS SELLERS_NM
+				, cgo.ODID
+				, cgo.OD_ORDER_DETL_SEQ
+				, uc.COMP_NM
+				, cgo.WAREHOUSE_NM
+				, cgo.IL_ITEM_CD
+				, cgo.ITEM_BARCODE
+				, cgo.IL_GOODS_ID
+				, cgo.GOODS_NM
+				, (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.GOODS_TYPE_DIC_MST_ID) AS GOODS_TP_CD
+				, cgo.ORDER_CNT
+				, cgo.RECOMMENDED_PRICE
+				, cgo.SALE_PRICE
+				, cgo.GOODS_COUPON_PRICE
+				, cgo.CART_COUPON_PRICE
+				, IF(cgo.TAX_YN = 'Y', ROUND(cgo.SETTLE_PRICE * 1.1, 8), cgo.SETTLE_PRICE) AS SALES_PRICE
+				, cgo.SETTLE_PRICE AS NON_TAXABLE_PRICE
+				, cgo.TAX_YN
+				, cgo.ORDER_CHANGE_YN
+				, cgo.COLLECTION_MALL_ID
+				, cgo.COLLECTION_MALL_DETAIL_ID
+				, cgo.DISCOUNT_PRICE
+				, cgo.OD_ORDER_DETL_ID
+				, cgo.OD_CLAIM_DETL_ID
+				, (SELECT NM FROM UR_STORE WHERE UR_STORE_ID = cgo.UR_STORE_ID) AS STORE_NAME
+				, cgo.TOTAL_SALE_PRICE
+				, cgo.TOTAL_SALE_NON_TAX_PRICE
+				, cgo.DIRECT_PRICE
+				, cgo.DISCOUNT_EMPLOYEE_PRICE
+				, cgo.OD_ORDER_ID
+				, (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = cgo.PG_ACCOUNT_TYPE_DIC_MST_ID) AS PG_SERVICE_NM
+				, cgo.TOTAL_TAXABLE_PRICE
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(supplierId,4)">
+					, cgo.BUYER_NM
+					, cgo.BRANCH_STORE_ID
+					, cgo.BRANCH_STORE_NM
+				</if>
+			FROM
+			(
+				SELECT
+					y.ORDER_TYPE
+					, y.OD_ORDER_ID
+					, y.OD_ORDER_DETL_ID
+					, y.UR_SUPPLIER_ID
+					, y.AGENT_TYPE_CD
+					, y.SETTLE_DT
+					, y.CREATE_DT
+					, y.ORDER_PAYMENT_TYPE
+					, y.ODID
+					, y.OD_ORDER_DETL_SEQ
+					, y.WAREHOUSE_NM
+					, y.IL_ITEM_CD
+					, y.ITEM_BARCODE
+					, y.IL_GOODS_ID
+					, y.GOODS_NM
+					, y.GOODS_TP_CD
+					, y.ORDER_CNT
+					, y.RECOMMENDED_PRICE
+					, y.SALE_PRICE
+					, y.GOODS_COUPON_PRICE
+					, y.CART_COUPON_PRICE
+					, y.SETTLE_PRICE
+					, y.TAX_YN
+					, y.COLLECTION_MALL_ID
+					, y.COLLECTION_MALL_DETAIL_ID
+					, y.OM_SELLERS_ID
+					, y.PAYMENT_DT
+					, y.DISCOUNT_PRICE
+					, y.OD_CLAIM_DETL_ID
+					, y.ORDER_CHANGE_YN
+					, y.ORDER_COPY_YN
+					, y.ORDER_COPY_SAL_IF_YN
+					, y.ORDER_COPY_ODID
+					, y.ORDER_CREATE_YN
+					, y.UR_STORE_ID
+					, y.TOTAL_SALE_PRICE
+					, y.TOTAL_SALE_NON_TAX_PRICE
+					, y.DISCOUNT_EMPLOYEE_PRICE
+					, y.DIRECT_PRICE
+					, y.AGENT_TYPE_DIC_MST_ID
+					, y.PAY_TP_DIC_MST_ID
+					, y.GOODS_TYPE_DIC_MST_ID
+					, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = y.PG_SERVICE AND ST_COMN_CODE_MST_CD = 'PG_ACCOUNT_TYPE') AS PG_ACCOUNT_TYPE_DIC_MST_ID
+					, SUM(IFNULL(y.TOTAL_SALE_PRICE,0)) OVER() AS TOTAL_TAXABLE_PRICE
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(supplierId,4)">
+						, y.BUYER_NM
+						, oodd.UR_STORE_ID AS BRANCH_STORE_ID
+						, us.NM AS BRANCH_STORE_NM
+					</if>
+				FROM
+				(
+					<if test='salesGubunList.size() == 0 or salesGubunList.contains("S")'>
+						SELECT
+							'매출' AS ORDER_TYPE
+							, oo.OD_ORDER_ID
+							, ood.OD_ORDER_DETL_ID
+							, ood.UR_SUPPLIER_ID
+							, oo.AGENT_TYPE_CD
+							, ood.DI_DT AS SETTLE_DT
+							, oo.CREATE_DT
+							, oo.ORDER_PAYMENT_TYPE
+							, oo.ODID
+							, ood.OD_ORDER_DETL_SEQ
+							, uw.WAREHOUSE_NM
+							, ood.IL_ITEM_CD
+							, ood.ITEM_BARCODE
+							, ood.IL_GOODS_ID
+							, ood.GOODS_NM
+							, ood.GOODS_TP_CD
+							, ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0) AS ORDER_CNT
+							, ood.RECOMMENDED_PRICE
+							, ood.SALE_PRICE
+							, ood.GOODS_COUPON_PRICE - IFNULL(claim.GOODS_COUPON_PRICE, 0) AS GOODS_COUPON_PRICE
+							, ood.CART_COUPON_PRICE - IFNULL(claim.CART_COUPON_PRICE, 0) AS CART_COUPON_PRICE
+							, 0 AS SETTLE_PRICE
+							, ood.TAX_YN
+							, oo.COLLECTION_MALL_ID
+							, ood.COLLECTION_MALL_DETAIL_ID
+							, oo.OM_SELLERS_ID
+							, ood2.IC_DT AS PAYMENT_DT
+							, ood.DIRECT_PRICE - IFNULL(claim.DISCOUNT_PRICE, 0) AS DISCOUNT_PRICE
+							, NULL AS OD_CLAIM_DETL_ID
+							, IF(uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF', 'Y', 'N') AS ORDER_CHANGE_YN
+							, IFNULL(oo.ORDER_COPY_YN, 'N')									AS ORDER_COPY_YN
+							, IFNULL(oo.ORDER_COPY_SAL_IF_YN, 'N')							AS ORDER_COPY_SAL_IF_YN
+							, IFNULL(oo.ORDER_COPY_ODID, '')								AS ORDER_COPY_ODID
+							, IFNULL(oo.ORDER_CREATE_YN, 'N')								AS ORDER_CREATE_YN
+							, oo.UR_STORE_ID
+							, CASE
+							WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+							WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)))
+							WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)))
+							ELSE 0
+							END AS TOTAL_SALE_PRICE
+							, CASE
+							WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+							WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND( (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))) * 10 / 11, 8 )
+							WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND( (ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))) * 10 / 11, 8 )
+							WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))
+							WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))
+							ELSE 0
+							END AS TOTAL_SALE_NON_TAX_PRICE
+							, IF(ood.OD_ORDER_DETL_DEPTH_ID != 3, IFNULL(OODC.DISCOUNT_PRICE,0), 0) AS DISCOUNT_EMPLOYEE_PRICE
+							, IF(ood.OD_ORDER_DETL_DEPTH_ID != 3, CASE
+							WHEN IFNULL(OODC.DISCOUNT_PRICE,0) > 0 THEN 0
+							WHEN IFNULL(OODC.DISCOUNT_PRICE,0) = 0 THEN IFNULL(ood.DIRECT_PRICE,0)
+							END, IFNULL(ood.DIRECT_PRICE,0)) AS DIRECT_PRICE
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.AGENT_TYPE_CD AND ST_COMN_CODE_MST_CD = 'AGENT_TYPE') AS AGENT_TYPE_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.ORDER_PAYMENT_TYPE AND ST_COMN_CODE_MST_CD = 'PAY_TP') AS PAY_TP_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = ood.GOODS_TP_CD AND ST_COMN_CODE_MST_CD = 'GOODS_TYPE') AS GOODS_TYPE_DIC_MST_ID
+							, (SELECT MAX(opm.PG_SERVICE)
+								FROM OD_PAYMENT op
+								INNER JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID AND opm.STATUS = 'IC' AND opm.TYPE = 'G'
+								WHERE op.OD_ORDER_ID = oo.OD_ORDER_ID) AS PG_SERVICE
+							, oo.BUYER_NM
+						FROM OD_ORDER oo
+						JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+						JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+						JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+						LEFT JOIN (
+							SELECT
+								ood.OD_ORDER_DETL_ID
+								, SUM(ocd.CLAIM_CNT) AS CLAIM_CNT
+								, SUM(ocd.DIRECT_PRICE) AS DISCOUNT_PRICE
+								, SUM(ocd.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+								, SUM(ocd.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+							FROM OD_ORDER oo
+							JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+							JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+							JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+							JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+							JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND (ocd.CLAIM_STATUS_CD IN ('CC') OR ocd.PRIORITY_UNDELIVERED_YN = 'Y' OR ( ocd.PRIORITY_UNDELIVERED_YN = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) > 0))
+							WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+							AND oo.ORDER_YN = 'Y'
+							<include refid="searchDetailDate" />	<!-- 기간조회 -->
+							<include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+							GROUP BY ood.OD_ORDER_DETL_ID
+						) claim ON ood.OD_ORDER_DETL_ID = claim.OD_ORDER_DETL_ID
+						LEFT OUTER JOIN OD_ORDER_DETL_DISCOUNT OODC ON oo.OD_ORDER_ID = OODC.OD_ORDER_ID AND ood.OD_ORDER_DETL_ID = OODC.OD_ORDER_DETL_ID AND OODC.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+						WHERE (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)) > 0
+						AND oo.ORDER_YN = 'Y'
+						AND ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+						<include refid="searchDetailDate" />	<!-- 기간조회 -->
+						<include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+					</if>
+
+					<if test="salesGubunList.size() != 1">
+						UNION ALL
+					</if>
+
+					<if test='salesGubunList.size() == 0 or salesGubunList.contains("R")'>
+						SELECT
+							'반품' AS ORDER_TYPE
+							, oo.OD_ORDER_ID
+							, ood.OD_ORDER_DETL_ID
+							, ood.UR_SUPPLIER_ID
+							, oo.AGENT_TYPE_CD
+							, IFNULL(ocd.RC_DT, ocd.EC_DT) AS SETTLE_DT
+							, oo.CREATE_DT
+							, oo.ORDER_PAYMENT_TYPE
+							, oo.ODID
+							, ood.OD_ORDER_DETL_SEQ
+							, uw.WAREHOUSE_NM
+							, ood.IL_ITEM_CD
+							, ood.ITEM_BARCODE
+							, ood.IL_GOODS_ID
+							, ood.GOODS_NM
+							, ood.GOODS_TP_CD
+							, (ocd.CLAIM_CNT * -1) AS ORDER_CNT
+							, CAST(ood.RECOMMENDED_PRICE AS SIGNED) * -1 AS RECOMMENDED_PRICE
+							, CAST(ocd.SALE_PRICE AS SIGNED) * -1 as SALE_PRICE
+							, CAST(ocd.GOODS_COUPON_PRICE AS SIGNED) * -1 AS GOODS_COUPON_PRICE
+							, CAST(ocd.CART_COUPON_PRICE AS SIGNED) * -1 AS CART_COUPON_PRICE
+							, 0 AS SETTLE_PRICE
+							, ood.TAX_YN
+							, oo.COLLECTION_MALL_ID
+							, ood.COLLECTION_MALL_DETAIL_ID
+							, oo.OM_SELLERS_ID
+							, IFNULL(ocd.FC_DT, ocd.EC_DT) AS PAYMENT_DT
+							, CAST(ocd.DIRECT_PRICE AS SIGNED) * -1 AS DISCOUNT_PRICE
+							, ocd.OD_CLAIM_DETL_ID
+							, IF(uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF', 'Y', 'N') AS ORDER_CHANGE_YN
+							, IFNULL(oo.ORDER_COPY_YN, 'N')									AS ORDER_COPY_YN
+							, IFNULL(oo.ORDER_COPY_SAL_IF_YN, 'N')							AS ORDER_COPY_SAL_IF_YN
+							, IFNULL(oo.ORDER_COPY_ODID, '')								AS ORDER_COPY_ODID
+							, IFNULL(oo.ORDER_CREATE_YN, 'N')								AS ORDER_CREATE_YN
+							, oo.UR_STORE_ID
+							, CASE
+							WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+							WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN CAST((ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT) AS SIGNED) * -1
+							WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN CAST((ood.SALE_PRICE * ocd.CLAIM_CNT) AS SIGNED) * -1
+							ELSE 0
+							END AS TOTAL_SALE_PRICE
+							, CASE
+							WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+							WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND( ((ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT) * 10 / 11), 8 )
+							WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND( ((ood.SALE_PRICE * ocd.CLAIM_CNT) * 10 / 11), 8 )
+							WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT)
+							WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * ocd.CLAIM_CNT)
+							ELSE 0
+							END AS TOTAL_SALE_NON_TAX_PRICE
+							, IFNULL(CAST(OCDC.DISCOUNT_PRICE AS SIGNED) * -1,0)  AS DISCOUNT_EMPLOYEE_PRICE
+							, CASE
+							WHEN IFNULL(OCDC.DISCOUNT_PRICE,0) > 0 THEN 0
+							WHEN IFNULL(OCDC.DISCOUNT_PRICE,0) = 0 THEN IFNULL(CAST(ocd.DIRECT_PRICE AS SIGNED) * -1,0)
+							END AS DIRECT_PRICE
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.AGENT_TYPE_CD AND ST_COMN_CODE_MST_CD = 'AGENT_TYPE') AS AGENT_TYPE_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = oo.ORDER_PAYMENT_TYPE AND ST_COMN_CODE_MST_CD = 'PAY_TP') AS PAY_TP_DIC_MST_ID
+							, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = ood.GOODS_TP_CD AND ST_COMN_CODE_MST_CD = 'GOODS_TYPE') AS GOODS_TYPE_DIC_MST_ID
+							, (SELECT MAX(opm.PG_SERVICE)
+								FROM OD_PAYMENT op
+								INNER JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID AND opm.STATUS = 'IC' AND opm.TYPE = 'G'
+								WHERE op.OD_ORDER_ID = oo.OD_ORDER_ID) AS PG_SERVICE
+							, oo.BUYER_NM
+						FROM OD_ORDER oo
+						JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+						JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+						JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+						JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+						JOIN OD_CLAIM_DETL ocd ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.CLAIM_STATUS_CD IN ('RC', 'EC') AND IFNULL(ocd.PRIORITY_UNDELIVERED_YN,'N') = 'N' AND IFNULL(ocd.IF_UNRELEASED_INFO_ID, 0) = 0)
+						LEFT OUTER JOIN OD_CLAIM_DETL_DISCOUNT OCDC ON ocd.OD_CLAIM_ID = OCDC.OD_CLAIM_ID AND ocd.OD_CLAIM_DETL_ID = OCDC.OD_CLAIM_DETL_ID AND OCDC.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+						WHERE ood.GOODS_DELIVERY_TYPE != 'GOODS_DELIVERY_TYPE.SHOP'
+						AND oo.ORDER_YN = 'Y'
+						<include refid="searchClaimDetailDate" />	<!-- 기간조회 -->
+						<include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+					</if>
+				) y
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(supplierId,4)">
+					JOIN OD_ORDER_DETL_DAILY oodd ON oodd.OD_ORDER_DETL_ID = y.OD_ORDER_DETL_ID
+					JOIN UR_STORE us ON us.UR_STORE_ID = oodd.UR_STORE_ID
+				</if>
+				ORDER BY y.SETTLE_DT, y.ODID, y.OD_ORDER_DETL_SEQ, y.ORDER_TYPE
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+					<include refid="_common.pageLimit"/>
+				</if>
+			) cgo
+			JOIN UR_SUPPLIER usu ON cgo.UR_SUPPLIER_ID = usu.UR_SUPPLIER_ID
+			JOIN UR_COMPANY uc ON uc.UR_COMPANY_ID = usu.UR_COMPANY_ID AND uc.USE_YN = 'Y' AND uc.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+		) z
+	</select>
+
+    <sql id="storeGoodsListTemp">
+        WITH STORE_GOODS_TEMP AS
+        (
+        SELECT
+        cgo.ORDER_TYPE
+        , CASE
+        WHEN ORDER_COPY_YN = 'Y' THEN CASE
+        WHEN ORDER_COPY_SAL_IF_YN = 'Y' THEN CONCAT(FN_COMN_CODE_DIC(cgo.AGENT_TYPE_CD), ' (주문복사/매출만연동)')
+        ELSE CONCAT(FN_COMN_CODE_DIC(cgo.AGENT_TYPE_CD), ' (주문복사)')
+        END
+        WHEN ORDER_CREATE_YN = 'Y' THEN CONCAT(FN_COMN_CODE_DIC(cgo.AGENT_TYPE_CD), ' (주문생성)')
+        ELSE FN_COMN_CODE_DIC(cgo.AGENT_TYPE_CD)
+        END AS AGENT_TYPE_CD
+        , cgo.SETTLE_DT
+        , cgo.CREATE_DT
+        , cgo.PAYMENT_DT
+        , FN_COMN_CODE_DIC(cgo.ORDER_PAYMENT_TYPE) AS ORDER_PAYMENT_TYPE
+        , CASE
+        WHEN cgo.AGENT_TYPE_CD = 'AGENT_TYPE.O' THEN os.SELLERS_NM
+        ELSE '통합몰'
+        END AS SELLERS_NM
+        , cgo.ODID
+        , cgo.OD_ORDER_DETL_SEQ
+        , us.COMP_NM
+        , cgo.WAREHOUSE_NM
+        , cgo.IL_ITEM_CD
+        , cgo.ITEM_BARCODE
+        , cgo.IL_GOODS_ID
+        , cgo.GOODS_NM
+        , FN_COMN_CODE_DIC(cgo.GOODS_TP_CD) AS GOODS_TP_CD
+        , cgo.ORDER_CNT
+        , cgo.RECOMMENDED_PRICE
+        , cgo.SALE_PRICE
+        , cgo.GOODS_COUPON_PRICE
+        , cgo.CART_COUPON_PRICE
+        , IF(cgo.TAX_YN = 'Y', ROUND(cgo.SETTLE_PRICE * 1.1, 8), cgo.SETTLE_PRICE) AS SALES_PRICE
+        , cgo.SETTLE_PRICE AS NON_TAXABLE_PRICE
+        , cgo.TAX_YN
+        , cgo.ORDER_CHANGE_YN
+        , cgo.COLLECTION_MALL_ID
+        , cgo.COLLECTION_MALL_DETAIL_ID
+        , cgo.DISCOUNT_PRICE
+        , cgo.OD_ORDER_DETL_ID
+        , cgo.OD_CLAIM_DETL_ID
+        , us.NM AS STORE_NAME
+        , cgo.TOTAL_SALE_PRICE
+        , cgo.TOTAL_SALE_NON_TAX_PRICE
+        , cgo.DIRECT_PRICE
+        , cgo.DISCOUNT_EMPLOYEE_PRICE
+        , cgo.OD_ORDER_ID
+        from (
+        <if test='salesGubunList.size() == 0 or salesGubunList.contains("S")'>
+            <!--매출-->
+            SELECT
+				'매출' AS ORDER_TYPE
+				, oo.OD_ORDER_ID
+				, ood.OD_ORDER_DETL_ID
+				, ood.UR_SUPPLIER_ID
+				, oo.AGENT_TYPE_CD
+				, IFNULL(issi.SETTLE_DT, ood.DI_DT) AS SETTLE_DT
+				, oo.CREATE_DT
+				, oo.ORDER_PAYMENT_TYPE
+				, oo.ODID
+				, ood.OD_ORDER_DETL_SEQ
+				, uw.WAREHOUSE_NM
+				, ood.IL_ITEM_CD
+				, ood.ITEM_BARCODE
+				, ood.IL_GOODS_ID
+				, ood.GOODS_NM
+				, ood.GOODS_TP_CD
+				, ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0) AS ORDER_CNT
+				, ood.RECOMMENDED_PRICE
+				, ood.SALE_PRICE
+				, ood.GOODS_COUPON_PRICE - IFNULL(claim.GOODS_COUPON_PRICE, 0) AS GOODS_COUPON_PRICE
+				, ood.CART_COUPON_PRICE - IFNULL(claim.CART_COUPON_PRICE, 0) AS CART_COUPON_PRICE
+				, IFNULL(issi.SETTLE_PRICE, 0) AS SETTLE_PRICE
+				, ood.TAX_YN
+				, oo.COLLECTION_MALL_ID
+				, ood.COLLECTION_MALL_DETAIL_ID
+				, oo.OM_SELLERS_ID
+				, ood2.IC_DT AS PAYMENT_DT
+				, ood.DIRECT_PRICE - IFNULL(claim.DISCOUNT_PRICE, 0) AS DISCOUNT_PRICE
+				, NULL AS OD_CLAIM_DETL_ID
+				, IF(uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF', 'Y', 'N') AS ORDER_CHANGE_YN
+				, IFNULL(oo.ORDER_COPY_YN, 'N')									AS ORDER_COPY_YN
+				, IFNULL(oo.ORDER_COPY_SAL_IF_YN, 'N')							AS ORDER_COPY_SAL_IF_YN
+				, IFNULL(oo.ORDER_COPY_ODID, '')								AS ORDER_COPY_ODID
+				, IFNULL(oo.ORDER_CREATE_YN, 'N')								AS ORDER_CREATE_YN
+				, oo.UR_STORE_ID
+				, CASE
+				WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+				WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)))
+				WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)))
+				ELSE 0
+				END AS TOTAL_SALE_PRICE
+				, CASE
+				WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+				WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND( (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))) * 10 / 11, 8)
+				WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND( (ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))) * 10 / 11, 8)
+				WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))
+				WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE * (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0))
+				ELSE 0
+				END AS TOTAL_SALE_NON_TAX_PRICE
+				, CASE WHEN IFNULL(oodc.DISCOUNT_PRICE,0) > 0 THEN IFNULL(oodc.DISCOUNT_PRICE,0) - IFNULL(claim.DISCOUNT_PRICE, 0) ELSE 0 END AS DISCOUNT_EMPLOYEE_PRICE
+				, CASE WHEN IFNULL(oodc.DISCOUNT_PRICE,0) > 0 THEN 0
+				WHEN IFNULL(oodc.DISCOUNT_PRICE,0) = 0 THEN IFNULL(ood.DIRECT_PRICE,0) - IFNULL(claim.DISCOUNT_PRICE, 0) END AS DIRECT_PRICE
+            FROM IF_SALES_SETTLE_INFO issi
+            INNER JOIN OD_ORDER_DETL ood ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ
+            INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+            INNER JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+            INNER JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+            LEFT OUTER JOIN (
+				SELECT
+					ood.OD_ORDER_DETL_ID
+				, SUM(ocd.CLAIM_CNT) AS CLAIM_CNT
+				, SUM(ocd.DIRECT_PRICE) AS DISCOUNT_PRICE
+				, SUM(ocd.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+				, SUM(ocd.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+				FROM OD_ORDER_DETL ood
+				INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+				INNER JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				INNER JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+				INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+				INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+				INNER JOIN IF_SALES_SETTLE_INFO issi ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER'
+				WHERE ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+				AND IFNULL(ocd.ORDER_STATUS_CD, 'IC') = 'IC'
+				AND ocd.CLAIM_STATUS_CD = 'CC'
+           	    <include refid="serchSettleDetailDate" />				<!-- 기간조회 -->
+				group by ood.OD_ORDER_DETL_ID
+            ) claim ON ood.OD_ORDER_DETL_ID = claim.OD_ORDER_DETL_ID
+            LEFT OUTER JOIN (
+            SELECT	T2.*
+            FROM	OD_ORDER_DETL T1
+            INNER JOIN OD_ORDER_DETL_DISCOUNT T2 ON T1.OD_ORDER_ID = T2.OD_ORDER_ID AND T1.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+            WHERE	T2.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+            AND	T1.OD_ORDER_DETL_DEPTH_ID != 3
+            ) oodc ON ood.OD_ORDER_DETL_ID = oodc.OD_ORDER_DETL_ID
+            WHERE issi.SETTLE_TYPE = 'ORDER'
+            AND (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT, 0)) > 0
+            AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+            <include refid="serchSettleDetailDate" />				<!-- 기간조회 -->
+            <include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+        </if>
+        <if test="salesGubunList.size() != 1">
+            UNION ALL
+        </if>
+        <if test='salesGubunList.size() == 0 or salesGubunList.contains("R")'>
+            <!--반품-->
+            SELECT
+				'반품' AS ORDER_TYPE
+				, oo.OD_ORDER_ID
+				, ood.OD_ORDER_DETL_ID
+				, ood.UR_SUPPLIER_ID
+				, oo.AGENT_TYPE_CD
+				, issi.SETTLE_DT
+				, oo.CREATE_DT
+				, oo.ORDER_PAYMENT_TYPE
+				, oo.ODID
+				, ood.OD_ORDER_DETL_SEQ
+				, uw.WAREHOUSE_NM
+				, ood.IL_ITEM_CD
+				, ood.ITEM_BARCODE
+				, ood.IL_GOODS_ID
+				, ood.GOODS_NM
+				, ood.GOODS_TP_CD
+				, CASE
+					WHEN ocd.CLAIM_CNT = 0 THEN (ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT,0)) * -1
+					ELSE IFNULL(ocd.CLAIM_CNT, ood.ORDER_CNT - IFNULL(claim.CLAIM_CNT,0)) * -1
+				  END AS ORDER_CNT
+				, CAST(ood.RECOMMENDED_PRICE AS SIGNED) * -1 AS RECOMMENDED_PRICE
+				, CASE
+					WHEN ocd.SALE_PRICE = 0 THEN CAST(ood.SALE_PRICE AS SIGNED) * -1
+					ELSE CAST(IFNULL(ocd.SALE_PRICE, ood.SALE_PRICE) AS SIGNED) * -1
+				  END AS SALE_PRICE
+				, CASE
+					WHEN ocd.GOODS_COUPON_PRICE = 0 THEN CAST((ood.GOODS_COUPON_PRICE-IFNULL(claim.GOODS_COUPON_PRICE,0)) AS SIGNED) * -1
+					ELSE CAST(IFNULL(ocd.GOODS_COUPON_PRICE, ood.GOODS_COUPON_PRICE-IFNULL(claim.GOODS_COUPON_PRICE,0)) AS SIGNED) * -1
+				  END AS GOODS_COUPON_PRICE
+				, CASE
+					WHEN ocd.CART_COUPON_PRICE = 0 THEN CAST((ood.CART_COUPON_PRICE-IFNULL(claim.CART_COUPON_PRICE,0)) AS SIGNED) * -1
+					ELSE CAST(IFNULL(ocd.CART_COUPON_PRICE, ood.CART_COUPON_PRICE-IFNULL(claim.CART_COUPON_PRICE,0)) AS SIGNED) * -1
+				  END AS CART_COUPON_PRICE
+				, issi.SETTLE_PRICE * -1 AS SETTLE_PRICE
+				, ood.TAX_YN
+				, oo.COLLECTION_MALL_ID
+				, ood.COLLECTION_MALL_DETAIL_ID
+				, oo.OM_SELLERS_ID
+				, IFNULL(ocd.FC_DT, issi.SETTLE_DT) AS PAYMENT_DT
+				, CAST(IFNULL(ocd.DIRECT_PRICE, ood.DIRECT_PRICE) AS SIGNED) * -1 AS DISCOUNT_PRICE
+				, ocd.OD_CLAIM_DETL_ID
+				, IF(uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF', 'Y', 'N') AS ORDER_CHANGE_YN
+				, IFNULL(oo.ORDER_COPY_YN, 'N')									AS ORDER_COPY_YN
+				, IFNULL(oo.ORDER_COPY_SAL_IF_YN, 'N')							AS ORDER_COPY_SAL_IF_YN
+				, IFNULL(oo.ORDER_COPY_ODID, '')								AS ORDER_COPY_ODID
+				, IFNULL(oo.ORDER_CREATE_YN, 'N')								AS ORDER_CREATE_YN
+				, oo.UR_STORE_ID
+				, CASE
+				WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+				WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN CAST((ood.RECOMMENDED_PRICE * IFNULL(ocd.CLAIM_CNT, 0)) AS SIGNED) * -1
+				WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN CAST((ood.SALE_PRICE * IFNULL(ocd.CLAIM_CNT, 0)) AS SIGNED) * -1
+				ELSE 0
+				END AS TOTAL_SALE_PRICE
+				, CASE
+				WHEN ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING') THEN 0
+				WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND( ((ood.RECOMMENDED_PRICE * IFNULL(ocd.CLAIM_CNT, 0)) * 10 / 11), 8)
+				WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND( ((ood.SALE_PRICE * IFNULL(ocd.CLAIM_CNT, 0)) * 10 / 11), 8)
+				WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * IFNULL(ocd.CLAIM_CNT, 0))
+				WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * IFNULL(ocd.CLAIM_CNT, 0))
+				ELSE 0
+				END AS TOTAL_SALE_NON_TAX_PRICE
+				, CASE WHEN IFNULL(ocd.DISCOUNT_PRICE, 0) > 0 THEN CAST(IFNULL(ocd.DISCOUNT_PRICE, IFNULL(oodc.DISCOUNT_PRICE, 0)) AS SIGNED) * -1 ELSE 0 END AS DISCOUNT_EMPLOYEE_PRICE
+				, CASE
+					WHEN IFNULL(ocd.DISCOUNT_PRICE, IFNULL(oodc.DISCOUNT_PRICE, 0)) > 0 THEN 0
+					WHEN IFNULL(ocd.DISCOUNT_PRICE, 0) = 0 THEN CAST( IFNULL(ocd.DIRECT_PRICE, IFNULL(ood.DIRECT_PRICE, 0)) AS SIGNED) * -1
+				  END AS DIRECT_PRICE
+            FROM IF_SALES_SETTLE_INFO issi
+            INNER JOIN OD_ORDER_DETL ood ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ
+            INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+            INNER JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+            INNER JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+            LEFT OUTER JOIN (
+                SELECT
+                    iood.OD_ORDER_DETL_ID
+                    , SUM(iocd.CLAIM_CNT) AS CLAIM_CNT
+                    , SUM(iocd.SALE_PRICE) AS SALE_PRICE
+                    , SUM(iocd.DIRECT_PRICE) AS DIRECT_PRICE
+                    , SUM(iocd.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+                    , SUM(iocd.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+                    , MAX(iocd.FC_DT) AS FC_DT
+                    , SUM(IFNULL(ocdd.DISCOUNT_PRICE, 0 )) AS DISCOUNT_PRICE
+                    , MAX(iocd.OD_CLAIM_DETL_ID) AS OD_CLAIM_DETL_ID
+                FROM OD_ORDER_DETL iood
+                INNER JOIN OD_ORDER ioo ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID AND ioo.ORDER_YN = 'Y'
+                INNER JOIN OD_CLAIM ioc ON ioo.OD_ORDER_ID = ioc.OD_ORDER_ID AND ioc.CLAIM_YN = 'Y'
+                INNER JOIN OD_CLAIM_DETL iocd ON ioc.OD_CLAIM_ID = iocd.OD_CLAIM_ID AND iood.OD_ORDER_DETL_ID = iocd.OD_ORDER_DETL_ID
+                LEFT OUTER JOIN  OD_CLAIM_DETL_DISCOUNT ocdd ON iocd.OD_CLAIM_ID = ocdd.OD_CLAIM_ID AND iocd.OD_CLAIM_DETL_ID = ocdd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                WHERE iood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+                AND (iocd.CLAIM_STATUS_CD = 'CC' AND iocd.ORDER_STATUS_CD = 'DR') OR iocd.CLAIM_STATUS_CD = 'RC'
+                group by iood.OD_ORDER_DETL_ID
+            ) ocd ON ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+			LEFT OUTER JOIN (
+				SELECT
+					ood.OD_ORDER_DETL_ID
+					, SUM(ocd.CLAIM_CNT) AS CLAIM_CNT
+					, SUM(ocd.DIRECT_PRICE) AS DISCOUNT_PRICE
+					, SUM(ocd.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+					, SUM(ocd.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+				FROM OD_ORDER_DETL ood
+				INNER JOIN OD_ORDER oo ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y'
+				INNER JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				INNER JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+				INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y'
+				INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+				INNER JOIN IF_SALES_SETTLE_INFO issi ON ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER'
+				WHERE ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+				AND IFNULL(ocd.ORDER_STATUS_CD, 'IC') = 'IC'
+				AND ocd.CLAIM_STATUS_CD = 'CC'
+				<include refid="serchSettleDetailDate" />
+				group by ood.OD_ORDER_DETL_ID
+			) claim ON ood.OD_ORDER_DETL_ID = claim.OD_ORDER_DETL_ID
+			LEFT OUTER JOIN (
+				SELECT	T2.*
+				FROM	OD_ORDER_DETL T1
+				INNER JOIN OD_ORDER_DETL_DISCOUNT T2 ON T1.OD_ORDER_ID = T2.OD_ORDER_ID AND T1.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+				WHERE	T2.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+				AND	T1.OD_ORDER_DETL_DEPTH_ID != 3
+			) oodc ON ood.OD_ORDER_DETL_ID = oodc.OD_ORDER_DETL_ID
+            WHERE issi.SETTLE_TYPE = 'RETURN'
+            AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+            <include refid="serchSettleClaimDetailDate" />	<!-- 기간조회 -->
+            <include refid="searchFindKeyword" />	<!-- 검색어 조회 -->
+        </if>
+        ) cgo
+        JOIN (
+        SELECT S.UR_SUPPLIER_ID, C.COMP_NM FROM UR_SUPPLIER S
+        JOIN UR_COMPANY C ON C.UR_COMPANY_ID = S.UR_COMPANY_ID AND C.USE_YN = 'Y' AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+        ) us ON cgo.UR_SUPPLIER_ID = us.UR_SUPPLIER_ID
+        LEFT OUTER JOIN OM_SELLERS os ON cgo.OM_SELLERS_ID = os.OM_SELLERS_ID
+        LEFT JOIN UR_STORE us ON us.UR_STORE_ID = cgo.UR_STORE_ID
+        )
+	</sql>
+
+    <select id="getStoreGoodsListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListRequestDto">
+        /*	calGoods.getStoreGoodsListCount  */
+        <include refid="storeGoodsListTemp" />
+        SELECT
+         COUNT(*) AS CNT
+        FROM STORE_GOODS_TEMP
+    </select>
+
+	<select id="getStoreGoodsList" resultType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListDto" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalGoodsListRequestDto">
+		/* calGoods.getStoreGoodsList */
+		<!-- 상품 정산 내역 -->
+
+        <include refid="storeGoodsListTemp" />
+
+		SELECT
+            z.ORDER_TYPE 					<!-- 구분 -->
+            , z.AGENT_TYPE_CD 				<!-- 주문경로 -->
+            , IFNULL(DATE_FORMAT(z.SETTLE_DT, '%Y-%m-%d'),'') AS GOODS_SETTLE_DT	 	<!-- 정산처리일자 -->
+            , IFNULL(DATE_FORMAT(z.CREATE_DT, '%Y-%m-%d'),'') AS GOODS_ORDER_DT 	<!-- 주문일자 -->
+            , IFNULL(DATE_FORMAT(z.PAYMENT_DT, '%Y-%m-%d'),'') AS PAYMENT_DT 	<!-- 결제일자/환불일자 -->
+            , z.ORDER_PAYMENT_TYPE 			<!-- 결제수단/환불수단 -->
+            , z.SELLERS_NM 					<!-- 판매처 -->
+            , z.ODID 						<!-- 주문번호 -->
+            , z.OD_ORDER_DETL_SEQ  AS OD_ORDER_DETL_ID			<!-- 주문상세번호 -->
+            , z.COMP_NM 		AS UR_SUPPLIER_ID				<!-- 공급업체 -->
+            , z.WAREHOUSE_NM 				<!-- 출고처 -->
+            , IFNULL(z.STORE_NAME, '') AS STORE_NAME			<!-- 매장명 -->
+            , z.IL_ITEM_CD 	 				<!-- 품목코드 -->
+            , z.ITEM_BARCODE 				<!-- 품목바코드 -->
+            , z.IL_GOODS_ID 				<!-- 상품코드 -->
+            , z.GOODS_NM 					<!-- 상품명 -->
+            , z.GOODS_TP_CD 				<!-- 상품유형 -->
+            , z.ORDER_CNT AS ORDER_CNT <!-- 수량 -->
+            , z.RECOMMENDED_PRICE 			<!-- 정상가 -->
+            , z.DISCOUNT_PRICE 				<!-- 즉시할인금액 -->
+            , z.SALE_PRICE 						<!-- 판매가 -->
+            , z.GOODS_COUPON_PRICE				<!-- 상품쿠폰명 -->
+            , z.CART_COUPON_PRICE 				<!-- 장바구니쿠폰 할인금액 -->
+            , CASE WHEN z.ORDER_TYPE = '반품' THEN CASE WHEN (z.SALE_PRICE * z.ORDER_CNT) > 0 THEN (CAST(z.SALE_PRICE AS SIGNED) * -1) * z.ORDER_CNT
+            ELSE 0
+            END
+            ELSE (z.SALE_PRICE * z.ORDER_CNT)
+            END AS ORDER_PRICE  				<!-- 주문금액 -->
+            , CASE WHEN z.ORDER_TYPE = '반품' THEN CASE WHEN ((z.SALE_PRICE * z.ORDER_CNT) + z.GOODS_COUPON_PRICE + z.CART_COUPON_PRICE) > 0 THEN (((CAST(z.SALE_PRICE AS SIGNED) * -1) * z.ORDER_CNT) + z.GOODS_COUPON_PRICE + z.CART_COUPON_PRICE)
+            ELSE 0
+            END
+            ELSE (z.SALE_PRICE * z.ORDER_CNT) - z.GOODS_COUPON_PRICE - z.CART_COUPON_PRICE
+            END AS PAID_PRICE_GOODS 			<!-- 결제금액 -->
+            , IFNULL(z.SALES_PRICE, 0) 	AS TAXABLE_PRICE					<!-- 매출금액 -->
+            , IFNULL(z.NON_TAXABLE_PRICE, 0)     AS NON_TAXABLE_PRICE            <!-- 매출금액(VAT 제외) -->
+            , IFNULL(IF(z.TAX_YN = 'Y', z.SALES_PRICE-z.NON_TAXABLE_PRICE, 0), 0) AS VAT <!-- VAT 금액 -->
+            , z.TAX_YN 								<!-- 과세 구분 -->
+            , z.ORDER_CHANGE_YN 					<!-- 통합 ERPI/F여부 -->
+            , z.COLLECTION_MALL_ID 	AS OUTMALL_ID	<!-- 외부몰 주문번호 -->
+            , z.COLLECTION_MALL_DETAIL_ID 	AS OUTMALL_DETAIL_ID	<!-- 외부몰 상세번호 -->
+            , SUM(IFNULL(SALES_PRICE, 0)) OVER() AS TOTAL_TAXABLE_PRICE
+            , z.TOTAL_SALE_PRICE
+            , CASE
+				WHEN z.ORDER_TYPE = '반품' THEN z.TOTAL_SALE_NON_TAX_PRICE * -1
+				ELSE z.TOTAL_SALE_NON_TAX_PRICE
+		      END AS TOTAL_SALE_NON_TAX_PRICE
+            , z.DIRECT_PRICE
+            , z.DISCOUNT_EMPLOYEE_PRICE
+            , IFNULL(FN_COMN_CODE_DIC((SELECT MAX(opm.PG_SERVICE)
+                                        FROM OD_PAYMENT op
+                                        INNER JOIN OD_PAYMENT_MASTER opm
+                                        ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+                                        AND opm.STATUS = 'IC' <!-- 결제상태(IR:입금예정,IC:입금완료,IB:입금전취소) -->
+                                        AND opm.TYPE = 'G' <!-- 결제타입 (G : 결제, F : 환불 , A : 추가) -->
+                                        WHERE op.OD_ORDER_ID = z.OD_ORDER_ID)) ,'') AS PG_SERVICE_NM <!-- PG사 -->
+		FROM STORE_GOODS_TEMP z
+		ORDER BY z.ODID, z.OD_ORDER_DETL_SEQ, z.ORDER_TYPE
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+			<include refid="_common.pageLimit"/>
+		</if>
+	</select>
+
+</mapper>

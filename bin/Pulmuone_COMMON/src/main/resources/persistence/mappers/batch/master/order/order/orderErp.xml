@@ -1,0 +1,2360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.order.OrderErpMapper">
+
+    <!-- 용인물류 주문 리스트 조회 -->
+    <select id="selectDeliveryOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.DeliveryOrderListVo">
+        /* orderErp.selectDeliveryOrderList */
+        <![CDATA[
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.ORDER_DT AS orderDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.BUYER_MAIL AS buyerMail
+            , x.RECV_NM AS recvNm
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , IFNULL(x.SHIPPING_PRICE, 0) AS shippingPrice
+            , x.UR_USER_ID AS urUserId
+            , x.ORDER_IF_DT AS orderIfDt
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.UR_SUPPLIER_ID AS urSupplierId
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ITEM_BARCODE AS itemBarcode
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.DELIVERY_DT AS deliveryDt
+            , IFNULL(x.UNIT_SALE_PRICE, 0) AS unitSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_ORGA_PRICE, 0) AS unitSaleNonTaxOrgaPrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) AS unitSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_ORGA_PRICE), 0) AS unitTaxPrice
+            , x.GOODS_NM AS goodsNm
+            , IFNULL(x.TOTAL_SALE_PRICE, 0) AS totalSalePrice
+            , IFNULL(x.TOTAL_SALE_NON_TAX_PRICE, 0) AS totalSaleNonTaxPrice
+            , IFNULL((x.TOTAL_SALE_PRICE - x.TOTAL_SALE_NON_TAX_PRICE), 0) AS totalTaxPrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.COLLECTION_MALL_DETAIL_ID AS collectionMallDetailId
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.DOOR_MSG_NM AS doorMsgNm
+            , x.DOOR_MSG AS doorMsg
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.SUPPLIER_CD AS supplierCd
+            , x.SEQ_NO AS seqNo
+            , x.TAX_YN AS taxYn
+            , x.GIFT_FOOD_MARKETING_CD AS giftFoodMarketingCd
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS ORDER_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(oo.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , op.SHIPPING_PRICE
+                , oo.UR_USER_ID
+                , DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d%000000') AS ORDER_IF_DT
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , ood.UR_SUPPLIER_ID
+                , ood.IL_ITEM_CD
+                , ood.ITEM_BARCODE
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , oo.CREATE_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE
+                    ELSE 0
+                  END AS UNIT_SALE_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_ORGA_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_PRICE
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                    ELSE 0
+                  END AS TOTAL_SALE_PRICE
+                , ood.GOODS_NM
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND((ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT)) * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND((ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT)) * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT), 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT), 8)
+                    ELSE 0
+                  END TOTAL_SALE_NON_TAX_PRICE
+                , ood.GOODS_TP_CD
+                , ood.COLLECTION_MALL_DETAIL_ID
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , REPLACE(FN_DECRYPT(osz.DOOR_MSG), "'", "`") AS DOOR_MSG
+                , oo.AGENT_TYPE_CD
+                , (SELECT
+                        CONCAT(SUPPLIER_CD,'∀',CALC_TYPE)
+                    FROM OM_BASIC_FEE
+                    WHERE SELLERS_GROUP_CD = oo.SELLERS_GROUP_CD
+                    AND OM_SELLERS_ID = oo.OM_SELLERS_ID
+                    AND UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID
+                    AND START_DT <= DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d')
+                    ORDER BY START_DT DESC
+                    LIMIT 1
+                ) AS SUPPLIER_CD
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , ood.TAX_YN
+                , (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.YONGIN') AS GIFT_FOOD_MARKETING_CD
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(IF(ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN',uw.DAWN_UNDELIVERABLE_AREA_TP_GRP,uw.UNDELIVERABLE_AREA_TP_GRP), PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP /* 배송불가 우선 */
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID AND op.OD_CLAIM_ID = 0
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+            ]]>
+            AND ood.GOODS_DELIVERY_TYPE IN
+            <foreach collection="goodsDeliveryType" item="goodsDeliveryType" separator="," open="(" close=")">
+                #{goodsDeliveryType}
+            </foreach>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersIdList)">
+                AND oo.OM_SELLERS_ID IN
+                <foreach collection="omSellersIdList" item="omSellersIdList" separator="," open="(" close=")">
+                    #{omSellersIdList}
+                </foreach>
+            </if>
+        <![CDATA[
+            /* 주문시간 30분 텀 */
+            AND oo.CREATE_DT <= CAST(CASE
+                                 WHEN CONCAT(DATE_FORMAT(NOW(), '%Y%m%d'), #{orderDeadlineTime}, '00') <= now() THEN CONCAT(DATE_FORMAT(NOW(), '%Y%m%d'), #{orderDeadlineTime}, '00')
+                                 ELSE CONCAT(DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 30 MINUTE), '%Y%m%d%H'), RPAD(FLOOR(DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 30 MINUTE),'%i') / 10) * 10, 2, '0') ,'00')
+                                END AS DATETIME)
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+        ]]>
+    </select>
+
+    <!-- 백암물류 주문 리스트 조회 -->
+    <select id="selectCjOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.CjOrderListVo">
+        /* orderErp.selectCjOrderList */
+        <![CDATA[
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.BUYER_NM AS buyerNm
+            , x.RECV_NM AS recvNm
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.ORDER_IF_DT AS orderIfDt
+            , x.GOODS_NM AS goodsNm
+            , x.CREATE_DT AS createDt
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.LOGISTICS_GUBUN AS logisticsGubun
+            , x.SEQ_NO AS seqNo
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , ood.IL_ITEM_CD
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d%H%i%s') AS ORDER_IF_DT
+                , ood.GOODS_NM
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , oo.AGENT_TYPE_CD
+                , (SELECT LOGISTICS_GUBUN FROM OM_SELLERS WHERE OM_SELLERS_ID = oo.OM_SELLERS_ID AND SELLERS_GROUP_CD = oo.SELLERS_GROUP_CD) AS LOGISTICS_GUBUN
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , ood.GOODS_TP_CD
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID and ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ]]>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersIdList)">
+                AND oo.OM_SELLERS_ID IN
+                <foreach collection="omSellersIdList" item="omSellersIdList" separator="," open="(" close=")">
+                    #{omSellersIdList}
+                </foreach>
+            </if>
+        <![CDATA[
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+        ]]>
+    </select>
+
+    <!-- 올가 매장배송 주문 리스트 조회 -->
+    <select id="selectOrgaStoreDeliveryOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.OrgaStoreDeliveryOrderListVo">
+        /* orderErp.selectOrgaStoreDeliveryOrderList */
+        <![CDATA[
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_HP AS recvHp
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.SHP_CD AS shpCd
+            , SUM(x.SALE_PRICE) OVER(PARTITION BY x.OD_ORDER_ID) AS totSaleAmt
+            , SUM(x.DISCOUNT_PRICE) OVER(PARTITION BY x.OD_ORDER_ID) AS totDcAmt
+            , SUM(IF(x.TAX_YN = 'Y', x.TOTAL_SALE_NON_TAX_PRICE, 0) - x.DISCOUNT_PRICE) OVER(PARTITION BY x.OD_ORDER_ID) AS vatSalAmt
+            , SUM(IF(x.TAX_YN = 'N', x.TOTAL_SALE_NON_TAX_PRICE, 0) - x.DISCOUNT_PRICE) OVER(PARTITION BY x.OD_ORDER_ID) AS noVatSalAmt
+            , x.SHIPPING_PRICE AS shippingPrice
+            , x.CREATE_DT AS createDt
+            , x.PAY_OUT_DT AS payOutDt
+            , x.DLV_FRO_DT AS dlvFroDt
+            , x.DLV_TO_DT AS dlvToDt
+            , x.DLV_IDX AS dlvIdx
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ITEM_BARCODE AS itemBarcode
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.TAX_YN AS taxYn
+            , x.UNIT_SALE_PRICE AS unitSalePrice
+            , x.SALE_PRICE AS salePrice
+            , x.DISCOUNT_PRICE AS discountPrice
+            , x.SALE_PRICE - x.TOTAL_SALE_NON_TAX_PRICE AS vatAmt
+            , x.TOTAL_SALE_NON_TAX_PRICE AS totalSaleNonTaxPrice
+            , x.SEQ_NO AS seqNo
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.ORDER_STATUS_DELI_TP AS orderStatusDeliTp
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        from
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE
+                  END AS UNIT_SALE_PRICE
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                  END AS SALE_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND((ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT)) / 1.1)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND((ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT)) / 1.1)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                    ELSE 0
+                  END TOTAL_SALE_NON_TAX_PRICE
+                , (ood.CART_COUPON_PRICE + ood.GOODS_COUPON_PRICE + ood.DIRECT_PRICE) AS DISCOUNT_PRICE
+                , ood.PAID_PRICE
+                , ood.TAX_YN
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , op.SHIPPING_PRICE
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , DATE_FORMAT((SELECT MAX(APPROVAL_DT) FROM OD_PAYMENT_MASTER WHERE OD_PAYMENT_MASTER_ID = op.OD_PAYMENT_MASTER_ID), '%Y%m%d%H%i%s') AS PAY_OUT_DT
+                , oo.UR_STORE_ID AS SHP_CD /* 매장코드 */
+                , DATE_FORMAT(oo.STORE_START_TIME, '%Y%m%d%H%i%s') AS DLV_FRO_DT /* 배달-배송시간 from */
+                , DATE_FORMAT(oo.STORE_END_TIME, '%Y%m%d%H%i%s') AS DLV_TO_DT /* 배달-배송시간 to */
+                , oo.STORE_SCHEDULE_NO AS DLV_IDX /* 배달-차수 */
+                , ood.IL_ITEM_CD
+                , ood.ITEM_BARCODE
+                , ood.OD_ORDER_DETL_ID
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , ood.OD_ORDER_DETL_SEQ
+                , ood.ORDER_STATUS_DELI_TP
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+            INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID AND op.OD_CLAIM_ID = 0
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID and ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(DATE_ADD(NOW(),INTERVAL +1 DAY),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+        ]]>
+    </select>
+
+    <!-- 올가 기타주문 리스트 조회 -->
+    <select id="selectOrgaEtcOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.OrgaEtcOrderListVo">
+        /* orderErp.selectOrgaEtcOrderList */
+        <![CDATA[
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.CREATE_DT AS createDt
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_HP AS recvHp
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.GOODS_NM AS goodsNm
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        from
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , ood.OD_ORDER_DETL_ID
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , ood.IL_ITEM_CD
+                , ood.GOODS_NM
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , oo.ODID
+                , ood.OD_ORDER_DETL_SEQ
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID and ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF' AND uw.WAREHOUSE_GRP_CD = #{urWarehouseGroupId} /* 출고처그룹 */
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ]]>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersIdList)">
+                AND oo.OM_SELLERS_ID IN
+                <foreach collection="omSellersIdList" item="omSellersIdList" separator="," open="(" close=")">
+                    #{omSellersIdList}
+                </foreach>
+            </if>
+        <![CDATA[
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+        ]]>
+    </select>
+
+    <!-- 하이톡 택배배송 주문 리스트 조회 -->
+    <select id="selectHitokNormalDeliveryOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.HitokNormalDeliveryOrderListVo">
+        /* orderErp.selectHitokNormalDeliveryOrderList */
+        <![CDATA[
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.BUYER_MAIL AS buyerMail
+            , x.RECV_NM AS recvNm
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_BLD_NO AS recvBldNo
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.DOOR_MSG_NM AS doorMsgNm
+            , x.DOOR_MSG AS doorMsg
+            , x.ORD_STU_CNT AS ordStuCnt
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.DELIVERY_DT AS deliveryDt
+            , IFNULL(x.SALE_PRICE, 0) AS salePrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.SEQ_NO AS seqNo
+            , x.BUYER_TYPE_CD AS buyerTypeCd
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.TAX_YN AS taxYn
+            , x.SUPPLIER_CD AS supplierCd
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(oo.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , osz.RECV_BLD_NO
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , REPLACE(FN_DECRYPT(osz.DOOR_MSG), "'", "`") AS DOOR_MSG
+                , (
+                    SELECT COUNT(DISTINCT ioo.OD_ORDER_ID)
+                    FROM OD_ORDER ioo
+                    INNER JOIN OD_ORDER_DETL iood ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID
+                    INNER JOIN PS_CONFIG ipc ON iood.UR_WAREHOUSE_ID = ipc.PS_VAL AND ipc.PS_KEY = #{urWarehouseId}
+                    WHERE ioo.UR_USER_ID = oo.UR_USER_ID
+                  ) AS ORD_STU_CNT
+                , ood.IL_ITEM_CD
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                  END AS SALE_PRICE
+                , ood.GOODS_TP_CD
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , ood.TAX_YN
+                , (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'SHI_TO_ORG_ID.HITOK') AS SUPPLIER_CD
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+        ]]>
+    </select>
+
+    <!-- 하이톡 일일배송 주문 리스트 조회 -->
+    <select id="selectHitokDailyDeliveryOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.HitokDailyDeliveryOrderListVo">
+        /* orderErp.selectHitokDailyDeliveryOrderList */
+        <![CDATA[
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.BUYER_MAIL AS buyerMail
+            , x.RECV_NM AS recvNm
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_BLD_NO AS recvBldNo
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.DOOR_MSG_NM AS doorMsgNm
+            , x.DOOR_MSG AS doorMsg
+            , x.ORD_STU_CNT AS ordStuCnt
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.DELIVERY_DT AS deliveryDt
+            , IFNULL(x.SALE_PRICE, 0) AS salePrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.SEQ_NO AS seqNo
+            , x.OD_ORDER_DETL_DAILY_ID AS odOrderDetlDailyId
+            , x.OD_ORDER_DETL_DAILY_SCH_ID AS odOrderDetlDailySchId
+            , x.OD_ORDER_DETL_DAILY_SCH_SEQ AS odOrderDetlDailySchSeq
+            , x.ORDER_CNT AS orderCnt
+            , x.UR_STORE_ID AS urStoreId
+            , x.MON_CNT AS monCnt
+            , x.TUE_CNT AS tueCnt
+            , x.WED_CNT AS wedCnt
+            , x.THU_CNT AS thuCnt
+            , x.FRI_CNT AS friCnt
+            , x.GOODS_CYCLE_TP AS goodsCycleTp
+            , x.STORE_DELIVERY_TP AS storeDeliveryTp
+            , x.BUYER_TYPE_CD AS buyerTypeCd
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.TAX_YN AS taxYn
+            , x.SUPPLIER_CD AS supplierCd
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(oo.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , osz.RECV_BLD_NO
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , REPLACE(FN_DECRYPT(osz.DOOR_MSG), "'", "`") AS DOOR_MSG
+                , (
+                    SELECT COUNT(DISTINCT ioo.OD_ORDER_ID)
+                    FROM OD_ORDER ioo
+                    INNER JOIN OD_ORDER_DETL iood ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID
+                    INNER JOIN PS_CONFIG ipc ON iood.UR_WAREHOUSE_ID = ipc.PS_VAL AND ipc.PS_KEY = #{urWarehouseId}
+                    WHERE ioo.UR_USER_ID = oo.UR_USER_ID
+                  ) AS ORD_STU_CNT
+                , ood.IL_ITEM_CD
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT(oodds.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * oodds.ORDER_CNT)
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * oodds.ORDER_CNT)
+                  END AS SALE_PRICE
+                , ood.GOODS_TP_CD
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , oodd.OD_ORDER_DETL_DAILY_ID
+                , oodds.OD_ORDER_DETL_DAILY_SCH_ID
+                , oodds.OD_ORDER_DETL_DAILY_SCH_SEQ
+                , oodds.ORDER_CNT
+                , oodd.UR_STORE_ID
+                , oodd.MON_CNT
+                , oodd.TUE_CNT
+                , oodd.WED_CNT
+                , oodd.THU_CNT
+                , oodd.FRI_CNT
+                , oodd.GOODS_CYCLE_TP AS GOODS_CYCLE_TP
+                , oodd.STORE_DELIVERY_TP
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , ood.TAX_YN
+                , (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'SHI_TO_ORG_ID.HITOK') AS SUPPLIER_CD
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_ORDER_DETL_DAILY oodd ON oo.OD_ORDER_ID = oodd.OD_ORDER_ID AND ood.OD_ORDER_DETL_ID = oodd.OD_ORDER_DETL_ID
+            INNER JOIN OD_ORDER_DETL_DAILY_SCH oodds ON oodd.OD_ORDER_DETL_DAILY_ID = oodds.OD_ORDER_DETL_DAILY_ID AND USE_YN = 'Y' /* 스캐줄 사용 여부 */ AND ORDER_SCH_STATUS = #{orderSchStatus} /* 스케줄 주문상태: 주문 */
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+            /* AND oo.UR_USER_ID IN (SELECT UR_USER_ID FROM UR_USER WHERE LOGIN_ID IN ('stella80', 'sk11ssss')) */
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID, x.OD_ORDER_DETL_DAILY_SCH_ID
+        ]]>
+    </select>
+
+    <!-- 풀무원건강생활(LDS) 주문 리스트 조회 -->
+    <select id="selectLohasDirectSaleOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.LohasDirectSaleOrderListVo">
+        /* orderErp.selectLohasDirectSaleOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.SHIPPING_PRICE AS shippingPrice
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.IL_GOODS_ID AS ilGoodsId
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.PAY_OUT_DT AS payOutDt
+            , x.SALE_PRICE AS salePrice
+            , x.GOODS_NM AS goodsNm
+            , x.BUYER_TYPE_CD AS buyerTypeCd
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.SEQ_NO AS seqNo
+            , x.TAX_YN AS taxYn
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , op.SHIPPING_PRICE
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , ood.IL_ITEM_CD
+                , ood.IL_GOODS_ID
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT((SELECT MAX(APPROVAL_DT) FROM OD_PAYMENT_MASTER WHERE OD_PAYMENT_MASTER_ID = op.OD_PAYMENT_MASTER_ID), '%Y%m%d%H%i%s') AS PAY_OUT_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * (ood.ORDER_CNT - ood.CANCEL_CNT))
+                  END AS SALE_PRICE
+                , ood.GOODS_NM
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , ood.TAX_YN
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID AND op.OD_CLAIM_ID = 0
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF' AND uw.WAREHOUSE_GRP_CD = #{urWarehouseGroupId} /* 출고처그룹 */
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 베이비밀 일일배송 주문 리스트 조회 -->
+    <select id="selectBabymealDailyOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.BabymealOrderListVo">
+        /* orderErp.selectBabymealDailyOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.BUYER_MAIL AS buyerMail
+            , x.RECV_NM AS recvNm
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_BLD_NO AS recvBldNo
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.DOOR_MSG_NM AS doorMsgNm
+            , x.DOOR_MSG AS doorMsg
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.IL_GOODS_ID AS ilGoodsId
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.DELIVERY_DT AS deliveryDt
+            , x.RECOMMENDED_PRICE AS recommendedPrice
+            , x.SALE_PRICE AS salePrice
+            , x.PAID_PRICE AS paidPrice
+            , x.DAILY_BULK_YN AS dailyBulkYn
+            , x.GOODS_CYCLE_TP AS goodsCycleTp
+            , x.GOODS_CYCLE_TERM_TP AS goodsCycleTermTp
+            , x.MON_CNT AS monCnt
+            , x.SET_CNT AS setCnt
+            , x.ALLERGY_YN AS allergyYn
+            , x.UR_STORE_ID AS urStoreId
+            , x.PS_VAL AS psWarehouseId
+            , x.BUYER_TYPE_CD AS buyerTypeCd
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.PDM_GROUP_CD AS pdmGroupCd
+            , x.ORDER_CNT AS orderCnt
+            , x.SEQ_NO AS seqNo
+            , x.TAX_YN AS taxYn
+            , x.GOODS_DELIVERY_TYPE AS goodsDeliveryType
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(oo.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , osz.RECV_BLD_NO
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , REPLACE(FN_DECRYPT(osz.DOOR_MSG), "'", "`") AS DOOR_MSG
+                , ood.IL_ITEM_CD
+                , ood.IL_GOODS_ID
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , ood.RECOMMENDED_PRICE
+                , ood.SALE_PRICE
+                , ood.PAID_PRICE
+                , oodd.DAILY_BULK_YN
+                , oodd.GOODS_CYCLE_TP
+                , oodd.GOODS_CYCLE_TERM_TP
+                , oodd.MON_CNT
+                , oodd.SET_CNT
+                , oodd.ALLERGY_YN
+                , (SELECT UR_STORE_DM_ID FROM UR_STORE WHERE UR_STORE_ID = oodd.UR_STORE_ID) AS UR_STORE_ID
+                , pc.PS_VAL
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , (SELECT PDM_GROUP_CD FROM IL_ITEM WHERE IL_ITEM_CD = ood.IL_ITEM_CD) as PDM_GROUP_CD
+                , oodd.ORDER_CNT
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , ood.TAX_YN
+                , ood.GOODS_DELIVERY_TYPE
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_ORDER_DETL_DAILY oodd ON oo.OD_ORDER_ID = oodd.OD_ORDER_ID AND ood.OD_ORDER_DETL_ID = oodd.OD_ORDER_DETL_ID
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY IN (<foreach collection="urWarehouseId" item="urWarehouseId" separator=",">#{urWarehouseId}</foreach>)
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ) x
+        WHERE NULLIF(x.PDM_GROUP_CD, '') IS NOT NULL
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 베이비밀 택배배송 주문 리스트 조회 -->
+    <select id="selectBabymealNormalOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.BabymealNormalOrderListVo">
+        /* orderErp.selectBabymealNormalOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.BUYER_MAIL AS buyerMail
+            , x.RECV_NM AS recvNm
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_BLD_NO AS recvBldNo
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.DOOR_MSG_NM AS doorMsgNm
+            , x.DOOR_MSG AS doorMsg
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.IL_GOODS_ID AS ilGoodsId
+            , x.ORDER_CANCEL_CNT AS orderCancelCnt
+            , x.DELIVERY_DT AS deliveryDt
+            , x.RECOMMENDED_PRICE AS recommendedPrice
+            , x.SALE_PRICE AS salePrice
+            , x.PAID_PRICE AS paidPrice
+            , x.PS_VAL AS psWarehouseId
+            , x.BUYER_TYPE_CD AS buyerTypeCd
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.PDM_GROUP_CD AS pdmGroupCd
+            , x.SEQ_NO AS seqNo
+            , x.TAX_YN AS taxYn
+            , x.ALTERNATE_DELIVERY_TYPE AS alternateDeliveryType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(oo.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , osz.RECV_BLD_NO
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , REPLACE(FN_DECRYPT(osz.DOOR_MSG), "'", "`") AS DOOR_MSG
+                , ood.IL_ITEM_CD
+                , ood.IL_GOODS_ID
+                , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+                , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , ood.RECOMMENDED_PRICE
+                , ood.SALE_PRICE
+                , ood.PAID_PRICE
+                , pc.PS_VAL
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , (SELECT PDM_GROUP_CD FROM IL_ITEM WHERE IL_ITEM_CD = ood.IL_ITEM_CD) as PDM_GROUP_CD
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS SEQ_NO
+                , ood.TAX_YN
+                , (SELECT PSA.ALTERNATE_DELIVERY_TP
+                    FROM PS_SHIPPING_AREA PSA
+                    WHERE PSA.ZIP_CD = FN_DECRYPT(osz.RECV_ZIP_CD)
+                        AND INSTR(uw.UNDELIVERABLE_AREA_TP_GRP, PSA.UNDELIVERABLE_TP) > 0
+                        ORDER BY PSA.ALTERNATE_DELIVERY_TP
+                        LIMIT 1
+                ) AS ALTERNATE_DELIVERY_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId}
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+            WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+            AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+            AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ) x
+        WHERE NULLIF(x.PDM_GROUP_CD, '') IS NOT NULL
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 매출 주문 리스트 조회 -->
+    <select id="selectSalesOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.SalesOrderListVo">
+        /* orderErp.selectSalesOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , x.UR_USER_ID AS urUserId
+            , x.ORDER_IF_DT AS orderIfDt
+            , x.UR_SUPPLIER_ID AS urSupplierId
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ITEM_BARCODE AS itemBarcode
+            , (x.ORDER_CNT - x.CANCEL_CNT) AS orderCancelCnt
+            , IFNULL(x.UNIT_SALE_PRICE, 0) AS unitSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_ORGA_PRICE, 0) AS unitSaleNonTaxOrgaPrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) AS unitSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_ORGA_PRICE), 0) AS unitTaxPrice
+            , x.GOODS_NM AS goodsNm
+            , IFNULL(x.UNIT_SALE_PRICE, 0) * (x.ORDER_CNT - x.CANCEL_CNT) AS totalSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) * (x.ORDER_CNT - x.CANCEL_CNT) AS totalSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_PRICE), 0) * (x.ORDER_CNT - x.CANCEL_CNT) AS taxPrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.COLLECTION_MALL_DETAIL_ID AS collectionMallDetailId
+            , x.PS_WAREHOUSE_ID AS psWarehouseId
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.SUPPLIER_CD AS supplierCd
+            , x.HEADER_TYPE AS headerType
+            , x.BATCH_EXEC_FL AS batchExecFl
+            , x.NOW_DT AS nowDt
+            , x.TAX_YN AS taxYn
+            , x.GIFT_FOOD_MARKETING_CD AS giftFoodMarketingCd
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , oo.UR_USER_ID
+                , DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d%H%i%s') AS ORDER_IF_DT
+                , ood.UR_SUPPLIER_ID
+                , ood.IL_ITEM_CD
+                , ood.ITEM_BARCODE
+                , ood.ORDER_CNT
+                , IFNULL((
+                    SELECT
+                        SUM(iocd.CLAIM_CNT) AS CLAIM_CNT
+                    FROM OD_ORDER ioo
+                    INNER JOIN OD_ORDER_DETL iood ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM ioc ON ioo.OD_ORDER_ID = ioc.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM_DETL iocd ON ioc.OD_CLAIM_ID = iocd.OD_CLAIM_ID AND iood.OD_ORDER_DETL_ID = iocd.OD_ORDER_DETL_ID
+                    WHERE iocd.CLAIM_STATUS_CD IN ('CC','EC') /* 취소완료, 재배송 */
+                    AND iocd.ORDER_STATUS_CD IN ('IC','DR') /* 결제완료, 배송준비중 */
+                    AND ioo.OD_ORDER_ID = oo.OD_ORDER_ID
+                    AND iood.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID
+                    GROUP BY ioo.OD_ORDER_ID, iood.OD_ORDER_DETL_ID
+                  ), 0) AS CANCEL_CNT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE
+                    ELSE 0
+                  END AS UNIT_SALE_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_ORGA_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_PRICE
+                , ood.GOODS_NM
+                , ood.GOODS_TP_CD
+                , ood.COLLECTION_MALL_DETAIL_ID
+                , pc.PS_KEY AS PS_WAREHOUSE_ID
+                , oo.AGENT_TYPE_CD
+                , (SELECT
+                        CONCAT(SUPPLIER_CD,'∀',CALC_TYPE)
+                    FROM OM_BASIC_FEE
+                    WHERE SELLERS_GROUP_CD = oo.SELLERS_GROUP_CD
+                    AND OM_SELLERS_ID = oo.OM_SELLERS_ID
+                    AND UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID
+                    AND START_DT <![CDATA[<=]]> DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d')
+                    ORDER BY START_DT DESC
+                    LIMIT 1
+                ) AS SUPPLIER_CD
+                , CONCAT((CASE ood.GOODS_TP_CD
+                            WHEN 'GOODS_TYPE.GIFT' THEN 'G'
+                            WHEN 'GOODS_TYPE.GIFT_FOOD_MARKETING' THEN 'MG'
+                            ELSE 'N'
+                          END), '-', oo.OD_ORDER_ID) AS HEADER_TYPE
+                , ood.BATCH_EXEC_FL
+                , DATE_FORMAT(NOW(), '%Y%m%d000000') AS NOW_DT
+                , ood.TAX_YN
+                , (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.YONGIN') AS GIFT_FOOD_MARKETING_CD
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND ood.UR_SUPPLIER_ID = #{urSupplierId} /* 공급처 */
+            INNER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID AND NULLIF(otn.TRACKING_NO, '') IS NOT NULL
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            LEFT OUTER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_GRP_TP = '7.WAREHOUSE'
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'N' /* 매출연동여부 */
+            AND otn.CREATE_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+            AND IFNULL(pc.PS_KEY, '0') NOT IN (<foreach collection="urWarehouseId" item="urWarehouseId" separator=",">#{urWarehouseId}</foreach>) /* 제외 출고처 */
+        ) x
+        WHERE (x.ORDER_CNT - x.CANCEL_CNT) > 0
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 반품매출 주문 리스트 조회 -->
+    <select id="selectReturnSalesOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.ReturnSalesOrderListVo">
+        /* orderErp.selectReturnSalesOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.OD_CLAIM_ID AS odClaimId
+            , x.OD_CLAIM_DETL_ID AS odClaimDetlId
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , x.UR_USER_ID AS urUserId
+            , x.FC_DT AS fcDt
+            , x.FC_DT_ONE AS fcDtOne
+            , x.ORDER_IF_DT AS orderIfDt
+            , x.UR_SUPPLIER_ID AS urSupplierId
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ITEM_BARCODE AS itemBarcode
+            , x.CLAIM_CNT AS claimCnt
+            , IFNULL(x.UNIT_SALE_PRICE, 0) AS unitSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_ORGA_PRICE, 0) AS unitSaleNonTaxOrgaPrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) AS unitSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_ORGA_PRICE), 0) AS unitTaxPrice
+            , x.GOODS_NM AS goodsNm
+            , IFNULL(x.UNIT_SALE_PRICE, 0) * x.CLAIM_CNT AS totalSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) * x.CLAIM_CNT AS totalSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_PRICE), 0) * x.CLAIM_CNT AS taxPrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.COLLECTION_MALL_DETAIL_ID AS collectionMallDetailId
+            , x.CLAIM_CD AS claimCd
+            , x.PS_WAREHOUSE_ID AS psWarehouseId
+            , x.GOODS_DELIVERY_TYPE AS goodsDeliveryType
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.SUPPLIER_CD AS supplierCd
+            , x.HEADER_TYPE AS headerType
+            , pcsc.CLAIM_NM AS claimNm
+            , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS seqNo
+            , x.ORI_SYS_SEQ AS oriSysSeq
+            , x.TAX_YN AS taxYn
+            , x.GIFT_FOOD_MARKETING_CD AS giftFoodMarketingCd
+            , x.GOODS_TYPE AS goodsType
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , oc.OD_CLAIM_ID
+                , ocd.OD_CLAIM_DETL_ID
+                , DATE_FORMAT(oc.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , oo.UR_USER_ID
+                , DATE_FORMAT(NOW(), '%Y%m%d000000') AS FC_DT
+                , DATE_FORMAT(DATE_ADD(NOW(),INTERVAL + 1 DAY), '%Y%m%d000000') AS FC_DT_ONE
+                , DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d') AS ORDER_IF_DT
+                , ood.UR_SUPPLIER_ID
+                , ood.IL_ITEM_CD
+                , ood.ITEM_BARCODE
+                , ocd.CLAIM_CNT - IFNULL(iui.MISS_CNT, 0) AS CLAIM_CNT
+                , ood.GOODS_NM
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE
+                    ELSE 0
+                  END AS UNIT_SALE_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_ORGA_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_PRICE
+                , ood.GOODS_TP_CD
+                , ood.COLLECTION_MALL_DETAIL_ID
+                , CASE
+                    when oc.RETURNS_YN = 'Y' then pcbs.CLAIM_CD
+                    when oc.RETURNS_YN = 'N' then pcbs.NON_CLAIM_CD
+                  END CLAIM_CD
+                , pc.PS_KEY AS PS_WAREHOUSE_ID
+                , ood.GOODS_DELIVERY_TYPE
+                , oo.AGENT_TYPE_CD
+                , (SELECT
+                        CONCAT(SUPPLIER_CD,'∀',CALC_TYPE)
+                    FROM OM_BASIC_FEE
+                    WHERE SELLERS_GROUP_CD = oo.SELLERS_GROUP_CD
+                    AND OM_SELLERS_ID = oo.OM_SELLERS_ID
+                    AND UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID
+                    AND START_DT <![CDATA[ <= ]]> DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d')
+                    ORDER BY START_DT DESC
+                    LIMIT 1
+                ) AS SUPPLIER_CD
+                , CONCAT(CLAIM_CD, '-', oc.OD_CLAIM_ID) AS HEADER_TYPE
+                , us.SUPPLIER_CD AS US_SUPPLIER_CD
+                , ood.ORI_SYS_SEQ
+                , ood.TAX_YN
+                , CASE
+                    WHEN pc.PS_KEY = 'WAREHOUSE_YONGIN_ID' THEN (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.YONGIN')
+                    WHEN pc.PS_KEY = 'WAREHOUSE_BAEKAM_ID' THEN (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.CJ')
+                  END AS GIFT_FOOD_MARKETING_CD
+                , CASE ood.GOODS_TP_CD
+                    WHEN 'GOODS_TYPE.GIFT' THEN 'G'
+                    WHEN 'GOODS_TYPE.GIFT_FOOD_MARKETING' THEN 'MG'
+                    ELSE 'N'
+                  END AS GOODS_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND ood.UR_SUPPLIER_ID = #{urSupplierId} /* 공급처 */
+            INNER JOIN UR_SUPPLIER us ON ood.UR_SUPPLIER_ID = us.UR_SUPPLIER_ID
+            INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+            INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.PRIORITY_UNDELIVERED_YN != 'Y'
+            INNER JOIN PS_CLAIM_BOS_SUPPLY pcbs ON ocd.PS_CLAIM_BOS_ID = pcbs.PS_CLAIM_BOS_ID AND us.SUPPLIER_CD = pcbs.SUPPLIER_CD
+            INNER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID AND NULLIF(otn.TRACKING_NO, '') IS NOT NULL
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            LEFT OUTER JOIN (
+                SELECT
+                    SUM(MISS_CNT) AS MISS_CNT /* 미출 수량 */
+                    , ODID
+                    , OD_ORDER_DETL_SEQ
+                FROM IF_UNRELEASED_INFO
+                WHERE MISS_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 DAY), '%Y%m%d') AND DATE_FORMAT(NOW() , '%Y%m%d')
+                GROUP BY ODID, OD_ORDER_DETL_SEQ
+            ) iui ON oo.ODID = iui.ODID AND ood.OD_ORDER_DETL_SEQ = iui.OD_ORDER_DETL_SEQ
+            LEFT OUTER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_GRP_TP = '7.WAREHOUSE'
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'Y' /* 매출연동여부 */
+            AND ocd.RETURN_SALES_EXEC_FL = 'N' /* 반품매출연동여부 */
+            AND ocd.RC_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+            AND IFNULL(pc.PS_KEY, '0') != #{urWarehouseId} /* 제외 출고처 */
+            AND ood.GOODS_TP_CD != 'GOODS_TYPE.GIFT_FOOD_MARKETING' /* 식품마케팅증정은 제외 */
+
+            UNION ALL
+
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , oc.OD_CLAIM_ID
+                , ocd.OD_CLAIM_DETL_ID
+                , DATE_FORMAT(oc.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , oo.UR_USER_ID
+                , DATE_FORMAT(NOW(), '%Y%m%d000000') AS FC_DT
+                , DATE_FORMAT(DATE_ADD(NOW(),INTERVAL + 1 DAY), '%Y%m%d000000') AS FC_DT_ONE
+                , DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d') AS ORDER_IF_DT
+                , ood.UR_SUPPLIER_ID
+                , ood.IL_ITEM_CD
+                , ood.ITEM_BARCODE
+                , ocd.CLAIM_CNT - IFNULL(iui.MISS_CNT, 0) AS CLAIM_CNT
+                , ood.GOODS_NM
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE
+                    ELSE 0
+                  END AS UNIT_SALE_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_ORGA_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_PRICE
+                , ood.GOODS_TP_CD
+                , ood.COLLECTION_MALL_DETAIL_ID
+                , CASE
+                    when oc.RETURNS_YN = 'Y' then pcbs.CLAIM_CD
+                    when oc.RETURNS_YN = 'N' then pcbs.NON_CLAIM_CD
+                  END CLAIM_CD
+                , pc.PS_KEY AS PS_WAREHOUSE_ID
+                , ood.GOODS_DELIVERY_TYPE
+                , oo.AGENT_TYPE_CD
+                , (SELECT
+                        CONCAT(SUPPLIER_CD,'∀',CALC_TYPE)
+                    FROM OM_BASIC_FEE
+                    WHERE SELLERS_GROUP_CD = oo.SELLERS_GROUP_CD
+                    AND OM_SELLERS_ID = oo.OM_SELLERS_ID
+                    AND UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID
+                    AND START_DT <![CDATA[ <= ]]> DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d')
+                    ORDER BY START_DT DESC
+                    LIMIT 1
+                ) AS SUPPLIER_CD
+                , CONCAT(CLAIM_CD, '-', oc.OD_CLAIM_ID) AS HEADER_TYPE
+                , us.SUPPLIER_CD AS US_SUPPLIER_CD
+                , ood.ORI_SYS_SEQ
+                , ood.TAX_YN
+                , CASE
+                    WHEN pc.PS_KEY = 'WAREHOUSE_YONGIN_ID' THEN (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.YONGIN')
+                    WHEN pc.PS_KEY = 'WAREHOUSE_BAEKAM_ID' THEN (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.CJ')
+                END AS GIFT_FOOD_MARKETING_CD
+                , CASE ood.GOODS_TP_CD
+                    WHEN 'GOODS_TYPE.GIFT' THEN 'G'
+                    WHEN 'GOODS_TYPE.GIFT_FOOD_MARKETING' THEN 'MG'
+                    ELSE 'N'
+                  END AS GOODS_TYPE
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND ood.UR_SUPPLIER_ID = #{urSupplierId} /* 공급처 */
+            INNER JOIN UR_SUPPLIER us ON ood.UR_SUPPLIER_ID = us.UR_SUPPLIER_ID
+            INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+            INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.PRIORITY_UNDELIVERED_YN != 'Y'
+                AND ocd.ORDER_STATUS_CD NOT IN (<foreach collection="orderStatusCd" item="orderStatusCd" separator=",">#{orderStatusCd}</foreach>)
+            INNER JOIN PS_CLAIM_BOS_SUPPLY pcbs ON ocd.PS_CLAIM_BOS_ID = pcbs.PS_CLAIM_BOS_ID AND us.SUPPLIER_CD = pcbs.SUPPLIER_CD
+            INNER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID AND NULLIF(otn.TRACKING_NO, '') IS NOT NULL
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            LEFT OUTER JOIN (
+                SELECT
+                    SUM(MISS_CNT) AS MISS_CNT /* 미출 수량 */
+                    , ODID
+                    , OD_ORDER_DETL_SEQ
+                FROM IF_UNRELEASED_INFO
+                WHERE MISS_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 DAY), '%Y%m%d') AND DATE_FORMAT(NOW() , '%Y%m%d')
+                GROUP BY ODID, OD_ORDER_DETL_SEQ
+            ) iui ON oo.ODID = iui.ODID AND ood.OD_ORDER_DETL_SEQ = iui.OD_ORDER_DETL_SEQ
+            LEFT OUTER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_GRP_TP = '7.WAREHOUSE'
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'Y' /* 매출연동여부 */
+            AND ocd.RETURN_SALES_EXEC_FL = 'N' /* 반품매출연동여부 */
+            AND ocd.EC_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+            AND IFNULL(pc.PS_KEY, '0') != #{urWarehouseId} /* 제외 출고처 */
+            AND ood.GOODS_TP_CD != 'GOODS_TYPE.GIFT_FOOD_MARKETING' /* 식품마케팅증정은 제외 */
+        ) x
+        INNER JOIN PS_CLAIM_SUPPLY_CTGRY pcsc ON x.US_SUPPLIER_CD = pcsc.SUPPLIER_CD AND x.CLAIM_CD = pcsc.CLAIM_CD
+        WHERE x.CLAIM_CNT > 0
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID, x.OD_CLAIM_ID, x.OD_CLAIM_DETL_ID
+    </select>
+
+    <!-- 하이톡 택배배송 반품 주문 리스트 조회 -->
+    <select id="selectHitokNormalDeliveryReturnOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.HitokDeliveryReturnOrderListVo">
+        /* orderErp.selectHitokNormalDeliveryReturnOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.OD_CLAIM_ID AS odClaimId
+            , x.OD_CLAIM_DETL_ID AS odClaimDetlId
+            , x.FC_DT AS fcDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.BUYER_MAIL AS buyerMail
+            , x.RECV_NM AS recvNm
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_BLD_NO AS recvBldNo
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.DOOR_MSG_NM AS doorMsgNm
+            , x.DOOR_MSG AS doorMsg
+            , x.ORD_STU_CNT AS ordStuCnt
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.CLAIM_CNT AS claimCnt
+            , x.DELIVERY_DT AS deliveryDt
+            , IFNULL(x.SALE_PRICE, 0) AS salePrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , DATE_FORMAT(now(), '%H%i%s')  AS seqNo
+            , x.BUYER_TYPE_CD AS buyerTypeCd
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.TAX_YN AS taxYn
+            , x.CLAIM_CD AS claimCd
+            , x.SUPPLIER_CD AS supplierCd
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , oc.OD_CLAIM_ID
+                , ocd.OD_CLAIM_DETL_ID
+                , DATE_FORMAT(ocd.RC_DT, '%Y%m%d%H%i%s') AS FC_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(oo.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , osz.RECV_BLD_NO
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , REPLACE(FN_DECRYPT(osz.DOOR_MSG), "'", "`") AS DOOR_MSG
+                , (
+                    SELECT COUNT(DISTINCT ioo.OD_ORDER_ID)
+                    FROM OD_ORDER ioo
+                    INNER JOIN OD_ORDER_DETL iood ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID
+                    INNER JOIN PS_CONFIG ipc ON iood.UR_WAREHOUSE_ID = ipc.PS_VAL AND ipc.PS_KEY = #{urWarehouseId}
+                    WHERE ioo.UR_USER_ID = oo.UR_USER_ID
+                  ) AS ORD_STU_CNT
+                , ood.IL_ITEM_CD
+                , ocd.CLAIM_CNT - IFNULL(iui.MISS_CNT, 0) AS CLAIM_CNT
+                , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT)
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * ocd.CLAIM_CNT)
+                  END AS SALE_PRICE
+                , ood.GOODS_TP_CD
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , ood.TAX_YN
+                , CASE
+                    WHEN oc.RETURNS_YN = 'Y' THEN pcbs.CLAIM_CD
+                    WHEN oc.RETURNS_YN = 'N' THEN pcbs.NON_CLAIM_CD
+                  END CLAIM_CD
+                , (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'SHI_TO_ORG_ID.HITOK') AS SUPPLIER_CD
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+            INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.PRIORITY_UNDELIVERED_YN != 'Y'
+            INNER JOIN PS_CLAIM_BOS_SUPPLY pcbs ON ocd.PS_CLAIM_BOS_ID = pcbs.PS_CLAIM_BOS_ID AND pcbs.SUPPLIER_CD = 'FD'
+            INNER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID AND NULLIF(otn.TRACKING_NO, '') IS NOT NULL
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            LEFT OUTER JOIN (
+                SELECT
+                    SUM(MISS_CNT) AS MISS_CNT /* 미출 수량 */
+                    , ODID
+                    , OD_ORDER_DETL_SEQ
+                FROM IF_UNRELEASED_INFO
+                WHERE MISS_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 DAY), '%Y%m%d') AND DATE_FORMAT(NOW() , '%Y%m%d')
+                GROUP BY ODID, OD_ORDER_DETL_SEQ
+            ) iui ON oo.ODID = iui.ODID AND ood.OD_ORDER_DETL_SEQ = iui.OD_ORDER_DETL_SEQ
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'Y' /* 매출연동여부 */
+            AND ocd.RETURN_SALES_EXEC_FL = 'N' /* 반품매출연동여부 */
+            AND ocd.RC_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+
+            UNION ALL
+
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , oc.OD_CLAIM_ID
+                , ocd.OD_CLAIM_DETL_ID
+                , DATE_FORMAT(ocd.EC_DT, '%Y%m%d%H%i%s') AS FC_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(oo.BUYER_MAIL) AS BUYER_MAIL
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , osz.RECV_BLD_NO
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+                , REPLACE(FN_DECRYPT(osz.DOOR_MSG), "'", "`") AS DOOR_MSG
+                , (
+                    SELECT COUNT(DISTINCT ioo.OD_ORDER_ID)
+                    FROM OD_ORDER ioo
+                    INNER JOIN OD_ORDER_DETL iood ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID
+                    INNER JOIN PS_CONFIG ipc ON iood.UR_WAREHOUSE_ID = ipc.PS_VAL AND ipc.PS_KEY = #{urWarehouseId}
+                    WHERE ioo.UR_USER_ID = oo.UR_USER_ID
+                  ) AS ORD_STU_CNT
+                , ood.IL_ITEM_CD
+                , ocd.CLAIM_CNT - IFNULL(iui.MISS_CNT, 0) AS CLAIM_CNT
+                , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d%H%i%s') AS DELIVERY_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT)
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * ocd.CLAIM_CNT)
+                  END AS SALE_PRICE
+                , ood.GOODS_TP_CD
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , ood.TAX_YN
+                , CASE
+                    WHEN oc.RETURNS_YN = 'Y' THEN pcbs.CLAIM_CD
+                    WHEN oc.RETURNS_YN = 'N' THEN pcbs.NON_CLAIM_CD
+                  END CLAIM_CD
+                , (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'SHI_TO_ORG_ID.HITOK') AS SUPPLIER_CD
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+            INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID AND ocd.PRIORITY_UNDELIVERED_YN != 'Y'
+                AND ocd.ORDER_STATUS_CD NOT IN (<foreach collection="orderStatusCd" item="orderStatusCd" separator=",">#{orderStatusCd}</foreach>)
+            INNER JOIN PS_CLAIM_BOS_SUPPLY pcbs ON ocd.PS_CLAIM_BOS_ID = pcbs.PS_CLAIM_BOS_ID AND pcbs.SUPPLIER_CD = 'FD'
+            INNER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID AND NULLIF(otn.TRACKING_NO, '') IS NOT NULL
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            LEFT OUTER JOIN (
+                SELECT
+                    SUM(MISS_CNT) AS MISS_CNT /* 미출 수량 */
+                    , ODID
+                    , OD_ORDER_DETL_SEQ
+                FROM IF_UNRELEASED_INFO
+                WHERE MISS_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 DAY), '%Y%m%d') AND DATE_FORMAT(NOW() , '%Y%m%d')
+                GROUP BY ODID, OD_ORDER_DETL_SEQ
+            ) iui ON oo.ODID = iui.ODID AND ood.OD_ORDER_DETL_SEQ = iui.OD_ORDER_DETL_SEQ
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'Y' /* 매출연동여부 */
+            AND ocd.RETURN_SALES_EXEC_FL = 'N' /* 반품매출연동여부 */
+            AND ocd.EC_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID, x.OD_CLAIM_ID, x.OD_CLAIM_DETL_ID
+    </select>
+
+    <!-- 풀무원건강생활(LDS) 반품 주문 리스트 조회 -->
+    <select id="selectLohasDirectSaleReturnOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.LohasDirectSaleReturnOrderListVo">
+        /* orderErp.selectLohasDirectSaleReturnOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.OD_CLAIM_ID AS odClaimId
+            , x.OD_CLAIM_DETL_ID AS odClaimDetlId
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ADDR1 AS recvAddr1
+            , x.RECV_ADDR2 AS recvAddr2
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.SHIPPING_PRICE AS shippingPrice
+            , x.DELIVERY_MSG AS deliveryMsg
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.IL_GOODS_ID AS ilGoodsId
+            , x.CLAIM_CNT AS claimCnt
+            , x.PAY_OUT_DT AS payOutDt
+            , x.SALE_PRICE AS salePrice
+            , x.GOODS_NM AS goodsNm
+            , x.BUYER_TYPE_CD AS buyerTypeCd
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS seqNo
+            , x.TAX_YN AS taxYn
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , oc.OD_CLAIM_ID
+                , ocd.OD_CLAIM_DETL_ID
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , op.SHIPPING_PRICE
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , ood.IL_ITEM_CD
+                , ood.IL_GOODS_ID
+                , ocd.CLAIM_CNT AS CLAIM_CNT
+                , DATE_FORMAT((SELECT MAX(APPROVAL_DT) FROM OD_PAYMENT_MASTER WHERE OD_PAYMENT_MASTER_ID = op.OD_PAYMENT_MASTER_ID), '%Y%m%d%H%i%s') AS PAY_OUT_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT)
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * ocd.CLAIM_CNT)
+                 END AS SALE_PRICE
+                , ood.GOODS_NM
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , ood.TAX_YN
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+            INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+            INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID AND oc.OD_CLAIM_ID = op.OD_CLAIM_ID
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.WAREHOUSE_GRP_CD = #{urWarehouseGroupId} /* 출고처그룹 */
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'Y' /* 매출연동여부 */
+            AND ocd.RETURN_SALES_EXEC_FL = 'N' /* 반품매출연동여부 */
+            AND (
+                 ocd.CC_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+                 OR
+                 ocd.RC_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+                )
+
+            UNION ALL
+
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , oc.OD_CLAIM_ID
+                , ocd.OD_CLAIM_DETL_ID
+                , DATE_FORMAT(now(), '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , op.SHIPPING_PRICE
+                , REPLACE(osz.DELIVERY_MSG, "'", "`") AS DELIVERY_MSG
+                , ood.IL_ITEM_CD
+                , ood.IL_GOODS_ID
+                , ocd.CLAIM_CNT AS CLAIM_CNT
+                , DATE_FORMAT((SELECT MAX(APPROVAL_DT) FROM OD_PAYMENT_MASTER WHERE OD_PAYMENT_MASTER_ID = op.OD_PAYMENT_MASTER_ID), '%Y%m%d%H%i%s') AS PAY_OUT_DT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN (ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT)
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN (ood.SALE_PRICE * ocd.CLAIM_CNT)
+                  END AS SALE_PRICE
+                , ood.GOODS_NM
+                , oo.BUYER_TYPE_CD
+                , oo.AGENT_TYPE_CD
+                , ood.TAX_YN
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+            INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+            INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+                AND ocd.ORDER_STATUS_CD NOT IN (<foreach collection="orderStatusCd" item="orderStatusCd" separator=",">#{orderStatusCd}</foreach>)
+            INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID AND oc.OD_CLAIM_ID = op.OD_CLAIM_ID
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.WAREHOUSE_GRP_CD = #{urWarehouseGroupId} /* 출고처그룹 */
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'Y' /* 매출연동여부 */
+            AND ocd.RETURN_SALES_EXEC_FL = 'N' /* 반품매출연동여부 */
+            AND ocd.EC_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+        ) x
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- CJ(백암)물류 매출 주문 리스트 조회 -->
+    <select id="selectCjSalesOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.SalesOrderListVo">
+        /* orderErp.selectCjSalesOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , x.UR_USER_ID AS urUserId
+            , x.ORDER_IF_DT AS orderIfDt
+            , x.UR_SUPPLIER_ID AS urSupplierId
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ITEM_BARCODE AS itemBarcode
+            , (x.ORDER_CNT - x.CANCEL_CNT - x.MISS_CNT) AS orderCancelCnt
+            , IFNULL(x.UNIT_SALE_PRICE, 0) AS unitSalePrice
+			, IFNULL(x.UNIT_SALE_NON_TAX_ORGA_PRICE, 0) AS unitSaleNonTaxOrgaPrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) AS unitSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_ORGA_PRICE), 0) AS unitTaxPrice
+            , x.GOODS_NM AS goodsNm
+            , IFNULL(x.UNIT_SALE_PRICE, 0) * (x.ORDER_CNT - x.CANCEL_CNT - x.MISS_CNT) AS totalSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) * (x.ORDER_CNT - x.CANCEL_CNT - x.MISS_CNT) AS totalSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_PRICE), 0) * (x.ORDER_CNT - x.CANCEL_CNT - x.MISS_CNT) AS taxPrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.COLLECTION_MALL_DETAIL_ID AS collectionMallDetailId
+            , x.PS_WAREHOUSE_ID AS psWarehouseId
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.SUPPLIER_CD AS supplierCd
+            , x.HEADER_TYPE AS headerType
+            , x.BATCH_EXEC_FL AS batchExecFl
+            , x.NOW_DT AS nowDt
+            , x.TAX_YN AS taxYn
+            , x.GIFT_FOOD_MARKETING_CD AS giftFoodMarketingCd
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , oo.UR_USER_ID
+                , DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d000000') AS ORDER_IF_DT
+                , ood.UR_SUPPLIER_ID
+                , ood.IL_ITEM_CD
+                , ood.ITEM_BARCODE
+                , ood.ORDER_CNT
+                , IFNULL((
+                    SELECT
+                        SUM(iocd.CLAIM_CNT) AS CLAIM_CNT
+                    FROM OD_ORDER ioo
+                    INNER JOIN OD_ORDER_DETL iood ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM ioc ON ioo.OD_ORDER_ID = ioc.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM_DETL iocd ON ioc.OD_CLAIM_ID = iocd.OD_CLAIM_ID AND iood.OD_ORDER_DETL_ID = iocd.OD_ORDER_DETL_ID AND PRIORITY_UNDELIVERED_YN != 'Y'
+                    WHERE iocd.CLAIM_STATUS_CD IN ('CC','EC') /* 취소완료, 재배송 */
+                    AND iocd.ORDER_STATUS_CD IN ('IC','DR') /* 결제완료, 배송준비중 */
+                    AND ioo.OD_ORDER_ID = oo.OD_ORDER_ID
+                    AND iood.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID
+                    GROUP BY ioo.OD_ORDER_ID, iood.OD_ORDER_DETL_ID
+                  ), 0) AS CANCEL_CNT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE
+                    ELSE 0
+                  END AS UNIT_SALE_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_ORGA_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                  END AS UNIT_SALE_NON_TAX_PRICE
+                , ood.GOODS_NM
+                , ood.GOODS_TP_CD
+                , ood.COLLECTION_MALL_DETAIL_ID
+                , pc.PS_KEY AS PS_WAREHOUSE_ID
+                , oo.AGENT_TYPE_CD
+                , (SELECT
+                        CONCAT(SUPPLIER_CD,'∀',CALC_TYPE)
+                    FROM OM_BASIC_FEE
+                    WHERE SELLERS_GROUP_CD = oo.SELLERS_GROUP_CD
+                    AND OM_SELLERS_ID = oo.OM_SELLERS_ID
+                    AND UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID
+                    AND START_DT <![CDATA[<=]]> DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d')
+                    ORDER BY START_DT DESC
+                    LIMIT 1
+                ) AS SUPPLIER_CD
+                , CONCAT(IF(ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING'), 'G', 'N'), '-', oo.OD_ORDER_ID) AS HEADER_TYPE
+                , ood.BATCH_EXEC_FL
+                , DATE_FORMAT(NOW(), '%Y%m%d%H%i%s') AS NOW_DT
+                , IFNULL(iui.MISS_CNT,0) AS MISS_CNT
+                , ood.TAX_YN
+                , (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.CJ') AS GIFT_FOOD_MARKETING_CD
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND ood.UR_SUPPLIER_ID = #{urSupplierId} /* 공급처 */
+            INNER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID AND NULLIF(otn.TRACKING_NO, '') IS NOT NULL
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            LEFT OUTER JOIN (
+                SELECT
+                    SUM(MISS_CNT) AS MISS_CNT /* 미출 수량 */
+                    , ODID
+                    , OD_ORDER_DETL_SEQ
+                FROM IF_UNRELEASED_INFO
+                WHERE MISS_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 DAY), '%Y%m%d') AND DATE_FORMAT(NOW() , '%Y%m%d')
+                GROUP BY ODID, OD_ORDER_DETL_SEQ
+            ) iui ON oo.ODID = iui.ODID AND ood.OD_ORDER_DETL_SEQ = iui.OD_ORDER_DETL_SEQ
+            WHERE ood.BATCH_EXEC_FL IN ('Y', 'C') /* 배치여부, 주문복사를 통해 매출연동 주문건 포함 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'N' /* 매출연동여부 */
+            AND otn.CREATE_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+        ) x
+        WHERE (x.ORDER_CNT - x.CANCEL_CNT - x.MISS_CNT) > 0
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 매출만 연동 주문 리스트 조회 -->
+    <select id="selectSalesOnlyOrderList" resultType="kr.co.pulmuone.v1.batch.order.dto.vo.SalesOrderListVo">
+        /* orderErp.selectSalesOnlyOrderList */
+        SELECT
+            x.OD_ORDER_ID AS odOrderId
+            , x.ODID AS odid
+            , x.OD_ORDER_DETL_ID AS odOrderDetlId
+            , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , x.CREATE_DT AS createDt
+            , x.BUYER_NM AS buyerNm
+            , x.BUYER_TEL AS buyerTel
+            , x.BUYER_HP AS buyerHp
+            , x.RECV_NM AS recvNm
+            , CONCAT(x.RECV_ADDR1, ' ', x.RECV_ADDR2) AS recvAddr
+            , x.RECV_ZIP_CD AS recvZipCd
+            , x.RECV_TEL AS recvTel
+            , x.RECV_HP AS recvHp
+            , x.UR_USER_ID AS urUserId
+            , x.ORDER_IF_DT AS orderIfDt
+            , x.UR_SUPPLIER_ID AS urSupplierId
+            , x.IL_ITEM_CD AS ilItemCd
+            , x.ITEM_BARCODE AS itemBarcode
+            , (x.ORDER_CNT - x.CANCEL_CNT) AS orderCancelCnt
+            , IFNULL(x.UNIT_SALE_PRICE, 0) AS unitSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_ORGA_PRICE, 0) AS unitSaleNonTaxOrgaPrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) AS unitSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_ORGA_PRICE), 0) AS unitTaxPrice
+            , x.GOODS_NM AS goodsNm
+            , IFNULL(x.UNIT_SALE_PRICE, 0) * (x.ORDER_CNT - x.CANCEL_CNT) AS totalSalePrice
+            , IFNULL(x.UNIT_SALE_NON_TAX_PRICE, 0) * (x.ORDER_CNT - x.CANCEL_CNT) AS totalSaleNonTaxPrice
+            , IFNULL((x.UNIT_SALE_PRICE - x.UNIT_SALE_NON_TAX_PRICE), 0) * (x.ORDER_CNT - x.CANCEL_CNT) AS taxPrice
+            , x.GOODS_TP_CD AS goodsTpCd
+            , x.COLLECTION_MALL_DETAIL_ID AS collectionMallDetailId
+            , x.PS_WAREHOUSE_ID AS psWarehouseId
+            , x.AGENT_TYPE_CD AS agentTypeCd
+            , x.SUPPLIER_CD AS supplierCd
+            , x.HEADER_TYPE AS headerType
+            , x.BATCH_EXEC_FL AS batchExecFl
+            , x.NOW_DT AS nowDt
+            , x.TAX_YN AS taxYn
+            , x.GIFT_FOOD_MARKETING_CD AS giftFoodMarketingCd
+        FROM
+        (
+            SELECT
+                oo.OD_ORDER_ID
+                , oo.ODID
+                , ood.OD_ORDER_DETL_ID
+                , ood.OD_ORDER_DETL_SEQ
+                , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d%H%i%s') AS CREATE_DT
+                , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+                , REPLACE(FN_DECRYPT(oo.BUYER_TEL),'-','') AS BUYER_TEL
+                , REPLACE(FN_DECRYPT(oo.BUYER_HP),'-','') AS BUYER_HP
+                , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+                , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+                , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+                , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+                , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+                , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+                , oo.UR_USER_ID
+                , DATE_FORMAT(ood.ORDER_IF_DT, '%Y%m%d%H%i%s') AS ORDER_IF_DT
+                , ood.UR_SUPPLIER_ID
+                , ood.IL_ITEM_CD
+                , ood.ITEM_BARCODE
+                , ood.ORDER_CNT
+                , IFNULL((
+                    SELECT
+                        SUM(iocd.CLAIM_CNT) AS CLAIM_CNT
+                    FROM OD_ORDER ioo
+                    INNER JOIN OD_ORDER_DETL iood ON ioo.OD_ORDER_ID = iood.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM ioc ON ioo.OD_ORDER_ID = ioc.OD_ORDER_ID
+                    INNER JOIN OD_CLAIM_DETL iocd ON ioc.OD_CLAIM_ID = iocd.OD_CLAIM_ID AND iood.OD_ORDER_DETL_ID = iocd.OD_ORDER_DETL_ID
+                    WHERE iocd.CLAIM_STATUS_CD IN ('CC','EC') /* 취소완료, 재배송 */
+                    AND iocd.ORDER_STATUS_CD IN ('IC','DR') /* 결제완료, 배송준비중 */
+                    AND ioo.OD_ORDER_ID = oo.OD_ORDER_ID
+                    AND iood.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID
+                    GROUP BY ioo.OD_ORDER_ID, iood.OD_ORDER_DETL_ID
+                ), 0) AS CANCEL_CNT
+                , CASE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE
+                    WHEN oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ood.SALE_PRICE
+                    ELSE 0
+                END AS UNIT_SALE_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                END AS UNIT_SALE_NON_TAX_ORGA_PRICE
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * 10 / 11, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE, 8)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE, 8)
+                    ELSE 0
+                END AS UNIT_SALE_NON_TAX_PRICE
+                , ood.GOODS_NM
+                , ood.GOODS_TP_CD
+                , ood.COLLECTION_MALL_DETAIL_ID
+                , pc.PS_KEY AS PS_WAREHOUSE_ID
+                , oo.AGENT_TYPE_CD
+                , (SELECT
+                        CONCAT(SUPPLIER_CD,'∀',CALC_TYPE)
+                    FROM OM_BASIC_FEE
+                    WHERE SELLERS_GROUP_CD = oo.SELLERS_GROUP_CD
+                    AND OM_SELLERS_ID = oo.OM_SELLERS_ID
+                    AND UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID
+                    AND START_DT <![CDATA[<=]]> DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d')
+                    ORDER BY START_DT DESC
+                    LIMIT 1
+                ) AS SUPPLIER_CD
+                , CONCAT(IF(ood.GOODS_TP_CD IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING'), 'G', 'N'), '-', oo.OD_ORDER_ID) AS HEADER_TYPE
+                , ood.BATCH_EXEC_FL
+                , DATE_FORMAT(NOW(), '%Y%m%d000000') AS NOW_DT
+                , ood.TAX_YN
+                , CASE
+                    WHEN pc.PS_KEY = 'WAREHOUSE_YONGIN_ID' THEN (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.YONGIN')
+                    WHEN pc.PS_KEY = 'WAREHOUSE_BAEKAM_ID' THEN (SELECT ATTR1 FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = 'GIFT_MARKETING_CD.CJ')
+                 END AS GIFT_FOOD_MARKETING_CD
+            FROM OD_ORDER oo
+            INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID AND ood.UR_SUPPLIER_ID = #{urSupplierId} /* 공급처 */
+            INNER JOIN OD_TRACKING_NUMBER otn ON ood.OD_ORDER_DETL_ID = otn.OD_ORDER_DETL_ID AND NULLIF(otn.TRACKING_NO, '') IS NOT NULL
+            INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+            INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = #{urWarehouseId} /* 출고처 */
+            WHERE ood.BATCH_EXEC_FL = 'C' /* 매출연동 주문건만 */
+            AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+            AND ood.SALES_EXEC_FL = 'N' /* 매출연동여부 */
+            AND ood.ORDER_STATUS_CD != 'IR' /* 주문상태가 입금대기중이 아닌것 */
+            AND oo.CREATE_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(),INTERVAL -1 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+        ) x
+        WHERE (x.ORDER_CNT - x.CANCEL_CNT) > 0
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 성공 주문 배치완료 업데이트 (매출 O) -->
+    <update id="putOrderBatchCompleteUpdate" >
+		/* orderErp.putOrderBatchCompleteUpdate */
+		UPDATE OD_ORDER_DETL
+		   SET BATCH_EXEC_FL = 'Y'
+		       , BATCH_EXEC_DT = now()
+		       , SALES_EXEC_FL = 'Y'
+		       , SALES_EXEC_DT = now()
+		       , ORDER_STATUS_CD = #{orderStatusCd}
+		       , DR_DT = now()
+		       , DR_ID = 0
+		       , ORI_SYS_SEQ = #{oriSysSeq}
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+    <!-- 대체배송 주문상세 업데이트 -->
+    <update id="putAlternateDeliveryOrder">
+        /* orderErp.putAlternateDeliveryOrder */
+		UPDATE OD_ORDER_DETL
+		   SET ALTERNATE_DELIVERY_TP = #{alternateDeliveryTp}
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+    </update>
+
+    <!-- 성공 주문 배치완료 업데이트 (매출 X) -->
+    <update id="putOrderBatchCompleteUpdateNotSales" >
+		/* orderErp.putOrderBatchCompleteUpdateNotSales */
+		UPDATE OD_ORDER_DETL
+		   SET BATCH_EXEC_FL = 'Y'
+		       , BATCH_EXEC_DT = now()
+		       , ORDER_STATUS_CD = #{orderStatusCd}
+		       , DR_DT = now()
+		       , DR_ID = 0
+		       , ORI_SYS_SEQ = #{oriSysSeq}
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+    <!-- 성공 매출주문 배치완료 업데이트 -->
+    <update id="putSalesOrderBatchCompleteUpdate" >
+		/* OrderErpMapper.putSalesOrderBatchCompleteUpdate */
+		UPDATE OD_ORDER_DETL
+		   SET SALES_EXEC_FL = 'Y'
+		       , SALES_EXEC_DT = now()
+		       , ORI_SYS_SEQ = #{oriSysSeq}
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+    <!-- 성공 반품매출 주문 배치완료 업데이트 -->
+    <update id="putReturnSalesOrderBatchCompleteUpdate" >
+		/* OrderErpMapper.putReturnSalesOrderBatchCompleteUpdate */
+		UPDATE OD_CLAIM_DETL
+		   SET RETURN_SALES_EXEC_FL = 'Y'
+		       , RETURN_SALES_EXEC_DT = now()
+		 WHERE OD_CLAIM_DETL_ID = #{odClaimDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세번호 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getodOrderDetlId" resultType="kr.co.pulmuone.v1.batch.order.etc.dto.TrackingNumberOrderInfoDto">
+		/* orderErp.getodOrderDetlId */
+        SELECT
+            OOD.OD_ORDER_DETL_ID,
+            IFNULL(OCD.OD_CLAIM_ID, 0) AS OD_CLAIM_ID,
+            IFNULL(OCD.OD_CLAIM_DETL_ID, 0) AS OD_CLAIM_DETL_ID,
+            IFNULL(OOD.ORDER_CNT, 0) AS ORDER_CNT,
+            IFNULL((
+                SELECT SUM(T2.CLAIM_CNT)
+                FROM OD_CLAIM T1
+                INNER JOIN OD_CLAIM_DETL T2 ON T1.OD_CLAIM_ID = T2.OD_CLAIM_ID
+                WHERE T1.CLAIM_YN = 'Y'
+                AND T2.CLAIM_STATUS_CD = 'CC'
+                AND T1.OD_ORDER_ID = OOD.OD_ORDER_ID
+                AND T2.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+            ), 0) AS CANCEL_COMPLETE_CNT,
+            OOD.ORDER_STATUS_CD
+        FROM
+            OD_ORDER_DETL OOD
+            LEFT OUTER JOIN OD_CLAIM_DETL OCD ON OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID AND OCD.CLAIM_STATUS_CD = 'CA'
+        WHERE
+            OOD.ODID = #{odid}
+        AND OOD.OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+        LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 송장번호 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delOrderTrackingNumber">
+		/* OrderErpMapper.delOrderTrackingNumber */
+		DELETE FROM OD_TRACKING_NUMBER OTN
+		      WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 송장번호 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderTrackingNumber" >
+		/* orderErp.addOrderTrackingNumber */
+		INSERT INTO OD_TRACKING_NUMBER
+		(
+		  OD_ORDER_DETL_ID		/* 주문상세 PK */
+		, PS_SHIPPING_COMP_ID	/* 택배사 PK */
+		, TRACKING_NO			/* 개별송장번호 */
+		, SORT					/* 순서 */
+		, CREATE_ID				/* 등록자  UR_USER.UR_USER_ID */
+		, CREATE_DT				/* 등록일 */
+		, TAK_CODE
+        , EZADMIN_API_YN        /* 이지어드민 송장입력 API 전송여부 */
+		)
+		VALUES
+		( #{odOrderDetlId}
+		, (SELECT PS_SHIPPING_COMP_ID FROM PS_SHIPPING_COMP_CODE WHERE SHIPPING_COMP_CD = #{psShippingCompId} LIMIT 1)
+		, REPLACE(#{trackingNumber},'-','')
+		, 1
+		, 0
+		, NOW()
+		, #{psShippingCompId}
+		, 'N'
+		)
+	</insert>
+
+    <!-- 가맹점 코드 업데이트 -->
+    <update id="putOrderStoCd" >
+		/* orderErp.putOrderStoCd */
+        UPDATE OD_ORDER_DETL_DAILY
+        SET
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(crpCd, "DMPHI")'> <!-- 베이비밀일 경우 -->
+                UR_STORE_ID = (SELECT UR_STORE_ID FROM UR_STORE WHERE UR_STORE_DM_ID = #{stoCd})
+            </when>
+            <otherwise>
+                UR_STORE_ID = #{stoCd}
+            </otherwise>
+        </choose>
+        WHERE
+            OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+    <!-- 스케쥴 관리 배송완료 여부 업데이트 -->
+    <update id="putOrderDailyScheduleDeliveryComplete" >
+		/* orderErp.putOrderDailyScheduleDeliveryComplete */
+        UPDATE OD_ORDER_DETL_DAILY_SCH oodds
+            INNER JOIN OD_ORDER_DETL_DAILY oodd ON oodds.OD_ORDER_DETL_DAILY_ID = oodd.OD_ORDER_DETL_DAILY_ID
+        SET oodds.UR_STORE_ID = #{stoCd}
+        WHERE oodd.OD_ORDER_DETL_ID = #{odOrderDetlId}
+        AND oodds.OD_ORDER_DETL_DAILY_SCH_SEQ = #{odOrderDetlDailySchSeq}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 배송중 상태 변경
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.10		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putOrderDetlDeliveryIng" >
+		/* orderErp.putOrderDetlDeliveryIng */
+        UPDATE OD_ORDER_DETL
+        SET
+            ORDER_STATUS_CD = #{orderStatusCd},
+            DI_ID           = #{createId},
+            DI_DT           = NOW()
+        WHERE
+            OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 상세 상태 변경 이력 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.11     이명수          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addOrderDetailStatusHist" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlHistVo">
+		/*	orderErp.addOrderDetailStatusHist  */
+		INSERT INTO OD_ORDER_DETL_HIST (
+			  OD_ORDER_ID
+			, OD_ORDER_DETL_ID
+			, OD_ORDER_DETL_SEQ
+			, PREV_STATUS_CD
+			, STATUS_CD
+			, HIST_MSG
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT  OD_ORDER_ID
+			  , OD_ORDER_DETL_ID
+			  , OD_ORDER_DETL_SEQ
+			  , #{statusCd}
+			  , ORDER_STATUS_CD
+			  , #{histMsg}
+			  , #{createId}
+			  , NOW()
+		FROM	OD_ORDER_DETL
+		WHERE	1 = 1
+		AND		OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일일배송 스케줄 송장번호 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDailyScheduleTrakingNumber">
+		/* orderErp.putOrderDailyScheduleTrakingNumber */
+		UPDATE OD_ORDER_DETL_DAILY_SCH
+		   SET PS_SHIPPING_COMP_ID	= #{psShippingCompId}
+		     , TRACKING_NO			= #{trackingNumber}
+		 WHERE OD_ORDER_DETL_DAILY_ID = (SELECT OD_ORDER_DETL_DAILY_ID
+		  								   FROM OD_ORDER_DETL_DAILY OODD
+		 								  WHERE OODD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+		                                )
+		   AND OD_ORDER_DETL_DAILY_SCH_SEQ = #{odOrderDetlDailySchSeq}
+	</update>
+
+		<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 미출정보 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderUnreleased" >
+		/* orderErp.addOrderUnreleased */
+		INSERT INTO IF_UNRELEASED_INFO
+		( ODID					/* 주문번호 */
+		, OD_ORDER_DETL_SEQ		/* 주문상세 순번(라인번호) 주문번호에 대한 순번 */
+		, MISS_DT				/* 미출일(YYYYMMDD) */
+		, MISS_CNT				/* 미출 수량 */
+		, MISS_REASON			/* 미출 사유 */
+		, CREATE_DT				/* 등록일 */
+		, MISS_REPLACE_DT       /* 미출대체일자 */
+		, MISS_MSG              /* 미출 상세사유 */
+		, OD_ORDER_DETL_DAILY_SCH_SEQ
+		)
+		VALUES
+		( #{odid}
+		, #{odOrderDetlSeq}
+		, DATE_FORMAT(NOW(), '%Y%m%d')
+        <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(schLinNo)'> <!-- 스케줄라인 있는 경우 -->
+                , #{misCnt} - IFNULL((SELECT x.MISS_CNT FROM (SELECT SUM(MISS_CNT) AS MISS_CNT FROM IF_UNRELEASED_INFO WHERE ODID = #{odid} AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq} AND OD_ORDER_DETL_DAILY_SCH_SEQ = #{schLinNo}) x), 0)
+            </when>
+            <otherwise>
+                , #{misCnt} - IFNULL((SELECT x.MISS_CNT FROM (SELECT SUM(MISS_CNT) AS MISS_CNT FROM IF_UNRELEASED_INFO WHERE ODID = #{odid} AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}) x), 0)
+            </otherwise>
+        </choose>
+		, CONCAT('MISS_STOCK_REASON.', #{crpCd}, '_', #{misRsn})
+		, NOW()
+		, #{misRepDat}
+		, #{misSndMsg}
+		, #{schLinNo}
+		)
+	</insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 취소요청 존재시 거부 업데이트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.04		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putCancelRequestDenial" >
+		/* orderErp.putCancelRequestDenial */
+        UPDATE OD_CLAIM_DETL
+        SET
+            CLAIM_STATUS_CD = #{updateOrderStatusCd}
+        WHERE
+                CLAIM_STATUS_CD = #{orderStatusCd}
+            AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 미출 정보 주문번호 내 반품 승인건 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.30		김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderClaimReturnsIngCnt" resultType="int">
+        /* orderErp.getOrderClaimReturnsIngCnt */
+        SELECT  IFNULL((
+            SELECT	COUNT(1)
+            FROM	OD_ORDER OD
+            INNER JOIN
+                    OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+            INNER JOIN
+                    OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+            INNER JOIN
+                    OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID AND OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+            WHERE
+                OD.ODID = #{odid}
+            AND
+                OOD.OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+            AND
+                OCD.CLAIM_STATUS_CD = 'RI'
+        ), 0)
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 미출 정보 주문번호 내 반품 승인 클레임 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.30		김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderClaimReturnsIngInfoList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRegisterRequestDto">
+        /* orderErp.getOrderClaimReturnsIngInfoList */
+        SELECT
+            OD.OD_ORDER_ID,
+            OD.ODID,
+            OC.OD_CLAIM_ID,
+            OC.TARGET_TP,
+            IFNULL(OC.RETURNS_YN, 'N') AS RETURNS_YN
+        FROM	OD_ORDER OD
+        INNER JOIN
+                OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+        INNER JOIN
+                OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+        INNER JOIN
+                OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID AND OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+        WHERE
+            OD.ODID = #{odid}
+        AND
+            OOD.OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+        AND
+            OCD.CLAIM_STATUS_CD = 'RI'
+        GROUP BY OD.OD_ORDER_ID, OD.ODID, OC.OD_CLAIM_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 미출 정보 주문번호 내 반품 승인 클레임 상품 상세 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.30		김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderClaimReturnsIngDetlInfoList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+        /* orderErp.getOrderClaimReturnsIngDetlInfoList */
+        SELECT
+            OOD.OD_ORDER_ID,
+            OOD.OD_ORDER_DETL_ID,
+            OOD.OD_ORDER_DETL_SEQ,
+            OOD.ORDER_CNT,
+            OOD.CANCEL_CNT,
+            OCD.CLAIM_CNT,
+            OOD.GOODS_NM,
+            OOD.UR_WAREHOUSE_ID,
+            OOD.IL_GOODS_ID,
+            OCD.PS_CLAIM_BOS_ID,
+            OCD.BOS_CLAIM_LARGE_ID,
+            OCD.BOS_CLAIM_MIDDLE_ID,
+            OCD.BOS_CLAIM_SMALL_ID
+        FROM OD_ORDER OD
+        INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+        INNER JOIN OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+        INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID AND OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+        WHERE OD.ODID = #{odid}
+        AND OC.OD_CLAIM_ID = #{odClaimId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 반품 승인 클레임 정보 반품 요청 상태 변경 처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.30		김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putOrderClaimDetlInfoClaimStatusCd" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRegisterRequestDto">
+        /* orderErp.putOrderClaimDetlInfoClaimStatusCd */
+        UPDATE  OD_CLAIM_DETL
+        SET     CLAIM_STATUS_CD = 'RA'
+        WHERE   OD_CLAIM_ID = #{odClaimId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 연동 셀러 리스트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.12.01		최용호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getErpOutMallIfSellerList" resultType="String">
+        /* orderErp.getErpOutMallIfSellerList */
+        SELECT
+            OM_SELLERS_ID
+        FROM
+            OM_SELLERS
+        WHERE
+            USE_YN = 'Y'
+        AND OM_SELLERS_ID != 0
+        AND ERP_INTERFACE_YN = #{erpInterFaceYn}
+    </select>
+</mapper>

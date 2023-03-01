@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.employee.EmployeeUseMapper">
+
+	<sql id="findEmployeeUseItem">
+		<where>
+			AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findOuId)">
+				AND uee.OU_ID = #{findOuId} <!-- 부문구분 -->
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+				AND DATE_FORMAT(oo.CREATE_DT, '%Y%m%d') BETWEEN #{dateSearchStart} AND #{dateSearchEnd} <!-- 주문일자 -->
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "ODID")'> <!-- 주문번호 -->
+						AND oo.ODID = #{findKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "GOODS_NM")'> <!-- 상품명 -->
+						AND ood.GOODS_NM LIKE CONCAT('%', #{findKeyword}, '%')
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "IL_GOODS_ID")'> <!-- 상품코드 -->
+						AND ood.IL_GOODS_ID = #{findKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "IL_ITEM_CD")'> <!-- 품목코드 -->
+						AND ood.IL_ITEM_CD = #{findKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "ITEM_BARCODE")'> <!-- 품목바코드 -->
+						AND ood.ITEM_BARCODE = #{findKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "ERP_NM")'> <!-- 주문자명 -->
+						AND uee.ERP_NM LIKE CONCAT('%', #{findKeyword}, '%')
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "UR_ERP_EMPLOYEE_CD")'> <!-- 임직원정보(사번) -->
+						AND uee.UR_ERP_EMPLOYEE_CD = #{findKeyword}
+					</when>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 임직원 포인트 사용 현황 카운트 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getEmployeeUseListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.employee.dto.EmployeeUseListRequestDto">
+		SELECT
+		SUM(CNT) AS cnt
+		FROM
+		(
+		SELECT
+		COUNT(oo.OD_ORDER_ID) AS CNT
+		FROM OD_ORDER oo
+		INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+		INNER JOIN OD_ORDER_DT oot ON oo.OD_ORDER_ID = oot.OD_ORDER_ID AND oot.IC_DT IS NOT NULL
+		INNER JOIN OD_ORDER_DETL_DISCOUNT oodd ON ood.OD_ORDER_DETL_ID = oodd.OD_ORDER_DETL_ID and oodd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+		INNER JOIN UR_ERP_EMPLOYEE uee ON oo.UR_EMPLOYEE_CD = uee.UR_ERP_EMPLOYEE_CD
+		INNER JOIN PS_EMPL_DISC_BRAND_GRP_BRAND pedbgb ON oodd.UR_BRAND_ID = pedbgb.UR_BRAND_ID
+		INNER JOIN PS_EMPL_DISC_BRAND_GRP pedbg ON pedbgb.PS_EMPL_DISC_BRAND_GRP_ID = pedbg.PS_EMPL_DISC_BRAND_GRP_ID
+		<include refid="findEmployeeUseItem" />
+
+		UNION ALL
+
+		SELECT
+		COUNT(oo.OD_ORDER_ID) AS CNT
+		FROM OD_ORDER oo
+		INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+		INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+		INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ocd.FC_DT IS NOT NULL AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+		INNER JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON ocd.OD_CLAIM_DETL_ID = ocdd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+		INNER JOIN UR_ERP_EMPLOYEE uee ON oo.UR_EMPLOYEE_CD = uee.UR_ERP_EMPLOYEE_CD
+		INNER JOIN PS_EMPL_DISC_BRAND_GRP_BRAND pedbgb ON ocdd.UR_BRAND_ID = pedbgb.UR_BRAND_ID
+		INNER JOIN PS_EMPL_DISC_BRAND_GRP pedbg ON pedbgb.PS_EMPL_DISC_BRAND_GRP_ID = pedbg.PS_EMPL_DISC_BRAND_GRP_ID
+		<include refid="findEmployeeUseItem" />
+		) x
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 임직원 포인트 사용 현황 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getEmployeeUseList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.EmployeeUseListDto" parameterType="kr.co.pulmuone.v1.calculate.employee.dto.EmployeeUseListRequestDto">
+		WITH x  AS
+		(
+			SELECT
+				'ORDER' AS ORDER_STATUS
+				, uee.OU_NAME
+				, uee.UR_ERP_EMPLOYEE_CD
+				, FN_DECRYPT(uee.ERP_NM) AS ERP_NM
+				, uee.ERP_REGAL_NM
+				, oo.ODID
+				, ood.OD_ORDER_DETL_SEQ
+				, ood.IL_GOODS_ID
+				, ood.IL_ITEM_CD
+				, ood.ITEM_BARCODE
+				, ood.GOODS_NM
+				, FN_STATUS_NM(ood.ORDER_STATUS_CD) AS ORDER_STATUS_NM
+				, ood.ORDER_CNT
+				, ood.RECOMMENDED_PRICE * ood.ORDER_CNT AS RECOMMENDED_PRICE
+				, ood.SALE_PRICE * ood.ORDER_CNT AS SALE_PRICE
+				, oodd.DISCOUNT_PRICE AS EMPLOYEE_DISCOUNT_PRICE
+				, DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d') AS ORDER_DT
+				, DATE_FORMAT(oot.IC_DT, '%Y-%m-%d') AS PAYMENT_DT
+				, pedbg.GROUP_NM AS MASTER_NM
+			FROM OD_ORDER oo
+			INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+			INNER JOIN OD_ORDER_DT oot ON oo.OD_ORDER_ID = oot.OD_ORDER_ID AND oot.IC_DT IS NOT NULL
+			INNER JOIN OD_ORDER_DETL_DISCOUNT oodd ON ood.OD_ORDER_DETL_ID = oodd.OD_ORDER_DETL_ID and oodd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+			INNER JOIN UR_ERP_EMPLOYEE uee ON oo.UR_EMPLOYEE_CD = uee.UR_ERP_EMPLOYEE_CD
+			INNER JOIN PS_EMPL_DISC_BRAND_GRP_BRAND pedbgb ON oodd.UR_BRAND_ID = pedbgb.UR_BRAND_ID
+			INNER JOIN PS_EMPL_DISC_BRAND_GRP pedbg ON pedbgb.PS_EMPL_DISC_BRAND_GRP_ID = pedbg.PS_EMPL_DISC_BRAND_GRP_ID
+			<include refid="findEmployeeUseItem" />
+			UNION ALL
+			SELECT
+				'RETURN' AS ORDER_STATUS
+				, uee.OU_NAME
+				, uee.UR_ERP_EMPLOYEE_CD
+				, FN_DECRYPT(uee.ERP_NM) AS ERP_NM
+				, uee.ERP_REGAL_NM
+				, oo.ODID
+				, ood.OD_ORDER_DETL_SEQ
+				, ood.IL_GOODS_ID
+				, ood.IL_ITEM_CD
+				, ood.ITEM_BARCODE
+				, ood.GOODS_NM
+				, FN_STATUS_NM(ocd.CLAIM_STATUS_CD) AS ORDER_STATUS_NM
+				, ocd.CLAIM_CNT * -1 AS ORDER_CNT
+				, CAST(ood.RECOMMENDED_PRICE AS SIGNED) * CAST(ocd.CLAIM_CNT AS SIGNED) * -1 AS RECOMMENDED_PRICE
+				, CAST(ood.SALE_PRICE AS SIGNED) * CAST(ocd.CLAIM_CNT AS SIGNED) * -1 AS SALE_PRICE
+				, ocdd.DISCOUNT_PRICE * -1 AS EMPLOYEE_DISCOUNT_PRICE
+				, DATE_FORMAT(oo.CREATE_DT, '%Y-%m-%d') AS ORDER_DT
+				, DATE_FORMAT(ocd.FC_DT, '%Y-%m-%d') AS PAYMENT_DT
+				, pedbg.GROUP_NM AS MASTER_NM
+			FROM OD_ORDER oo
+			INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+			INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID AND oc.CLAIM_YN = 'Y' /* 정상클레임여부 */
+			INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ocd.FC_DT IS NOT NULL AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+			INNER JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON ocd.OD_CLAIM_DETL_ID = ocdd.OD_CLAIM_DETL_ID AND ocdd.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+			INNER JOIN UR_ERP_EMPLOYEE uee ON oo.UR_EMPLOYEE_CD = uee.UR_ERP_EMPLOYEE_CD
+			INNER JOIN PS_EMPL_DISC_BRAND_GRP_BRAND pedbgb ON ocdd.UR_BRAND_ID = pedbgb.UR_BRAND_ID
+			INNER JOIN PS_EMPL_DISC_BRAND_GRP pedbg ON pedbgb.PS_EMPL_DISC_BRAND_GRP_ID = pedbg.PS_EMPL_DISC_BRAND_GRP_ID
+			<include refid="findEmployeeUseItem" />
+		)
+		SELECT
+			x.OU_NAME AS ouNm
+			, x.ERP_NM AS buyerNm
+			, x.UR_ERP_EMPLOYEE_CD AS urEmployeeCd
+			, x.ERP_REGAL_NM AS erpRegalNm
+			, x.ODID AS odid
+			, x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+			, x.IL_GOODS_ID AS ilGoodsId
+			, x.IL_ITEM_CD AS ilItemCd
+			, IFNULL(x.ITEM_BARCODE, '') AS itemBarcode
+			, x.GOODS_NM AS goodsNm
+			, x.ORDER_STATUS_NM AS orderStatus
+			, x.ORDER_CNT AS orderCnt
+			, x.RECOMMENDED_PRICE AS recommendedPrice
+			, x.SALE_PRICE AS salePrice
+			, x.EMPLOYEE_DISCOUNT_PRICE AS supportPrice
+			, x.ORDER_DT AS orderDt
+			, IFNULL(x.PAYMENT_DT, '') AS paymentDt
+			, MASTER_NM AS masterNm
+			,(SELECT SUM(x.EMPLOYEE_DISCOUNT_PRICE) FROM x) AS TOTAL_TAXABLE_PRICE
+		FROM
+		x
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+			<include refid="_common.pageLimit"/>
+		</if>
+	</select>
+</mapper>

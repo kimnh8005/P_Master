@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.code.SystemCodeMapper">
+
+
+	<resultMap id="getCodeMasterListResultMap" type="kr.co.pulmuone.v1.system.code.dto.vo.GetCodeMasterListResultVo">
+		<result column="NO" property="no" />
+		<result column="ST_COMN_CODE_MST_ID" property="stComnCodeMstId" />
+		<result column="COMMON_MASTER_NAME" property="commonMasterName" />
+		<result column="COMMON_MASTER_CODE" property="commonMasterCode" />
+		<result column="COMMENT" property="comment" />
+		<result column="USE_YN" property="useYn" />
+	</resultMap>
+
+	<select id="getCodeMasterList" resultMap="getCodeMasterListResultMap">
+	/* systemCode.getCodeMasterList */
+		SELECT * FROM (
+			SELECT	@rownum:=@rownum+1 AS NO,
+					ST_COMN_CODE_MST_CD AS ST_COMN_CODE_MST_ID,
+					COMN_CODE_MST_NM AS COMMON_MASTER_NAME,
+					ST_COMN_CODE_MST_CD AS COMMON_MASTER_CODE,
+					COMMENT AS COMMENT,
+					USE_YN AS USE_YN
+			FROM 	ST_COMN_CODE_MST, (SELECT @rownum:=0) r
+			WHERE 	1 = 1
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+					   <choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_NAME')">
+								AND COMN_CODE_MST_NM LIKE CONCAT(#{conditionValue},'%')
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_CODE')">
+								AND ST_COMN_CODE_MST_CD LIKE CONCAT(#{conditionValue},'%')
+							</when>
+						</choose>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+			    	AND USE_YN = UPPER(#{useYn})
+					</if>
+			ORDER BY CREATE_DT
+			)SUB
+		ORDER BY SUB.NO DESC
+	</select>
+
+	<select id="getCodeMasterListCount" resultType="int">
+	/* systemCode.getCodeMasterListCount */
+		SELECT	COUNT(*)
+		FROM 	ST_COMN_CODE_MST
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+				   <choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_NAME')">
+							AND COMN_CODE_MST_NM LIKE CONCAT(#{conditionValue},'%')
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_CODE')">
+							AND ST_COMN_CODE_MST_CD LIKE CONCAT(#{conditionValue},'%')
+						</when>
+					</choose>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    	AND USE_YN = UPPER(#{useYn})
+				</if>
+	</select>
+
+	<select id="duplicateCommonMasterCodeCount" resultType="int">
+	/* systemCode.duplicateCommonMasterCodeCount */
+		SELECT COUNT(*)
+		FROM ST_COMN_CODE_MST
+		WHERE ST_COMN_CODE_MST_CD = #{commonMasterCode}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stComnCodeMstId)">
+			AND ST_COMN_CODE_MST_CD NOT IN (#{stComnCodeMstId})
+		</if>
+	</select>
+
+	<insert id="addCodeMaster">
+	/* systemCode.addCodeMaster */
+		INSERT INTO ST_COMN_CODE_MST(
+			 ST_COMN_CODE_MST_CD
+			,COMN_CODE_MST_NM
+			,COMMENT
+			,USE_YN
+			,CREATE_ID
+		)
+		VALUES(
+			#{commonMasterCode}
+			,#{commonMasterName}
+			,#{comment}
+			,#{useYn}
+			,#{userVo.userId}
+		)
+	</insert>
+
+	<update id="putCodeMaster">
+	/* systemCode.putCodeMaster */
+		UPDATE 	ST_COMN_CODE_MST
+		SET		ST_COMN_CODE_MST_CD = #{commonMasterCode}
+				,COMN_CODE_MST_NM	= #{commonMasterName}
+				,COMMENT = #{comment}
+				,USE_YN = #{useYn}
+				,MODIFY_ID = #{userVo.userId}
+		WHERE 	ST_COMN_CODE_MST_CD = #{stComnCodeMstId}
+	</update>
+
+	<delete id="delCodeMaster">
+	/* systemCode.delCodeMaster */
+		DELETE
+		FROM 	ST_COMN_CODE_MST
+		WHERE 	ST_COMN_CODE_MST_CD = #{stComnCodeMstId}
+	</delete>
+
+	<resultMap id="getCodeMasterNameListResultMap" type="kr.co.pulmuone.v1.system.code.dto.vo.GetCodeMasterNameListResultVo">
+		<result column="ID" property="id" />
+		<result column="ST_COMMON_CODE_MASTER_ID" property="stCommonCodeMasterId" />
+		<result column="COMMON_MASTER_NAME" property="commonMasterName" />
+		<result column="COMMON_MASTER_CODE" property="commonMasterCode" />
+	</resultMap>
+
+	<select id="getCodeMasterNameList" resultMap="getCodeMasterNameListResultMap">
+	/* systemCode.getCodeMasterNameList */
+		SELECT	ST_COMN_CODE_MST_CD AS ID,
+				ST_COMN_CODE_MST_CD AS ST_COMMON_CODE_MASTER_ID,
+				COMN_CODE_MST_NM AS COMMON_MASTER_NAME,
+				ST_COMN_CODE_MST_CD AS COMMON_MASTER_CODE,
+				COMMENT AS COMMENT,
+				USE_YN AS USE_YN
+		FROM 	ST_COMN_CODE_MST
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+				   <choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_NAME')">
+							AND COMN_CODE_MST_NM LIKE CONCAT(#{conditionValue},'%')
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_CODE')">
+							AND ST_COMN_CODE_MST_CD LIKE CONCAT(#{conditionValue},'%')
+						</when>
+					</choose>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    	AND USE_YN = UPPER(#{useYn})
+				</if>
+		ORDER BY CREATE_DT DESC
+	</select>
+
+	<select id="getCodeMasterNameListCount" resultType="int">
+	/* systemCode.getCodeMasterNameListCount */
+		SELECT	COUNT(*)
+		FROM 	ST_COMN_CODE_MST
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+				   <choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_NAME')">
+							AND COMN_CODE_MST_NM LIKE CONCAT(#{conditionValue},'%')
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'COMMON_MASTER_CODE')">
+							AND ST_COMN_CODE_MST_CD LIKE CONCAT(#{conditionValue},'%')
+						</when>
+					</choose>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		    	AND USE_YN = UPPER(#{useYn})
+				</if>
+	</select>
+
+	<resultMap id="getCodeListResultMap" type="kr.co.pulmuone.v1.system.code.dto.vo.GetCodeListResultVo">
+		<result column="ST_COMMON_CODE_ID" property="stCommonCodeId" />
+		<result column="ST_COMMON_CODE_MASTER_ID" property="stCommonCodeMasterId" />
+		<result column="GB_DICTIONARY_MASTER_ID" property="gbDictionaryMasterId" />
+		<result column="COMMON_CODE" property="commonCode" />
+		<result column="COMMENT" property="comment" />
+		<result column="SORT" property="sort" />
+		<result column="USE_YN" property="useYn" />
+		<result column="ATTRIBUTE1" property="attribute1" />
+		<result column="ATTRIBUTE2" property="attribute2" />
+		<result column="ATTRIBUTE3" property="attribute3" />
+		<result column="DICTIONARY_MASTER_NAME" property="dictionaryMasterName" />
+		<result column="COMMON_MASTER_CODE" property="commonMasterCode" />
+	</resultMap>
+
+	<select id="getCodeList" resultMap="getCodeListResultMap">
+	/* systemCode.getCodeList */
+		SELECT 	COMNCODE.ST_COMN_CODE_ID	AS ST_COMMON_CODE_ID
+				, COMNCODE.ST_COMN_CODE_MST_CD AS ST_COMMON_CODE_MASTER_ID
+				, COMNCODE.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+				, COMNCODE.ST_COMN_CODE_CD AS COMMON_CODE
+				, COMNCODE.COMMENT AS COMMENT
+				, COMNCODE.SORT AS SORT
+				, COMNCODE.USE_YN AS USE_YN
+				, COMNCODE.ATTR1 AS ATTRIBUTE1
+				, COMNCODE.ATTR2 AS ATTRIBUTE2
+				, COMNCODE.ATTR3 AS ATTRIBUTE3
+				, GBDIC.DIC_MST_NM AS DICTIONARY_MASTER_NAME
+				, COMNCODE_MST.ST_COMN_CODE_MST_CD AS COMMON_MASTER_CODE
+		FROM 	ST_COMN_CODE COMNCODE
+				INNER JOIN ST_COMN_CODE_MST COMNCODE_MST ON COMNCODE.ST_COMN_CODE_MST_CD = COMNCODE_MST.ST_COMN_CODE_MST_CD
+				LEFT OUTER JOIN GB_DIC_MST GBDIC ON COMNCODE.GB_DIC_MST_ID = GBDIC.GB_DIC_MST_ID
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stCommonCodeMasterId)">
+		    	AND COMNCODE.ST_COMN_CODE_MST_CD = #{stCommonCodeMasterId}
+				</if>
+
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+                AND COMNCODE.USE_YN = #{useYn}
+                </if>
+
+		ORDER BY COMNCODE.SORT
+	</select>
+
+	<insert id="addCode">
+	/* systemCode.addCode */
+		INSERT INTO ST_COMN_CODE
+		(
+			ST_COMN_CODE_ID
+			,ST_COMN_CODE_MST_CD
+			,GB_DIC_MST_ID
+			,ST_COMN_CODE_CD
+			,USE_YN
+			,SORT
+			,COMMENT
+			,ATTR1
+			,ATTR2
+			,ATTR3
+			,CREATE_ID
+		)
+		VALUES
+		(
+			CONCAT(#{stCommonCodeMasterId},'.',#{commonCode})
+			,#{stCommonCodeMasterId}
+			,#{gbDictionaryMasterId}
+			,#{commonCode}
+			,#{useYn}
+			,#{sort}
+			,#{comment}
+			,#{attribute1}
+			,#{attribute2}
+			,#{attribute3}
+			,#{userVo.userId}
+		)
+	</insert>
+
+	<update id="putCode">
+	/* systemCode.putCode */
+		UPDATE 	ST_COMN_CODE
+		SET		ST_COMN_CODE_ID = CONCAT(#{commonMasterCode},'.',#{commonCode})
+				,ST_COMN_CODE_CD = #{commonCode}
+				,GB_DIC_MST_ID = #{gbDictionaryMasterId}
+				,COMMENT = #{comment}
+				,USE_YN	= #{useYn}
+				,SORT = #{sort}
+				,ATTR1 = #{attribute1}
+				,ATTR2 = #{attribute2}
+				,ATTR3 = #{attribute3}
+				,MODIFY_ID = #{userVo.userId}
+		WHERE	ST_COMN_CODE_ID = #{stCommonCodeId}
+	</update>
+
+	<delete id="delCode">
+	/* systemCode.delCode */
+		DELETE
+		FROM 	ST_COMN_CODE
+		WHERE	ST_COMN_CODE_ID = #{stCommonCodeId}
+	</delete>
+
+
+	<resultMap id="getCodeResultMap" type="kr.co.pulmuone.v1.system.code.dto.vo.GetCodeListResultVo">
+		<result column="ST_COMN_CODE_ID" property="stCommonCodeId" />
+		<result column="ST_COMN_CODE_MST_CD" property="stCommonCodeMasterId" />
+		<result column="ST_COMN_CODE_CD" property="commonCode" />
+		<result column="COMMENT" property="comment" />
+		<result column="SORT" property="sort" />
+		<result column="USE_YN" property="useYn" />
+		<result column="ATTR1" property="attribute1" />
+		<result column="ATTR2" property="attribute2" />
+		<result column="ATTR3" property="attribute3" />
+		<result column="DICTIONARY_MASTER_NAME" property="dictionaryMasterName" />
+	</resultMap>
+	<select id="getCode" resultMap="getCodeResultMap">
+		/*	systemCode.getCode	*/
+		SELECT
+			ST_COMN_CODE_ID
+			,ST_COMN_CODE_MST_CD
+			,ST_COMN_CODE_CD
+			,GB_DIC_MST_ID
+			,COMMENT
+			,SORT
+			,USE_YN
+			,ATTR1
+			,ATTR2
+			,ATTR3
+			,FN_COMN_CODE_DIC(ST_COMN_CODE_ID) AS DICTIONARY_MASTER_NAME
+		FROM
+			ST_COMN_CODE
+		WHERE
+			ST_COMN_CODE_ID = #{stComnCodeId}
+		    AND USE_YN = 'Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 - 암호화해제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.25		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="decryptStr" resultType="string">
+		/* systemCode.decryptStr */
+		<foreach item="data" index="index" collection="encryptList"  separator="UNION ALL">
+			SELECT FN_DECRYPT(#{data}) AS data
+			FROM dual
+		</foreach>
+	</select>
+
+</mapper>

@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.program.SystemProgramMapper">
+
+	<resultMap id="getProgramListResultMap" type="kr.co.pulmuone.v1.system.program.dto.vo.GetProgramListResultVo">
+		<result column="PROGRAM_ID"	property="programId"/>
+		<result column="ST_PROGRAM_ID"  property="stProgramId"/>
+		<result column="PROGRAM_NAME"  property="programName"/>
+		<result column="URL"  property="url"/>
+		<result column="HTML_PATH"  property="htmlPath"/>
+		<result column="USE_YN"  property="useYn"/>
+	</resultMap>
+
+	<select id="getProgramList" resultMap="getProgramListResultMap">
+	/* program.getProgramList */
+		SELECT	PG.ST_PROGRAM_ID
+			  	,PG.PG_ID AS PROGRAM_ID
+				,PG.GB_DIC_MST_ID
+				,FN_DIC(PG.GB_DIC_MST_ID, #{gbLangId}) AS PROGRAM_NAME
+				,PG.URL
+				,PG.USE_YN
+				,PG.BIZ_TP
+				,PG.HTML_PATH
+		FROM 	ST_PROGRAM PG
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(programName)">
+				    AND FN_DIC(PG.GB_DIC_MST_ID, #{gbLangId}) LIKE CONCAT(#{programName},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(programId)">
+				    AND PG.PG_ID LIKE CONCAT(#{programId},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				    AND PG.USE_YN = UPPER(#{useYn})
+				</if>
+		ORDER BY PG.ST_PROGRAM_ID DESC
+	</select>
+
+
+	<select id="getProgramListCount" resultType="int">
+	/* program.getProgramListCount */
+		SELECT	COUNT(*)
+		FROM 	ST_PROGRAM PG
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(programName)">
+				    AND FN_DIC(PG.GB_DIC_MST_ID, #{gbLangId}) LIKE CONCAT(#{programName},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(programId)">
+				    AND PG.PG_ID LIKE CONCAT(#{programId},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				    AND PG.USE_YN = UPPER(#{useYn})
+				</if>
+	</select>
+
+	<resultMap id="getProgramNameListResultMap" type="kr.co.pulmuone.v1.system.program.dto.vo.GetProgramNameListResultVo">
+		<result column="ST_PROGRAM_ID"  property="stProgramId"/>
+		<result column="PROGRAM_ID"  property="programId"/>
+		<result column="PROGRAM_NAME"  property="programName"/>
+	</resultMap>
+
+	<select id="getProgramNameList" resultMap="getProgramNameListResultMap">
+	/* program.getProgramNameList */
+		SELECT	PG.ST_PROGRAM_ID
+				,PG.PG_ID AS PROGRAM_ID
+				,FN_DIC(PG.GB_DIC_MST_ID, #{gbLangId}) AS PROGRAM_NAME
+		FROM 	ST_PROGRAM PG
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(programName)">
+				    AND FN_DIC(PG.GB_DIC_MST_ID, #{gbLangId}) LIKE CONCAT(#{programName},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				    AND PG.USE_YN = UPPER(#{useYn})
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(programId)">
+				    AND PG.PG_ID LIKE CONCAT('%', #{programId}, '%')
+				</if>
+		ORDER BY PG.ST_PROGRAM_ID DESC
+	</select>
+
+
+	<select id="getProgramNameListCount" resultType="int">
+	/* program.getProgramNameListCount */
+		SELECT	COUNT(*)
+		FROM 	ST_PROGRAM PG
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(programName)">
+				    AND FN_DIC(PG.GB_DIC_MST_ID, #{gbLangId}) LIKE CONCAT(#{programName},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				    AND PG.USE_YN = UPPER(#{useYn})
+				</if>
+	</select>
+
+	<resultMap id="getProgramResultMap" type="kr.co.pulmuone.v1.system.program.dto.vo.GetProgramResultVo">
+		<result column="ST_PROGRAM_ID"  property="stProgramId"/>
+		<result column="PROGRAM_ID"  property="programId"/>
+		<result column="PROGRAM_NAME"  property="programName"/>
+		<result column="URL"  property="url"/>
+		<result column="HTML_PATH"  property="htmlPath"/>
+		<result column="USE_YN"  property="useYn"/>
+		<result column="BIZ_TP"  property="businessType"/>
+		<result column="GB_DICTIONARY_MASTER_ID"  property="gbDictionaryMasterId"/>
+	</resultMap>
+	<select id="getProgram" resultMap="getProgramResultMap">
+		/* program.getProgram */
+		SELECT 	PG.ST_PROGRAM_ID
+			  	,PG.PG_ID AS PROGRAM_ID
+				,PG.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+				,FN_DIC(PG.GB_DIC_MST_ID, #{gbLangId}) AS PROGRAM_NAME
+				,PG.URL
+				,PG.USE_YN
+				,PG.BIZ_TP
+				,PG.HTML_PATH
+		FROM 	ST_PROGRAM PG
+		WHERE 	1 = 1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stProgramId)">
+				    AND PG.ST_PROGRAM_ID = #{stProgramId}
+				</if>
+	</select>
+
+
+	<select id="duplicateProgramCount" resultType="int">
+		/* program.duplicateProgramCount */
+		SELECT COUNT(*)
+		  FROM ST_PROGRAM PG
+		 WHERE (PG.PG_ID = #{programId} OR PG.URL = #{url})
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stProgramId)">
+		   AND PG.ST_PROGRAM_ID != #{stProgramId}
+		</if>
+	</select>
+
+
+
+	<insert id="addProgram">
+		/* program.addProgram */
+		INSERT INTO ST_PROGRAM
+		(
+			PG_ID
+			,URL
+			,USE_YN
+			,GB_DIC_MST_ID
+			,BIZ_TP
+			,HTML_PATH
+			,CREATE_ID
+		)
+		VALUES
+		(
+			#{programId}
+			,#{url}
+			,#{useYn}
+			,#{gbDictionaryMasterId}
+			,#{businessType}
+			,#{htmlPath}
+			,#{userVo.userId}
+		)
+		<selectKey resultType="Long" keyProperty="stProgramId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<update id="putProgram">
+		/* program.putProgram */
+		UPDATE 	ST_PROGRAM
+		SET 	PG_ID			 = #{programId}
+				,URL 			 = #{url}
+				,USE_YN 		 = #{useYn}
+				,GB_DIC_MST_ID   = #{gbDictionaryMasterId}
+				,BIZ_TP		 	 = #{businessType}
+				,HTML_PATH 		 = #{htmlPath}
+				,MODIFY_ID		 = #{userVo.userId}
+		WHERE  	ST_PROGRAM_ID    = #{stProgramId}
+	</update>
+
+	<delete id="delProgram">
+	/* program.delProgram */
+		DELETE
+		FROM 	ST_PROGRAM
+		WHERE  	ST_PROGRAM_ID = #{stProgramId}
+	</delete>
+
+	<resultMap id="getProgramAuthListMap" type="kr.co.pulmuone.v1.system.program.dto.vo.ProgramAuthVo">
+		<result column="ST_PROGRAM_AUTH_ID"  property="stProgramAuthId"/>
+		<result column="PG_AUTH_CD"  property="programAuthCode"/>
+		<result column="PG_AUTH_CD_NM"  property="programAuthCodeName"/>
+		<result column="PG_AUTH_CD_MEMO"  property="programAuthCodeNameMemo"/>
+		<result column="USE_YN"  property="useYn"/>
+	</resultMap>
+	<select id="getProgramAuthList" resultMap="getProgramAuthListMap">
+		/* program.getProgramAuthList */
+		SELECT 	ST_PROGRAM_AUTH_ID
+				,PG_AUTH_CD
+				,PG_AUTH_CD_NM
+				,PG_AUTH_CD_MEMO
+				,USE_YN
+		FROM 	ST_PROGRAM_AUTH
+		WHERE ST_PROGRAM_ID = #{stProgramId}
+	</select>
+
+	<resultMap id="getProgramAuthUseListMap" type="kr.co.pulmuone.v1.system.program.dto.vo.ProgramAuthVo">
+		<result column="ST_PROGRAM_AUTH_ID"  property="stProgramAuthId"/>
+		<result column="PG_AUTH_CD"  property="programAuthCode"/>
+		<result column="PG_AUTH_CD_NM"  property="programAuthCodeName"/>
+		<result column="PG_AUTH_CD_MEMO"  property="programAuthCodeNameMemo"/>
+	</resultMap>
+	<select id="getProgramAuthUseList" resultMap="getProgramAuthUseListMap">
+		/* program.getProgramAuthUseList */
+		SELECT 	ST_PROGRAM_AUTH_ID
+				,PG_AUTH_CD
+				,PG_AUTH_CD_NM
+				,PG_AUTH_CD_MEMO
+		FROM 	ST_PROGRAM_AUTH
+		WHERE ST_PROGRAM_ID = #{stProgramId}
+		  AND USE_YN = 'Y'
+	</select>
+
+	<insert id="addProgramAuth">
+		/* program.addProgramAuth */
+		<foreach collection="authInsertVoList" item="authInsertVo" separator=";">
+			INSERT INTO ST_PROGRAM_AUTH
+		(
+			ST_PROGRAM_ID
+			,PG_AUTH_CD
+			,PG_AUTH_CD_NM
+			,PG_AUTH_CD_MEMO
+			,USE_YN
+			,CREATE_ID
+		)
+		VALUES
+		(
+			#{stProgramId}
+			,#{authInsertVo.programAuthCode}
+			,#{authInsertVo.programAuthCodeName}
+			,#{authInsertVo.programAuthCodeNameMemo}
+			,#{authInsertVo.useYn}
+			,#{userVo.userId}
+		)
+		</foreach>
+	</insert>
+
+	<update id="putProgramAuth">
+		/* program.putProgramAuth */
+		<foreach collection="authUpdateVoList" item="authInsertVo" separator=";">
+		UPDATE 	ST_PROGRAM_AUTH
+		SET 	PG_AUTH_CD 	 = #{authInsertVo.programAuthCode}
+				,PG_AUTH_CD_NM   = #{authInsertVo.programAuthCodeName}
+				,PG_AUTH_CD_MEMO = #{authInsertVo.programAuthCodeNameMemo}
+				,USE_YN 		 = #{authInsertVo.useYn}
+				,MODIFY_ID		 = #{userVo.userId}
+		WHERE  	ST_PROGRAM_AUTH_ID    = #{authInsertVo.stProgramAuthId}
+		</foreach>
+	</update>
+
+	<delete id="delProgramAuthByStProgramId">
+	/* program.delProgramAuthByStProgramId */
+		DELETE
+		FROM 	ST_PROGRAM_AUTH_URL_MAPPING
+		WHERE  	ST_PROGRAM_AUTH_ID IN (SELECT ST_PROGRAM_AUTH_ID FROM ST_PROGRAM_AUTH WHERE ST_PROGRAM_ID = #{stProgramId});
+
+		DELETE
+		FROM 	ST_ROLE_MENU_AUTH_MAPPING
+		WHERE  	ST_PROGRAM_AUTH_ID IN (SELECT ST_PROGRAM_AUTH_ID FROM ST_PROGRAM_AUTH WHERE ST_PROGRAM_ID = #{stProgramId});
+
+		DELETE
+		FROM 	ST_PROGRAM_AUTH
+		WHERE  	ST_PROGRAM_ID = #{stProgramId}
+	</delete>
+</mapper>

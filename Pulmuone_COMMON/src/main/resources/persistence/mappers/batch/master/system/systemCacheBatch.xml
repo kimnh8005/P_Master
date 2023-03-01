@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.system.SystemCacheBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: API Cache 갯수 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.30		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSystemCacheCount" resultType="integer">
+        /* systemCacheBatch.getSystemCacheCount */
+        SELECT COUNT(*) AS CNT
+        FROM ST_API_CACHE
+        WHERE USE_YN = 'Y'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: API Cache 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.system.cache.dto.vo.SystemCacheVo" id="systemCacheResultMap">
+        <result column="ST_API_CACHE_ID" property="stApiCacheId"/>
+        <result column="API_URL" property="apiUrl"/>
+        <result column="CASHE_FILE_PATH" property="filePathName"/>
+        <result column="CASHE_DATA" property="cacheData"/>
+        <result column="CASHE_TIME" property="cacheTime"/>
+    </resultMap>
+    <select id="getSystemCache" resultMap="systemCacheResultMap">
+        /* systemCacheBatch.getSystemCache */
+        SELECT ST_API_CACHE_ID,
+            API_URL,
+            CASHE_FILE_PATH,
+            CASHE_DATA,
+            DATE_FORMAT(CASHE_TIME, '%Y%m%d%H%i%s') AS CASHE_TIME
+        FROM ST_API_CACHE
+        WHERE USE_YN = 'Y'
+        LIMIT #{page}, #{limit}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: API Cache 정보 조회 - 종합 파일용
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.30		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSystemCacheInfo" resultMap="systemCacheResultMap">
+        /* systemCacheBatch.getSystemCacheInfo */
+        SELECT API_URL,
+            CASHE_FILE_PATH,
+            DATE_FORMAT(CASHE_TIME, '%Y%m%d%H%i%s') AS CASHE_TIME
+        FROM ST_API_CACHE
+        WHERE USE_YN = 'Y'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: API Cache 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.14		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putSystemCache">
+        /* systemCacheBatch.putSystemCache */
+        UPDATE ST_API_CACHE
+        SET CASHE_DATA = #{cacheData}
+            ,CASHE_TIME = now()
+            ,MODIFY_DT = now()
+            ,MODIFY_ID = 0
+        WHERE ST_API_CACHE_ID = #{stApiCacheId}
+    </update>
+
+</mapper>
+
+

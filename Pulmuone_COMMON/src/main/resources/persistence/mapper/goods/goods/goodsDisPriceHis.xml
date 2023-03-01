@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsDisPriceHisMapper">
+
+ <!-- 상품목록 resultMap -->
+    <resultMap id="getGoodsDisPriceResultMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsDisPriceHisVo">
+    	<result column="UR_SUPPLIER_ID" property="supplierId" />
+    	<result column="COMP_NM" property="compNm" />
+		<result column="PRICE_START_DT" property="priceStartDt" />
+		<result column="PRICE_END_DT" property="priceEndDt" />
+		<result column="GOODS_ID" property="goodsId" />
+		<result column="GOODS_NM" property="goodsNm" />
+		<result column="ITEM_CD" property="itemCd" />
+        <result column="TAX_YN" property="taxYn" />
+        <result column="TAX_YN_NM" property="taxYnNm" />
+        <result column="STANDARD_PRICE" property="standardPrice" />
+        <result column="STANDARD_PRICE_STR" property="standardPriceStr" />
+        <result column="RECOMMENDED_PRICE" property="recommendedPrice" />
+        <result column="RECOMMENDED_PRICE_STR" property="recommendedPriceStr" />
+        <result column="MARGIN_RATE" property="marginRate" />
+        <result column="MARGIN_RATE_STR" property="marginRateStr" />
+        <result column="SALE_PRICE" property="salePrice" />
+        <result column="SALE_PRICE_STR" property="salePriceStr" />
+        <result column="MARGIN_RATE2" property="marginRate2" />
+        <result column="MARGIN_RATE2_STR" property="marginRate2Str" />
+        <result column="DISCOUNT_TP" property="discountTp" />
+        <result column="DISCOUNT_TP_NM" property="discountTpNm" />
+        <result column="CREATE_DT" property="createDt" />
+        <result column="DISCOUNT_START_DT" property="discountStartDt" />
+        <result column="DISCOUNT_END_DT" property="discountEndDt" />
+        <result column="APROVE_ID" property="aproveId" />
+        <result column="CONFIRM_ID" property="confirmId" />
+        <result column="CONFIRM_DT" property="confirmDt" />
+
+    </resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 묶음 상품목록 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.20    정형진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsDisPriceHisList" resultMap="getGoodsDisPriceResultMap">
+    	/* goodsDisPriceHis.getGoodsDisPriceHisList */
+		SELECT
+			GOODS.*
+		FROM(
+			SELECT
+				ITEM.UR_SUPPLIER_ID,
+				GOODS.UR_WAREHOUSE_ID,
+				COMPANY.COMP_NM,
+				GOODS_PRIC.PRICE_START_DT,
+				GOODS_PRIC.PRICE_END_DT,
+				GOODS.IL_GOODS_ID AS GOODS_ID,
+				ITEM.IL_ITEM_CD AS ITEM_CD,
+				GOODS.GOODS_NM,
+				ITEM.TAX_YN,
+				IF(ITEM.TAX_YN = 'Y','과세','면세') AS TAX_YN_NM,
+				GOODS_PRIC.STANDARD_PRICE,
+				GOODS_PRIC.STANDARD_PRICE AS STANDARD_PRICE_STR,
+				GOODS_PRIC.RECOMMENDED_PRICE,
+				GOODS_PRIC.RECOMMENDED_PRICE AS RECOMMENDED_PRICE_STR,
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(taxYn, 'Y')"><!-- 과세일때 -->
+						TRUNCATE(((CAST(GOODS_PRIC.RECOMMENDED_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED))*1.1))/GOODS_PRIC.RECOMMENDED_PRICE*100,0) AS MARGIN_RATE,
+						TRUNCATE(((CAST(GOODS_PRIC.RECOMMENDED_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED))*1.1))/GOODS_PRIC.RECOMMENDED_PRICE*100,0) AS MARGIN_RATE_STR,
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(taxYn, 'N')"><!-- 비과세일때 -->
+						TRUNCATE((CAST(GOODS_PRIC.RECOMMENDED_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.RECOMMENDED_PRICE*100,0) AS MARGIN_RATE,
+						TRUNCATE((CAST(GOODS_PRIC.RECOMMENDED_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.RECOMMENDED_PRICE*100,0) AS MARGIN_RATE_STR,
+					</when>
+					<otherwise>
+						TRUNCATE((CAST(GOODS_PRIC.RECOMMENDED_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.RECOMMENDED_PRICE*100,0) AS MARGIN_RATE,
+						TRUNCATE((CAST(GOODS_PRIC.RECOMMENDED_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.RECOMMENDED_PRICE*100,0) AS MARGIN_RATE_STR,
+					</otherwise>
+				</choose>
+				GOODS_PRIC.SALE_PRICE,
+				GOODS_PRIC.SALE_PRICE AS SALE_PRICE_STR,
+				<choose>
+				 	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(taxYn, 'Y')"><!-- 과세일때 -->
+						TRUNCATE(((CAST(GOODS_PRIC.SALE_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED))*1.1))/GOODS_PRIC.SALE_PRICE*100,0) AS MARGIN_RATE2,
+						TRUNCATE(((CAST(GOODS_PRIC.SALE_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED))*1.1))/GOODS_PRIC.SALE_PRICE*100,0) AS MARGIN_RATE2_STR,
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(taxYn, 'N')"><!-- 비과세일때 -->
+						TRUNCATE((CAST(GOODS_PRIC.SALE_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.SALE_PRICE*100,0) AS MARGIN_RATE2,
+						TRUNCATE((CAST(GOODS_PRIC.SALE_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.SALE_PRICE*100,0) AS MARGIN_RATE2_STR,
+					</when>
+					<otherwise>
+						TRUNCATE((CAST(GOODS_PRIC.SALE_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.SALE_PRICE*100,0) AS MARGIN_RATE2,
+						TRUNCATE((CAST(GOODS_PRIC.SALE_PRICE AS SIGNED)-(CAST(GOODS_PRIC.STANDARD_PRICE AS SIGNED)))/GOODS_PRIC.SALE_PRICE*100,0) AS MARGIN_RATE2_STR,
+					</otherwise>
+				</choose>
+				GOODS_PRIC.DISCOUNT_TP,
+				FN_COMN_CODE_DIC(IF(GOODS_PRIC.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.NONE', '', GOODS_PRIC.DISCOUNT_TP)) AS DISCOUNT_TP_NM,
+				GOODS_PRIC.CREATE_DT,
+				IFNULL(GOODS_DIS.DISCOUNT_START_DT, '') AS DISCOUNT_START_DT,
+				IFNULL(GOODS_DIS.DISCOUNT_END_DT, '') AS DISCOUNT_END_DT,
+				'' AS CONFIRM_DT,
+				'' AS APROVE_ID,
+				'' AS CONFIRM_ID
+			FROM
+				IL_GOODS_PRICE GOODS_PRIC
+				INNER JOIN IL_GOODS GOODS
+					ON GOODS_PRIC.IL_GOODS_ID = GOODS.IL_GOODS_ID
+				INNER JOIN IL_ITEM ITEM
+					ON GOODS.IL_ITEM_CD = ITEM.IL_ITEM_CD
+				INNER JOIN  UR_SUPPLIER  SUPPL
+					ON  ITEM.UR_SUPPLIER_ID = SUPPL.UR_SUPPLIER_ID
+				INNER JOIN  UR_COMPANY   COMPANY
+					ON  SUPPL.UR_COMPANY_ID = COMPANY.UR_COMPANY_ID
+				LEFT JOIN IL_GOODS_DISCOUNT GOODS_DIS
+					ON GOODS_PRIC.IL_GOODS_DISCOUNT_ID = GOODS_DIS.IL_GOODS_DISCOUNT_ID
+					AND GOODS_DIS.USE_YN = 'Y'
+			WHERE
+				GOODS_PRIC.USE_YN = 'Y'
+				AND ( NOW() <![CDATA[ >= ]]> GOODS_PRIC.PRICE_START_DT )
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(keywordVal)">
+					<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(keywordType, "goodsNm")'>
+						AND GOODS.GOODS_NM LIKE CONCAT('%', #{keywordVal}, '%')
+					</if>
+					<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(keywordType, "goodsId")'>
+						AND GOODS.IL_GOODS_ID = #{keywordVal}
+					</if>
+					<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(keywordType, "itemCd")'>
+						AND GOODS.IL_ITEM_CD = #{keywordVal}
+					</if>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId)">
+					AND SUPPL.UR_SUPPLIER_ID = #{supplierId}
+				</if>
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(taxYn, "Y")'>
+					AND ITEM.TAX_YN = 'Y'
+				</if>
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(taxYn, "N")'>
+					AND ITEM.TAX_YN = 'N'
+				</if>
+				<if test="discountTpList.size() > 0"> <!-- 판매상태 -->
+					AND GOODS_PRIC.DISCOUNT_TP IN
+					<foreach collection="discountTpList" item="discountTpCode" index="index" separator="," open="(" close=")">
+						#{discountTpCode}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)"> <!-- 기간검색 -->
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+						<choose>
+							<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "dateType1")'> <!-- 할인기간 -->
+								AND GOODS_DIS.DISCOUNT_START_DT <![CDATA[ >= ]]> #{startDate}
+								AND GOODS_DIS.DISCOUNT_END_DT <![CDATA[ <= ]]> #{endDate}
+							</when>
+							<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "dateType2")'> <!-- 적용일 -->
+								AND GOODS_PRIC.PRICE_START_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+							</when>
+							<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "dateType3")'> <!-- 승인완료일 -->
+								AND GOODS_DIS.CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+							</when>
+						</choose>
+					</if>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+					AND GOODS.UR_WAREHOUSE_ID IN
+					<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+		           		#{data}
+		       		</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+					AND SUPPL.UR_SUPPLIER_ID IN
+					<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+		           		#{data}
+		       		</foreach>
+				</if>
+		) GOODS
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userTypeVal1)">
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType1, "MANAGER_NAME")'>
+				AND GOODS.APROVE_ID = #{userTypeVal1}
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType1, "MANAGER_ID")'>
+				AND GOODS.APROVE_ID = #{userTypeVal1}
+			</if>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userTypeVal2)">
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType2, "MANAGER_NAME")'>
+				AND GOODS.CONFIRM_ID = #{userTypeVal2}
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType2, "MANAGER_ID")'>
+				AND GOODS.CONFIRM_ID = #{userTypeVal2}
+			</if>
+		</if>
+
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sort, "Y")'>
+			ORDER BY GOODS.GOODS_ID, GOODS.PRICE_START_DT DESC
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sort, "N")'>
+			ORDER BY GOODS.PRICE_START_DT DESC
+		</if>
+
+    </select>
+
+</mapper>

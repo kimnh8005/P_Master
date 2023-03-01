@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.store.StoreBosMapper">
+
+    <resultMap id="storeDeliveryAreaResultMap" type="kr.co.pulmuone.v1.user.store.dto.vo.StoreDeliveryAreaVo">
+        <result column="UR_STORE_ID"                  property="urStoreId"                />
+        <result column="NM"                           property="storeName"                />
+        <result column="ZIP_CD"                       property="zipCode"                  />
+        <result column="BUILDING_NO"                  property="buildingNumber"           />
+        <result column="DELIVERY_AREA_NM"             property="deliveryAreaName"         />
+        <result column="STORE_DELIVERY_INTERVAL_TP_NM"      property="deliveryIntervalTypeName" />
+        <result column="STORE_DELIVERY_TP_NM"               property="deliveryTypeName"         />
+        <result column="STORE_DELIVERABLE_ITEM_TP_NM"       property="deliverableItemTypeName"  />
+        <result column="MODIFY_DT"       property="modifyDate"  />
+    </resultMap>
+    <!--───────────────────────────────────────────────────────────────────────
+     * description         : 배송권역관리 목록 조회
+     * @ 수정일             수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.06      신성훈          최초생성
+     * @ 2020.07.16      민동진          매장/가맹점 쿼리 통합
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStoreDeliveryAreaList" resultMap="storeDeliveryAreaResultMap">
+        /* store.getStoreDeliveryAreaList */
+        SELECT  UR_STORE.UR_STORE_ID
+               , UR_STORE.NM
+               , UR_DELIVERY_AREA.ZIP_CD
+               , UR_DELIVERY_AREA.BUILDING_NO
+               , UR_STORE_DELIVERY_AREA.DELIVERY_AREA_NM
+               , FN_COMN_CODE_DIC(UR_STORE_DELIVERY_AREA.STORE_DELIVERY_INTERVAL_TP)  AS  STORE_DELIVERY_INTERVAL_TP_NM
+               , FN_COMN_CODE_DIC(UR_STORE_DELIVERY_AREA.STORE_DELIVERY_TP)           AS  STORE_DELIVERY_TP_NM
+               , FN_COMN_CODE_DIC(UR_STORE_DELIVERY_AREA.STORE_DELIVERABLE_ITEM_TP)   AS  STORE_DELIVERABLE_ITEM_TP_NM
+               , (SELECT MAX(MODIFY_DT) MODIFY_DT FROM UR_STORE) AS MODIFY_DT
+          FROM UR_STORE
+          JOIN UR_STORE_DELIVERY_AREA
+            ON UR_STORE.UR_STORE_ID = UR_STORE_DELIVERY_AREA.UR_STORE_ID
+           AND UR_STORE.STORE_TP    = #{storeType}
+          JOIN UR_DELIVERY_AREA
+            ON UR_STORE_DELIVERY_AREA.UR_DELIVERY_AREA_ID = UR_DELIVERY_AREA.UR_DELIVERY_AREA_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchType)">
+                <choose>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'UR_STORE_ID')">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+                            AND UR_STORE.UR_STORE_ID = TRIM(#{searchValue})
+                        </if>
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'NM')">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchName)">
+                            AND UR_STORE.NM LIKE CONCAT('%', LOWER(TRIM(#{searchName})) , '%')
+                        </if>
+                    </when>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'ZIP_CD')">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchZip)">
+                            AND UR_DELIVERY_AREA.ZIP_CD = TRIM(#{searchZip})
+                        </if>
+                    </when>
+                </choose>
+            </if>
+        </where>
+    </select>
+
+
+    <resultMap id="getStoreListResultMap" type="kr.co.pulmuone.v1.user.store.dto.vo.StoreListVo">
+        <result column="UR_STORE_ID"                  property="urStoreId"                />
+        <result column="STORE_CATEGORY_NAME"          property="storeCategoryName"                />
+        <result column="NM"                           property="storeName"                />
+        <result column="ADDRESS"                      property="address"                />
+        <result column="TEL"                          property="tel"                  />
+        <result column="USE_YN"                       property="useYn"           />
+        <result column="STATUS"             		  property="status"         />
+        <result column="STATUS_NAME"     			  property="statusName" />
+        <result column="ONLINE_DIV_YN"                property="onlineDivYn"         />
+        <result column="DELIVERY_TYPE"       		  property="deliveryType"  />
+        <result column="DELIVERY_TYPE_NAME"       	  property="deliveryTypeName"  />
+        <result column="MODIFY_DT"      			  property="modifyDate"  />
+    </resultMap>
+    <!--───────────────────────────────────────────────────────────────────────
+     * description         : 매장 목록 조회
+     * @ 수정일             수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.18      안치열
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStoreList" resultMap="getStoreListResultMap">
+        /* store.getStoreList */
+      SELECT US.UR_STORE_ID
+			, FN_COMN_CODE_DIC(US.STORE_CATEGORY1) AS STORE_CATEGORY_NAME
+			, US.NM
+			, US.ADDRESS1 AS ADDRESS
+			, US.TEL
+			, US.USE_YN
+			, US.STATUS
+			, FN_COMN_CODE_DIC(US.STATUS) AS STATUS_NAME
+			, US.ONLINE_DIV_YN
+			,( SELECT GROUP_CONCAT(DISTINCT FN_COMN_CODE_DIC(STORE_DELIVERY_TP)) AS STORE_DELIVERY_TP_NAME
+			   FROM UR_STORE_DELIVERY_AREA
+			   WHERE UR_STORE_ID = US.UR_STORE_ID
+			   GROUP BY UR_STORE_ID
+		     ) AS DELIVERY_TYPE_NAME
+			, (SELECT MAX(MODIFY_DT) MODIFY_DT FROM UR_STORE) AS MODIFY_DT
+		FROM UR_STORE US
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchType)">
+				<choose>
+				    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'STORE_ID')">
+				    	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+				         AND US.UR_STORE_ID = TRIM(#{searchValue})
+				        </if>
+				    </when>
+				    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType, 'NM')">
+				    	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+				        	AND US.NM LIKE CONCAT('%', LOWER(TRIM(#{searchValue})) , '%')
+				        </if>
+				    </when>
+				</choose>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUseYn)">
+            	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchUseYn, 'ALL')">
+            		AND US.USE_YN = #{searchUseYn}
+            	</if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchStoreType)">
+            	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchStoreType, 'STORE_CATEGORY.ALL')">
+	            	AND US.STORE_CATEGORY1 = #{searchStoreType}
+	            </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchOnlineDivYn)">
+            	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchOnlineDivYn, 'ALL')">
+            		AND US.ONLINE_DIV_YN = #{searchOnlineDivYn}
+            	</if>
+            </if>
+            AND STORE_CATEGORY1  <![CDATA[<>]]>  'STORE_CATEGORY.FD'
+        </where>
+         ORDER BY US.UR_STORE_ID DESC, US.CREATE_DT DESC
+    </select>
+
+
+
+    <resultMap id="getStoreDetailResultMap" type="kr.co.pulmuone.v1.user.store.dto.vo.StoreDetailVo">
+        <result column="UR_STORE_ID"                  property="urStoreId"                />
+        <result column="STORE_CATEGORY_NAME"          property="storeCategoryName"                />
+        <result column="NM"                           property="storeName"                />
+        <result column="ADDRESS"                      property="address"                />
+        <result column="TEL"                          property="tel"                  />
+        <result column="USE_YN"                       property="useYn"           />
+        <result column="STATUS"             		  property="status"         />
+        <result column="STATUS_NAME"     			  property="statusName" />
+        <result column="ONLINE_DIV_YN"                property="onlineDivYn"         />
+        <result column="DELIVERY_TYPE"       		  property="deliveryType"  />
+        <result column="DELIVERY_TYPE_NAME"       	  property="deliveryTypeName"  />
+        <result column="MODIFY_DT"      			  property="modifyDate"  />
+        <result column="LOCATE"      			  	  property="locate"  />
+        <result column="OPEN_TIME"      			  property="openTime"  />
+        <result column="CLOSE_TIME"      			  property="closeTime"  />
+        <result column="PATH"      			  		  property="path"  />
+        <result column="UNDELIVER_DT"      			  property="undeliverDt"  />
+        <result column="STORE_PC_PATH"      		  property="storePcPath"  />
+        <result column="STORE_MOBILE_PATH"      	  property="storeMobilePath"  />
+    </resultMap>
+    <!--───────────────────────────────────────────────────────────────────────
+     * description         : 매장 상세 조회
+     * @ 수정일             수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.18      안치열
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStoreDetail" resultMap="getStoreDetailResultMap">
+        /* store.getStoreDetail */
+      SELECT US.UR_STORE_ID
+			, FN_COMN_CODE_DIC(US.STORE_CATEGORY1) AS STORE_CATEGORY_NAME
+			, US.NM
+			, US.ADDRESS1 AS ADDRESS
+			, US.TEL
+			, US.USE_YN
+			, US.STATUS
+			, FN_COMN_CODE_DIC(US.STATUS) AS STATUS_NAME
+			, US.ONLINE_DIV_YN
+			,( SELECT GROUP_CONCAT(DISTINCT FN_COMN_CODE_DIC(STORE_DELIVERY_TP)) AS STORE_DELIVERY_TP_NAME
+			   FROM UR_STORE_DELIVERY_AREA
+			   WHERE UR_STORE_ID = US.UR_STORE_ID
+			   GROUP BY UR_STORE_ID
+		     ) AS DELIVERY_TYPE_NAME
+			, (SELECT MAX(MODIFY_DT) MODIFY_DT FROM UR_STORE) AS MODIFY_DT
+			, US.LOCATE
+			, US.OPEN_TIME
+			, US.CLOSE_TIME
+			, (
+				 SELECT group_concat(DATE_FORMAT(UNDELIVER_DT,'%Y-%m-%d'))
+		         FROM UR_STORE_UNDELIVERYDATE usu
+		         WHERE usu.UR_STORE_ID = US.UR_STORE_ID
+		         AND usu.USE_YN = 'Y'
+		         GROUP BY UR_STORE_ID
+			) AS UNDELIVER_DT
+			, (SELECT CONCAT(PATH, NM) FROM UR_STORE_ATTC UA WHERE UA.UR_STORE_ID = US.UR_STORE_ID AND UA.STORE_IMG_TYPE = 'PC') AS STORE_PC_PATH
+			, (SELECT CONCAT(PATH, NM) FROM UR_STORE_ATTC UA WHERE UA.UR_STORE_ID = US.UR_STORE_ID AND UA.STORE_IMG_TYPE = 'MOBILE') AS STORE_MOBILE_PATH
+		FROM UR_STORE US
+        WHERE US.UR_STORE_ID = #{urStoreId}
+    </select>
+
+
+    <resultMap id="getStoreDeliveryResultMap" type="kr.co.pulmuone.v1.user.store.dto.vo.StoreDeliveryAreaVo">
+        <result column="SCHEDULE_NO"                  property="scheduleNo"                />
+        <result column="CUTOFF_TIME"          		  property="cutoffTime"                />
+        <result column="STORE_ORDER_TIME"             property="storeOrderTime"                />
+        <result column="LIMIT_CNT"                    property="limitCnt"                />
+        <result column="DELIVERY_AREA_NM"             property="deliveryAreaNm"                  />
+        <result column="UR_DELIVERY_AREA_ID"          property="urDeliveryAreaId"           />
+        <result column="STORE_DELIVERY_TP"            property="storeDeliveryTp"           />
+        <result column="STORE_DELIVERY_TP_NM"         property="storeDeliveryTpNm"           />
+    </resultMap>
+    <!--───────────────────────────────────────────────────────────────────────
+     * description         : 매장 권역정보 조회
+     * @ 수정일             수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.23      안치열
+     * @ 2021.06.21      최윤지            배송타입 추가
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStoreDeliveryList" resultMap="getStoreDeliveryResultMap">
+        /* store.getStoreDeliveryList */
+     SELECT USS.SCHEDULE_NO /*회차*/
+        	 , USS.CUTOFF_TIME /*주문 마감 시간*/
+        	 , CONCAT(USS.START_TIME, '~', USS.END_TIME) AS STORE_ORDER_TIME
+        	 , USS.LIMIT_CNT /*출고한도*/
+        	 , USD.DELIVERY_AREA_NM
+        	 , USS.UR_DELIVERY_AREA_ID
+             , USD.STORE_DELIVERY_TP
+             , FN_COMN_CODE_DIC(USD.STORE_DELIVERY_TP) AS STORE_DELIVERY_TP_NM
+        FROM UR_STORE_DELIVERY_AREA USD
+        JOIN UR_STORE_SCHEDULE USS ON USD.UR_STORE_ID = USS.UR_STORE_ID AND USD.UR_DELIVERY_AREA_ID = USS.UR_DELIVERY_AREA_ID
+        WHERE USD.UR_STORE_ID = #{urStoreId}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeDeliveryTp)">
+         AND USD.STORE_DELIVERY_TP = #{storeDeliveryTp}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(shopStockStatus)">
+        GROUP BY USD.STORE_DELIVERY_TP
+        </if>
+        ORDER BY USD.STORE_DELIVERY_TP , USS.UR_DELIVERY_AREA_ID ,USS.SCHEDULE_NO
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description : 매장 상세 정보 수정
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="modifyStoreDetail">
+        /* store.modifyStoreDetail */
+        UPDATE UR_STORE
+           SET  USE_YN         = #{useYn}
+             , MODIFY_ID      = #{userVo.userId}
+             , MODIFY_DT      = now()
+         WHERE UR_STORE_ID = #{urStoreId}
+    </update>
+
+
+     <!--───────────────────────────────────────────────────────────────────────
+	 * description : 매장 상세 이미지 삭제
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <delete id="delStoreImage">
+        /* store.delStoreImage */
+        DELETE FROM UR_STORE_ATTC
+         WHERE UR_STORE_ID = #{urStoreId}
+         AND STORE_IMG_TYPE = #{storeImageType}
+    </delete>
+
+
+
+   	<!--───────────────────────────────────────────────────────────────────────
+	 * description : 이미지 등록
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addStoreImage">
+		/* store.addStoreImage */
+		 INSERT INTO UR_STORE_ATTC
+               (
+                  UR_STORE_ID
+                , STORE_IMG_TYPE
+                , PATH
+                , NM
+                , ORIGIN_NM
+                , CREATE_DT
+                , CREATE_ID
+               )
+        values (
+                  #{urStoreId}
+                , #{storeImageType}
+                , #{imagePath}
+                , #{imageName}
+                , #{imageOriginalName}
+                , NOW()
+                , #{createUserId}
+               )
+	</insert>
+
+		<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송불가일 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.21		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCheckStoreUnDeliveryDateList" resultType="java.time.LocalDate">
+		/*	store.getCheckStoreUnDeliveryDateList	*/
+		SELECT
+			UNDELIVER_DT
+		FROM
+			UR_STORE_UNDELIVERYDATE
+		WHERE
+			UR_STORE_ID = #{urStoreId}
+			AND UNDELIVER_DT IN
+			<foreach collection="scheduledDateList" item="scheduledDate" separator="," open="(" close=")">
+				#{scheduledDate.forwardingScheduledDate}
+			</foreach>
+			AND USE_YN = 'Y'
+	</select>
+</mapper>

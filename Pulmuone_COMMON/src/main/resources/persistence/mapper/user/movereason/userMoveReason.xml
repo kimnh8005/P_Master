@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.movereason.UserMoveReasonMapper">
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원탈퇴 사유 설정 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.19		오영민          최초생성
+	 * @ 2020.08.19		강윤경          화면설계서 부분 반영
+	 * @ 2020.10.21        최윤지         리팩토링 수정
+	────────────────────────────────────────────────────────────────────────-->
+
+	<select id="getMoveReasonList" resultType="kr.co.pulmuone.v1.user.movereason.dto.vo.MoveReasonResultVo">
+        /* userMoveReason.getMoveReasonList */
+        SELECT
+               UR_MOVE_REASON_ID /* 사유코드 */
+             , REASON_NM AS REASON_NAME /* 변경사유명 */
+             , USE_YN /* 사용여부 */
+          FROM UR_MOVE_REASON
+		 ORDER BY UR_MOVE_REASON_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원탈퇴 사유 설정 상세조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.19     오영민          최초생성
+     * @ 2020.08.19     강윤경          화면설계서 부분 반영
+     * @ 2020.10.21     최윤지         리팩토링 수정
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getMoveReason" resultType="kr.co.pulmuone.v1.user.movereason.dto.vo.MoveReasonResultVo">
+        /* userMoveReason.getMoveReason */
+        SELECT
+               UR_MOVE_REASON_ID /* 사유코드 */
+             , REASON_NM  AS REASON_NAME /* 변경사유명 */
+             , USE_YN /* 사용여부 */
+          FROM UR_MOVE_REASON
+         WHERE UR_MOVE_REASON_ID = #{urMoveReasonId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원탈퇴 사유 설정 중복 체크
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.17     오영민          최초생성
+     * @ 2020.08.19     강윤경          수정
+     * @ 2020.10.21     최윤지         리팩토링 수정
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="hasMoveReasonDuplicate" resultType="int">
+        /* usermoveReason.hasMoveReasonDuplicate */
+        SELECT
+               COUNT(*) AS TOTAL
+          FROM UR_MOVE_REASON
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reasonName)">
+                AND REASON_NM = #{reasonName}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urMoveReasonId)">
+                AND UR_MOVE_REASON_ID NOT IN ( #{urMoveReasonId} )
+            </if>
+        </where>
+        LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원탈퇴 사유 설정 저장
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.19     오영민          최초생성
+     * @ 2020.08.19     강윤경          수정
+     * @ 2020.10.21     최윤지         리팩토링 수정
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMoveReason">
+        /* usermoveReason.addMoveReason */
+        INSERT INTO UR_MOVE_REASON
+        (
+          MOVE_TP
+        , REASON_NM
+        , MOVE_REASON
+        , USE_YN
+        , CREATE_ID
+        )
+        VALUES
+        (
+          #{moveType}
+        , #{reasonName}
+        , #{reasonName}
+        , #{useYn}
+        , #{userVo.userId}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원탈퇴 사유 설정 수정
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.19     오영민          최초생성
+     * @ 2020.08.20     강윤경          수정
+     * @ 2020.10.21     최윤지         리팩토링 수정
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putMoveReason">
+        /* usermoveReason.putMoveReason */
+        UPDATE UR_MOVE_REASON
+           SET
+               REASON_NM = #{reasonName}
+             , MOVE_REASON = #{reasonName}
+             , USE_YN = #{useYn}
+             , MODIFY_ID = #{userVo.userId}
+         WHERE UR_MOVE_REASON_ID = #{urMoveReasonId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원탈퇴 사유 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.user.buyer.dto.vo.CodeInfoVo" id="getCodeResultMap">
+        <result column="UR_MOVE_REASON_ID"  property="code"  />
+        <result column="REASON_NM"  property="name" />
+    </resultMap>
+    <select id="getMoveReasonCode" resultMap="getCodeResultMap">
+        /* userMoveReason.getMoveReasonCode */
+        SELECT UR_MOVE_REASON_ID
+            , REASON_NM
+        FROM UR_MOVE_REASON
+        WHERE USE_YN = 'Y'
+        ORDER BY UR_MOVE_REASON_ID
+    </select>
+
+</mapper>

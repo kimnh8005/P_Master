@@ -1,0 +1,1656 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.regular.OrderRegularDetailMapper">
+
+	<sql id="searchNowReqRound">
+		SELECT
+			OD_REGULAR_REQ_ID,
+			MAX(REQ_ROUND) AS REQ_ROUND,
+			MAX(ARRIVE_DT) AS ARRIVE_DT,
+			MAX(REQ_ROUND_YN) AS REQ_ROUND_YN,
+			MAX(ARRIVE_DT) AS LAST_ARRIVE_DT
+		FROM
+			OD_REGULAR_RESULT ORRT
+		WHERE
+			ORRT.ORDER_CREATE_DT <![CDATA[<=]]> CURDATE()
+		AND
+			ORRT.REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING', 'REGULAR_STATUS_CD.END')
+		GROUP BY OD_REGULAR_REQ_ID
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 내역 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqListDto">
+		/*	orderRegularDetail.getOrderRegularReqInfo	*/
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,		                             /* 정기배송주문신청PK */
+			ORR.REQ_ID,					                             /* 신청번호 15자리  R+년,월,일 + 난수Ex 2021년 01월 01일 >> R21010101234567 */
+			ORR.UR_GROUP_ID,			                             /* 회원 그룹 ID : UR_GROUP.UR_GROUP_ID */
+			ORR.UR_GROUP_NM,			                             /* 회원 그룹명 : UR_GROUP.UR_GROUP_NM */
+			ORR.UR_USER_ID,				                             /* 회원 ID : UR_USER.UR_USER_ID */
+			FN_DECRYPT(ORR.BUYER_NM)           AS BUYER_NM,          /* 주문자 명 */
+			FN_DECRYPT(ORR.BUYER_HP)           AS BUYER_HP,          /* 주문자 핸드폰 */
+			FN_DECRYPT(ORR.BUYER_TEL)          AS BUYER_TEL,         /* 주문자 연락처 */
+			FN_DECRYPT(ORR.BUYER_MAIL)         AS BUYER_MAIL,        /* 주문자 이메일 */
+			ORR.PAYMENT_TYPE_CD,		                             /* 결제수단 : 공통코드( PAYMENT_TYPE) */
+			ORR.BUYER_TYPE_CD,			                             /* 주문자 유형 : 공통코드(BUYER_TYPE) */
+			ORR.AGENT_TYPE_CD,			                             /* 주문 유형 : 공통코드(AGENT_TYPE) */
+			ORR.CREATE_DT,				                             /* 등록일 */
+			ORR.TOT_CNT,				                             /* 총회차수 */
+			ORR.GOODS_CYCLE_TERM_TP,	                             /* 배송기간 공통코드:GOODS_CYCLE_TERM_TP */
+			FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TERM_TP) AS GOODS_CYCLE_TERM_TP_NM, /* 배송기간 공통코드명 */
+			ORR.GOODS_CYCLE_TP,			                             /* 배송주기 공통코드:GOODS_CYCLE_TP */
+			FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TP) AS GOODS_CYCLE_TP_NM,	         /* 배송주기 공통코드명 */
+			ORR.WEEK_CD,				                             /* 요일 공통코드:WEEK_CD */
+			FN_COMN_CODE_DIC(ORR.WEEK_CD)        AS WEEK_CD_NM,      /* 요일 공통코드명 */
+			ORR.UR_PCID_CD,				                             /* 사용자환경정보 : UR_PCID.UR_PCID_CD */
+			ORR.DELIVERY_DT,			                             /* 첫배송도착예정일자 */
+			ORR.REGULAR_STATUS_CD,		                             /* 신청상태 공통코드: REGULAR_STATUS_CD */
+			FN_COMN_CODE_DIC(ORR.REGULAR_STATUS_CD) AS REGULAR_STATUS_CD_NM,     /* 신청상태 공통코드: REGULAR_STATUS_CD */
+			ORR.CREATE_ROUND_YN,		                             /* 회차정보 생성여부 */
+			ORR.SALE_PRICE,				                             /* 판매가 */
+			ORR.DISCOUNT_PRICE,			                             /* 할인금액 */
+			ORR.PAID_PRICE,				                             /* 결제예정금액 */
+			ORR.DELIVERY_DT,                                         /* 첫배송도착예정일자 */
+			UU.LOGIN_ID,                                             /* 주문자로그인ID */
+			IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y')  AS ERP_EMPLOYEE_YN,   /* 임직원여부 */
+			ORR.TERM_EXTENSION_CNT,                                  /* 기간연장횟수 */
+			IFNULL(ORRT.REQ_ROUND,ORR.TOT_CNT) AS REQ_ROUND,         /* 회차 */
+			IFNULL(ORRT.ARRIVE_DT,(
+				SELECT
+					MAX(ORRT.ARRIVE_DT)
+				FROM
+					OD_REGULAR_RESULT ORRT
+				WHERE
+					ORRT.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+				GROUP BY ORRT.OD_REGULAR_REQ_ID
+			))                                 AS ARRIVE_DT,         /* 도착예정일 */
+			IFNULL(ORRT.REQ_ROUND_YN, 'Y')     AS REQ_ROUND_YN       /* 회차 완료 여부 */
+		FROM
+			OD_REGULAR_REQ ORR
+		LEFT OUTER JOIN
+			UR_USER UU ON ORR.UR_USER_ID = UU.UR_USER_ID
+		LEFT OUTER JOIN
+			UR_BUYER UB ON ORR.UR_USER_ID = UB.UR_USER_ID
+		LEFT OUTER JOIN
+			(
+				<include refid="searchNowReqRound" />
+			) ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 내역 배송정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailShippingZone" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqShippingZoneDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailShippingZone	*/
+		SELECT
+			ORRSZ.OD_REGULAR_REQ_SHIPPING_ZONE_ID,                      /* 정기배송주문배송지PK */
+			ORRSZ.OD_REGULAR_REQ_ID,                                    /* 정기배송신청PK */
+			ORR.UR_USER_ID,                                             /* 회원PK */
+			IFNULL(FN_COMN_CODE_DIC(ORRSZ.DELIVERY_TYPE), '') AS DELIVERY_TYPE, /* 배송타입 */
+			FN_DECRYPT(ORRSZ.RECV_NM)                AS RECV_NM,        /* 수령인명 */
+			FN_DECRYPT(ORRSZ.RECV_HP)                AS RECV_HP,        /* 수령인핸드폰 */
+			FN_DECRYPT(ORRSZ.RECV_TEL)               AS RECV_TEL,       /* 수령인연락처 */
+			FN_DECRYPT(ORRSZ.RECV_MAIL)              AS RECV_MAIL,      /* 수령인이메일 */
+			FN_DECRYPT(ORRSZ.RECV_ZIP_CD)            AS RECV_ZIP_CD,    /* 수령인우편번호 */
+			FN_DECRYPT(ORRSZ.RECV_ADDR1)             AS RECV_ADDR1,     /* 수령인주소1 */
+			FN_DECRYPT(ORRSZ.RECV_ADDR2)             AS RECV_ADDR2,     /* 수령인주소2 */
+			ORRSZ.RECV_BLD_NO,                                          /* 빌딩번호 */
+			IFNULL(ORRSZ.DELIVERY_MSG, '')           AS DELIVERY_MSG,   /* 배송요청사항 */
+			IFNULL(ORRSZ.DELIVERY_MSG_CD, '')        AS DELIVERY_MSG_CD,/* 배송요청사항공통코드 */
+			IFNULL(FN_COMN_CODE_DIC(ORRSZ.DELIVERY_MSG_CD), '')        AS DELIVERY_MSG_CD_NM,   /* 배송요청사항공통코드명 */
+			IFNULL(FN_DECRYPT(ORRSZ.DOOR_ETC), '')   AS DOOR_ETC,       /* 배송출입 기타/직접입력 메세지 */
+			IFNULL(ORRSZ.DOOR_MSG_CD, '')            AS DOOR_MSG_CD,    /* 출입정보타입 공통코드(DOOR_MSG_CD) */
+			IFNULL(FN_COMN_CODE_DIC(ORRSZ.DOOR_MSG_CD), '') AS DOOR_MSG_CD_NM, /* 출입정보타입 공통코드명(DOOR_MSG_CD) */
+			IFNULL(FN_DECRYPT(ORRSZ.DOOR_MSG), '')   AS DOOR_MSG,       /* 배송출입현관비밀번호 */
+			DATE_FORMAT(ORRSZ.CREATE_DT, '%Y-%m-%d') AS CREATE_DT       /* 등록일 */
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_REQ_SHIPPING_ZONE ORRSZ ON ORR.OD_REGULAR_REQ_ID = ORRSZ.OD_REGULAR_REQ_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 내역 신청 결제정보 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailPaymentList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqPaymentListDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailPaymentList	*/
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,
+			ORRT.OD_REGULAR_RESULT_ID,
+			ORRT.REQ_ROUND,
+			ORRT.PAYMENT_DT,
+			ORRT.REQ_ROUND_YN,
+			OPM.SALE_PRICE,
+			OPM.SHIPPING_PRICE,
+			OPM.PAID_PRICE,
+			OPM.PAYMENT_PRICE,
+			FN_DECRYPT(ORRSZ.RECV_ZIP_CD) AS RECV_ZIP_CD,
+			(
+				SELECT
+					SUM(DISCOUNT_PRICE)
+				FROM
+					OD_ORDER_DETL_DISCOUNT
+				WHERE
+					OD_ORDER_ID = ORRT.OD_ORDER_ID
+				AND
+					DISCOUNT_TP IN ('GOODS_DISCOUNT_TP.PRIORITY', 'GOODS_DISCOUNT_TP.IMMEDIATE')
+			) AS DISCOUNT_PRICE,
+			(
+				SELECT
+					SUM(DISCOUNT_PRICE)
+				FROM
+					OD_ORDER_DETL_DISCOUNT
+				WHERE
+					OD_ORDER_ID = ORRT.OD_ORDER_ID
+				AND
+					DISCOUNT_TP IN ('GOODS_DISCOUNT_TP.REGULAR_DEFAULT', 'GOODS_DISCOUNT_TP.REGULAR_ADD')
+			) AS ADD_DISCOUNT_PRICE
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		INNER JOIN
+			OD_REGULAR_REQ_SHIPPING_ZONE ORRSZ ON ORR.OD_REGULAR_REQ_ID = ORRSZ.OD_REGULAR_REQ_ID
+		LEFT OUTER JOIN
+			OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					OP.OD_CLAIM_ID,
+					OP.OD_ORDER_ID,
+					OPM.*
+				FROM
+					OD_PAYMENT OP
+				INNER JOIN
+					OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+				WHERE
+					OPM.TYPE = 'G'
+			) OPM ON OPM.OD_ORDER_ID = OD.OD_ORDER_ID
+		WHERE
+			1 = 1
+		AND
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			ORRT.REGULAR_STATUS_CD IN
+		<foreach collection="regularStatusCdList" item="regularStatusCd" index="index" separator="," open="(" close=")">
+			#{regularStatusCd}
+		</foreach>
+		AND
+			ORRT.REQ_ROUND  <![CDATA[<=]]>  IFNULL((
+				SELECT
+					MIN(A.REQ_ROUND)
+				FROM
+					OD_REGULAR_RESULT A
+				WHERE
+					A.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+				AND
+					A.ARRIVE_DT <![CDATA[>]]> CURRENT_DATE()
+				GROUP BY A.OD_REGULAR_REQ_ID
+			), ORR.TOT_CNT)
+		ORDER BY ORRT.REQ_ROUND DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 내역 신청 결제예정 금액 상품 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailPaymentGoods" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultReqRoundGoodsListDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailPaymentGoods	*/
+		SELECT
+			A.OD_REGULAR_REQ_ID,
+			A.OD_REGULAR_RESULT_ID,
+			A.OD_REGULAR_RESULT_DETL_ID,
+			A.REQ_ROUND,
+			A.RECOMMENDED_PRICE,
+			A.SALE_PRICE,
+			A.BASIC_DISCOUNT_RATE,
+			A.ADD_DISCOUNT_ROUND,
+			A.ADD_DISCOUNT_RATE,
+			A.DISCOUNT_TP,
+			A.DISCOUNT_TP_NM,
+			A.IL_GOODS_ID,
+			IF(A.SIZE_UNIT = '', A.GOODS_NM, CONCAT(A.GOODS_NM, ' ', A.SIZE_UNIT)) AS GOODS_NM,
+			A.THUMBNAIL_PATH,
+			A.UR_WAREHOUSE_ID,
+			A.IL_SHIPPING_TMPL_ID,
+			A.DELIVERY_TMPL_NM,
+			A.GRP_WAREHOUSE_SHIPPING_TMPL_ID,
+			A.ORDER_CNT,
+			A.PARENT_IL_GOODS_ID
+		FROM (
+			SELECT
+				ORR.OD_REGULAR_REQ_ID,
+				ORRT.OD_REGULAR_RESULT_ID,
+				ORRD.OD_REGULAR_RESULT_DETL_ID,
+				ORRT.REQ_ROUND,
+				IGP.RECOMMENDED_PRICE,
+				IGP.SALE_PRICE,
+				ORR.BASIC_DISCOUNT_RATE,
+				ORR.ADD_DISCOUNT_ROUND,
+				ORR.ADD_DISCOUNT_RATE,
+				IGP.DISCOUNT_TP,
+				FN_COMN_CODE_DIC(IGP.DISCOUNT_TP) AS DISCOUNT_TP_NM,
+				ORRD.IL_GOODS_ID,
+				IG.GOODS_NM,
+				IFNULL(
+					IF(IG.PACKAGE_UNIT_DISP_YN = 'Y',
+						IF(IG.GOODS_TP = 'GOODS_TYPE.PACKAGE',
+							CONCAT('(',IG.PACKAGE_UNIT_DESC,')'),
+							CONCAT('(', CAST(II.SIZE_PER_PACKAGE AS float),
+																			CASE
+																				WHEN II.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.SIZE_UNIT_ETC
+																				ELSE FN_COMN_CODE_DIC(II.SIZE_UNIT)
+																			END
+							, IF(II.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', II.QTY_PER_PACKAGE,
+																			CASE
+																				WHEN II.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.PACKAGE_UNIT_ETC
+																				ELSE FN_COMN_CODE_DIC(II.PACKAGE_UNIT)
+																			END
+																		)
+							, '')
+							, ')')
+						)
+					, '')
+				, '') AS SIZE_UNIT,
+				FN_GOODS_C_IMG(ORRD.IL_GOODS_ID) AS THUMBNAIL_PATH,
+				IG.UR_WAREHOUSE_ID,
+				ST.IL_SHIPPING_TMPL_ID,
+				ST.NAME                          AS DELIVERY_TMPL_NM,
+				CONCAT(IG.UR_WAREHOUSE_ID, '∀', IF(ST.BUNDLE_YN = 'N', ORRD.OD_REGULAR_RESULT_DETL_ID, ST.BUNDLE_YN)) AS GRP_WAREHOUSE_SHIPPING_TMPL_ID,
+				ORRD.ORDER_CNT,
+				IFNULL((
+					SELECT
+						IGAGM.IL_GOODS_ID
+					FROM
+						IL_GOODS_ADDITIONAL_GOODS_MAPPING IGAGM
+					WHERE
+						IGAGM.TARGET_GOODS_ID = IG.IL_GOODS_ID
+				), 0) AS PARENT_IL_GOODS_ID
+			FROM
+				OD_REGULAR_REQ ORR
+			INNER JOIN
+				OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+			INNER JOIN
+				OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+			INNER JOIN
+				IL_GOODS IG ON ORRD.IL_GOODS_ID = IG.IL_GOODS_ID AND ORRD.IL_ITEM_CD = IG.IL_ITEM_CD
+			INNER JOIN
+				IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+			INNER JOIN
+				IL_GOODS_PRICE IGP ON IG.IL_GOODS_ID = IGP.IL_GOODS_ID
+								  AND IGP.USE_YN = 'Y'
+								  AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+			INNER JOIN
+				UR_WAREHOUSE UW ON IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+			INNER JOIN
+				IL_GOODS_SHIPPING_TEMPLATE GST ON IG.IL_GOODS_ID = GST.IL_GOODS_ID
+												 AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID
+			INNER JOIN
+				IL_SHIPPING_TEMPLATE ST ON GST.ORIG_IL_SHIPPING_TMPL_ID = ST.ORIG_IL_SHIPPING_TMPL_ID
+									   AND ST.DEL_YN = 'N'
+			WHERE
+				1 = 1
+			<if test="odRegularReqId > 0">
+			AND
+				ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+			</if>
+			<if test="odRegularResultId lt 1">
+			AND
+				ORRT.OD_REGULAR_RESULT_ID = (SELECT MIN(OD_REGULAR_RESULT_ID) FROM OD_REGULAR_RESULT WHERE ORR.OD_REGULAR_REQ_ID = OD_REGULAR_REQ_ID AND ARRIVE_DT <![CDATA[>=]]> CURRENT_DATE())
+			</if>
+			<if test="odRegularResultId > 0">
+			AND
+				ORRT.OD_REGULAR_RESULT_ID = #{odRegularResultId}
+			</if>
+			<if test="reqDetailStatusCdList.size() > 0"> <!-- 신청상세상태목록 -->
+			AND
+				ORRD.REQ_DETAIL_STATUS_CD NOT IN
+				<foreach collection="reqDetailStatusCdList" item="reqDetailStatusCd" index="index" separator="," open="(" close=")">
+					#{reqDetailStatusCd}
+				</foreach>
+			</if>
+			ORDER BY UW.UR_WAREHOUSE_ID, GST.IL_GOODS_SHIPPING_TEMPLATE_ID
+		) A
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 내역 신청 상담 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailConsultList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqConsultListDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailConsultList	*/
+		SELECT
+			ORRM.OD_REGULAR_REQ_MEMO_ID,        /* 정기배송신청메모PK */
+			ORRM.OD_REGULAR_REQ_ID,             /* 정기배송신청ID */
+			ORRM.CREATE_DT,                     /* 등록일자 */
+			ORRM.MEMO,                          /* 메모 */
+			UU.LOGIN_ID,                        /* 로그인ID */
+			FN_DECRYPT(UU.USER_NM) AS USER_NM   /* 관리자명 */
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_REQ_MEMO ORRM ON ORR.OD_REGULAR_REQ_ID = ORRM.OD_REGULAR_REQ_ID
+		INNER JOIN
+			UR_USER UU ON ORRM.CREATE_ID = UU.UR_USER_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		ORDER BY ORRM.OD_REGULAR_REQ_MEMO_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 메모 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularReqMemo">
+		/*	orderRegularDetail.putOrderRegularReqMemo	*/
+		UPDATE
+			OD_REGULAR_REQ_MEMO
+		SET
+			MEMO = #{memo}
+		WHERE
+			OD_REGULAR_REQ_MEMO_ID = #{odRegularReqMemoId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 신청 메모 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delOrderRegularReqMemo">
+		/*	orderRegularDetail.putOrderRegularReqMemo	*/
+		DELETE
+		FROM
+			OD_REGULAR_REQ_MEMO
+		WHERE
+			OD_REGULAR_REQ_MEMO_ID = #{odRegularReqMemoId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 내역 처리 이력 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailHistoryList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqHistoryListDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailHistoryList	*/
+		SELECT
+			ORRH.OD_REGULAR_REQ_HISTORY_ID,     /* 정기배송신청히스토리PK */
+			ORRH.OD_REGULAR_REQ_ID,             /* 정기배송신청ID */
+			ORRH.REGULAR_REQ_GBN_CD,            /* 변경구분값 */
+			FN_COMN_CODE_DIC(ORRH.REGULAR_REQ_GBN_CD) AS REGULAR_REQ_GBN_CD_NM, /* 변경구분값명 */
+			ORRH.REGULAR_REQ_STATUS_CD,         /* 처리상태공통코드 */
+			FN_COMN_CODE_DIC(ORRH.REGULAR_REQ_STATUS_CD) AS REGULAR_REQ_STATUS_CD_NM, /* 처리상태공통코드명 */
+			ORRH.REGULAR_REQ_CONT,              /* 상세내용 */
+			ORRH.CREATE_DT,                     /* 등록일자 */
+			UU.LOGIN_ID,                        /* 로그인ID */
+			/*FN_DECRYPT(UU.USER_NM) AS USER_NM*/   /* 관리자명 */
+			CASE
+				WHEN (#{batchId} = ORRH.CREATE_ID)
+				THEN '배치'
+				ELSE
+					CASE
+						WHEN
+							CHAR_LENGTH(FN_DECRYPT(UU.USER_NM)) > 2
+							THEN
+							CONCAT(
+									SUBSTRING(FN_DECRYPT(UU.USER_NM), 1, 1)
+									,LPAD('*', CHAR_LENGTH(FN_DECRYPT(UU.USER_NM)) - 2, '*')
+									,SUBSTRING(FN_DECRYPT(UU.USER_NM), CHAR_LENGTH(FN_DECRYPT(UU.USER_NM)), CHAR_LENGTH(FN_DECRYPT(UU.USER_NM)))
+									, ' / '
+									, CONCAT(SUBSTRING(UU.LOGIN_ID, 1, 3),RPAD('*', CHAR_LENGTH(UU.LOGIN_ID) - 3, '*'))
+								)
+						ELSE
+							CONCAT(
+									SUBSTRING(FN_DECRYPT(UU.USER_NM), 1, 1)
+									,LPAD('*', CHAR_LENGTH(FN_DECRYPT(UU.USER_NM)) - 1, '*')
+									, ' / '
+									, CONCAT(SUBSTRING(UU.LOGIN_ID, 1, 3),RPAD('*', CHAR_LENGTH(UU.LOGIN_ID) - 3, '*'))
+								)
+						END
+			END AS USER_NM
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_REQ_HISTORY ORRH ON ORR.OD_REGULAR_REQ_ID = ORRH.OD_REGULAR_REQ_ID
+		LEFT OUTER JOIN
+			UR_USER UU ON ORRH.CREATE_ID = UU.UR_USER_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		ORDER BY ORRH.OD_REGULAR_REQ_HISTORY_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 회차별 상품 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.25		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailRoundGoodsList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqRoundGoodsListResultDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailRoundGoodsList	*/
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,
+			ORRT.OD_REGULAR_RESULT_ID,
+			ORRD.OD_REGULAR_RESULT_DETL_ID,
+			ORRT.REQ_ROUND,
+			DATE_FORMAT(ORRT.ARRIVE_DT, '%Y년 %m월 %d일') AS ARRIVE_DT,
+			ORRT.ORDER_CREATE_YN,
+			CASE
+			    WHEN ORRT.ORDER_CREATE_DT <![CDATA[<=]]> CURRENT_DATE()
+			    THEN 'N'
+			    ELSE 'Y'
+			END AS STATUS_CHG_PSB_YN,
+			OD.ODID,
+			CASE DAYOFWEEK(ORRT.ARRIVE_DT)
+				WHEN '1' THEN '일'
+				WHEN '2' THEN '월'
+				WHEN '3' THEN '화'
+				WHEN '4' THEN '수'
+				WHEN '5' THEN '목'
+				WHEN '6' THEN '금'
+				WHEN '7' THEN '토'
+			END AS WEEK_CD_NM,
+			ORRD.IL_ITEM_CD,
+			ORRD.IL_GOODS_ID,
+			II.ITEM_BARCODE,
+			ORRD.GOODS_NM,
+			ORRD.REQ_DETAIL_STATUS_CD,
+			FN_COMN_CODE_DIC(ORRD.REQ_DETAIL_STATUS_CD) AS REQ_DETAIL_STATUS_CD_NM,
+			IF(ORRT.ORDER_CREATE_DT > NOW() AND ORRT.REGULAR_STATUS_CD NOT IN ('REGULAR_STATUS_CD.CANCEL','REGULAR_STATUS_CD.END'), TRUE, FALSE) AS IS_NEXT_ROUND
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		INNER JOIN
+			OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+		INNER JOIN
+			IL_ITEM II ON ORRD.IL_ITEM_CD = II.IL_ITEM_CD
+		LEFT OUTER JOIN
+			OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reqDetailStatusCd)">
+		AND
+			ORRD.REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+		</if>
+		ORDER BY ORRT.REQ_ROUND, ORRD.OD_REGULAR_RESULT_DETL_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 배송 내역 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.25		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailDeliveryGoodsList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqRoundGoodsListResultDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailDeliveryGoodsList	*/
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,
+			ORRT.OD_REGULAR_RESULT_ID,
+			ORRD.OD_REGULAR_RESULT_DETL_ID,
+			ORRT.REQ_ROUND,
+			DATE_FORMAT(ORRT.ARRIVE_DT, '%Y년 %m월 %d일') AS ARRIVE_DT,
+			OD.ODID,
+			CASE DAYOFWEEK(ORRT.ARRIVE_DT)
+				WHEN '1' THEN '일'
+				WHEN '2' THEN '월'
+				WHEN '3' THEN '화'
+				WHEN '4' THEN '수'
+				WHEN '5' THEN '목'
+				WHEN '6' THEN '금'
+				WHEN '7' THEN '토'
+			END AS WEEK_CD_NM,
+			ORRD.IL_ITEM_CD,
+			ORRD.IL_GOODS_ID,
+			II.ITEM_BARCODE,
+			ORRD.GOODS_NM,
+			OOD.ORDER_STATUS_CD,
+			OS.STATUS_NM
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		INNER JOIN
+			OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+		INNER JOIN
+			IL_ITEM II ON ORRD.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN
+			OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+		INNER JOIN
+			OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID AND ORRD.IL_GOODS_ID = OOD.IL_GOODS_ID
+		INNER JOIN
+			OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			ORRT.ORDER_CREATE_DT <![CDATA[<=]]> CURRENT_DATE()
+		AND
+		    ORRT.OD_ORDER_ID <![CDATA[>]]> 0
+		ORDER BY ORRT.REQ_ROUND DESC, ORRD.OD_REGULAR_RESULT_DETL_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문신청 내역 상품 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularReqDetailGoodsList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultReqRoundGoodsListDto">
+		/*	orderRegularDetail.getOrderRegularReqDetailGoodsList	*/
+		SELECT
+			A.OD_REGULAR_REQ_ORDER_DETL_ID,            /* 정기배송주문신청상세PK */
+			A.OD_REGULAR_REQ_ID,                       /* 정기배송주문신청PK */
+			A.REQ_ID,                                  /* 정기배송신청번호 */
+			A.IL_ITEM_CD,                              /* 품목PK */
+			A.ITEM_BARCODE,                            /* 상품바코드 */
+			A.IL_GOODS_ID,                             /* 상품PK */
+			A.RECOMMENDED_PRICE,                       /* 정상금액 */
+			A.SALE_PRICE,                              /* 판매금액 */
+			A.BASIC_DISCOUNT_RATE,                     /* 정기배송 기본 할인율 */
+			A.ADD_DISCOUNT_ROUND,                      /* 정기배송 추가 할인 회차 */
+			A.ADD_DISCOUNT_RATE,                       /* 정기배송 추가 할인율 */
+			IF(A.SIZE_UNIT = '', A.GOODS_NM, CONCAT(A.GOODS_NM, ' ', A.SIZE_UNIT)) AS GOODS_NM, /* 상품명 */
+			A.STORAGE_METHOD_TP_NM,                    /* 보관방법 */
+			A.ORDER_CNT,                               /* 주문수량 */
+			A.REQ_DETAIL_STATUS_CD,                    /* 주문상세상태코드 */
+			A.REQ_DETAIL_STATUS_CD_NM,                 /* 주문상세상태코드명 */
+			A.GOODS_TP_NM,                             /* 상품유형 */
+			A.UR_WAREHOUSE_ID,                         /* 출고처PK */
+			A.WAREHOUSE_NM,                            /* 출고처 */
+			A.IL_SHIPPING_TMPL_ID,                     /* 배송정책PK */
+			A.DELIVERY_TMPL_NM,                        /* 배송정책명 */
+			A.IL_GOODS_SHIPPING_TEMPLATE_ID,           /* 배송정책PK */
+			A.PARENT_IL_GOODS_ID,                      /* 부모상품PK */
+			A.REQ_ROUND                                /* 회차정보 */
+		FROM
+			(
+				SELECT
+					ORROD.OD_REGULAR_REQ_ORDER_DETL_ID,            /* 정기배송주문신청상세PK */
+					ORROD.OD_REGULAR_REQ_ID,                       /* 정기배송주문신청PK */
+					ORR.REQ_ID,                                    /* 정기배송신청번호 */
+					IG.IL_ITEM_CD,                                 /* 품목PK */
+					II.ITEM_BARCODE,                               /* 상품바코드 */
+					ORROD.IL_GOODS_ID,                             /* 상품PK */
+					IGP.RECOMMENDED_PRICE,                         /* 정상금액 */
+					IGP.SALE_PRICE,                                /* 판매금액 */
+					ORR.BASIC_DISCOUNT_RATE,                       /* 정기배송 기본 할인율 */
+					ORR.ADD_DISCOUNT_ROUND,                        /* 정기배송 추가 할인 회차 */
+					ORR.ADD_DISCOUNT_RATE,                         /* 정기배송 추가 할인율 */
+					IG.GOODS_NM,                                   /* 상품명 */
+					IFNULL(
+						IF(IG.PACKAGE_UNIT_DISP_YN = 'Y',
+							IF(IG.GOODS_TP = 'GOODS_TYPE.PACKAGE',
+								CONCAT('(',IG.PACKAGE_UNIT_DESC,')'),
+								CONCAT('(', CAST(II.SIZE_PER_PACKAGE AS float),
+										CASE
+											WHEN II.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.SIZE_UNIT_ETC
+											ELSE FN_COMN_CODE_DIC(II.SIZE_UNIT)
+										END
+										, IF(II.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', II.QTY_PER_PACKAGE,
+																											CASE WHEN II.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.PACKAGE_UNIT_ETC
+																												ELSE FN_COMN_CODE_DIC(II.PACKAGE_UNIT)
+																											END
+																					)
+										, '')
+									, ')')
+								)
+						, '')
+					, '') AS SIZE_UNIT,
+					FN_COMN_CODE_DIC(II.STORAGE_METHOD_TP)       AS STORAGE_METHOD_TP_NM,  /* 보관방법 */
+					ORROD.ORDER_CNT,                               /* 주문수량 */
+					ORROD.REQ_DETAIL_STATUS_CD,                    /* 주문상세상태코드 */
+					FN_COMN_CODE_DIC(ORROD.REQ_DETAIL_STATUS_CD) AS REQ_DETAIL_STATUS_CD_NM,  /* 주문상세상태코드명 */
+					FN_COMN_CODE_DIC(IG.GOODS_TP) AS GOODS_TP_NM,  /* 상품유형 */
+					IG.UR_WAREHOUSE_ID,                            /* 출고처PK */
+					UW.WAREHOUSE_NM,                               /* 출고처 */
+					ST.IL_SHIPPING_TMPL_ID,                        /* 배송정책PK */
+					ST.NAME AS DELIVERY_TMPL_NM,                   /* 배송정책명 */
+					GST.IL_GOODS_SHIPPING_TEMPLATE_ID,             /* 배송정책PK */
+					IFNULL((
+						SELECT
+							IGAGM.IL_GOODS_ID
+						FROM
+							IL_GOODS_ADDITIONAL_GOODS_MAPPING IGAGM
+						WHERE
+							IGAGM.TARGET_GOODS_ID = IG.IL_GOODS_ID
+					), 0) AS PARENT_IL_GOODS_ID,                   /* 부모상품PK */
+					IFNULL((
+						SELECT
+							MIN(A.REQ_ROUND)
+						FROM
+							OD_REGULAR_RESULT A
+						WHERE
+							A.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+						AND
+							A.REQ_ROUND_YN = 'N'
+						GROUP BY A.OD_REGULAR_REQ_ID
+					), ORR.TOT_CNT) AS REQ_ROUND                   /* 회차정보 */
+				FROM
+					OD_REGULAR_REQ ORR
+				INNER JOIN
+					OD_REGULAR_REQ_ORDER_DETL ORROD ON ORR.OD_REGULAR_REQ_ID = ORROD.OD_REGULAR_REQ_ID
+				INNER JOIN
+					IL_GOODS IG ON ORROD.IL_GOODS_ID = IG.IL_GOODS_ID
+				INNER JOIN
+					IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+				INNER JOIN
+					IL_GOODS_PRICE IGP ON IG.IL_GOODS_ID = IGP.IL_GOODS_ID
+									  AND IGP.USE_YN = 'Y'
+					                  AND NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+				INNER JOIN
+					UR_WAREHOUSE UW ON IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+				INNER JOIN
+					IL_GOODS_SHIPPING_TEMPLATE GST ON IG.IL_GOODS_ID = GST.IL_GOODS_ID
+													 AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID
+				INNER JOIN
+					IL_SHIPPING_TEMPLATE ST ON GST.ORIG_IL_SHIPPING_TMPL_ID = ST.ORIG_IL_SHIPPING_TMPL_ID
+										   AND ST.DEL_YN = 'N'
+				LEFT OUTER JOIN
+					(
+						<include refid="searchNowReqRound" />
+					) ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+				WHERE
+					ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(regularDetlStatusCd)">
+				AND
+					ORROD.REQ_DETAIL_STATUS_CD = #{regularDetlStatusCd}
+				</if>
+			) A
+		ORDER BY A.REQ_DETAIL_STATUS_CD_NM, A.UR_WAREHOUSE_ID, A.IL_GOODS_SHIPPING_TEMPLATE_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 결과 상세 PK 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.07		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultDetlId" resultType="long">
+		/*	orderRegularDetail.getOrderRegularResultDetlId	*/
+		SELECT
+			IFNULL((
+				SELECT
+					MIN(ORRD.OD_REGULAR_RESULT_DETL_ID) AS OD_REGULAR_RESULT_DETL_ID
+				FROM
+					OD_REGULAR_REQ ORR
+				INNER JOIN
+					OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+				INNER JOIN
+					OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+				WHERE
+					ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+				AND
+					ORRT.ORDER_CREATE_DT <![CDATA[>]]> CURRENT_DATE()
+				AND
+					ORRD.IL_GOODS_ID = #{ilGoodsId}
+				GROUP BY ORR.OD_REGULAR_REQ_ID
+			), 0) AS OD_REGULAR_RESULT_DETL_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문결과 내역 상품 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultDetailGoodsList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultDetailGoodsListDto">
+		/*	orderRegularDetail.getOrderRegularResultDetailGoodsList	*/
+		SELECT A.IL_ITEM_CD,
+			   A.IL_GOODS_ID,
+			   A.ORDER_CNT,
+			   CONCAT(A.GOODS_NM, IF(A.SIZE_UNIT = '', '', CONCAT(' ', A.SIZE_UNIT))) AS GOODS_NM
+		FROM (
+				 SELECT ORROD.IL_ITEM_CD,
+						ORROD.IL_GOODS_ID,
+						ORROD.ORDER_CNT,
+						IG.GOODS_NM,
+						IFNULL(
+								IF(IG.PACKAGE_UNIT_DISP_YN = 'Y',
+								   IF(IG.GOODS_TP = 'GOODS_TYPE.PACKAGE',
+									  CONCAT('(',IG.PACKAGE_UNIT_DESC,')'),
+									  CONCAT('(', CAST(II.SIZE_PER_PACKAGE AS float),
+											 CASE
+												 WHEN II.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.SIZE_UNIT_ETC
+												 ELSE FN_COMN_CODE_DIC(II.SIZE_UNIT)
+												 END
+										  , IF(II.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', II.QTY_PER_PACKAGE,
+																					  CASE WHEN II.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN II.PACKAGE_UNIT_ETC
+																						   ELSE FN_COMN_CODE_DIC(II.PACKAGE_UNIT)
+																						  END
+										  )
+												 , '')
+										  , ')')
+									   )
+									, '')
+							, '') AS SIZE_UNIT
+				 FROM OD_REGULAR_REQ ORR
+				 INNER JOIN
+					  OD_REGULAR_REQ_ORDER_DETL ORROD ON ORR.OD_REGULAR_REQ_ID = ORROD.OD_REGULAR_REQ_ID
+				 INNER JOIN
+					  IL_GOODS IG ON ORROD.IL_GOODS_ID = IG.IL_GOODS_ID
+				 INNER JOIN
+					  IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+				 WHERE ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+				   AND ORROD.REQ_DETAIL_STATUS_CD = #{regularDetlStatusCd}
+				   AND NOT EXISTS (
+									SELECT	T3.IL_ITEM_CD,
+											T3.IL_GOODS_ID
+									FROM	OD_REGULAR_REQ T1
+									INNER JOIN
+											OD_REGULAR_RESULT T2 ON T1.OD_REGULAR_REQ_ID = T2.OD_REGULAR_REQ_ID
+									INNER JOIN
+											OD_REGULAR_RESULT_DETL T3 ON T2.OD_REGULAR_RESULT_ID = T3.OD_REGULAR_RESULT_ID
+									 WHERE T3.REQ_DETAIL_STATUS_CD = #{regularDetlStatusCd}
+									   AND T1.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+									   AND T2.ORDER_CREATE_DT <![CDATA[>]]> CURRENT_DATE()
+									   AND ORROD.IL_ITEM_CD = T3.IL_ITEM_CD
+									   AND ORROD.IL_GOODS_ID = T3.IL_GOODS_ID
+									 GROUP BY T3.IL_ITEM_CD, T3.IL_GOODS_ID
+								 )
+		) A
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송주문결과 정기배송주문경과PK 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultIdList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultListDto">
+		/*	orderRegularDetail.getOrderRegularResultIdList	*/
+		SELECT
+			ORRT.OD_REGULAR_RESULT_ID
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			ORRT.ORDER_CREATE_DT <![CDATA[>]]> CURRENT_DATE()
+		AND
+			ORRT.REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING')
+		AND
+			ORRT.REQ_ROUND_YN = 'N'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularReq">
+		/*	orderRegularDetail.putOrderRegularReq	*/
+		UPDATE
+			OD_REGULAR_REQ
+		SET
+			OD_REGULAR_REQ_ID = OD_REGULAR_REQ_ID
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(termExtensionYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(termExtensionYn, "Y")'>
+			, TERM_EXTENSION_CNT = TERM_EXTENSION_CNT + 1
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(termExtensionResetYn) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(termExtensionResetYn, "Y")'>
+			, TERM_EXTENSION_CNT = #{orderRegularReqVo.termExtensionCnt}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderRegularReqVo.goodsCycleTermTp)">
+			, GOODS_CYCLE_TERM_TP = #{orderRegularReqVo.goodsCycleTermTp}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderRegularReqVo.goodsCycleTp)">
+			, GOODS_CYCLE_TP = #{orderRegularReqVo.goodsCycleTp}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderRegularReqVo.weekCd)">
+			, WEEK_CD = #{orderRegularReqVo.weekCd}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderRegularReqVo.createRoundYn)">
+			, CREATE_ROUND_YN = #{orderRegularReqVo.createRoundYn}
+			</if>
+			<if test="orderRegularReqVo.totCnt > 0">
+			, TOT_CNT = #{orderRegularReqVo.totCnt}
+			</if>
+		WHERE
+			OD_REGULAR_REQ_ID = #{orderRegularReqVo.odRegularReqId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주기 요일 변경 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularCycleDaysInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqCycleDaysInfoResponseDto">
+		/*	orderRegularDetail.getOrderRegularCycleDaysInfo	*/
+		SELECT
+			ORR.GOODS_CYCLE_TERM_TP,                                             /* 배송기간코드 */
+			FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TERM_TP) AS GOODS_CYCLE_TERM_TP_NM, /* 배송기간코드명 */
+			ORR.GOODS_CYCLE_TP,                                                  /* 배송주기코드 */
+			FN_COMN_CODE_DIC(ORR.GOODS_CYCLE_TP)      AS GOODS_CYCLE_TP_NM,      /* 배송주기코드명 */
+			ORR.WEEK_CD,                                                         /* 배송요일코드 */
+			FN_COMN_CODE_DIC(ORR.WEEK_CD)             AS WEEK_CD_NM,             /* 배송요일코드명 */
+			ORR.DELIVERY_DT,                                                     /* 첫배송예정일자 */
+			IFNULL(ORRT.REQ_ROUND,ORR.TOT_CNT)        AS REQ_ROUND,              /* 회차 */
+			TERM_EXTENSION_CNT,                                                  /* 기간연장횟수 */
+			IFNULL(ORRT.LAST_ARRIVE_DT,(
+				SELECT
+					MAX(ORRT.ARRIVE_DT)
+				FROM
+					OD_REGULAR_RESULT ORRT
+				WHERE
+					ORRT.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+				GROUP BY ORRT.OD_REGULAR_REQ_ID
+			))                                        AS LAST_ARRIVE_DT,         /* 마지막배송도착예정일자 */
+			IFNULL(ORRT.REQ_ROUND_YN, 'Y')            AS REQ_ROUND_YN,           /* 회차완료여부 */
+			ORR.TOT_CNT                                                          /* 총회차 */
+		FROM
+			OD_REGULAR_REQ ORR
+		LEFT OUTER JOIN
+			(
+				<include refid="searchNowReqRound" />
+			) ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 도착예정일 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularArriveDays" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqArriveDtListDto">
+		/*	orderRegularDetail.getOrderRegularArriveDays	*/
+		SELECT
+			ORRT.ARRIVE_DT
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			ORRT.ARRIVE_DT <![CDATA[>]]> CURRENT_DATE()
+		ORDER BY ORRT.OD_REGULAR_RESULT_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상세 미완료 회차 정보 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteOrderRegularResultDetl">
+		/*	orderRegularDetail.deleteOrderRegularResultDetl	*/
+		DELETE
+		FROM
+			OD_REGULAR_RESULT_DETL
+		WHERE
+			OD_REGULAR_RESULT_ID IN (
+				SELECT
+					OD_REGULAR_RESULT_ID
+				FROM
+					OD_REGULAR_RESULT
+				WHERE
+					OD_REGULAR_REQ_ID = #{odRegularReqId}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(standArriveDt)">
+				AND
+					ARRIVE_DT <![CDATA[>=]]> #{standArriveDt}
+				</if>
+				AND
+					REQ_ROUND_YN = 'N'
+			)
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 미완료 회차 정보 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteOrderRegularResult">
+		/*	orderRegularDetail.deleteOrderRegularResult	*/
+		DELETE
+		FROM
+			OD_REGULAR_RESULT
+		WHERE
+			OD_REGULAR_REQ_ID = #{odRegularReqId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(standArriveDt)">
+		AND
+			ARRIVE_DT <![CDATA[>=]]> #{standArriveDt}
+		</if>
+		AND
+			REQ_ROUND_YN = 'N'
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 회차 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultReqRound" resultType="int">
+		/*	orderRegularDetail.getOrderRegularResultReqRound	*/
+		SELECT IFNULL((
+						SELECT
+							MAX(REQ_ROUND) AS REQ_ROUND
+						FROM
+							OD_REGULAR_RESULT
+						WHERE
+							OD_REGULAR_REQ_ID = #{odRegularReqId}
+						), 0) AS REQ_ROUND
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 배송지 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularShippingZone" parameterType="kr.co.pulmuone.v1.order.regular.dto.RegularReqShippingZoneDto">
+		/*	orderRegularDetail.putOrderRegularShippingZone	*/
+		UPDATE
+			OD_REGULAR_REQ_SHIPPING_ZONE
+		SET
+			DELIVERY_MSG = #{deliveryMsg}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvNm)">
+			, RECV_NM = FN_ENCRYPT(#{recvNm})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvHp)">
+			, RECV_HP = FN_ENCRYPT(#{recvHp})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvTel)">
+			, RECV_TEL = FN_ENCRYPT(#{recvTel})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvMail)">
+			, RECV_MAIL = FN_ENCRYPT(#{recvMail})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvZipCd)">
+			, RECV_ZIP_CD = FN_ENCRYPT(#{recvZipCd})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvAddr1)">
+			, RECV_ADDR1 = FN_ENCRYPT(#{recvAddr1})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvAddr2)">
+			, RECV_ADDR2 = FN_ENCRYPT(#{recvAddr2})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(recvBldNo)">
+			, RECV_BLD_NO = #{recvBldNo}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryMsgCd)">
+			, DELIVERY_MSG_CD = #{deliveryMsgCd}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(doorMsgCd)">
+			, DOOR_MSG_CD = #{doorMsgCd}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(doorMsg)">
+			, DOOR_MSG = FN_ENCRYPT(#{doorMsg})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(doorEtc)">
+			, DOOR_ETC = FN_ENCRYPT(#{doorEtc})
+			</if>
+		WHERE
+			OD_REGULAR_REQ_ID = #{odRegularReqId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상품 정보 얻기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultGoodsInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqListDto">
+		/*	orderRegularDetail.getOrderRegularResultGoodsInfo	*/
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,
+			ORR.REQ_ROUND,
+			ORRD.GOODS_NM,
+			ORRD.GOODS_CNT,
+		    ORR.OD_ORDER_ID
+		FROM
+			OD_REGULAR_RESULT ORR
+		INNER JOIN
+			(
+				SELECT
+					ORRD.OD_REGULAR_RESULT_ID,
+					COUNT(1) AS GOODS_CNT,
+					MIN(ORRD.GOODS_NM) AS GOODS_NM
+				FROM
+					OD_REGULAR_RESULT_DETL ORRD
+				<if test="ilGoodsId > 0">
+				WHERE
+					ORRD.IL_GOODS_ID = #{ilGoodsId}
+				</if>
+				GROUP BY ORRD.OD_REGULAR_RESULT_ID
+			) ORRD ON ORR.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+		WHERE
+			ORR.OD_REGULAR_RESULT_ID = #{odRegularResultId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상세 정보 얻기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultDetailGoodsInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultGoodsDetailInfoDto">
+		/*	orderRegularDetail.getOrderRegularResultDetailGoodsInfo	*/
+		SELECT
+			ORRT.OD_REGULAR_REQ_ID,
+			ORRD.OD_REGULAR_RESULT_ID,
+			ORRD.IL_GOODS_ID,
+			IG.UR_WAREHOUSE_ID,
+			ORRT.REQ_ROUND,
+		    ORRT.REQ_ROUND_YN,
+			IFNULL((
+				SELECT MIN(C.REQ_ROUND) AS REQ_ROUND
+				FROM (
+					SELECT
+						(@rownum := @rownum + 1)AS NO,
+						B.*
+					FROM (
+						SELECT
+							T1.OD_REGULAR_RESULT_ID,
+							T1.OD_ORDER_ID,
+							T1.REQ_ROUND,
+							T1.ARRIVE_DT,
+							CASE WHEN T1.ARRIVE_DT <![CDATA[<=]]> CURRENT_DATE() THEN 'Y' ELSE 'N' END AS END_YN,
+							T1.PAYMENT_FAIL_CNT,
+							IFNULL((
+								SELECT 'Y'
+								FROM OD_PAYMENT OP
+								INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+								WHERE OP.OD_ORDER_ID = T1.OD_ORDER_ID
+								AND OPM.TYPE = 'G'
+								AND OPM.STATUS = 'IC'
+							), 'N') AS PAYMENT_YN,
+							IFNULL((
+								SELECT COUNT(1)
+								FROM OD_REGULAR_RESULT_DETL ORD
+								WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+							), 0) AS DETL_CNT,
+							IFNULL((
+								SELECT COUNT(1)
+								FROM OD_REGULAR_RESULT_DETL ORD
+								WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+								AND ORD.REQ_DETAIL_STATUS_CD != 'REGULAR_DETL_STATUS_CD.APPLY'
+							), 0) AS SKIP_CNT
+						FROM   OD_REGULAR_RESULT T1
+						WHERE  T1.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+						ORDER BY T1.OD_REGULAR_RESULT_ID
+					) B
+					INNER JOIN (SELECT @rownum := 0) R
+					WHERE ((B.END_YN = 'Y' AND B.PAYMENT_YN = 'Y') OR (B.END_YN = 'N' AND (B.DETL_CNT - B.SKIP_CNT) <![CDATA[>]]> 0))
+					ORDER BY NO DESC
+				) C
+				WHERE C.NO <![CDATA[>=]]> ORR.ADD_DISCOUNT_ROUND
+			),	(
+				SELECT MAX(REQ_ROUND) + 1
+				FROM OD_REGULAR_RESULT
+				WHERE OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+			)) AS ADD_DISCOUNT_STD_REQ_ROUND
+		FROM
+			OD_REGULAR_RESULT ORRT
+		INNER JOIN
+			OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+		INNER JOIN
+			OD_REGULAR_REQ ORR ON ORRT.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+		INNER JOIN
+			IL_GOODS IG ON ORRD.IL_GOODS_ID = IG.IL_GOODS_ID AND ORRD.IL_ITEM_CD = IG.IL_ITEM_CD
+		WHERE
+			ORRD.OD_REGULAR_RESULT_DETL_ID = #{odRegularResultDetlId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 다음 회차 PK 얻기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.09.08		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultNextResultId" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultGoodsDetailInfoDto">
+		/*	orderRegularDetail.getOrderRegularResultNextResultId	*/
+		SELECT
+			MIN(ORRT.OD_REGULAR_RESULT_ID) AS OD_REGULAR_RESULT_ID
+		FROM
+			OD_REGULAR_RESULT ORRT
+		WHERE
+			ORRT.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			ORRT.OD_REGULAR_RESULT_ID <![CDATA[>]]> #{odRegularResultId}
+		AND
+		    ORRT.REQ_ROUND_YN = 'N'
+		AND
+		    ORRT.REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING')
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 추가 할인 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.25		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultAddDiscountInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultGoodsDetailInfoDto">
+		/*	orderRegularDetail.getOrderRegularResultAddDiscountInfo	*/
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,
+			IFNULL((
+					   SELECT MIN(C.REQ_ROUND) AS REQ_ROUND
+					   FROM (
+								SELECT
+									(@rownum := @rownum + 1)AS NO,
+									B.*
+								FROM (
+									SELECT
+										T1.OD_REGULAR_RESULT_ID,
+										T1.OD_ORDER_ID,
+										T1.REQ_ROUND,
+										T1.ARRIVE_DT,
+										CASE WHEN T1.ARRIVE_DT <![CDATA[<=]]> CURRENT_DATE() THEN 'Y' ELSE 'N' END AS END_YN,
+										T1.PAYMENT_FAIL_CNT,
+										IFNULL((
+											SELECT 'Y'
+											FROM OD_PAYMENT OP
+											INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+											WHERE OP.OD_ORDER_ID = T1.OD_ORDER_ID
+											AND OPM.TYPE = 'G'
+											AND OPM.STATUS = 'IC'
+										), 'N') AS PAYMENT_YN,
+										IFNULL((
+											SELECT COUNT(1)
+											FROM OD_REGULAR_RESULT_DETL ORD
+											WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+										), 0) AS DETL_CNT,
+										IFNULL((
+											SELECT COUNT(1)
+											FROM OD_REGULAR_RESULT_DETL ORD
+											WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+											AND ORD.REQ_DETAIL_STATUS_CD != 'REGULAR_DETL_STATUS_CD.APPLY'
+										), 0) AS SKIP_CNT
+									FROM   OD_REGULAR_RESULT T1
+									WHERE  T1.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+									ORDER BY T1.OD_REGULAR_RESULT_ID
+								) B
+								INNER JOIN (SELECT @rownum := 0) R
+								WHERE ((B.END_YN = 'Y' AND B.PAYMENT_YN = 'Y') OR (B.END_YN = 'N' AND (B.DETL_CNT - B.SKIP_CNT) <![CDATA[>]]> 0))
+								ORDER BY NO DESC
+							) C
+					   WHERE C.NO <![CDATA[>=]]> ORR.ADD_DISCOUNT_ROUND
+				   ),	(
+					   SELECT MAX(REQ_ROUND) + 1
+					   FROM OD_REGULAR_RESULT
+					   WHERE OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID
+				   )) AS ADD_DISCOUNT_STD_REQ_ROUND
+		FROM
+			OD_REGULAR_REQ ORR
+		WHERE
+			ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상품 주문 상태 확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultGoodsOrderStatusCd" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultOrderStatusResultDto">
+		/*	orderRegularDetail.getOrderRegularResultGoodsOrderStatusCd	*/
+		SELECT
+			OOD.IC_DT
+		FROM
+			OD_REGULAR_RESULT ORRT
+		INNER JOIN
+			OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+		INNER JOIN
+			OD_ORDER_DT OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		WHERE
+			ORRT.OD_REGULAR_RESULT_ID = #{odRegularResultId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 상세 상태 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularDetailStatusCd">
+		/*	orderRegularDetail.putOrderRegularDetailStatusCd	*/
+		UPDATE
+			OD_REGULAR_RESULT_DETL
+		SET
+			REQ_DETAIL_STATUS_CD = #{changeReqDetailStatusCd}
+		WHERE
+			OD_REGULAR_RESULT_ID = #{odRegularResultId}
+		AND
+			REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+		<if test="ilGoodsId > 0">
+		AND
+			IL_GOODS_ID = #{ilGoodsId}
+		</if>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상세 상품 취소 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularResultDetailGoodsCancel">
+		/*	orderRegularDetail.putOrderRegularResultDetailGoodsCancel	*/
+		UPDATE
+			OD_REGULAR_RESULT_DETL
+		SET
+			REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+		WHERE
+			OD_REGULAR_RESULT_ID IN (
+									SELECT
+										OD_REGULAR_RESULT_ID
+									FROM
+										OD_REGULAR_RESULT
+									WHERE
+										OD_REGULAR_REQ_ID = #{odRegularReqId}
+									AND
+										ORDER_CREATE_DT <![CDATA[>]]> CURRENT_DATE()
+									)
+		AND
+			IL_GOODS_ID = #{ilGoodsId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상태 진행중 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularResultStatusIng">
+		/*	orderRegularDetail.putOrderRegularResultStatusIng	*/
+		UPDATE
+			OD_REGULAR_RESULT
+		SET
+			REGULAR_STATUS_CD = #{regularStatusCd}
+		WHERE
+			OD_REGULAR_RESULT_ID IN (
+										SELECT
+											A.OD_REGULAR_RESULT_ID
+										FROM (
+											SELECT
+												ORRT.OD_REGULAR_RESULT_ID,
+												IFNULL((
+													SELECT
+														COUNT(1) AS CNT
+													FROM
+														OD_REGULAR_RESULT_DETL
+													WHERE
+														OD_REGULAR_RESULT_ID = ORRT.OD_REGULAR_RESULT_ID
+													AND
+														REQ_DETAIL_STATUS_CD IN ('REGULAR_DETL_STATUS_CD.APPLY', 'REGULAR_DETL_STATUS_CD.SKIP')
+													GROUP BY OD_REGULAR_RESULT_ID
+												), 0) AS CNT
+											FROM
+												OD_REGULAR_RESULT ORRT
+											WHERE
+												ORRT.OD_REGULAR_REQ_ID = #{odRegularReqId}
+											AND
+												ORRT.ARRIVE_DT <![CDATA[>]]>  CURRENT_DATE()
+										) A
+										WHERE
+											A.CNT <![CDATA[>]]> 0
+									)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상태 해지 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularResultStatusCancel">
+		/*	orderRegularDetail.putOrderRegularResultStatusCancel	*/
+		UPDATE
+			OD_REGULAR_RESULT
+		SET
+			REGULAR_STATUS_CD = #{regularStatusCd}
+		WHERE
+			OD_REGULAR_RESULT_ID IN (
+										SELECT
+											A.OD_REGULAR_RESULT_ID
+										FROM (
+											SELECT
+												ORRT.OD_REGULAR_RESULT_ID,
+												IFNULL((
+													SELECT
+														COUNT(1) AS CNT
+													FROM
+														OD_REGULAR_RESULT_DETL
+													WHERE
+														OD_REGULAR_RESULT_ID = ORRT.OD_REGULAR_RESULT_ID
+													AND
+														REQ_DETAIL_STATUS_CD IN ('REGULAR_DETL_STATUS_CD.APPLY', 'REGULAR_DETL_STATUS_CD.SKIP')
+													GROUP BY OD_REGULAR_RESULT_ID
+												), 0) AS CNT
+											FROM
+												OD_REGULAR_RESULT ORRT
+											WHERE
+												ORRT.OD_REGULAR_REQ_ID = #{odRegularReqId}
+											AND
+												ORRT.ARRIVE_DT <![CDATA[>]]>  CURRENT_DATE()
+										) A
+										WHERE
+											A.CNT <![CDATA[<]]> 1
+									)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 상세 상품 취소 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularReqDetailGoodsCancel">
+		/*	orderRegularDetail.putOrderRegularReqDetailGoodsCancel	*/
+		UPDATE
+			OD_REGULAR_REQ_ORDER_DETL
+		SET
+			REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+		WHERE
+			OD_REGULAR_REQ_ID =  #{odRegularReqId}
+		AND
+			IL_GOODS_ID = #{ilGoodsId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 상태 해지 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularReqStatusCancel">
+		/*	orderRegularDetail.putOrderRegularReqStatusCancel	*/
+		UPDATE
+			OD_REGULAR_REQ
+		SET
+			REGULAR_STATUS_CD = #{regularStatusCd}
+		WHERE
+			OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			1 <![CDATA[>]]> IFNULL((
+					SELECT
+						COUNT(1)
+					FROM
+						OD_REGULAR_REQ_ORDER_DETL
+					WHERE
+						OD_REGULAR_REQ_ID = #{odRegularReqId}
+					AND
+						REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+					GROUP BY OD_REGULAR_REQ_ID
+				), 0)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기결제 카드 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.17		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRegularPaymentCardInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqPaymentCardDto">
+		/*	orderRegularDetail.getRegularPaymentCardInfo	*/
+		SELECT
+			OD_REGULAR_PAYMENT_KEY_ID, /* 결제카드정보PK */
+			UR_USER_ID,                /* 회원PK */
+			CARD_NM,                   /* 카드사명 */
+			CARD_MASK_NUMBER,          /* 카드마스킹정보 */
+			PAYMENT_YN,                /* 결제가능여부 */
+			NO_PAYMENT_REASON          /* 결제불가사유 */
+		FROM
+			OD_REGULAR_PAYMENT_KEY
+		WHERE
+			OD_REGULAR_PAYMENT_KEY_ID = (
+											SELECT
+												MAX(OD_REGULAR_PAYMENT_KEY_ID)
+											FROM
+												OD_REGULAR_PAYMENT_KEY
+											WHERE
+												UR_USER_ID = #{urUserId}
+											AND
+												PAYMENT_YN = 'Y'
+										)
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기결제 다음 결제일 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.17		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRegularNextPaymentDtInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularReqPaymentCardDto">
+		/*	orderRegularDetail.getRegularNextPaymentDtInfo	*/
+		WITH OD_REGULAR_REQ_INFO AS (
+			SELECT
+				MAX(OD_REGULAR_REQ_ID) AS OD_REGULAR_REQ_ID
+			FROM
+				OD_REGULAR_REQ
+			WHERE
+				UR_USER_ID = #{urUserId}
+			  AND REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY', 'REGULAR_STATUS_CD.ING')
+			GROUP BY UR_USER_ID
+		)
+		SELECT
+			ORR.OD_REGULAR_REQ_ID,
+			MIN(ORRT.PAYMENT_DT) AS PAYMENT_DT
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_REQ_INFO ORI ON ORR.OD_REGULAR_REQ_ID = ORI.OD_REGULAR_REQ_ID
+		INNER JOIN
+			(
+				SELECT
+					B.OD_REGULAR_REQ_ID,
+					B.REQ_ROUND,
+					B.PAYMENT_DT AS PAYMENT_DT,
+					B.OD_REGULAR_RESULT_ID,
+					MAX(B.OD_REGULAR_RESULT_ID) AS MAX_OD_REGULAR_RESULT_ID
+				FROM (
+					SELECT
+					T1.OD_REGULAR_REQ_ID,
+					T1.OD_REGULAR_RESULT_ID,
+					T1.OD_ORDER_ID,
+					T1.REQ_ROUND,
+					T1.ARRIVE_DT,
+					T1.PAYMENT_DT,
+					CASE WHEN T1.ARRIVE_DT <![CDATA[<=]]> CURRENT_DATE() THEN 'Y' ELSE 'N' END AS END_YN,
+					T1.PAYMENT_FAIL_CNT,
+					IFNULL((
+						SELECT 'Y'
+						FROM OD_PAYMENT OP
+						INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+						WHERE OP.OD_ORDER_ID = T1.OD_ORDER_ID
+						AND OPM.TYPE = 'G'
+						AND OPM.STATUS = 'IC'
+					), 'N') AS PAYMENT_YN,
+					IFNULL((
+						SELECT COUNT(1)
+						FROM OD_REGULAR_RESULT_DETL ORD
+						WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+					), 0) AS DETL_CNT,
+					IFNULL((
+						SELECT COUNT(1)
+						FROM OD_REGULAR_RESULT_DETL ORD
+						WHERE ORD.OD_REGULAR_RESULT_ID = T1.OD_REGULAR_RESULT_ID
+						AND ORD.REQ_DETAIL_STATUS_CD != 'REGULAR_DETL_STATUS_CD.APPLY'
+					), 0) AS SKIP_CNT
+				FROM   OD_REGULAR_RESULT T1
+				INNER JOIN OD_REGULAR_REQ_INFO ORI ON T1.OD_REGULAR_REQ_ID = ORI.OD_REGULAR_REQ_ID
+				ORDER BY T1.OD_REGULAR_RESULT_ID
+				) B
+			WHERE ((B.END_YN = 'Y' AND B.PAYMENT_YN = 'Y') OR (B.END_YN = 'N' AND (B.DETL_CNT - B.SKIP_CNT) <![CDATA[>]]> 0))
+			AND B.PAYMENT_DT <![CDATA[>]]> CURRENT_DATE()
+		)  ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기결제 마지막 회차 도착 예정일 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.18		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRegularResultLastOrderArriveDt" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultLastInfoDto">
+		/*	orderRegularDetail.getRegularResultLastOrderArriveDt	*/
+		SELECT
+			ARRIVE_DT,
+			REQ_ROUND
+		FROM
+			OD_REGULAR_RESULT
+		WHERE
+			OD_REGULAR_RESULT_ID = (
+									SELECT
+										MAX(ORRT.OD_REGULAR_RESULT_ID)
+									FROM
+										OD_REGULAR_REQ ORR
+									INNER JOIN
+										OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+									WHERE
+										ORR.OD_REGULAR_REQ_ID = #{odRegularReqId}
+									GROUP BY ORR.OD_REGULAR_REQ_ID
+									)
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기결제 카드 정보 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.17		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="delOrderRegularPaymentCardInfo">
+		/*	orderRegularDetail.delOrderRegularPaymentCardInfo	*/
+		UPDATE
+			OD_REGULAR_PAYMENT_KEY
+		SET
+			PAYMENT_YN = 'N'
+		WHERE
+			OD_REGULAR_PAYMENT_KEY_ID = #{odRegularPaymentKeyId}
+		AND
+			UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 다음 회차 내역 중 건너뛰기 내역 정보 존재 여부 확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.17		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderRegularResultNextGoodsSkipInfo" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultNextReqRoundSkipResultDto">
+		/*	orderRegularDetail.getOrderRegularResultNextGoodsSkipInfo	*/
+		SELECT
+			ORRT.OD_REGULAR_REQ_ID,
+			SUM(IFNULL((
+				SELECT
+					COUNT(1) AS CNT
+				FROM
+					OD_REGULAR_RESULT_DETL
+				WHERE
+					OD_REGULAR_RESULT_ID = ORRT.OD_REGULAR_RESULT_ID
+				AND
+					REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+					GROUP BY OD_REGULAR_RESULT_ID
+				), 0)) AS NEXT_SKIP_CNT
+		FROM
+			OD_REGULAR_RESULT ORRT
+		WHERE
+			ORRT.OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			ORRT.ARRIVE_DT <![CDATA[>]]>  CURRENT_DATE()
+		GROUP BY ORRT.OD_REGULAR_REQ_ID
+	</select>
+</mapper>

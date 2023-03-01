@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.basic.SystemBasicApiCacheMapper">
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템-기초설정-API데이타캐쉬관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<resultMap id="getApiCacheListResultMap" type="kr.co.pulmuone.v1.system.basic.dto.GetApiCacheListResultVo">
+		<result column="NO"                property="no" />
+		<result column="ST_API_CACHE_ID"   property="stApiCacheId"/>
+		<result column="API_URL"           property="apiUrl"/>
+		<result column="CASHE_FILE_PATH"   property="casheFilePath"/>
+		<result column="CASHE_DATA"        property="casheData"/>
+		<result column="CASHE_TIME"        property="casheTime"/>
+		<result column="MEMO"              property="memo"/>
+		<result column="USE_YN"            property="useYn"/>
+	</resultMap>
+	<select id="getApiCacheList" resultMap="getApiCacheListResultMap">
+		/* apiCache.getApiCacheList */
+		SELECT
+			@rownum := @rownum + 1 AS NO
+			, T.*
+		FROM
+		(
+			SELECT    SAC.ST_API_CACHE_ID
+			        , SAC.API_URL
+			        , SAC.CASHE_FILE_PATH
+			        , SAC.CASHE_DATA
+			        , SAC.CASHE_TIME
+			        , SAC.MEMO
+			        , SAC.USE_YN
+			FROM ST_API_CACHE SAC
+			<where>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apiUrl)">
+				  AND   SAC.API_URL  LIKE CONCAT('%',#{apiUrl},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				   AND  SAC.USE_YN = UPPER(#{useYn})
+				</if>
+			</where>
+		)T, ( SELECT	@rownum := 0	) R
+		ORDER BY ST_API_CACHE_ID DESC, NO DESC
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템-기초설정-API데이타캐쉬관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getApiCacheListCount" resultType="int">
+       /* apiCache.getApiCacheListCount */
+			SELECT COUNT(*)
+			FROM ST_API_CACHE SAC
+			<where>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apiUrl)">
+				   AND  SAC.API_URL  LIKE CONCAT('%',#{apiUrl},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+				  AND   SAC.USE_YN = UPPER(#{useYn})
+				</if>
+			</where>
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템-기초설정-API데이타캐쉬관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02	   김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addApiCache" >
+	/* apiCache.addApiCache */
+		INSERT INTO ST_API_CACHE(
+			API_URL
+			, CASHE_FILE_PATH
+			, CASHE_DATA
+			, CASHE_TIME
+			, MEMO
+			, USE_YN
+			, CREATE_DT
+			, CREATE_ID
+		)
+		VALUES
+		<foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+		(
+			 #{insertData.apiUrl}
+			,#{insertData.casheFilePath}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(insertData.casheData)">
+			,#{insertData.casheData}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(insertData.casheData)">
+			,null
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(insertData.casheTime)">
+			,#{insertData.casheTime}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(insertData.casheTime)">
+			,null
+			</if>
+
+			,#{insertData.memo}
+			,#{insertData.useYn}
+			,NOW()
+			,#{insertData.userVo.userId}
+		)
+		</foreach>
+
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템-기초설정-API데이타캐쉬관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putApiCache">
+	/* apiCache.putApiCache */
+		<foreach item="updateData" index="index" collection="list"  separator="; ">
+		UPDATE 		ST_API_CACHE
+		SET
+			API_URL           = #{updateData.apiUrl}
+			, CASHE_FILE_PATH = #{updateData.casheFilePath}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(updateData.casheData)">
+			, CASHE_DATA      = #{updateData.casheData}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(updateData.casheTime)">
+			, CASHE_TIME      = #{updateData.casheTime}
+			</if>
+			, MEMO            = #{updateData.memo}
+			, USE_YN          = #{updateData.useYn}
+			, MODIFY_DT       = NOW()
+			, MODIFY_ID 	  = #{updateData.userVo.userId}
+		WHERE ST_API_CACHE_ID = #{updateData.stApiCacheId}
+		</foreach>
+			;
+	</update>
+
+	<!--─────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템-기초설정-API데이타캐쉬관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delApiCache">
+		DELETE FROM ST_API_CACHE
+		WHERE ST_API_CACHE_ID IN  (
+		<foreach item="deleteData" index="index" collection="list" open="" separator="," close="">
+			#{deleteData.stApiCacheId}
+		</foreach>
+		)
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템-기초설정-API데이타캐쉬관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="checkApiUrlDuplicate" resultType="int">
+		/* apiCache.checkApiUrlDuplicate */
+		select count(*) as total FROM ST_API_CACHE
+		WHERE 1=1
+		AND API_URL IN
+		<foreach item="data" index="index" collection="list" open="(" separator="," close=")">
+				#{data}
+		</foreach>
+	</select>
+</mapper>

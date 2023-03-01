@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.employee.ErpOrganizationMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 조직정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getPulmuoneOrganizationListResultMap" type="kr.co.pulmuone.v1.user.employee.dto.vo.ErpOrganizationVo">
+        <result column="ERP_ORGANIZATION_CODE" property="erpOrganizationCode" />
+        <result column="ERP_ORGANIZATION_NAME" property="erpOrganizationName" />
+        <result column="ERP_REGAL_CODE" property="erpRegalCode" />
+        <result column="ERP_REGAL_NAME" property="erpRegalName" />
+    </resultMap>
+
+    <!-- ERP 조직정보 조회 -->
+    <select id="getPulmuoneOrganizationList" resultMap="getPulmuoneOrganizationListResultMap">
+        /* erpOrganization.getPulmuoneOrganizationList */
+        SELECT ERP_ORGANIZATION_CD AS ERP_ORGANIZATION_CODE /* 조직코드 */
+             , ERP_ORGANIZATION_NM AS ERP_ORGANIZATION_NAME /* 조직명 */
+             , ERP_REGAL_CD AS ERP_REGAL_CODE /* 법인코드 */
+             , ERP_REGAL_NM AS ERP_REGAL_NAME /* 법인명 */
+          FROM UR_ERP_ORGANIZATION
+         WHERE USE_YN = 'Y'
+       <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalCode)">
+           AND ERP_REGAL_CD = #{erpRegalCode}
+       </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 조직정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addErpOrganization">
+        /* erpOrganization.addErpOrganization */
+        INSERT INTO UR_ERP_ORGANIZATION
+        (
+          ERP_ORGANIZATION_CD
+        , ERP_ORGANIZATION_NM
+        , ERP_REGAL_CD
+        , ERP_REGAL_NM
+        , USE_YN
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{erpOrganizationCode}
+        , #{erpOrganizationName}
+        , #{erpRegalCode}
+        , #{erpRegalName}
+        , #{useYn}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : ERP 조직정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.17     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putErpOrganization">
+        /* erpOrganization.putErpOrganization */
+        UPDATE UR_ERP_ORGANIZATION
+           SET MODIFY_DT = NOW()
+             , MODIFY_ID = #{createId}
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpOrganizationName)">
+             , ERP_ORGANIZATION_NM = #{erpOrganizationName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalCode)">
+             , ERP_REGAL_CD = #{erpRegalCode}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalName)">
+             , ERP_REGAL_NM = #{erpRegalName}
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+             , USE_YN = #{useYn}
+         </if>
+         WHERE ERP_ORGANIZATION_CD = #{erpOrganizationCode}
+    </update>
+</mapper>

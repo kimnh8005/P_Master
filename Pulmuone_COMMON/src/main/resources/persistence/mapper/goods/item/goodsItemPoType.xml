@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemPoTypeMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 유형관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		박영후          최초생성
+	 * @ 2020.10.27		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="itemPoTypeMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemPoTypeVo">
+		<result column="ROWNUM" property="rowNumber" />
+		<result column="IL_PO_TP_ID" property="ilPoTpId" />
+		<result column="UR_SUPPLIER_ID" property="urSupplierId" />
+		<result column="SUPPLIER_CD" property="supplierCd" />
+
+		<result column="UR_COMPANY_ID" property="urCompanyId" />
+		<result column="COMP_NM" property="compNm" />
+		<result column="PO_TP_NM" property="poTpNm" />
+
+		<result column="PO_TP" property="poTp" />
+		<result column="PO_TP_NAME" property="poTpName" />
+
+		<result column="ERP_PO_TP" property="erpPoTp" />
+		<result column="ERP_PO_TP_NAME" property="erpPoTpName" />
+		<result column="PO_PER_ITEM_YN" property="poPerItemYn" />
+		<result column="PO_DEADLINE" property="poDeadline" />
+		<result column="PO_TYPE_NUM" property="poTypeNum" />
+		<result column="PO_TYPE" property="poType" />
+		<result column="MON_VALUE" property="monValue" />
+		<result column="TUE_VALUE" property="tueValue" />
+		<result column="WED_VALUE" property="wedValue" />
+		<result column="THU_VALUE" property="thuValue" />
+		<result column="FRI_VALUE" property="friValue" />
+		<result column="SAT_VALUE" property="satValue" />
+		<result column="SUN_VALUE" property="sunValue" />
+
+		<result column="CHECK_SUN" property="checkSun" />
+		<result column="CHECK_MON" property="checkMon" />
+		<result column="CHECK_TUE" property="checkTue" />
+		<result column="CHECK_WED" property="checkWed" />
+		<result column="CHECK_THU" property="checkThu" />
+		<result column="CHECK_FRI" property="checkFri" />
+		<result column="CHECK_SAT" property="checkSat" />
+
+		<result column="SCHEDULED_SUN" property="scheduledSun" />
+		<result column="SCHEDULED_MON" property="scheduledMon" />
+		<result column="SCHEDULED_TUE" property="scheduledTue" />
+		<result column="SCHEDULED_WED" property="scheduledWed" />
+		<result column="SCHEDULED_THU" property="scheduledThu" />
+		<result column="SCHEDULED_FRI" property="scheduledFri" />
+		<result column="SCHEDULED_SAT" property="scheduledSat" />
+
+		<result column="MOVE_REQ_SUN" property="moveReqSun" />
+		<result column="MOVE_REQ_MON" property="moveReqMon" />
+		<result column="MOVE_REQ_TUE" property="moveReqTue" />
+		<result column="MOVE_REQ_WED" property="moveReqWed" />
+		<result column="MOVE_REQ_THU" property="moveReqThu" />
+		<result column="MOVE_REQ_FRI" property="moveReqFri" />
+		<result column="MOVE_REQ_SAT" property="moveReqSat" />
+
+		<result column="PO_REQ_SUN" property="poReqSun" />
+		<result column="PO_REQ_MON" property="poReqMon" />
+		<result column="PO_REQ_TUE" property="poReqTue" />
+		<result column="PO_REQ_WED" property="poReqWed" />
+		<result column="PO_REQ_THU" property="poReqThu" />
+		<result column="PO_REQ_FRI" property="poReqFri" />
+		<result column="PO_REQ_SAT" property="poReqSat" />
+
+		<result column="PO_DEADLINE_HOUR" property="poDeadlineHour" />
+		<result column="PO_DEADLINE_MIN" property="poDeadlineMin" />
+
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 유형관리 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		박영후          최초생성
+	 * @ 2020.10.27		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemPoTypeList" resultMap="itemPoTypeMap">
+		/*	goodsItemPoType.getItemPoTypeList  */
+		SELECT
+			DENSE_RANK () OVER (ORDER BY T.IL_PO_TP_ID) ROWNUM
+			, T.*
+		FROM (
+			SELECT
+				PO_TP.IL_PO_TP_ID,
+				PO_TP.UR_SUPPLIER_ID,
+				SUPPLIER.UR_COMPANY_ID,
+				COMPANY.COMP_NM,
+				PO_TP.PO_TP_NM,
+				PO_TP.PO_TP,
+				FN_COMN_CODE_DIC(PO_TP.PO_TP) AS PO_TP_NAME,
+				PO_TP.ERP_PO_TP,
+				FN_COMN_CODE_DIC(PO_TP.ERP_PO_TP) AS ERP_PO_TP_NAME,
+				PO_TP.PO_PER_ITEM_YN,
+				CONCAT(PO_TP.PO_DEADLINE_HOUR, ' : ', PO_TP.PO_DEADLINE_MIN) AS PO_DEADLINE,
+				'1' AS PO_TYPE_NUM,
+				'입고예정일' AS PO_TYPE,
+				PO_TP.PO_SUN_YN,
+				PO_TP.PO_MON_YN,
+				PO_TP.PO_TUE_YN,
+				PO_TP.PO_WED_YN,
+				PO_TP.PO_THU_YN,
+				PO_TP.PO_FRI_YN,
+				PO_TP.PO_SAT_YN,
+				IF(PO_TP.SCHEDULED_MON IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010101+PO_TP.SCHEDULED_MON)+1, 1), '(D+', PO_TP.SCHEDULED_MON, ')'), '-') AS MON_VALUE,
+				IF(PO_TP.SCHEDULED_TUE IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010102+PO_TP.SCHEDULED_TUE)+1, 1), '(D+', PO_TP.SCHEDULED_TUE, ')'), '-') AS TUE_VALUE,
+				IF(PO_TP.SCHEDULED_WED IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010103+PO_TP.SCHEDULED_WED)+1, 1), '(D+', PO_TP.SCHEDULED_WED, ')'), '-') AS WED_VALUE,
+				IF(PO_TP.SCHEDULED_THU IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010104+PO_TP.SCHEDULED_THU)+1, 1), '(D+', PO_TP.SCHEDULED_THU, ')'), '-') AS THU_VALUE,
+				IF(PO_TP.SCHEDULED_FRI IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010105+PO_TP.SCHEDULED_FRI)+1, 1), '(D+', PO_TP.SCHEDULED_FRI, ')'), '-') AS FRI_VALUE,
+				IF(PO_TP.SCHEDULED_SAT IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010106+PO_TP.SCHEDULED_SAT)+1, 1), '(D+', PO_TP.SCHEDULED_SAT, ')'), '-') AS SAT_VALUE,
+				IF(PO_TP.SCHEDULED_SUN IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010107+PO_TP.SCHEDULED_SUN)+1, 1), '(D+', PO_TP.SCHEDULED_SUN, ')'), '-') AS SUN_VALUE
+			FROM IL_PO_TP PO_TP
+			INNER JOIN UR_SUPPLIER SUPPLIER ON PO_TP.UR_SUPPLIER_ID = SUPPLIER.UR_SUPPLIER_ID
+			INNER JOIN UR_COMPANY COMPANY ON SUPPLIER.UR_COMPANY_ID = COMPANY.UR_COMPANY_ID
+			WHERE PO_TP.PO_PER_ITEM_YN = 'N'
+			  AND (
+					PO_TP.SCHEDULED_SUN IS NOT NULL
+				OR  PO_TP.SCHEDULED_MON IS NOT NULL
+				OR  PO_TP.SCHEDULED_TUE IS NOT NULL
+				OR  PO_TP.SCHEDULED_WED IS NOT NULL
+				OR  PO_TP.SCHEDULED_THU IS NOT NULL
+				OR  PO_TP.SCHEDULED_SAT IS NOT NULL
+				)
+			UNION ALL
+			SELECT
+				PO_TP.IL_PO_TP_ID,
+				PO_TP.UR_SUPPLIER_ID,
+				SUPPLIER.UR_COMPANY_ID,
+				COMPANY.COMP_NM,
+				PO_TP.PO_TP_NM,
+				PO_TP.PO_TP,
+				FN_COMN_CODE_DIC(PO_TP.PO_TP) AS PO_TP_NAME,
+				PO_TP.ERP_PO_TP,
+				FN_COMN_CODE_DIC(PO_TP.ERP_PO_TP) AS ERP_PO_TP_NAME,
+				PO_TP.PO_PER_ITEM_YN,
+				CONCAT(PO_TP.PO_DEADLINE_HOUR, ' : ', PO_TP.PO_DEADLINE_MIN) AS PO_DEADLINE,
+				'2' AS PO_TYPE_NUM,
+				'이동요청일' AS PO_TYPE,
+				PO_TP.PO_SUN_YN,
+				PO_TP.PO_MON_YN,
+				PO_TP.PO_TUE_YN,
+				PO_TP.PO_WED_YN,
+				PO_TP.PO_THU_YN,
+				PO_TP.PO_FRI_YN,
+				PO_TP.PO_SAT_YN,
+				IF(PO_TP.MOVE_REQ_MON IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010101+PO_TP.MOVE_REQ_MON)+1, 1), '(D+', PO_TP.MOVE_REQ_MON, ')'), '-') AS MON_VALUE,
+				IF(PO_TP.MOVE_REQ_TUE IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010102+PO_TP.MOVE_REQ_TUE)+1, 1), '(D+', PO_TP.MOVE_REQ_TUE, ')'), '-') AS TUE_VALUE,
+				IF(PO_TP.MOVE_REQ_WED IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010103+PO_TP.MOVE_REQ_WED)+1, 1), '(D+', PO_TP.MOVE_REQ_WED, ')'), '-') AS WED_VALUE,
+				IF(PO_TP.MOVE_REQ_THU IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010104+PO_TP.MOVE_REQ_THU)+1, 1), '(D+', PO_TP.MOVE_REQ_THU, ')'), '-') AS THU_VALUE,
+				IF(PO_TP.MOVE_REQ_FRI IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010105+PO_TP.MOVE_REQ_FRI)+1, 1), '(D+', PO_TP.MOVE_REQ_FRI, ')'), '-') AS FRI_VALUE,
+				IF(PO_TP.MOVE_REQ_SAT IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010106+PO_TP.MOVE_REQ_SAT)+1, 1), '(D+', PO_TP.MOVE_REQ_SAT, ')'), '-') AS SAT_VALUE,
+				IF(PO_TP.MOVE_REQ_SUN IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010107+PO_TP.MOVE_REQ_SUN)+1, 1), '(D+', PO_TP.MOVE_REQ_SUN, ')'), '-') AS SUN_VALUE
+			FROM IL_PO_TP PO_TP
+			INNER JOIN UR_SUPPLIER SUPPLIER ON PO_TP.UR_SUPPLIER_ID = SUPPLIER.UR_SUPPLIER_ID
+			INNER JOIN UR_COMPANY COMPANY ON SUPPLIER.UR_COMPANY_ID = COMPANY.UR_COMPANY_ID
+			WHERE PO_TP.PO_PER_ITEM_YN = 'N'
+			  AND (
+					PO_TP.MOVE_REQ_SUN IS NOT NULL
+				OR  PO_TP.MOVE_REQ_MON IS NOT NULL
+				OR  PO_TP.MOVE_REQ_TUE IS NOT NULL
+				OR  PO_TP.MOVE_REQ_WED IS NOT NULL
+				OR  PO_TP.MOVE_REQ_THU IS NOT NULL
+				OR  PO_TP.MOVE_REQ_SAT IS NOT NULL
+				)
+			UNION ALL
+			SELECT
+				PO_TP.IL_PO_TP_ID,
+				PO_TP.UR_SUPPLIER_ID,
+				SUPPLIER.UR_COMPANY_ID,
+				COMPANY.COMP_NM,
+				PO_TP.PO_TP_NM,
+				PO_TP.PO_TP,
+				FN_COMN_CODE_DIC(PO_TP.PO_TP) AS PO_TP_NAME,
+				PO_TP.ERP_PO_TP,
+				FN_COMN_CODE_DIC(PO_TP.ERP_PO_TP) AS ERP_PO_TP_NAME,
+				PO_TP.PO_PER_ITEM_YN,
+				CONCAT(PO_TP.PO_DEADLINE_HOUR, ' : ', PO_TP.PO_DEADLINE_MIN) AS PO_DEADLINE,
+				'3' AS PO_TYPE_NUM,
+				'PO요청일' AS PO_TYPE,
+				PO_TP.PO_SUN_YN,
+				PO_TP.PO_MON_YN,
+				PO_TP.PO_TUE_YN,
+				PO_TP.PO_WED_YN,
+				PO_TP.PO_THU_YN,
+				PO_TP.PO_FRI_YN,
+				PO_TP.PO_SAT_YN,
+				IF(PO_TP.PO_REQ_MON IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010101+PO_TP.PO_REQ_MON)+1, 1), '(D+', PO_TP.PO_REQ_MON, ')'), '-') AS MON_VALUE,
+				IF(PO_TP.PO_REQ_TUE IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010102+PO_TP.PO_REQ_TUE)+1, 1), '(D+', PO_TP.PO_REQ_TUE, ')'), '-') AS TUE_VALUE,
+				IF(PO_TP.PO_REQ_WED IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010103+PO_TP.PO_REQ_WED)+1, 1), '(D+', PO_TP.PO_REQ_WED, ')'), '-') AS WED_VALUE,
+				IF(PO_TP.PO_REQ_THU IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010104+PO_TP.PO_REQ_THU)+1, 1), '(D+', PO_TP.PO_REQ_THU, ')'), '-') AS THU_VALUE,
+				IF(PO_TP.PO_REQ_FRI IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010105+PO_TP.PO_REQ_FRI)+1, 1), '(D+', PO_TP.PO_REQ_FRI, ')'), '-') AS FRI_VALUE,
+				IF(PO_TP.PO_REQ_SAT IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010106+PO_TP.PO_REQ_SAT)+1, 1), '(D+', PO_TP.PO_REQ_SAT, ')'), '-') AS SAT_VALUE,
+				IF(PO_TP.PO_REQ_SUN IS NOT NULL, CONCAT(SUBSTRING('월화수목금토일', WEEKDAY(00010107+PO_TP.PO_REQ_SUN)+1, 1), '(D+', PO_TP.PO_REQ_SUN, ')'), '-') AS SUN_VALUE
+			FROM IL_PO_TP PO_TP
+			INNER JOIN UR_SUPPLIER SUPPLIER ON PO_TP.UR_SUPPLIER_ID = SUPPLIER.UR_SUPPLIER_ID
+			INNER JOIN UR_COMPANY COMPANY ON SUPPLIER.UR_COMPANY_ID = COMPANY.UR_COMPANY_ID
+			WHERE PO_TP.PO_PER_ITEM_YN = 'N'
+			  AND (
+					PO_TP.PO_REQ_SUN IS NOT NULL
+				OR  PO_TP.PO_REQ_MON IS NOT NULL
+				OR  PO_TP.PO_REQ_TUE IS NOT NULL
+				OR  PO_TP.PO_REQ_WED IS NOT NULL
+				OR  PO_TP.PO_REQ_THU IS NOT NULL
+				OR  PO_TP.PO_REQ_FRI IS NOT NULL
+				OR  PO_TP.PO_REQ_SAT IS NOT NULL
+				)
+		) T
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoTpName)">
+			AND  T.PO_TP_NM LIKE CONCAT('%', #{searchPoTpName}, '%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchErpTotp)">
+			AND  T.ERP_PO_TP = #{searchErpTotp}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPoType)">
+			AND  T.PO_TP = #{searchPoType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+			AND  T.UR_SUPPLIER_ID = #{searchUrSupplierId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchScheduled)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchScType, 'OR')">
+				AND
+				<foreach item="data" index="index" collection="searchScheduledArray" open="(" separator="OR" close=")">
+					T.PO_${data}_YN = 'Y'
+				</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchScType, 'AND')">
+				AND
+				<foreach item="data" index="index" collection="searchScheduledArray" open="(" separator="AND" >
+					T.PO_${data}_YN = 'Y'
+				</foreach>
+				AND
+				<foreach item="data" index="index" collection="scheduledArray" separator="AND" close=")">
+					T.PO_${data}_YN = 'N'
+				</foreach>
+			</if>
+        </if>
+
+		ORDER BY T.IL_PO_TP_ID DESC, T.PO_TYPE_NUM
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 유형관리 중복 검사
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.05		박영후          최초생성
+	 * @ 2020.10.27		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="duplicateItemPoTypeCount" resultType="int">
+		/*	goodsItemPoType.duplicateItemPoTypeCount	*/
+		SELECT
+			COUNT(*)
+		FROM
+			IL_PO_TP
+		WHERE
+			PO_TP_NM = #{poTpNm}
+		AND IL_PO_TP_ID != #{ilPoTpId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 유형관리 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		박영후          최초생성
+	 * @ 2020.10.27		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemPoType" resultMap="itemPoTypeMap">
+		/*	goodsItemPoType.getItemPoType  */
+		SELECT
+			   IPT.IL_PO_TP_ID AS IL_PO_TP_ID
+			, IPT.UR_SUPPLIER_ID
+			, US.SUPPLIER_CD
+			, IPT.PO_TP_NM
+			, IPT.PO_TP
+			, IPT.STOCK_PLANNED_DAYS
+			, IPT.ERP_PO_TP
+			, IPT.PO_SUN_YN AS CHECK_SUN
+			, IPT.PO_MON_YN AS CHECK_MON
+			, IPT.PO_TUE_YN AS CHECK_TUE
+			, IPT.PO_WED_YN AS CHECK_WED
+			, IPT.PO_THU_YN AS CHECK_THU
+			, IPT.PO_FRI_YN AS CHECK_FRI
+			, IPT.PO_SAT_YN AS CHECK_SAT
+			, IPT.SCHEDULED_SUN
+			, IPT.SCHEDULED_MON
+			, IPT.SCHEDULED_TUE
+			, IPT.SCHEDULED_WED
+			, IPT.SCHEDULED_THU
+			, IPT.SCHEDULED_FRI
+			, IPT.SCHEDULED_SAT
+			, IPT.MOVE_REQ_SUN
+			, IPT.MOVE_REQ_MON
+			, IPT.MOVE_REQ_TUE
+			, IPT.MOVE_REQ_WED
+			, IPT.MOVE_REQ_THU
+			, IPT.MOVE_REQ_FRI
+			, IPT.MOVE_REQ_SAT
+			, IPT.PO_REQ_SUN
+			, IPT.PO_REQ_MON
+			, IPT.PO_REQ_TUE
+			, IPT.PO_REQ_WED
+			, IPT.PO_REQ_THU
+			, IPT.PO_REQ_FRI
+			, IPT.PO_REQ_SAT
+			, IPT.PO_PER_ITEM_YN
+			, IPT.PO_DEADLINE_HOUR
+			, IPT.PO_DEADLINE_MIN
+			, IPT.CREATE_ID
+			, DATE_FORMAT(IPT.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+			, COALESCE(FN_DECRYPT(UUC.USER_NM), '') AS CREATE_NM
+			, IFNULL(UUC.LOGIN_ID, '') AS CREATE_LOGIN_ID
+			, IPT.MODIFY_ID
+			, DATE_FORMAT(IPT.MODIFY_DT, '%Y-%m-%d %T') AS MODIFY_DATE
+			, COALESCE(FN_DECRYPT(UUM.USER_NM), '') AS MODIFY_NM
+			, IFNULL(UUM.LOGIN_ID, '') AS MODIFY_LOGIN_ID
+		FROM IL_PO_TP IPT
+		INNER JOIN UR_SUPPLIER US
+			ON US.UR_SUPPLIER_ID = IPT.UR_SUPPLIER_ID
+		LEFT JOIN UR_USER UUC
+			ON UUC.UR_USER_ID = IPT.CREATE_ID
+		LEFT JOIN UR_USER UUM
+			ON UUM.UR_USER_ID = IPT.MODIFY_ID
+		WHERE
+			IPT.IL_PO_TP_ID = #{ilPoTpId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 이벤트 발주일 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.06		원종힌          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemPoDayForEvent" resultType="HashMap">
+	/*	goodsItemPoType.getItemPoDayForEvent  */
+		SELECT
+			T.PO_SCHEDULE_DT /* 발주예정일 */
+			, T.RECEVING_REQ_DT /* 입고예정일 */
+		FROM (
+			SELECT
+				DT.DT AS PO_SCHEDULE_DT
+				, DT.WEEK_DAY
+				, CASE
+					WHEN DT.WEEK_DAY = 1 THEN DATE_ADD(DT.DT, INTERVAL IPT.SCHEDULED_SUN DAY)
+					WHEN DT.WEEK_DAY = 2 THEN DATE_ADD(DT.DT, INTERVAL IPT.SCHEDULED_MON DAY)
+					WHEN DT.WEEK_DAY = 3 THEN DATE_ADD(DT.DT, INTERVAL IPT.SCHEDULED_TUE DAY)
+					WHEN DT.WEEK_DAY = 4 THEN DATE_ADD(DT.DT, INTERVAL IPT.SCHEDULED_WED DAY)
+					WHEN DT.WEEK_DAY = 5 THEN DATE_ADD(DT.DT, INTERVAL IPT.SCHEDULED_THU DAY)
+					WHEN DT.WEEK_DAY = 6 THEN DATE_ADD(DT.DT, INTERVAL IPT.SCHEDULED_FRI DAY)
+					WHEN DT.WEEK_DAY = 7 THEN DATE_ADD(DT.DT, INTERVAL IPT.SCHEDULED_SAT DAY)
+				END AS RECEVING_REQ_DT
+			FROM
+				IL_PO_TP IPT
+				, (
+					SELECT
+						CT.DT
+						, DAYOFWEEK(CT.DT) AS WEEK_DAY
+					FROM
+						CALENDAR_TABLE CT
+					WHERE
+						CT.DT BETWEEN DATE_ADD(#{eventStartDt}, INTERVAL -20 DAY) AND #{eventStartDt}
+				) AS DT
+			WHERE
+				IPT.IL_PO_TP_ID = #{ilPoTpId}
+				AND (
+					(IPT.PO_SUN_YN = 'Y' AND DT.WEEK_DAY = 1)
+					OR (IPT.PO_MON_YN = 'Y' AND DT.WEEK_DAY = 2)
+					OR (IPT.PO_TUE_YN = 'Y' AND DT.WEEK_DAY = 3)
+					OR (IPT.PO_WED_YN = 'Y' AND DT.WEEK_DAY = 4)
+					OR (IPT.PO_THU_YN = 'Y' AND DT.WEEK_DAY = 5)
+					OR (IPT.PO_FRI_YN = 'Y' AND DT.WEEK_DAY = 6)
+					OR (IPT.PO_SAT_YN = 'Y' AND DT.WEEK_DAY = 7)
+				)
+		) T
+		WHERE
+			T.RECEVING_REQ_DT <![CDATA[ < ]]> #{eventStartDt}
+		ORDER BY T.PO_SCHEDULE_DT DESC, T.RECEVING_REQ_DT DESC
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 유형관리 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		박영후          최초생성
+	 * @ 2020.10.27		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemPoType">
+		/*	goodsItemPoType.addItemPoType  */
+		INSERT INTO
+			IL_PO_TP
+		(
+			  UR_SUPPLIER_ID , PO_TP_NM , PO_TP , STOCK_PLANNED_DAYS , ERP_PO_TP
+			, PO_SUN_YN , PO_MON_YN , PO_TUE_YN , PO_WED_YN , PO_THU_YN , PO_FRI_YN , PO_SAT_YN
+			, SCHEDULED_SUN, SCHEDULED_MON, SCHEDULED_TUE, SCHEDULED_WED, SCHEDULED_THU, SCHEDULED_FRI, SCHEDULED_SAT
+			, MOVE_REQ_SUN, MOVE_REQ_MON, MOVE_REQ_TUE, MOVE_REQ_WED, MOVE_REQ_THU, MOVE_REQ_FRI, MOVE_REQ_SAT
+			, PO_REQ_SUN, PO_REQ_MON, PO_REQ_TUE, PO_REQ_WED, PO_REQ_THU, PO_REQ_FRI, PO_REQ_SAT
+			, PO_PER_ITEM_YN
+			, PO_DEADLINE_HOUR
+			, PO_DEADLINE_MIN
+			, CREATE_ID
+			, CREATE_DT
+			, MODIFY_ID
+			, MODIFY_DT
+		)
+		VALUES
+		(
+			  #{urSupplierId}, #{poTpNm}, #{poTp}, #{stockPlannedDays}, #{erpPoTp}
+			, #{checkSun}
+			, #{checkMon}
+			, #{checkTue}
+			, #{checkWed}
+			, #{checkThu}
+			, #{checkFri}
+			, #{checkSat}
+
+			, IF(#{checkSun} = 'Y', FN_COMN_CODE_DIC(#{scheduledSun}), null)
+			, IF(#{checkMon} = 'Y', FN_COMN_CODE_DIC(#{scheduledMon}), null)
+			, IF(#{checkTue} = 'Y', FN_COMN_CODE_DIC(#{scheduledTue}), null)
+			, IF(#{checkWed} = 'Y', FN_COMN_CODE_DIC(#{scheduledWed}), null)
+			, IF(#{checkThu} = 'Y', FN_COMN_CODE_DIC(#{scheduledThu}), null)
+			, IF(#{checkFri} = 'Y', FN_COMN_CODE_DIC(#{scheduledFri}), null)
+			, IF(#{checkSat} = 'Y', FN_COMN_CODE_DIC(#{scheduledSat}), null)
+
+			, IF(#{checkSun} = 'Y', FN_COMN_CODE_DIC(#{moveReqSun}), null)
+			, IF(#{checkMon} = 'Y', FN_COMN_CODE_DIC(#{moveReqMon}), null)
+			, IF(#{checkTue} = 'Y', FN_COMN_CODE_DIC(#{moveReqTue}), null)
+			, IF(#{checkWed} = 'Y', FN_COMN_CODE_DIC(#{moveReqWed}), null)
+			, IF(#{checkThu} = 'Y', FN_COMN_CODE_DIC(#{moveReqThu}), null)
+			, IF(#{checkFri} = 'Y', FN_COMN_CODE_DIC(#{moveReqFri}), null)
+			, IF(#{checkSat} = 'Y', FN_COMN_CODE_DIC(#{moveReqSat}), null)
+
+			, IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkSun} = 'Y', FN_COMN_CODE_DIC(#{poReqSun}), null ), null)
+			, IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkMon} = 'Y', FN_COMN_CODE_DIC(#{poReqMon}), null ), null)
+			, IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkTue} = 'Y', FN_COMN_CODE_DIC(#{poReqTue}), null ), null)
+			, IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkWed} = 'Y', FN_COMN_CODE_DIC(#{poReqWed}), null ), null)
+			, IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkThu} = 'Y', FN_COMN_CODE_DIC(#{poReqThu}), null ), null)
+			, IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkFri} = 'Y', FN_COMN_CODE_DIC(#{poReqFri}), null ), null)
+			, IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkSat} = 'Y', FN_COMN_CODE_DIC(#{poReqSat}), null ), null)
+
+			, #{poPerItemYn}
+			, #{poDeadlineHour}
+			, #{poDeadlineMin}
+			, #{userVo.userId}
+			, CURRENT_TIMESTAMP
+			, #{userVo.userId}
+			, CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 유형관리 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		박영후          최초생성
+	 * @ 2020.10.27		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putItemPoType">
+		/*	goodsItemPoType.putItemPoType  */
+		UPDATE
+			IL_PO_TP
+		SET
+			UR_SUPPLIER_ID = #{urSupplierId}
+			, PO_TP_NM = #{poTpNm}
+			, PO_TP = #{poTp}
+			, STOCK_PLANNED_DAYS = #{stockPlannedDays}
+			, ERP_PO_TP = #{erpPoTp}
+			, PO_SUN_YN = #{checkSun}
+			, PO_MON_YN = #{checkMon}
+			, PO_TUE_YN = #{checkTue}
+			, PO_WED_YN = #{checkWed}
+			, PO_THU_YN = #{checkThu}
+			, PO_FRI_YN = #{checkFri}
+			, PO_SAT_YN = #{checkSat}
+
+			, SCHEDULED_SUN = IF(#{checkSun} = 'Y', FN_COMN_CODE_DIC(#{scheduledSun}), null)
+			, SCHEDULED_MON = IF(#{checkMon} = 'Y', FN_COMN_CODE_DIC(#{scheduledMon}), null)
+			, SCHEDULED_TUE = IF(#{checkTue} = 'Y', FN_COMN_CODE_DIC(#{scheduledTue}), null)
+			, SCHEDULED_WED = IF(#{checkWed} = 'Y', FN_COMN_CODE_DIC(#{scheduledWed}), null)
+			, SCHEDULED_THU = IF(#{checkThu} = 'Y', FN_COMN_CODE_DIC(#{scheduledThu}), null)
+			, SCHEDULED_FRI = IF(#{checkFri} = 'Y', FN_COMN_CODE_DIC(#{scheduledFri}), null)
+			, SCHEDULED_SAT = IF(#{checkSat} = 'Y', FN_COMN_CODE_DIC(#{scheduledSat}), null)
+
+			, MOVE_REQ_SUN = IF(#{checkSun} = 'Y', FN_COMN_CODE_DIC(#{moveReqSun}), null)
+			, MOVE_REQ_MON = IF(#{checkMon} = 'Y', FN_COMN_CODE_DIC(#{moveReqMon}), null)
+			, MOVE_REQ_TUE = IF(#{checkTue} = 'Y', FN_COMN_CODE_DIC(#{moveReqTue}), null)
+			, MOVE_REQ_WED = IF(#{checkWed} = 'Y', FN_COMN_CODE_DIC(#{moveReqWed}), null)
+			, MOVE_REQ_THU = IF(#{checkThu} = 'Y', FN_COMN_CODE_DIC(#{moveReqThu}), null)
+			, MOVE_REQ_FRI = IF(#{checkFri} = 'Y', FN_COMN_CODE_DIC(#{moveReqFri}), null)
+			, MOVE_REQ_SAT = IF(#{checkSat} = 'Y', FN_COMN_CODE_DIC(#{moveReqSat}), null)
+
+			, PO_REQ_SUN = IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkSun} = 'Y', FN_COMN_CODE_DIC(#{poReqSun}), null ), null)
+			, PO_REQ_MON = IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkMon} = 'Y', FN_COMN_CODE_DIC(#{poReqMon}), null ), null)
+			, PO_REQ_TUE = IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkTue} = 'Y', FN_COMN_CODE_DIC(#{poReqTue}), null ), null)
+			, PO_REQ_WED = IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkWed} = 'Y', FN_COMN_CODE_DIC(#{poReqWed}), null ), null)
+			, PO_REQ_THU = IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkThu} = 'Y', FN_COMN_CODE_DIC(#{poReqThu}), null ), null)
+			, PO_REQ_FRI = IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkFri} = 'Y', FN_COMN_CODE_DIC(#{poReqFri}), null ), null)
+			, PO_REQ_SAT = IF(#{poTp} = 'PO_TYPE.PRODUCTION', IF(#{checkSat} = 'Y', FN_COMN_CODE_DIC(#{poReqSat}), null ), null)
+
+			, PO_PER_ITEM_YN = #{poPerItemYn}
+			, PO_DEADLINE_HOUR = #{poDeadlineHour}
+			, PO_DEADLINE_MIN = #{poDeadlineMin}
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE
+			IL_PO_TP_ID = #{ilPoTpId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 발주 유형관리 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		박영후          최초생성
+	 * @ 2020.10.27		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delItemPoType">
+		/*	poType.delItemPoType  */
+		DELETE FROM
+			IL_PO_TP
+		WHERE
+			IL_PO_TP_ID = #{ilPoTpId}
+	</delete>
+
+</mapper>
+

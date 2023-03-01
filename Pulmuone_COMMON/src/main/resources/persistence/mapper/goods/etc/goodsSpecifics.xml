@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.etc.GoodsSpecificsMapper">
+
+    <resultMap id="specificsMasterMap" type="kr.co.pulmuone.v1.goods.etc.dto.vo.SpecificsMasterVo">
+        <result column="SPECIFICS_MASTER_ID" property="specificsMasterId" />
+        <result column="SPECIFICS_MASTER_CODE" property="specificsMasterCode" />
+        <result column="SPECIFICS_MASTER_NAME" property="specificsMasterName" />
+        <result column="SORT" property="sort" />
+        <result column="USE_YN" property="useYn" />
+    </resultMap>
+
+    <resultMap id="specificsMasterFieldMap" type="kr.co.pulmuone.v1.goods.etc.dto.vo.SpecificsMasterFieldVo">
+        <result column="SPECIFICS_MASTER_FIELD_ID" property="specificsMasterFieldId" />
+        <result column="SPECIFICS_MASTER_ID" property="specificsMasterId" />
+        <result column="SPECIFICS_FIELD_ID" property="specificsFieldId" />
+        <result column="SPECIFICS_FIELD_CODE" property="specificsFieldCode" />
+        <result column="SPECIFICS_FIELD_NAME" property="specificsFieldName" />
+        <result column="BASIC_VALUE" property="basicValue" />
+
+        <result column="SORT" property="sort" />
+        <result column="SPECIFICS_MASTER_FIELD_USE_YN" property="specificsMasterFieldUseYn" />
+    </resultMap>
+
+    <resultMap id="specificsFieldMap" type="kr.co.pulmuone.v1.goods.etc.dto.vo.SpecificsFieldVo">
+        <result column="SPECIFICS_FIELD_ID" property="specificsFieldId" />
+        <result column="SPECIFICS_FIELD_CODE" property="specificsFieldCode" />
+        <result column="SPECIFICS_FIELD_NAME" property="specificsFieldName" />
+        <result column="BASIC_VALUE" property="basicValue" />
+        <result column="SPECIFICS_DESC" property="specificsDesc" />
+        <result column="CREATE_DATE" property="createDate" />
+        <result column="SPECIFICS_MASTER_FIELD_USE_YN" property="specificsMasterFieldUseYn" />
+    </resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품군 목록 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.21     박영후          최초생성
+     * @ 2020.10.12     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSpecificsMasterList" resultMap="specificsMasterMap">
+        /* goodsSpecifics.getSpecificsMasterList */
+        SELECT
+               IL_SPEC_MASTER_ID AS SPECIFICS_MASTER_ID /* 상품정보제공고시분류 PK */
+             , SPEC_MASTER_CD AS SPECIFICS_MASTER_CODE /* 상품정보제공고시분류 코드 */
+             , SPEC_MASTER_NM AS SPECIFICS_MASTER_NAME /* 상품정보제공고시분류 명 */
+             , SORT /* 노출순서 */
+             , USE_YN /* 사용여부 */
+          FROM IL_SPEC_MASTER
+         ORDER BY CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품군별 정보고시 항목 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.21     박영후          최초생성
+     * @ 2020.10.13     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSpecificsMasterFieldList" resultMap="specificsMasterFieldMap">
+        /* goodsSpecifics.getSpecificsMasterFieldList */
+        SELECT SMF.IL_SPEC_MASTER_FIELD_ID AS SPECIFICS_MASTER_FIELD_ID /* 상품정보제공고시 분류 항목 관계 PK */
+             , SMF.IL_SPEC_MASTER_ID AS SPECIFICS_MASTER_ID /* 상품정보제공고시분류 PK */
+             , SMF.IL_SPEC_FIELD_ID AS SPECIFICS_FIELD_ID /* 상품정보제공고시항목 PK */
+             , SF.SPEC_FIELD_CD AS SPECIFICS_FIELD_CODE /* 상품정보제공고시항목 코드 */
+             , SF.SPEC_FIELD_NM AS SPECIFICS_FIELD_NAME /* 상품정보제공고시항목 명 */
+             , SMF.SORT /* 노출순서 */
+             , SF.CREATE_DT AS CREATE_DATE /* 등록일 */
+             , SF.BASIC_VAL AS BASIC_VALUE
+             , CASE WHEN (SELECT COUNT(1)
+                            FROM IL_ITEM I
+                            JOIN IL_ITEM_SPEC_VALUE ISV
+                              ON ISV.IL_ITEM_CD = I.IL_ITEM_CD
+                           WHERE I.IL_SPEC_MASTER_ID = SMF.IL_SPEC_MASTER_ID
+                             AND ISV.IL_SPEC_FIELD_ID = SMF.IL_SPEC_FIELD_ID
+                           LIMIT 1) > 0
+                    THEN 1
+               ELSE 0
+                END SPECIFICS_MASTER_FIELD_USE_YN /* 상품정보제공고시 분류 항목 관계 사용유무 */
+          FROM IL_SPEC_MASTER_FIELD SMF
+          JOIN IL_SPEC_FIELD SF
+            ON SMF.IL_SPEC_FIELD_ID = SF.IL_SPEC_FIELD_ID
+        WHERE SMF.IL_SPEC_MASTER_ID = #{specificsMasterId}
+        ORDER BY SMF.SORT
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시항목 목록 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.20     박영후          최초생성
+     * @ 2020.10.13     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSpecificsFieldList" resultMap="specificsFieldMap">
+        /* goodsSpecifics.getSpecificsFieldList */
+        SELECT SF.IL_SPEC_FIELD_ID AS SPECIFICS_FIELD_ID /* 상품정보제공고시항목 PK */
+             , SF.SPEC_FIELD_CD AS SPECIFICS_FIELD_CODE /* 상품정보제공고시항목 코드 */
+             , SF.SPEC_FIELD_NM AS SPECIFICS_FIELD_NAME /* 상품정보제공고시항목 명 */
+             , SF.BASIC_VAL AS BASIC_VALUE /* 기본값 */
+             , SF.SPEC_DESC AS SPECIFICS_DESC /* 상세설명 */
+             , SF.CREATE_DT AS CREATE_DATE /* 등록일 */
+             , CASE WHEN #{specificsMasterId} IS NOT NULL
+                    THEN
+                         CASE WHEN (SELECT COUNT(1)
+                                      FROM IL_ITEM I
+                                      JOIN IL_ITEM_SPEC_VALUE ISV
+                                        ON ISV.IL_ITEM_CD = I.IL_ITEM_CD
+                                     WHERE I.IL_SPEC_MASTER_ID = #{specificsMasterId}
+                                       AND ISV.IL_SPEC_FIELD_ID = SF.IL_SPEC_FIELD_ID
+                                     LIMIT 1) > 0
+                              THEN 1
+                         ELSE 0
+                          END
+               ELSE 0
+                END SPECIFICS_MASTER_FIELD_USE_YN /* 상품정보제공고시 분류 항목 관계 사용유무 */
+          FROM IL_SPEC_FIELD SF
+         ORDER BY SF.SPEC_FIELD_CD DESC, SF.CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 품목별 상품정보제공고시 값 사용유무
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.13     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getItemSpecificsValueUseYn" resultType="boolean">
+        /* goodsSpecifics.getItemSpecificsValueUseYn */
+        SELECT CASE WHEN (SELECT COUNT(1)
+                            FROM IL_ITEM_SPEC_VALUE
+                           WHERE IL_SPEC_FIELD_ID = #{specificsFieldId}
+                           LIMIT 1) > 0
+                    THEN 1
+               ELSE 0
+                END ITEM_SPECIFICS_VALUE_USE_YN
+          FROM DUAL
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description     : 품목에 상품정보제공고시분류 적용 유무
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getItemSpecificsMasterUseYn" resultType="boolean">
+        /*  goodsSpecifics.getItemSpecificsMasterUseYn */
+        SELECT CASE WHEN (SELECT COUNT(1)
+                            FROM IL_ITEM
+                           WHERE IL_SPEC_MASTER_ID = #{specificsMasterId}
+                           LIMIT 1) > 0
+                    THEN 1
+               ELSE 0
+                END ITEM_SPECIFICS_MASTER_USE_YN
+          FROM DUAL
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시분류 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.20     박영후          최초생성
+     * @ 2020.10.15     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSpecificsMaster" useGeneratedKeys="true" keyProperty="specificsMasterId">
+        /* goodsSpecifics.addSpecificsMaster */
+        INSERT INTO IL_SPEC_MASTER
+        (
+          SPEC_MASTER_CD
+        , SPEC_MASTER_NM
+        , SORT
+        , USE_YN
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{specificsMasterCode}
+        , #{specificsMasterName}
+        , #{sort}
+        , #{useYn}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시분류 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.20     박영후          최초생성
+     * @ 2020.10.15     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putSpecificsMaster">
+        /* goodsSpecifics.putSpecificsMaster */
+        UPDATE IL_SPEC_MASTER
+           SET SPEC_MASTER_NM = #{specificsMasterName}
+             , SORT = #{sort}
+             , USE_YN = #{useYn}
+             , MODIFY_ID = #{createId}
+             , MODIFY_DT = NOW()
+         WHERE IL_SPEC_MASTER_ID = #{specificsMasterId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시분류 삭제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.15     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delSpecificsMaster">
+        /* goodsSpecifics.delSpecificsMaster */
+        DELETE FROM IL_SPEC_MASTER
+         WHERE IL_SPEC_MASTER_ID = #{specificsMasterId}
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시항목 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.20     박영후          최초생성
+     * @ 2020.10.13     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSpecificsField" useGeneratedKeys="true" keyProperty="specificsFieldId">
+        /* goodsSpecifics.addSpecificsField */
+        INSERT INTO IL_SPEC_FIELD
+        (
+          SPEC_FIELD_CD
+        , SPEC_FIELD_NM
+        , BASIC_VAL
+        , SPEC_DESC
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{specificsFieldCode}
+        , #{specificsFieldName}
+        , #{basicValue}
+        , #{specificsDesc}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시항목 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.20     박영후          최초생성
+     * @ 2020.10.13     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putSpecificsField">
+        /* goodsSpecifics.putSpecificsField */
+        UPDATE IL_SPEC_FIELD
+           SET SPEC_FIELD_NM = #{specificsFieldName}
+             , BASIC_VAL = #{basicValue}
+             , SPEC_DESC = #{specificsDesc}
+             , MODIFY_ID = #{createId}
+             , MODIFY_DT = NOW()
+         WHERE IL_SPEC_FIELD_ID = #{specificsFieldId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시항목 삭제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.13     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delSpecificsField">
+        /* goodsSpecifics.delSpecificsField */
+        DELETE FROM IL_SPEC_FIELD
+         WHERE IL_SPEC_FIELD_ID = #{specificsFieldId}
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시 분류 항목 관계 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.20     박영후          최초생성
+     * @ 2020.10.16     손진구          NEW 변경
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSpecificsMasterField" useGeneratedKeys="true" keyProperty="specificsMasterFieldId">
+        /* goodsSpecifics.addSpecificsMasterField */
+        INSERT INTO IL_SPEC_MASTER_FIELD
+        (
+          IL_SPEC_MASTER_ID
+        , IL_SPEC_FIELD_ID
+        , SORT
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{specificsMasterId}
+        , #{specificsFieldId}
+        , #{sort}
+        , #{createId}
+        , NOW()
+        )
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품정보제공고시 분류 항목 관계 삭제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.13     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delSpecificsMasterField">
+        /* goodsSpecifics.delSpecificsMasterField */
+        DELETE FROM IL_SPEC_MASTER_FIELD
+        <where>
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(specificsMasterId)">
+                    AND IL_SPEC_MASTER_ID = #{specificsMasterId}
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(specificsFieldId)">
+                        AND IL_SPEC_FIELD_ID = #{specificsFieldId}
+                    </if>
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(specificsFieldId)">
+                    AND IL_SPEC_FIELD_ID = #{specificsFieldId}
+                </when>
+                <otherwise>
+                    AND IL_SPEC_FIELD_ID = #{specificsFieldId}
+                </otherwise>
+            </choose>
+        </where>
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 상품군명 중복 유무
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.16     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSpecificsMasterNameDuplicateYn" resultType="boolean">
+        /* goodsSpecifics.getSpecificsMasterNameDuplicateYn */
+        SELECT CASE WHEN (SELECT COUNT(1)
+                            FROM IL_SPEC_MASTER
+                           WHERE SPEC_MASTER_NM = #{specificsMasterName}
+                          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(specificsMasterId)">
+                             AND IL_SPEC_MASTER_ID != #{specificsMasterId}
+                          </if>
+                           LIMIT 1) > 0
+                    THEN 1
+               ELSE 0
+                END SPECIFICS_MASTER_NAME_DUPLICATE_YN
+          FROM DUAL
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 정보고시항목명 중복 유무
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.16     손진구          최초작성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSpecificsFieldNameDuplicateYn" resultType="boolean">
+        /* goodsSpecifics.getSpecificsFieldNameDuplicateYn */
+        SELECT CASE WHEN (SELECT COUNT(1)
+                            FROM IL_SPEC_FIELD
+                           WHERE SPEC_FIELD_NM = #{specificsFieldName}
+                          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(specificsFieldId)">
+                             AND IL_SPEC_FIELD_ID != #{specificsFieldId}
+                          </if>
+                           LIMIT 1) > 0
+                    THEN 1
+               ELSE 0
+                END SPECIFICS_FIELD_NAME_DUPLICATE_YN
+          FROM DUAL
+    </select>
+
+	<resultMap id="getItemSpecificsListMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.MasterItemVo">
+        <result column="IL_ITEM_CD" property="ilItemCode" />
+        <result column="IL_SPEC_MASTER_ID" property="ilSpecMasterId" />
+    </resultMap>
+
+    <select id="getItemSpecificsList" resultMap="getItemSpecificsListMap">
+        /* goodsSpecifics.getItemSpecificsList */
+        SELECT
+        	IL_ITEM_CD,
+        	IL_SPEC_MASTER_ID
+	 	FROM IL_ITEM
+	 	WHERE 1=1
+	 	AND IL_SPEC_MASTER_ID = #{ilSpecMasterId}
+    </select>
+
+	<update id="putItemSpecificsValue">
+        /* goodsSpecifics.putItemSpecificsValue */
+		INSERT INTO
+		      IL_ITEM_SPEC_VALUE (
+		         IL_ITEM_CD
+		        , IL_SPEC_FIELD_ID
+		        , SPEC_FIELD_VAL
+		        , CREATE_ID
+		      )
+		   VALUES (
+		      #{ilItemCode},
+		      #{ilSpecFieldId},
+		      #{specFieldValue},
+		      #{createId}
+
+		   )
+		   ON
+		      DUPLICATE KEY
+		   UPDATE
+		      IL_ITEM_CD= #{ilItemCode},
+		      IL_SPEC_FIELD_ID=#{ilSpecFieldId},
+		      SPEC_FIELD_VAL= #{specFieldValue},
+		      MODIFY_ID = #{modifyid},
+		      MODIFY_DT = NOW()
+    </update>
+
+
+
+
+
+</mapper>

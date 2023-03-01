@@ -1,0 +1,819 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.stock.BatchItemStockByGoodsSaleStatusMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 제외)
+	 * description : 재고 연동 / 선주문가능(한정재고), 선주문 불가이고
+	 * 1. IL_ITEM_STOCK.BASE_DT가 오늘날짜인 IL_ITEM_STOCK.D0_ORDER_QTY ~ IL_ITEM_STOCK.D15_ORDER_QTY의 합계 수량이 0 인 상품 ID 갯수 확인
+	 * 2. IL_ITEM_STOCK.BASE_DT가 오늘날짜인 IL_ITEM_STOCK.D0_ORDER_QTY ~ IL_ITEM_STOCK.D15_ORDER_QTY의 합계 수량이 0 보다 큰 상품 ID 갯수 확인
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="itemErpStockByGoodsSaleStatusChangeNum" resultType="int">
+		/* itemStockByGoodsSaleStatus.itemErpStockByGoodsSaleStatusChangeNum */
+		SELECT
+			COUNT(DISTINCT IG.IL_GOODS_ID) AS IL_GOODS_ID_NUM
+		FROM
+			IL_GOODS IG
+		INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+		INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+		INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+		LEFT JOIN (
+			SELECT
+				IL_ITEM_WAREHOUSE_ID
+			,	SUM(D0_ORDER_QTY+D1_ORDER_QTY+D2_ORDER_QTY+D3_ORDER_QTY+D4_ORDER_QTY+D5_ORDER_QTY+D6_ORDER_QTY+D7_ORDER_QTY+D8_ORDER_QTY
+					+D9_ORDER_QTY+D10_ORDER_QTY+D11_ORDER_QTY+D12_ORDER_QTY+D13_ORDER_QTY+D14_ORDER_QTY+D15_ORDER_QTY) AS ORDER_QTY
+			,	SUM(D0_ORDER_DISCARD_QTY) AS ORDER_DISCARD_QTY
+			FROM
+				IL_ITEM_STOCK
+			WHERE DATE_FORMAT(#{baseDate}, '%Y-%m-%d') = BASE_DT
+			GROUP BY
+				IL_ITEM_WAREHOUSE_ID
+		) IIS ON IIS.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+		WHERE
+			(
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+					CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN
+						(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'N')
+						OR
+						(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'Y' AND IIW.PRE_ORDER_TP != 'PRE_ORDER_TP.UNLIMITED_ALLOWED')
+					ELSE
+						UW.STOCK_ORDER_YN = 'Y'
+					END
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+					UW.STOCK_ORDER_YN = 'Y'
+					</when>
+				</choose>
+			)
+		AND IFNULL(CASE
+				WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+				ELSE IIS.ORDER_DISCARD_QTY END, 0)
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+					= 0
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+					&gt; 0
+					</when>
+				</choose>
+		AND IG.GOODS_TP != #{goodsType}
+		AND IG.SALE_STATUS = #{saleStatus}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(saleType) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+		AND IG.SALE_TP != #{saleType}
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 제외)
+	 * description : 재고 연동 / 선주문가능(한정재고), 선주문 불가이고
+	 * 1. IL_ITEM_STOCK.BASE_DT가 오늘날짜인 IL_ITEM_STOCK.D0_ORDER_QTY ~ IL_ITEM_STOCK.D15_ORDER_QTY의 합계 수량이 0 인 상품 판매상태 품절(시스템) 변경
+	 * 2. IL_ITEM_STOCK.BASE_DT가 오늘날짜인 IL_ITEM_STOCK.D0_ORDER_QTY ~ IL_ITEM_STOCK.D15_ORDER_QTY의 합계 수량이 0 보다 큰 상품 판매상태 판매중 변경
+	 * @
+	 * @ 수정일                 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="itemErpStockByGoodsSaleStatusChangeUpdate">
+		/* itemStockByGoodsSaleStatus.itemErpStockByGoodsSaleStatusChangeUpdate */
+		UPDATE IL_GOODS IG INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+		INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND UW.UR_WAREHOUSE_ID = IG.UR_WAREHOUSE_ID
+		INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+		LEFT JOIN (
+			SELECT
+				IL_ITEM_WAREHOUSE_ID
+			,	SUM(D0_ORDER_QTY+D1_ORDER_QTY+D2_ORDER_QTY+D3_ORDER_QTY+D4_ORDER_QTY+D5_ORDER_QTY+D6_ORDER_QTY+D7_ORDER_QTY+D8_ORDER_QTY
+					+D9_ORDER_QTY+D10_ORDER_QTY+D11_ORDER_QTY+D12_ORDER_QTY+D13_ORDER_QTY+D14_ORDER_QTY+D15_ORDER_QTY) AS ORDER_QTY
+			,	SUM(D0_ORDER_DISCARD_QTY) AS ORDER_DISCARD_QTY
+			FROM
+				IL_ITEM_STOCK
+			WHERE DATE_FORMAT(#{baseDate}, '%Y-%m-%d') = BASE_DT
+			GROUP BY
+				IL_ITEM_WAREHOUSE_ID
+		) IIS ON IIS.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+		SET SALE_STATUS = #{chgSaleStatus}
+		WHERE
+			(
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+					CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN
+						(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'N')
+						OR
+						(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'Y' AND IIW.PRE_ORDER_TP != 'PRE_ORDER_TP.UNLIMITED_ALLOWED')
+					ELSE
+						UW.STOCK_ORDER_YN = 'Y'
+					END
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+					UW.STOCK_ORDER_YN = 'Y'
+					</when>
+				</choose>
+			)
+		AND IFNULL(CASE
+				WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+				ELSE IIS.ORDER_DISCARD_QTY END, 0)
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+					= 0
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+					&gt; 0
+					</when>
+				</choose>
+		AND IG.GOODS_TP != #{goodsType}
+		AND IG.SALE_STATUS = #{saleStatus}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(saleType) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+		AND IG.SALE_TP != #{saleType}
+		</if>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 재고 연동 / 선주문가능(한정재고), 선주문 불가이고
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	 * @ 2021.03.23   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 구성상품의 구성수량이 재고 수량보다 클때 품절(시스템) 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목 재고의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	 * @ 3. 일반상품, 증정품은 같은 재고수량(IIS.ORDER_QTY)을 바라보고, 폐기임박상품은 폐기임박상품의 재고수량(IIS.ORDER_DISCARD_QTY)을 바라봄
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="itemErpStockByGoodsPackageSaleStatusOutOfStockBySystemNum" resultType="int">
+		/* itemStockByGoodsSaleStatus.itemErpStockByGoodsPackageSaleStatusOutOfStockBySystemNum */
+		SELECT
+			COUNT(DISTINCT PACKAGE_GOODS_ID) AS IL_GOODS_ID_NUM
+		FROM
+		(
+			SELECT
+				PACKAGE_GOODS_ID
+			,	IL_ITEM_WAREHOUSE_ID
+			,	SUM(GOODS_QTY) AS GOODS_QTY
+			,	STOCK_QTY
+			FROM
+			(
+				SELECT
+					IGPGM.IL_GOODS_ID AS PACKAGE_GOODS_ID
+				,	IG.IL_GOODS_ID
+				,	IG.GOODS_TP
+				,	II.IL_ITEM_CD
+				,	IIW.IL_ITEM_WAREHOUSE_ID
+				,	SUM(IGPGM.GOODS_QTY) AS GOODS_QTY
+				,	CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+					ELSE IIS.ORDER_DISCARD_QTY END STOCK_QTY
+				FROM
+					IL_GOODS UPT_IG
+				INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+				INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+				INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+				INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+				INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+				INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+				INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+				LEFT JOIN (
+					SELECT
+						IL_ITEM_WAREHOUSE_ID
+					,	SUM(D0_ORDER_QTY+D1_ORDER_QTY+D2_ORDER_QTY+D3_ORDER_QTY+D4_ORDER_QTY+D5_ORDER_QTY+D6_ORDER_QTY+D7_ORDER_QTY+D8_ORDER_QTY
+							+D9_ORDER_QTY+D10_ORDER_QTY+D11_ORDER_QTY+D12_ORDER_QTY+D13_ORDER_QTY+D14_ORDER_QTY+D15_ORDER_QTY) AS ORDER_QTY
+					,	SUM(D0_ORDER_DISCARD_QTY) AS ORDER_DISCARD_QTY
+					FROM
+						IL_ITEM_STOCK
+					WHERE DATE_FORMAT(#{baseDate}, '%Y-%m-%d') = BASE_DT
+					GROUP BY
+						IL_ITEM_WAREHOUSE_ID
+				) IIS ON IIS.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+				WHERE
+					(
+						CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN
+							(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'N')
+							OR
+							(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'Y' AND IIW.PRE_ORDER_TP != 'PRE_ORDER_TP.UNLIMITED_ALLOWED')
+						ELSE
+							UW.STOCK_ORDER_YN = 'Y'
+						END
+					)
+				AND IG.GOODS_TP != #{goodsType}
+				AND UPT_IG.SALE_STATUS = #{saleStatus}
+				GROUP BY
+					IGPGM.IL_GOODS_ID
+				,	IIW.IL_ITEM_WAREHOUSE_ID
+				,	CASE
+						WHEN IG.GOODS_TP = 'GOODS_TYPE.DISPOSAL' THEN 1
+						ELSE 0
+					END
+			) BGS
+			GROUP BY BGS.PACKAGE_GOODS_ID, BGS.IL_ITEM_WAREHOUSE_ID
+			HAVING GOODS_QTY > STOCK_QTY
+		) GOODS_STOCK_TABLE
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 재고 연동, 선주문가능(한정재고), 선주문 불가일 경우
+	 * IL_ITEM_STOCK.BASE_DT가 오늘날짜인 IL_ITEM_STOCK.D0_ORDER_QTY ~ IL_ITEM_STOCK.D15_ORDER_QTY의 합계 수량이 0 인 상품 판매상태 변경
+	 * @
+	 * @ 수정일                 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	 * @ 2021.03.23   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 구성상품의 구성수량이 재고 수량보다 클때 품절(시스템) 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목 재고의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	 * @ 3. 일반상품, 증정품은 같은 재고수량(IIS.ORDER_QTY)을 바라보고, 폐기임박상품은 폐기임박상품의 재고수량(IIS.ORDER_DISCARD_QTY)을 바라봄
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="itemErpStockByGoodsPackageSaleStatusOutOfStockBySystemUpdate">
+		/* itemStockByGoodsSaleStatus.itemErpStockByGoodsPackageSaleStatusOutOfStockBySystemUpdate */
+		UPDATE IL_GOODS UPDATE_IG SET SALE_STATUS = #{chgSaleStatus}
+		WHERE
+			EXISTS (
+				SELECT
+					DISTINCT PACKAGE_GOODS_ID
+				FROM
+				(
+					SELECT
+						PACKAGE_GOODS_ID
+					,	IL_ITEM_WAREHOUSE_ID
+					,	SUM(GOODS_QTY) AS GOODS_QTY
+					,	STOCK_QTY
+					FROM
+					(
+						SELECT
+							IGPGM.IL_GOODS_ID AS PACKAGE_GOODS_ID
+						,	IG.IL_GOODS_ID
+						,	IG.GOODS_TP
+						,	II.IL_ITEM_CD
+						,	IIW.IL_ITEM_WAREHOUSE_ID
+						,	SUM(IGPGM.GOODS_QTY) AS GOODS_QTY
+						,	CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+							ELSE IIS.ORDER_DISCARD_QTY END STOCK_QTY
+						FROM
+							IL_GOODS UPT_IG
+						INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+						INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+						INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+						INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+						INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+						INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+						INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+						LEFT JOIN (
+							SELECT
+								IL_ITEM_WAREHOUSE_ID
+							,	SUM(D0_ORDER_QTY+D1_ORDER_QTY+D2_ORDER_QTY+D3_ORDER_QTY+D4_ORDER_QTY+D5_ORDER_QTY+D6_ORDER_QTY+D7_ORDER_QTY+D8_ORDER_QTY
+									+D9_ORDER_QTY+D10_ORDER_QTY+D11_ORDER_QTY+D12_ORDER_QTY+D13_ORDER_QTY+D14_ORDER_QTY+D15_ORDER_QTY) AS ORDER_QTY
+							,	SUM(D0_ORDER_DISCARD_QTY) AS ORDER_DISCARD_QTY
+							FROM
+								IL_ITEM_STOCK
+							WHERE DATE_FORMAT(#{baseDate}, '%Y-%m-%d') = BASE_DT
+							GROUP BY
+								IL_ITEM_WAREHOUSE_ID
+						) IIS ON IIS.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+						WHERE
+							(
+								CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN
+									(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'N')
+									OR
+									(UW.STOCK_ORDER_YN = 'Y' AND IIW.PRE_ORDER_YN = 'Y' AND IIW.PRE_ORDER_TP != 'PRE_ORDER_TP.UNLIMITED_ALLOWED')
+								ELSE
+									UW.STOCK_ORDER_YN = 'Y'
+								END
+							)
+						AND IG.GOODS_TP != #{goodsType}
+						AND UPT_IG.SALE_STATUS = #{saleStatus}
+						GROUP BY
+							IGPGM.IL_GOODS_ID
+						,	IIW.IL_ITEM_WAREHOUSE_ID
+						,	CASE
+								WHEN IG.GOODS_TP = 'GOODS_TYPE.DISPOSAL' THEN 1
+								ELSE 0
+							END
+					) BGS
+					GROUP BY BGS.PACKAGE_GOODS_ID, BGS.IL_ITEM_WAREHOUSE_ID
+					HAVING GOODS_QTY > STOCK_QTY
+				) GOODS_STOCK_TABLE
+				WHERE
+					GOODS_STOCK_TABLE.PACKAGE_GOODS_ID = UPDATE_IG.IL_GOODS_ID
+			)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 제외)
+	 * description : 재고미연동(한정재고) 경우
+	 * IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT이 0 인 상품 ID 갯수 확인
+	 * 1. IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT이 0 인 상품 ID 갯수 확인
+	 * 2. IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT이 0 보다 큰 상품 ID 갯수 확인
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="itemStockByGoodsSaleStatusChangeNum" resultType="int">
+		/* itemStockByGoodsSaleStatus.itemStockByGoodsSaleStatusChangeNum */
+		SELECT
+			COUNT(DISTINCT IG.IL_GOODS_ID) AS IL_GOODS_ID_NUM
+		FROM
+			IL_GOODS IG
+		INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = IG.IL_ITEM_CD
+		INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+		INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+		INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+		WHERE
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+			UW.STOCK_ORDER_YN = 'N' AND IIW.UNLIMIT_STOCK_YN = 'N'
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+			UW.STOCK_ORDER_YN = 'N'
+			</when>
+		</choose>
+		AND (IIW.NOT_IF_STOCK_CNT
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+			= 0
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+			&gt; 0  OR IIW.UNLIMIT_STOCK_YN = 'Y'
+			</when>
+		</choose>
+		)
+		AND IG.GOODS_TP != #{goodsType}
+		AND IG.SALE_STATUS = #{saleStatus}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(saleType) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+		AND IG.SALE_TP != #{saleType}
+		</if>
+		ORDER BY IG.IL_GOODS_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 제외)
+	 * description : 재고미연동(한정재고) 경우
+	 * 1. IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT이 0 이고 판매 상태가 판매중인 상품 판매상태 품절(시스템)으로 판매상태 변경
+	 * 2. IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT이 0 보다 크고, 판매 상태가 품절(시스템)인 상품 판매상태 판매중으로 변경
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="itemStockByGoodsSaleStatusChangeUpdate">
+		/* itemStockByGoodsSaleStatus.itemStockByGoodsSaleStatusChangeUpdate */
+		UPDATE IL_GOODS IG
+		INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = IG.IL_ITEM_CD
+		INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+		INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+		INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+		INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+		INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+		SET IG.SALE_STATUS = #{chgSaleStatus}
+		WHERE
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+			UW.STOCK_ORDER_YN = 'N' AND IIW.UNLIMIT_STOCK_YN = 'N'
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+			UW.STOCK_ORDER_YN = 'N'
+			</when>
+		</choose>
+		AND (IIW.NOT_IF_STOCK_CNT
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+			= 0
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '>')">
+			&gt; 0  OR IIW.UNLIMIT_STOCK_YN = 'Y'
+			</when>
+		</choose>
+		)
+		AND IG.GOODS_TP != #{goodsType}
+		AND IG.SALE_STATUS = #{saleStatus}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(saleType) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(comparisonOperator, '=')">
+		AND IG.SALE_TP != #{saleType}
+		</if>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 재고미연동(한정재고) 경우
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	 * @ 2021.03.24   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 모든 구성상품의 재고수량이 구성 수량과 같거나 클때 판매중 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목출고처의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="itemStockByGoodsPackageSaleStatusOutOfStockBySystemNum" resultType="int">
+		/* itemStockByGoodsSaleStatus.itemStockByGoodsPackageSaleStatusOutOfStockBySystemNum */
+		SELECT
+			COUNT(DISTINCT IL_GOODS_ID) AS IL_GOODS_ID_NUM
+		FROM
+		(
+			SELECT
+				UPT_IG.IL_GOODS_ID
+			,	UPT_IG.SALE_STATUS
+			,	II.IL_ITEM_CD
+			,	IG.IL_GOODS_ID AS TARGET_GOODS_ID
+			,	IIW.IL_ITEM_WAREHOUSE_ID
+			,	SUM(IGPGM.GOODS_QTY) AS GOODS_QTY
+			,	IIW.NOT_IF_STOCK_CNT
+			FROM
+				IL_GOODS UPT_IG
+			INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+			INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+			INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+			INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+			INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+			INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+			INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+			INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+			WHERE
+				UW.STOCK_ORDER_YN = 'N' AND IIW.UNLIMIT_STOCK_YN = 'N'
+			AND IG.GOODS_TP != #{goodsType}
+			AND UPT_IG.SALE_STATUS = #{saleStatus}
+			GROUP BY UPT_IG.IL_GOODS_ID, II.IL_ITEM_CD, IIW.IL_ITEM_WAREHOUSE_ID
+			HAVING SUM(IGPGM.GOODS_QTY) > IIW.NOT_IF_STOCK_CNT
+		) GOODS_STOCK_TABLE
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 재고미연동(한정재고) 이고
+	 * IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT이 0 이고 판매 상태가 판매중인 상품 판매상태 품절(시스템)으로 판매상태 변경
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.23   임상건   최초생성
+	 * @ 2021.03.24   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 구성상품의 구성수량이 재고 수량보다 클때 품절(시스템) 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목출고처의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="itemStockByGoodsPackageSaleStatusOutOfStockBySystemUpdate">
+		/* itemStockByGoodsSaleStatus.itemStockByGoodsPackageSaleStatusOutOfStockBySystemUpdate */
+		UPDATE IL_GOODS UPDATE_IG SET SALE_STATUS = #{chgSaleStatus}
+		WHERE
+			EXISTS (
+				SELECT
+					DISTINCT IL_GOODS_ID
+				FROM
+				(
+					SELECT
+						UPT_IG.IL_GOODS_ID
+					,	UPT_IG.SALE_STATUS
+					,	II.IL_ITEM_CD
+					,	IG.IL_GOODS_ID AS TARGET_GOODS_ID
+					,	IIW.IL_ITEM_WAREHOUSE_ID
+					,	SUM(IGPGM.GOODS_QTY) AS GOODS_QTY
+					,	IIW.NOT_IF_STOCK_CNT
+					FROM
+						IL_GOODS UPT_IG
+					INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+					INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+					INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+					INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+					INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+					INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+					INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+					INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+					WHERE
+						UW.STOCK_ORDER_YN = 'N' AND IIW.UNLIMIT_STOCK_YN = 'N'
+					AND IG.GOODS_TP != #{goodsType}
+					AND UPT_IG.SALE_STATUS = #{saleStatus}
+					GROUP BY UPT_IG.IL_GOODS_ID, II.IL_ITEM_CD, IIW.IL_ITEM_WAREHOUSE_ID
+					HAVING SUM(IGPGM.GOODS_QTY) > IIW.NOT_IF_STOCK_CNT
+				) GOODS_STOCK_TABLE
+				WHERE
+					GOODS_STOCK_TABLE.IL_GOODS_ID = UPDATE_IG.IL_GOODS_ID
+			)
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * (묶음상품 대상)
+	 * description : 재고 연동, 선주문가능(한정재고), 선주문 불가일 경우
+	 * 묶음상품의 모든 구성품(증정품 포함)의 수량이 1이상인지 확인
+	 * 폐기임박 상품은 IL_ITEM_STOCK.D0_ORDER_DISCARD_QTY 컬럼 기준
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.24   임상건   최초생성
+	 * @ 2021.03.24   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 모든 구성상품의 재고 수량이 구성 수량보다 크거나 같을때 판매중 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목 재고의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	 * @ 3. 일반상품, 증정품은 같은 재고수량(IIS.ORDER_QTY)을 바라보고, 폐기임박상품은 폐기임박상품의 재고수량(IIS.ORDER_DISCARD_QTY)을 바라봄
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="itemErpStockByGoodsPackageSaleStatusOnSaleNum" resultType="Integer">
+		/* itemStockByGoodsSaleStatus.itemErpStockByGoodsPackageSaleStatusOnSaleNum */
+		SELECT
+			COUNT(PACKAGE_GOODS_ID) AS IL_GOODS_ID_NUM
+		FROM
+		(
+			SELECT
+				DISTINCT PACKAGE_GOODS_ID
+			FROM
+			(
+				SELECT
+					IGPGM.IL_GOODS_ID AS PACKAGE_GOODS_ID
+				,	IIW.IL_ITEM_WAREHOUSE_ID
+				,	ROW_NUMBER() OVER (PARTITION BY IGPGM.IL_GOODS_ID ORDER BY IIW.IL_ITEM_WAREHOUSE_ID) AS GROUP_SEQUENCE
+				,	IG.IL_GOODS_ID
+				,	IG.GOODS_TP
+				,	II.IL_ITEM_CD
+				,	SUM(IGPGM.GOODS_QTY) AS GOODS_QTY
+				,	CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+					ELSE IIS.ORDER_DISCARD_QTY END STOCK_QTY
+				,	CASE WHEN
+						CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+						ELSE IIS.ORDER_DISCARD_QTY END &gt;= SUM(IGPGM.GOODS_QTY) THEN 1
+					ELSE 0
+					END AS STOCK_CHK
+				FROM
+					IL_GOODS UPT_IG
+				INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+				INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+				INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+				INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+				INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+				INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+				INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+				LEFT JOIN (
+					SELECT
+						IL_ITEM_WAREHOUSE_ID
+					,	SUM(D0_ORDER_QTY+D1_ORDER_QTY+D2_ORDER_QTY+D3_ORDER_QTY+D4_ORDER_QTY+D5_ORDER_QTY+D6_ORDER_QTY+D7_ORDER_QTY+D8_ORDER_QTY
+							+D9_ORDER_QTY+D10_ORDER_QTY+D11_ORDER_QTY+D12_ORDER_QTY+D13_ORDER_QTY+D14_ORDER_QTY+D15_ORDER_QTY) AS ORDER_QTY
+					,	SUM(D0_ORDER_DISCARD_QTY) AS ORDER_DISCARD_QTY
+					FROM
+						IL_ITEM_STOCK
+					WHERE DATE_FORMAT(#{baseDate}, '%Y-%m-%d') = BASE_DT
+					GROUP BY
+						IL_ITEM_WAREHOUSE_ID
+				) IIS ON IIS.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+				WHERE
+					UW.STOCK_ORDER_YN = 'Y'
+				AND IG.GOODS_TP != #{goodsType}
+				AND UPT_IG.SALE_STATUS = #{saleStatus}
+				GROUP BY
+					IGPGM.IL_GOODS_ID
+				,	IIW.IL_ITEM_WAREHOUSE_ID
+				,	CASE
+						WHEN IG.GOODS_TP = 'GOODS_TYPE.DISPOSAL' THEN 1
+						ELSE 0
+					END
+			) GOODS_STOCK_CHK
+			GROUP BY GOODS_STOCK_CHK.PACKAGE_GOODS_ID
+			HAVING
+				MAX(GOODS_STOCK_CHK.GROUP_SEQUENCE) = SUM(STOCK_CHK)
+		) GOODS_STOCK
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * (묶음상품 대상)
+	 * description : 재고 연동, 선주문가능(한정재고), 선주문 불가일 경우
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.24   임상건   최초생성
+	 * @ 2021.03.24   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 모든 구성상품의 재고 수량이 구성 수량보다 크거나 같을때 판매중 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목 재고의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	 * @ 3. 일반상품, 증정품은 같은 재고수량(IIS.ORDER_QTY)을 바라보고, 폐기임박상품은 폐기임박상품의 재고수량(IIS.ORDER_DISCARD_QTY)을 바라봄
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="itemErpStockByGoodsPackageSaleStatusOnSaleUpdate">
+		/* itemStockByGoodsSaleStatus.itemErpStockByGoodsPackageSaleStatusOnSaleUpdate */
+		UPDATE IL_GOODS UPDATE_IG SET SALE_STATUS = #{chgSaleStatus}
+		WHERE
+			EXISTS (
+				SELECT
+					DISTINCT PACKAGE_GOODS_ID
+				FROM
+				(
+					SELECT
+						IGPGM.IL_GOODS_ID AS PACKAGE_GOODS_ID
+					,	IIW.IL_ITEM_WAREHOUSE_ID
+					,	ROW_NUMBER() OVER (PARTITION BY IGPGM.IL_GOODS_ID ORDER BY IIW.IL_ITEM_WAREHOUSE_ID) AS GROUP_SEQUENCE
+					,	IG.IL_GOODS_ID
+					,	IG.GOODS_TP
+					,	II.IL_ITEM_CD
+					,	SUM(IGPGM.GOODS_QTY) AS GOODS_QTY
+					,	CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+						ELSE IIS.ORDER_DISCARD_QTY END STOCK_QTY
+					,	CASE WHEN
+							CASE WHEN IG.GOODS_TP != 'GOODS_TYPE.DISPOSAL' THEN IIS.ORDER_QTY
+							ELSE IIS.ORDER_DISCARD_QTY END &gt;= SUM(IGPGM.GOODS_QTY) THEN 1
+						ELSE 0
+						END AS STOCK_CHK
+					FROM
+						IL_GOODS UPT_IG
+					INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+					INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+					INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+					INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+					INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+					INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+					INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+					LEFT JOIN (
+						SELECT
+							IL_ITEM_WAREHOUSE_ID
+						,	SUM(D0_ORDER_QTY+D1_ORDER_QTY+D2_ORDER_QTY+D3_ORDER_QTY+D4_ORDER_QTY+D5_ORDER_QTY+D6_ORDER_QTY+D7_ORDER_QTY+D8_ORDER_QTY
+								+D9_ORDER_QTY+D10_ORDER_QTY+D11_ORDER_QTY+D12_ORDER_QTY+D13_ORDER_QTY+D14_ORDER_QTY+D15_ORDER_QTY) AS ORDER_QTY
+						,	SUM(D0_ORDER_DISCARD_QTY) AS ORDER_DISCARD_QTY
+						FROM
+							IL_ITEM_STOCK
+						WHERE DATE_FORMAT(#{baseDate}, '%Y-%m-%d') = BASE_DT
+						GROUP BY
+							IL_ITEM_WAREHOUSE_ID
+					) IIS ON IIS.IL_ITEM_WAREHOUSE_ID = IIW.IL_ITEM_WAREHOUSE_ID
+					WHERE
+						UW.STOCK_ORDER_YN = 'Y'
+					AND IG.GOODS_TP != #{goodsType}
+					AND UPT_IG.SALE_STATUS = #{saleStatus}
+					GROUP BY
+						IGPGM.IL_GOODS_ID
+					,	IIW.IL_ITEM_WAREHOUSE_ID
+					,	CASE
+							WHEN IG.GOODS_TP = 'GOODS_TYPE.DISPOSAL' THEN 1
+							ELSE 0
+						END
+				) GOODS_STOCK_CHK
+				WHERE GOODS_STOCK_CHK.PACKAGE_GOODS_ID = UPDATE_IG.IL_GOODS_ID
+				GROUP BY GOODS_STOCK_CHK.PACKAGE_GOODS_ID
+				HAVING
+					MAX(GOODS_STOCK_CHK.GROUP_SEQUENCE) = SUM(STOCK_CHK)
+			)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 재고미연동(한정재고) 기준
+	 * 묶음상품의 모든 구성품(증정품 포함)의 수량이 1이상인지 확인
+	 * 재고미연동(한정재고)의 경우에는 IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT 수량 기준
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.24   임상건   최초생성
+	 * @ 2021.03.24   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 모든 구성상품의 재고 수량이 구성 수량보다 크거나 같을때 판매중 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목출고처의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="itemStockByGoodsPackageSaleStatusOnSaleNum" resultType="Integer">
+		/* itemStockByGoodsSaleStatus.itemStockByGoodsPackageSaleStatusOnSaleNum */
+		SELECT
+			COUNT(PACKAGE_GOODS_ID) AS IL_GOODS_ID_NUM
+		FROM
+		(
+			SELECT
+				DISTINCT GOODS_STOCK_CHK.PACKAGE_GOODS_ID
+			FROM
+			(
+				SELECT
+					UPT_IG.IL_GOODS_ID AS PACKAGE_GOODS_ID
+				,	IG.IL_GOODS_ID
+				,	IIW.IL_ITEM_WAREHOUSE_ID
+				,	IIW.NOT_IF_STOCK_CNT
+				,	ROW_NUMBER() OVER (PARTITION BY UPT_IG.IL_GOODS_ID ORDER BY IG.IL_GOODS_ID) AS GROUP_SEQUENCE
+				,	CASE
+						WHEN IIW.NOT_IF_STOCK_CNT &gt;= SUM(IGPGM.GOODS_QTY) THEN 1
+						WHEN IIW.UNLIMIT_STOCK_YN = 'Y' THEN 1
+					ELSE
+						0
+					END AS STOCK_CHK
+				FROM
+					IL_GOODS UPT_IG
+				INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+				INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+				INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+				INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+				INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+				INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+				INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+				INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+				WHERE
+					UW.STOCK_ORDER_YN = 'N'
+				AND IG.GOODS_TP != #{goodsType}
+				AND UPT_IG.SALE_STATUS = #{saleStatus}
+				GROUP BY UPT_IG.IL_GOODS_ID, II.IL_ITEM_CD, IIW.IL_ITEM_WAREHOUSE_ID
+			) GOODS_STOCK_CHK
+			GROUP BY
+				GOODS_STOCK_CHK.PACKAGE_GOODS_ID
+			HAVING
+				MAX(GOODS_STOCK_CHK.GROUP_SEQUENCE) = SUM(STOCK_CHK)
+		) GOODS_STOCK
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 재고미연동(한정재고) 기준
+	 * 묶음상품의 모든 구성품(증정품 포함)의 수량 상태를 보고 모두 다 1 이상이어야 판매중으로 변경 처리
+	 * 재고미연동(한정재고)의 경우에는 IL_ITEM_WAREHOUSE.NOT_IF_STOCK_CNT 수량 기준
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.24   임상건   최초생성
+	 * @ 2021.03.24   임상건   수정
+	 * @ 1. 묶음상품은 재고 수량 0일때가 아니고, 모든 구성상품의 재고 수량이 구성 수량보다 크거나 같을때 판매중 처리를 진행해야 함
+	 * @ 2. 같은 품목출고처를 가진 상품이 있다면(일반상품, 폐기임박상품, 증정품이 같은 품목을 바라볼때) 품목출고처의 재고 수량과 구성상품의 구성수량합을 비교해야 함.
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="itemStockByGoodsPackageSaleStatusOnSaleUpdate">
+		/* itemStockByGoodsSaleStatus.itemStockByGoodsPackageSaleStatusOnSaleUpdate */
+		UPDATE IL_GOODS UPDATE_IG SET SALE_STATUS = #{chgSaleStatus}
+		WHERE
+			EXISTS (
+				SELECT
+					GOODS_STOCK_CHK.PACKAGE_GOODS_ID
+				,	MAX(GOODS_STOCK_CHK.GROUP_SEQUENCE) AS MAX_GROUP_SEQUENCE
+				,	SUM(STOCK_CHK) AS SUM_STOCK_CHK
+				FROM
+				(
+					SELECT
+						UPT_IG.IL_GOODS_ID AS PACKAGE_GOODS_ID
+					,	IG.IL_GOODS_ID
+					,	IIW.IL_ITEM_WAREHOUSE_ID
+					,	IIW.NOT_IF_STOCK_CNT
+					,	ROW_NUMBER() OVER (PARTITION BY UPT_IG.IL_GOODS_ID ORDER BY IG.IL_GOODS_ID) AS GROUP_SEQUENCE
+					,	CASE
+							WHEN IIW.NOT_IF_STOCK_CNT &gt;= SUM(IGPGM.GOODS_QTY) THEN 1
+							WHEN IIW.UNLIMIT_STOCK_YN = 'Y' THEN 1
+						ELSE
+							0
+						END AS STOCK_CHK
+					FROM
+						IL_GOODS UPT_IG
+					INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+					INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+					INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+					INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+					INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+					INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID AND IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+					INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+					INNER JOIN UR_COMPANY UC ON UC.UR_COMPANY_ID = US.UR_COMPANY_ID
+					WHERE
+						UW.STOCK_ORDER_YN = 'N'
+					AND IG.GOODS_TP != #{goodsType}
+					AND UPT_IG.SALE_STATUS = #{saleStatus}
+					GROUP BY UPT_IG.IL_GOODS_ID, II.IL_ITEM_CD, IIW.IL_ITEM_WAREHOUSE_ID
+				) GOODS_STOCK_CHK
+				WHERE GOODS_STOCK_CHK.PACKAGE_GOODS_ID = UPDATE_IG.IL_GOODS_ID
+				GROUP BY
+					GOODS_STOCK_CHK.PACKAGE_GOODS_ID
+				HAVING
+					MAX(GOODS_STOCK_CHK.GROUP_SEQUENCE) = SUM(STOCK_CHK)
+			)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 묶음상품의 구성품중에 하나라도 '판매중' 상태가 아닌 묶음상품 갯수
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.24   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="goodsSaleStatusByGoodsPackageSaleStatusNum" resultType="Integer">
+		/* itemStockByGoodsSaleStatus.goodsSaleStatusByGoodsPackageSaleStatusNum */
+		SELECT
+			COUNT(DISTINCT UPT_IG.IL_GOODS_ID) AS IL_GOODS_ID_NUM
+		FROM
+			IL_GOODS UPT_IG
+		INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+		INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+		WHERE
+			UPT_IG.SALE_STATUS = 'SALE_STATUS.ON_SALE'
+			AND IG.SALE_STATUS NOT IN ('SALE_STATUS.ON_SALE', 'SALE_STATUS.WAIT')
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * (묶음상품 대상)
+	 * description : 묶음상품의 구성품중에 하나라도 '판매중' 상태가 아니라면 묶음상품도 '판매중지(시스템)' 처리
+	 * @
+	 * @ 수정일       수정자   수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.24   임상건   최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="goodsSaleStatusByGoodsPackageSaleStatusUpdate">
+		/* itemStockByGoodsSaleStatus.goodsSaleStatusByGoodsPackageSaleStatusUpdate */
+		UPDATE IL_GOODS AS UPDATE_IG,
+		(
+			SELECT
+				DISTINCT UPT_IG.IL_GOODS_ID
+			FROM
+				IL_GOODS UPT_IG
+			INNER JOIN IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM ON IGPGM.IL_GOODS_ID = UPT_IG.IL_GOODS_ID
+			INNER JOIN IL_GOODS IG ON IG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+			WHERE
+				UPT_IG.SALE_STATUS = 'SALE_STATUS.ON_SALE'
+			AND IG.SALE_STATUS NOT IN ('SALE_STATUS.ON_SALE', 'SALE_STATUS.WAIT')
+		) AS NOT_ON_SALE_GOODS
+		SET
+			UPDATE_IG.SALE_STATUS = 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM'
+		WHERE
+			UPDATE_IG.IL_GOODS_ID = NOT_ON_SALE_GOODS.IL_GOODS_ID
+	</update>
+</mapper>

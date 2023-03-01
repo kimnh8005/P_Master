@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.po.BatchGoodsPoSearchMapper">
+
+   <!--───────────────────────────────────────────────────────────────────────
+	 * description   : 공급처 조회
+	 * @
+	 * @ 수정일                 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.2.17     이성준         최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUrSupplierId" resultType="Integer">
+	/* goodsPoSearch.getUrSupplierId */
+	SELECT UR_SUPPLIER_ID
+	  FROM IL_ITEM
+	 WHERE IL_ITEM_CD = #{ilItemCd}
+	</select>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description   : 발주유형 저장
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.17  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPoSearch">
+    /* goodsPoSearch.addPoSearch */
+		INSERT INTO IL_PO_TP_IF_TEMP
+		(
+			 UR_SUPPLIER_ID
+			, PO_TP_NM
+			, PO_TP
+			, TEMPLATE_YN
+			, IL_ITEM_CD
+			, PO_SUN_YN
+			, PO_MON_YN
+			, PO_TUE_YN
+			, PO_WED_YN
+			, PO_THU_YN
+			, PO_FRI_YN
+			, PO_SAT_YN
+			, SCHEDULED_SUN
+			, SCHEDULED_MON
+			, SCHEDULED_TUE
+			, SCHEDULED_WED
+			, SCHEDULED_THU
+			, SCHEDULED_FRI
+			, SCHEDULED_SAT
+			, MOVE_REQ_SUN
+			, MOVE_REQ_MON
+			, MOVE_REQ_TUE
+			, MOVE_REQ_WED
+			, MOVE_REQ_THU
+			, MOVE_REQ_FRI
+			, MOVE_REQ_SAT
+			, PO_REQ_SUN
+			, PO_REQ_MON
+			, PO_REQ_TUE
+			, PO_REQ_WED
+			, PO_REQ_THU
+			, PO_REQ_FRI
+			, PO_REQ_SAT
+			, PO_PER_ITEM_YN
+			, PO_DEADLINE_HOUR
+			, PO_DEADLINE_MIN
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			IPT.UR_SUPPLIER_ID
+			, #{poTpNm} AS PO_TP_NM
+			, IPT.PO_TP
+			, 'N'
+			, #{ilItemCd} AS IL_ITEM_CD
+			, #{poSunYn} AS PO_SUN_YN
+			, #{poMonYn} AS PO_MON_YN
+			, #{poTueYn} AS PO_TUE_YN
+			, #{poWedYn} AS PO_WED_YN
+			, #{poThuYn} AS PO_THU_YN
+			, #{poFriYn} AS PO_FRI_YN
+			, #{poSatYn} AS PO_SAT_YN
+			, #{scheduledSun} AS SCHEDULED_SUN
+			, #{scheduledMon} AS SCHEDULED_MON
+			, #{scheduledTue} AS SCHEDULED_TUE
+			, #{scheduledWed} AS SCHEDULED_WED
+			, #{scheduledThu} AS SCHEDULED_THU
+			, #{scheduledFri} AS SCHEDULED_FRI
+			, #{scheduledSat} AS SCHEDULED_SAT
+			, #{moveReqSun} AS MOVE_REQ_SUN
+			, #{moveReqMon} AS MOVE_REQ_MON
+			, #{moveReqTue} AS MOVE_REQ_TUE
+			, #{moveReqWed} AS MOVE_REQ_WED
+			, #{moveReqThu} AS MOVE_REQ_THU
+			, #{moveReqFri} AS MOVE_REQ_FRI
+			, #{moveReqSat} AS MOVE_REQ_SAT
+			, #{poReqSun} AS PO_REQ_SUN
+			, #{poReqMon} AS PO_REQ_MON
+			, #{poReqTue} AS PO_REQ_TUE
+			, #{poReqWed} AS PO_REQ_WED
+			, #{poReqThu} AS PO_REQ_THU
+			, #{poReqFri} AS PO_REQ_FRI
+			, #{poReqSat} AS PO_REQ_SAT
+			, 'Y'
+			, IPT.PO_DEADLINE_HOUR
+			, IPT.PO_DEADLINE_MIN
+			, 0
+			, NOW()
+		FROM
+			IL_PO_TP IPT
+			INNER JOIN UR_SUPPLIER US
+				ON US.UR_SUPPLIER_ID = IPT.UR_SUPPLIER_ID
+		WHERE
+			US.SUPPLIER_CD = 'OG'
+			AND IPT.TEMPLATE_YN = 'Y'
+			AND IPT.PO_PER_ITEM_YN = 'Y'
+			AND IPT.PO_TP = 'PO_TYPE.PRODUCTION'
+			AND IPT.ERP_PO_TP = 'ERP_PO_TP.R2'
+		LIMIT 1
+    </insert>
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description   : 발주유형 Merge
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.22  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPoSearchMerge">
+    /* goodsPoSearch.addPoSearchMerge */
+		INSERT INTO IL_PO_TP (
+			UR_SUPPLIER_ID
+			, PO_TP_NM
+			, PO_TP
+			, TEMPLATE_YN
+			, ERP_PO_TP
+			, IL_ITEM_CD
+			, PO_SUN_YN
+			, PO_MON_YN
+			, PO_TUE_YN
+			, PO_WED_YN
+			, PO_THU_YN
+			, PO_FRI_YN
+			, PO_SAT_YN
+			, SCHEDULED_SUN
+			, SCHEDULED_MON
+			, SCHEDULED_TUE
+			, SCHEDULED_WED
+			, SCHEDULED_THU
+			, SCHEDULED_FRI
+			, SCHEDULED_SAT
+			, MOVE_REQ_SUN
+			, MOVE_REQ_MON
+			, MOVE_REQ_TUE
+			, MOVE_REQ_WED
+			, MOVE_REQ_THU
+			, MOVE_REQ_FRI
+			, MOVE_REQ_SAT
+			, PO_REQ_SUN
+			, PO_REQ_MON
+			, PO_REQ_TUE
+			, PO_REQ_WED
+			, PO_REQ_THU
+			, PO_REQ_FRI
+			, PO_REQ_SAT
+			, PO_PER_ITEM_YN
+			, PO_DEADLINE_HOUR
+			, PO_DEADLINE_MIN
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT
+			*
+		FROM (
+			SELECT
+				T.UR_SUPPLIER_ID AS UR_SUPPLIER_ID
+				, T.PO_TP_NM AS PO_TP_NM
+				, T.PO_TP AS PO_TP
+				, T.TEMPLATE_YN AS TEMPLATE_YN
+				, T.ERP_PO_TP AS ERP_PO_TP
+				, T.IL_ITEM_CD AS IL_ITEM_CD
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN T.PO_SUN_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_SUN_YN, 'N')
+					ELSE 'N'
+				END AS PO_SUN_YN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN T.PO_MON_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_MON_YN, 'N')
+					ELSE 'N'
+				END AS PO_MON_YN
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN T.PO_TUE_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_TUE_YN, 'N')
+					ELSE 'N'
+				END AS PO_TUE_YN
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN T.PO_WED_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_WED_YN, 'N')
+					ELSE 'N'
+				END AS PO_WED_YN
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN T.PO_THU_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_THU_YN, 'N')
+					ELSE 'N'
+				END AS PO_THU_YN
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN T.PO_FRI_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_FRI_YN, 'N')
+					ELSE 'N'
+				END AS PO_FRI_YN
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN T.PO_SAT_YN
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_SAT_YN, 'N')
+					ELSE 'N'
+				END AS PO_SAT_YN
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_SUN, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_SUN, 0)
+					ELSE 0
+				END AS SCHEDULED_SUN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_MON, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_MON, 0)
+					ELSE 0
+				END AS SCHEDULED_MON
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_TUE, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_TUE, 0)
+					ELSE 0
+				END AS SCHEDULED_TUE
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_WED, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_WED, 0)
+					ELSE 0
+				END AS SCHEDULED_WED
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_THU, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_THU, 0)
+					ELSE 0
+				END AS SCHEDULED_THU
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_FRI, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_FRI, 0)
+					ELSE 0
+				END AS SCHEDULED_FRI
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN IFNULL(T.SCHEDULED_SAT, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.SCHEDULED_SAT, 0)
+					ELSE 0
+				END AS SCHEDULED_SAT
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_SUN, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_SUN, 0)
+					ELSE 0
+				END AS MOVE_REQ_SUN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_MON, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_MON, 0)
+					ELSE 0
+				END AS MOVE_REQ_MON
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_TUE, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_TUE, 0)
+					ELSE 0
+				END AS MOVE_REQ_TUE
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_WED, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_WED, 0)
+					ELSE 0
+				END AS MOVE_REQ_WED
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_THU, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_THU, 0)
+					ELSE 0
+				END AS MOVE_REQ_THU
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_FRI, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_FRI, 0)
+					ELSE 0
+				END AS MOVE_REQ_FRI
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN IFNULL(T.MOVE_REQ_SAT, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.MOVE_REQ_SAT, 0)
+					ELSE 0
+				END AS MOVE_REQ_SAT
+				, CASE
+					WHEN T.PO_SUN_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_SUN, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_SUN, 0)
+					ELSE 0
+				END AS PO_REQ_SUN
+				, CASE
+					WHEN T.PO_MON_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_MON, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_MON, 0)
+					ELSE 0
+				END AS PO_REQ_MON
+				, CASE
+					WHEN T.PO_TUE_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_TUE, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_TUE, 0)
+					ELSE 0
+				END AS PO_REQ_TUE
+				, CASE
+					WHEN T.PO_WED_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_WED, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_WED, 0)
+					ELSE 0
+				END AS PO_REQ_WED
+				, CASE
+					WHEN T.PO_THU_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_THU, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_THU, 0)
+					ELSE 0
+				END AS PO_REQ_THU
+				, CASE
+					WHEN T.PO_FRI_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_FRI, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_FRI, 0)
+					ELSE 0
+				END AS PO_REQ_FRI
+				, CASE
+					WHEN T.PO_SAT_YN IN ('Y', 'N') THEN IFNULL(T.PO_REQ_SAT, 0)
+					WHEN IPT.IL_PO_TP_ID IS NOT NULL THEN IFNULL(IPT.PO_REQ_SAT, 0)
+					ELSE 0
+				END AS PO_REQ_SAT
+				, T.PO_PER_ITEM_YN AS PO_PER_ITEM_YN
+				, T.PO_DEADLINE_HOUR AS PO_DEADLINE_HOUR
+				, T.PO_DEADLINE_MIN AS PO_DEADLINE_MIN
+				, T.CREATE_ID AS CREATE_ID
+				, T.CREATE_DT AS CREATE_DT
+			FROM (
+				SELECT
+					UR_SUPPLIER_ID
+					, PO_TP_NM
+					, PO_TP
+					, TEMPLATE_YN
+					, ERP_PO_TP
+					, IL_ITEM_CD
+					, MAX(PO_SUN_YN) AS PO_SUN_YN
+					, MAX(PO_MON_YN) AS PO_MON_YN
+					, MAX(PO_TUE_YN) AS PO_TUE_YN
+					, MAX(PO_WED_YN) AS PO_WED_YN
+					, MAX(PO_THU_YN) AS PO_THU_YN
+					, MAX(PO_FRI_YN) AS PO_FRI_YN
+					, MAX(PO_SAT_YN) AS PO_SAT_YN
+					, MAX(SCHEDULED_SUN) AS SCHEDULED_SUN
+					, MAX(SCHEDULED_MON) AS SCHEDULED_MON
+					, MAX(SCHEDULED_TUE) AS SCHEDULED_TUE
+					, MAX(SCHEDULED_WED) AS SCHEDULED_WED
+					, MAX(SCHEDULED_THU) AS SCHEDULED_THU
+					, MAX(SCHEDULED_FRI) AS SCHEDULED_FRI
+					, MAX(SCHEDULED_SAT) AS SCHEDULED_SAT
+					, MAX(MOVE_REQ_SUN) AS MOVE_REQ_SUN
+					, MAX(MOVE_REQ_MON) AS MOVE_REQ_MON
+					, MAX(MOVE_REQ_TUE) AS MOVE_REQ_TUE
+					, MAX(MOVE_REQ_WED) AS MOVE_REQ_WED
+					, MAX(MOVE_REQ_THU) AS MOVE_REQ_THU
+					, MAX(MOVE_REQ_FRI) AS MOVE_REQ_FRI
+					, MAX(MOVE_REQ_SAT) AS MOVE_REQ_SAT
+					, MAX(PO_REQ_SUN) AS PO_REQ_SUN
+					, MAX(PO_REQ_MON) AS PO_REQ_MON
+					, MAX(PO_REQ_TUE) AS PO_REQ_TUE
+					, MAX(PO_REQ_WED) AS PO_REQ_WED
+					, MAX(PO_REQ_THU) AS PO_REQ_THU
+					, MAX(PO_REQ_FRI) AS PO_REQ_FRI
+					, MAX(PO_REQ_SAT) AS PO_REQ_SAT
+					, PO_PER_ITEM_YN
+					, PO_DEADLINE_HOUR
+					, PO_DEADLINE_MIN
+					, CREATE_ID
+					, CREATE_DT
+				FROM
+					IL_PO_TP_IF_TEMP
+				GROUP BY UR_SUPPLIER_ID, PO_TP_NM
+			) T
+			LEFT JOIN IL_PO_TP IPT
+				ON IPT.IL_ITEM_CD = T.IL_ITEM_CD
+		) TT
+		ON DUPLICATE KEY
+		UPDATE
+			PO_SUN_YN = TT.PO_SUN_YN
+			, PO_MON_YN = TT.PO_MON_YN
+			, PO_TUE_YN = TT.PO_TUE_YN
+			, PO_WED_YN = TT.PO_WED_YN
+			, PO_THU_YN = TT.PO_THU_YN
+			, PO_FRI_YN = TT.PO_FRI_YN
+			, PO_SAT_YN = TT.PO_SAT_YN
+			, SCHEDULED_SUN = TT.SCHEDULED_SUN
+			, SCHEDULED_MON = TT.SCHEDULED_MON
+			, SCHEDULED_TUE = TT.SCHEDULED_TUE
+			, SCHEDULED_WED = TT.SCHEDULED_WED
+			, SCHEDULED_THU = TT.SCHEDULED_THU
+			, SCHEDULED_FRI = TT.SCHEDULED_FRI
+			, SCHEDULED_SAT = TT.SCHEDULED_SAT
+			, MOVE_REQ_SUN = TT.MOVE_REQ_SUN
+			, MOVE_REQ_MON = TT.MOVE_REQ_MON
+			, MOVE_REQ_TUE = TT.MOVE_REQ_TUE
+			, MOVE_REQ_WED = TT.MOVE_REQ_WED
+			, MOVE_REQ_THU = TT.MOVE_REQ_THU
+			, MOVE_REQ_FRI = TT.MOVE_REQ_FRI
+			, MOVE_REQ_SAT = TT.MOVE_REQ_SAT
+			, PO_REQ_SUN = TT.PO_REQ_SUN
+			, PO_REQ_MON = TT.PO_REQ_MON
+			, PO_REQ_TUE = TT.PO_REQ_TUE
+			, PO_REQ_WED = TT.PO_REQ_WED
+			, PO_REQ_THU = TT.PO_REQ_THU
+			, PO_REQ_FRI = TT.PO_REQ_FRI
+			, PO_REQ_SAT = TT.PO_REQ_SAT
+			, MODIFY_ID = 0
+			, MODIFY_DT = NOW()
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 발주유형 tepm삭제
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.22  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delPoSearch">
+    /* goodsPoSearch.delPoSearch */
+		DELETE FROM IL_PO_TP_IF_TEMP
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 품목에 배치에 의한 품목별 발주유형 일괄 업데이트
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.23  원종한         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putItemPoTpByBatch">
+    /* goodsPoSearch.putItemPoTpByBatch */
+		UPDATE
+			IL_ITEM_WAREHOUSE IIW
+			INNER JOIN IL_PO_TP IPTO
+				ON IPTO.IL_PO_TP_ID = IIW.IL_PO_TP_ID
+				AND IPTO.PO_PER_ITEM_YN = 'Y'
+			INNER JOIN IL_PO_TP IPTN
+				ON IPTN.IL_ITEM_CD = IIW.IL_ITEM_CD
+		SET
+			IIW.IL_PO_TP_ID = IPTN.IL_PO_TP_ID
+	</update>
+
+</mapper>

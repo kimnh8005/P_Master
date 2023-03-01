@@ -1,0 +1,737 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.search.GoodsSearchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품정보 검색 - 체험단용
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.24		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.search.dto.vo.GoodsSearchExperienceVo" id="getGoodsSearchExperienceMap">
+		<result column="IL_GOODS_ID"  property="goodsId" />
+		<result column="GOODS_NAME"  property="goodsName"  />
+		<result column="GOODS_DESC"  property="goodsDesc" />
+		<result column="GOODS_IMG_PATH"  property="thumbnailPath"  />
+		<result column="IS_NEW_GOODS"  property="isNewGoods" />
+		<result column="IS_RECOMMENDED_GOODS"  property="isRecommendedGoods"  />
+		<result column="IS_BEST_GOODS"  property="isBestGoods" />
+	</resultMap>
+
+	<select id="getGoodsSearchExperience" resultMap="getGoodsSearchExperienceMap">
+		/*	goodsSearch.getGoodsSearchExperience	*/
+		SELECT
+			CONCAT(R2.GOODS_NM, ' ', R2.SIZE_UNIT) AS GOODS_NAME
+			, R2.*
+			FROM (
+				SELECT
+					R.*
+					, IF(A.PACKAGE_UNIT_DISP_YN = 'Y', IF(A.GOODS_TP = 'GOODS_TYPE.PACKAGE', CONCAT('(',A.PACKAGE_UNIT_DESC,')'), CONCAT('(', CAST(B.SIZE_PER_PACKAGE AS float),
+                     CASE
+                        WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+                        ELSE FN_COMN_CODE_DIC(B.SIZE_UNIT)
+                      END
+                   , IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+                      CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+                           ELSE FN_COMN_CODE_DIC(B.PACKAGE_UNIT)
+                      END
+                     ), ''), ')'
+                    )), '') AS SIZE_UNIT
+					, IFNULL((SELECT FF.SATISFACTION_SCORE FROM FB_FEEDBACK_TOTAL FF WHERE FF.IL_GOODS_ID = R.IL_GOODS_ID), 0) AS SATISFACTION_SCORE
+				FROM (
+                    SELECT
+                        A.IL_GOODS_ID
+                        , A.GOODS_NM
+                        , A.GOODS_DESC
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                        CASE WHEN A.GOODS_PACKAGE_IMG_TP = 'GOODS_PACKAGE_IMG_TP.NORMAL_GOODS' THEN ITM_IMG.MS_IMG ELSE IMG.MS_IMG END
+                        ELSE ITM_IMG.MS_IMG
+                        END AS GOODS_IMG_PATH
+                        , CASE WHEN A.CREATE_DT > DATE_ADD(now(), INTERVAL -1 QUARTER) THEN true ELSE false END  AS IS_NEW_GOODS
+                        , CASE WHEN A.MD_RECOMMEND_YN = 'Y' THEN true ELSE false END IS_RECOMMENDED_GOODS
+                        , (SELECT EXISTS(SELECT 1 FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND IGR.BEST_YN = 'Y')) AS IS_BEST_GOODS
+                    FROM  IL_GOODS A
+                        LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = A.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+                        LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = A.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+                    WHERE A.IL_GOODS_ID = #{ilGoodsId}
+                ) R
+                JOIN IL_GOODS A ON R.IL_GOODS_ID = A.IL_GOODS_ID
+                JOIN IL_ITEM B ON B.IL_ITEM_CD = A.IL_ITEM_CD
+		) R2
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품아이디로 상품리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.01		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="searchGoodsByGoodsIdListResultMap" type="kr.co.pulmuone.v1.search.searcher.dto.GoodsSearchResultDto">
+        <result column="IL_GOODS_ID" property="goodsId" />
+        <result column="GOODS_NAME" property="goodsName" />
+        <result column="GOODS_FULL_NAME" property="goodsFullName" />
+        <result column="GOODS_TP" property="goodsType" />
+        <result column="PROMOTION_NAME" property="promotionName" />
+        <result column="SIZE_UNIT" property="sizeUnit" />
+        <result column="CREATE_DT" property="createDateTime" />
+        <result column="GOODS_IMG_PATH" property="thumbnailPath" />
+        <result column="UR_SUPPLIER_ID"  property="supplierId" />
+        <result column="DP_BRAND_ID" property="brandId" />
+        <result column="DP_BRAND_NM" property="brandName" />
+        <result column="BRAND_PAVILION_YN" property="brandPavilionYn" />
+        <result column="SUPPLIER_ORGA_YN" property="supplierOrgaYn" />
+        <result column="LEV3_CATEGORY_ID" property="lev3CategoryId" />
+        <result column="LEV2_CATEGORY_ID" property="lev2CategoryId" />
+        <result column="LEV1_CATEGORY_ID" property="lev1CategoryId" />
+        <result column="SALE_PRICE" property="salePrice" />
+        <result column="RECOMMENDED_PRICE" property="recommendedPrice" />
+        <result column="DISCOUNT_RATE" property="discountRate" />
+        <result column="EMPLOYEE_SALE_PRICE" property="employeeDiscountPrice" />
+        <result column="EMPLOYEE_DISCOUNT_RATE" property="employeeDiscountRate" />
+        <result column="SALE_STATUS" property="statusCode" />
+        <result column="MALL_ID" property="mallId" />
+        <result column="IS_NEW_GOODS" property="isNewGoods" />
+        <result column="IS_BEST_GOODS" property="isBestGoods" />
+        <result column="IS_RECOMMENDED_GOODS" property="isRecommendedGoods" />
+        <result column="HAS_GIFT" property="hasGift" />
+        <result column="AVAILABLE_COUPON" property="availableCoupon" />
+        <result column="PURCHASE_TARGET_TP" property="purchaseTargetType" />
+        <result column="PURCHASE_NONMEMBER_YN" property="purchaseNonMemberYn" />
+        <result column="PURCHASE_EMPLOYEE_YN" property="purchaseEmployeeYn" />
+        <result column="PURCHASE_MEMBER_YN" property="purchaseMemberYn" />
+        <result column="DISP_WEB_PC_YN" property="displayPcYn" />
+        <result column="DISP_WEB_MOBILE_YN" property="displayMobileYn" />
+        <result column="DISP_APP_YN" property="displayAppYn" />
+        <result column="SATISFACTION_SCORE" property="satisfactionScore" />
+        <result column="IS_FREE_SHIPPING_GOODS" property="isFreeShippingGoods" />
+        <result column="GOODS_DESC" property="goodsDescription" />
+        <result column="IL_ITEM_CD" property="itemCd" />
+        <result column="DISCOUNT_TP" property="discountType" />
+    </resultMap>
+    <select id="searchGoodsByGoodsIdList" resultMap="searchGoodsByGoodsIdListResultMap">
+	    /* goodsSearch.searchGoodsByGoodsIdList */
+        SELECT
+                IFNULL(CONCAT(R2.GOODS_NM, ' ', R2.SIZE_UNIT), R2.GOODS_NM) AS GOODS_NAME
+              , CONCAT(IF(R2.GOODS_TP = 'GOODS_TYPE.RENTAL',CONCAT('[렌탈]',IF(IFNULL(R2.PROMOTION_NAME,'') = '', ' ', '')),''), IFNULL(R2.PROMOTION_NAME,''), R2.GOODS_NM, IFNULL(CONCAT(' ', R2.SIZE_UNIT),'')) AS GOODS_FULL_NAME
+              , IF(R2.GOODS_TP = 'GOODS_TYPE.RENTAL', R2.SALE_PRICE, R2.EMPLOYEE_SALE_PRICE_S) AS EMPLOYEE_SALE_PRICE
+              , IF(R2.GOODS_TP = 'GOODS_TYPE.RENTAL', R2.DISCOUNT_RATE, R2.EMPLOYEE_DISCOUNT_RATE_S) AS EMPLOYEE_DISCOUNT_RATE
+              , R2.*
+        FROM (
+                    SELECT
+                          A.IL_GOODS_ID
+                        , A.GOODS_NM
+                        , IF(NOW() BETWEEN A.PROMOTION_NM_START_DT AND A.PROMOTION_NM_END_DT,
+                             IF(A.PROMOTION_NM IS NULL OR TRIM(A.PROMOTION_NM) = '', '', CONCAT('[', A.PROMOTION_NM, '] ')), '') AS PROMOTION_NAME
+                        , A.IL_ITEM_CD
+                        , A.GOODS_TP
+                        , A.SALE_TP
+                        , A.GOODS_DESC
+                        , IFNULL((SELECT FF.SATISFACTION_SCORE FROM FB_FEEDBACK_TOTAL FF WHERE FF.IL_GOODS_ID = A.IL_GOODS_ID), 0) AS SATISFACTION_SCORE
+		                , IF(A.PACKAGE_UNIT_DISP_YN = 'Y', IF(A.GOODS_TP = 'GOODS_TYPE.PACKAGE', CONCAT('(',A.PACKAGE_UNIT_DESC,')'), CONCAT('(', CAST(B.SIZE_PER_PACKAGE AS float),
+		                     CASE
+		                        WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+		                        ELSE IFNULL(DIC_UNIT_TYPE.DIC_MST_NM, '')
+		                      END
+		                   , IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+		                      CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+		                           ELSE IFNULL(DIC_PACKEAGE_UNIT_TYPE.DIC_MST_NM, '')
+		                      END
+		                     ), ''), ')'
+		                    )), '') AS SIZE_UNIT
+                        , A.SALE_STATUS
+                        , A.CREATE_DT
+                        , A.PURCHASE_TARGET_TP
+                        , A.PURCHASE_NONMEMBER_YN
+                        , A.PURCHASE_EMPLOYEE_YN
+                        , A.PURCHASE_MEMBER_YN
+                        , A.DISP_WEB_PC_YN
+                        , A.DISP_WEB_MOBILE_YN
+                        , A.DISP_APP_YN
+                        , IF( (
+	                        		SELECT COUNT(*)
+		                        		FROM EV_EXHIBIT EE
+						                INNER JOIN EV_EXHIBIT_GIFT EEG ON EE.EV_EXHIBIT_ID = EEG.EV_EXHIBIT_ID
+						                INNER JOIN (
+						                    SELECT EEGTG.EV_EXHIBIT_ID
+						                    FROM EV_EXHIBIT_GIFT_TARGET_GOODS EEGTG
+						                    WHERE EEGTG.IL_GOODS_ID = A.IL_GOODS_ID
+						                UNION ALL
+						                    SELECT EEGTB.EV_EXHIBIT_ID
+						                    FROM EV_EXHIBIT_GIFT_TARGET_BRAND EEGTB
+						                    WHERE EEGTB.BRAND_ID = B.DP_BRAND_ID
+						                ) G_EXHIBIT ON EE.EV_EXHIBIT_ID  = G_EXHIBIT.EV_EXHIBIT_ID
+					                WHERE
+						                EE.USE_YN = 'Y'
+						                AND EE.DEL_YN = 'N'
+						                AND ((NOW() BETWEEN EE.START_DT AND EE.END_DT	AND EE.ALWAYS_YN = 'N') OR EE.ALWAYS_YN = 'Y')
+						                AND EE.EXHIBIT_TP = 'EXHIBIT_TP.GIFT'
+						                AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+                                        AND EEG.GIFT_TP = 'GIFT_TP.GOODS'
+								) > 0
+                        	,true
+                        	, CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+		                        	IF((SELECT COUNT(*) FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP IN('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')) > 0, true, false)
+		                         ELSE false END
+						) AS HAS_GIFT
+                        , CASE WHEN (SELECT COUNT(*) FROM PM_COUPON PCP JOIN PM_COUPON_COVERAGE PCPC ON (PCPC.PM_COUPON_ID = PCP.PM_COUPON_ID)
+							WHERE PCP.COUPON_TP = 'COUPON_TYPE.GOODS' AND PCP.ISSUE_TP = 'PAYMENT_TYPE.GOODS_DETAIL'
+							AND PCPC.COVERAGE_TP = 'APPLYCOVERAGE.GOODS' AND PCPC.INCLUDE_YN = 'Y'
+							AND DATE(NOW()) BETWEEN PCP.ISSUE_START_DT AND PCP.ISSUE_END_DT
+							AND PCP.USE_YN = 'Y'
+							AND PCPC.COVERAGE_ID = A.IL_GOODS_ID
+							LIMIT 0, 1) > 0 THEN true ELSE false END AS AVAILABLE_COUPON
+                        , CASE WHEN A.CREATE_DT > DATE_ADD(now(), INTERVAL -1 QUARTER) THEN true ELSE false END  AS IS_NEW_GOODS
+                        , (SELECT EXISTS(SELECT 1 FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND IGR.BEST_YN = 'Y')) AS IS_BEST_GOODS
+                        , ((100000 -
+	                        <choose>
+	                            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+	                                IFNULL((SELECT RANKING FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND MALL_DIV = #{mallDiv} AND IL_CTGRY_ID = '0'), 100000)
+	                            </when>
+	                            <otherwise>
+	                                 IFNULL((SELECT RANKING FROM IL_GOODS_RANKING IGR WHERE IGR.IL_GOODS_ID = A.IL_GOODS_ID AND MALL_DIV = 'MALL_DIV.PULMUONE' AND IL_CTGRY_ID = '0'), 100000)
+	                            </otherwise>
+	                        </choose>
+                        	) / 100000 ) * 100 AS POPULARITY_SCORE
+                        , CASE WHEN A.MD_RECOMMEND_YN = 'Y' THEN true ELSE false END IS_RECOMMENDED_GOODS
+                        , DB.DP_BRAND_ID
+                        , DB.DP_BRAND_NM
+                        , IFNULL(DB.BRAND_PAVILION_YN,'N') AS BRAND_PAVILION_YN
+                        , IF(G.UR_SUPPLIER_ID = (SELECT B.UR_SUPPLIER_ID FROM UR_COMPANY A JOIN UR_SUPPLIER B ON A.UR_COMPANY_ID = B.UR_COMPANY_ID WHERE B.SUPPLIER_CD = 'OG'), 'Y', 'N') AS SUPPLIER_ORGA_YN  -- 공급업체 올가
+                        , P.RECOMMENDED_PRICE  -- 정상가
+                        , P.SALE_PRICE  -- 판매가
+                        , truncate((CAST(P.RECOMMENDED_PRICE AS SIGNED) - CAST(P.SALE_PRICE AS SIGNED)) / P.RECOMMENDED_PRICE * 100, 0)  AS DISCOUNT_RATE
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+							(
+								SELECT SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)
+									FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+									JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+									JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+									JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+									LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+									LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+									LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                   					LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+									WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+							)
+                        ELSE
+                        	TRUNCATE(CAST(P.RECOMMENDED_PRICE * ((100 - IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                                                                FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                                                                AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT
+                                                                                AND IGD.IL_GOODS_ID = A.IL_GOODS_ID AND IGD.USE_YN = 'Y'
+                                                                              ), IFNULL(BG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1)
+                        END  AS EMPLOYEE_SALE_PRICE_S    -- 임직원할인가 원단위 버림
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+							IFNULL((
+								SELECT TRUNCATE(((SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) - SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0)))/100) AS SIGNED ), -1) * IGPGM.GOODS_QTY)) / SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) * 100), 0)
+									FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+									JOIN IL_GOODS_PRICE TGP ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID AND TGP.USE_YN = 'Y' AND NOW() BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+									JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+									JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+									LEFT JOIN IL_GOODS_DISCOUNT SIGD ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE' AND NOW() BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT AND SIGD.USE_YN = 'Y'
+									LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+									LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                   					LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+									WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID AND IGPGM.GOODS_TP NOT IN('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING')
+							), 0)
+                        ELSE
+                        	IFNULL((  SELECT IGD.DISCOUNT_RATIO
+                                    FROM IL_GOODS_DISCOUNT IGD WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                    AND NOW() BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT AND IGD.IL_GOODS_ID = A.IL_GOODS_ID AND USE_YN = 'Y'
+                                  ), IFNULL(BG.DISCOUNT_RATIO,0) )
+                        END AS EMPLOYEE_DISCOUNT_RATE_S  -- 임직원할인율
+
+                        , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                                  CASE WHEN A.GOODS_PACKAGE_IMG_TP = 'GOODS_PACKAGE_IMG_TP.NORMAL_GOODS' THEN ITM_IMG.MS_IMG ELSE IMG.MS_IMG END
+                               ELSE ITM_IMG.MS_IMG
+                          END AS GOODS_IMG_PATH
+                        , CASE WHEN HH.CONDITION_TP = 'CONDITION_TYPE.1' THEN true ELSE false END IS_FREE_SHIPPING_GOODS
+                        , B.UR_SUPPLIER_ID
+                        , P.DISCOUNT_TP
+                   FROM  IL_ITEM B JOIN IL_GOODS A ON A.IL_ITEM_CD = B.IL_ITEM_CD
+                     JOIN IL_GOODS_PRICE P ON P.IL_GOODS_ID = A.IL_GOODS_ID AND P.USE_YN = 'Y' AND NOW() BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+                     LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = A.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+                     LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = A.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+                     LEFT OUTER JOIN UR_BRAND G ON G.UR_BRAND_ID = B.UR_BRAND_ID AND G.USE_YN = 'Y'
+                     LEFT OUTER JOIN DP_BRAND DB ON DB.DP_BRAND_ID = B.DP_BRAND_ID AND DB.USE_YN = 'Y'
+                     LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND BGB ON G.UR_BRAND_ID = BGB.UR_BRAND_ID
+                     LEFT JOIN PS_EMPL_DISC_BRAND_GRP BG ON BG.PS_EMPL_DISC_BRAND_GRP_ID = BGB.PS_EMPL_DISC_BRAND_GRP_ID
+                     JOIN IL_GOODS_SHIPPING_TEMPLATE H ON H.IL_GOODS_ID = A.IL_GOODS_ID AND H.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID
+                     JOIN IL_SHIPPING_TEMPLATE HH ON HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND HH.DEL_YN = 'N'
+                     LEFT JOIN (
+						SELECT
+							SCC.ST_COMN_CODE_ID
+							, GDM.DIC_MST_NM
+						FROM ST_COMN_CODE SCC
+							INNER JOIN GB_DIC_MST GDM
+								ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+						WHERE
+							SCC.ST_COMN_CODE_MST_CD = 'UNIT_TYPE'
+					) DIC_UNIT_TYPE
+						ON DIC_UNIT_TYPE.ST_COMN_CODE_ID = B.SIZE_UNIT
+					LEFT JOIN (
+						SELECT
+							SCC.ST_COMN_CODE_ID
+							, GDM.DIC_MST_NM
+						FROM ST_COMN_CODE SCC
+							INNER JOIN GB_DIC_MST GDM
+								ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+						WHERE
+							SCC.ST_COMN_CODE_MST_CD = 'UNIT_TYPE'
+					) DIC_PACKEAGE_UNIT_TYPE
+						ON DIC_PACKEAGE_UNIT_TYPE.ST_COMN_CODE_ID = B.PACKAGE_UNIT
+                   WHERE A.SALE_STATUS in ('SALE_STATUS.ON_SALE')
+                     AND A.DISP_YN = 'Y'
+                     AND A.DEL_YN = 'N'
+                     AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+                     AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                     <if test="goodsIdList.size() > 0">
+	                     AND A.IL_GOODS_ID IN
+	                    <foreach collection="goodsIdList" item="goodsId" separator="," open="(" close=")">
+							#{goodsId}
+						</foreach>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceInfo)">
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'PC')">
+								AND A.DISP_WEB_PC_YN = 'Y'
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'MOBILE')">
+								AND A.DISP_WEB_MOBILE_YN = 'Y'
+							</when>
+                            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'APP')">
+                                AND A.DISP_APP_YN = 'Y'
+                            </when>
+						</choose>
+					</if>
+                    <if test="isPurchaseSearch">
+                        <choose>
+                            <when test="isEmployee">
+
+                            </when>
+                            <otherwise>
+                                AND (PURCHASE_MEMBER_YN = 'Y' OR PURCHASE_NONMEMBER_YN = 'Y')
+                            </otherwise>
+                        </choose>
+                    </if>
+                    <if test="exceptShopOnly">
+                        AND A.GOODS_TP != 'GOODS_TYPE.SHOP_ONLY'
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandIdList)">
+                        AND B.DP_BRAND_ID IN
+                        <foreach collection="dpBrandIdList" item="dpBrandId" separator="," open="(" close=")">
+                            #{dpBrandId}
+                        </foreach>
+                    </if>
+        ) R2
+        <trim prefix="ORDER BY">
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'NEW')">
+	        	CREATE_DT DESC
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'LOW_PRICE')">
+	        	SALE_PRICE ASC
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'HIGH_PRICE')">
+	        	SALE_PRICE DESC
+			</if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'HIGH_RATE')">
+                DISCOUNT_RATE DESC
+            </if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'POPULARITY')">
+	        	POPULARITY_SCORE DESC
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'EMPLOYEE_LOW_PRICE')">
+                EMPLOYEE_SALE_PRICE ASC
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'EMPLOYEE_HIGH_PRICE')">
+                EMPLOYEE_SALE_PRICE DESC
+			</if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsSortCode,'HIGH_EMPLOYEE_DISCOUNT_RATE')">
+                EMPLOYEE_DISCOUNT_RATE DESC
+            </if>
+        </trim>
+        <if test="ePage != null and ePage != 0">
+			limit #{sPage}, #{ePage}
+		</if>
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 검색 - 일일배송
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getDailyGoods" resultType="long">
+        /*	goodsSearch.getDailyGoods	*/
+        SELECT IL_GOODS_ID
+        FROM IL_GOODS IG
+        WHERE GOODS_TP = 'GOODS_TYPE.DAILY'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDailyType)">
+                AND GOODS_DAILY_TP = #{goodsDailyType}
+            </if>
+            AND SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+            AND DISP_YN = 'Y'
+            AND DEL_YN = 'N'
+            AND NOW() BETWEEN SALE_START_DT AND SALE_END_DT
+        ORDER BY CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 검색 - 외부몰 주문 Validation 용도
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.19		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="GoodsSearchOutMallResultMap" type="kr.co.pulmuone.v1.goods.search.dto.vo.GoodsSearchOutMallVo">
+        <result column="IL_GOODS_ID" property="goodsId" />
+        <result column="IL_ITEM_CD" property="ilItemCd" />
+        <result column="SALE_STATUS" property="saleStatus" />
+        <result column="UR_WAREHOUSE_ID" property="urWarehouseId" />
+        <result column="GOODS_NO" property="goodsNo" />
+        <result column="GOODS_OUTMALL_SALE_STAT" property="goodsOutmallSaleStat" />
+        <result column="GOODS_OUTMALL_SALE_STAT_UPDATE_YN" property="goodsOutmallSaleStatUpdateYn" />
+        <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+        <result column="UNDELIVERABLE_AREA_TP" property="undeliverableAreaTp" />
+    </resultMap>
+    <select id="getGoodsFromOutMall" resultMap="GoodsSearchOutMallResultMap">
+        /*	goodsSearch.getGoodsFromOutMall	*/
+        SELECT T2.IL_GOODS_ID ,
+            T2.IL_ITEM_CD,
+            T2.SALE_STATUS,
+            T2.UR_WAREHOUSE_ID,
+            0 AS GOODS_NO,
+            CASE WHEN GOODS_OUTMALL_SALE_STAT = 'GOODS_OUTMALL_SALE_STAT.NONE' THEN
+                CASE WHEN
+                (
+                       SALE_STATUS = 'SALE_STATUS.ON_SALE'
+                    OR SALE_STATUS = 'SALE_STATUS.WAIT'
+                    OR SALE_STATUS = 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM'
+                    OR SALE_STATUS = 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER'
+                )
+                THEN
+                    'GOODS_OUTMALL_SALE_STAT.ON_SALE'
+                ELSE
+                    'GOODS_OUTMALL_SALE_STAT.STOP_SALE'
+                END
+            ELSE GOODS_OUTMALL_SALE_STAT END AS GOODS_OUTMALL_SALE_STAT,
+            CASE WHEN GOODS_OUTMALL_SALE_STAT = 'GOODS_OUTMALL_SALE_STAT.NONE' THEN
+                CASE WHEN
+                (
+                       SALE_STATUS = 'SALE_STATUS.ON_SALE'
+                    OR SALE_STATUS = 'SALE_STATUS.WAIT'
+                    OR SALE_STATUS = 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM'
+                    OR SALE_STATUS = 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER'
+                )
+                THEN
+                    'Y'
+                ELSE
+                    'N'
+                END
+            ELSE 'N' END AS GOODS_OUTMALL_SALE_STAT_UPDATE_YN,
+            II.UR_SUPPLIER_ID,
+            II.UNDELIVERABLE_AREA_TP
+        FROM IL_GOODS T2
+        INNER JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (T2.IL_GOODS_ID = GST.IL_GOODS_ID AND T2.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+        INNER JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+        INNER JOIN UR_WAREHOUSE UW ON (UW.UR_WAREHOUSE_ID = T2.UR_WAREHOUSE_ID)
+        INNER JOIN IL_ITEM II ON T2.IL_ITEM_CD = II.IL_ITEM_CD
+        WHERE T2.IL_GOODS_ID IN
+            <foreach collection="goodsIdList" item="value" separator="," open="(" close=")">
+                #{value}
+            </foreach>
+            AND T2.DEL_YN = 'N'
+        GROUP BY T2.IL_GOODS_ID
+    </select>
+
+    <select id="getPsConfig" resultType="String">
+        /*	goodsSearch.getPsConfig	*/
+        SELECT
+            PS_VAL
+        FROM
+            PS_CONFIG pc
+        WHERE PS_KEY = #{psKey}
+            LIMIT 1
+    </select>
+
+
+
+    <select id="getGoodsFromOutMall_PULSHOP" resultMap="GoodsSearchOutMallResultMap">
+        /*	goodsSearch.getGoodsFromOutMall_PULSHOP	*/
+        SELECT
+            T1.IL_GOODS_ID,
+            T1.IL_ITEM_CD,
+            T1.SALE_STATUS,
+            T1.UR_WAREHOUSE_ID,
+            T2.GOODS_NO,
+            'GOODS_OUTMALL_SALE_STAT.ON_SALE' AS GOODS_OUTMALL_SALE_STAT,
+            CASE WHEN GOODS_OUTMALL_SALE_STAT = 'GOODS_OUTMALL_SALE_STAT.NONE' THEN
+                CASE WHEN
+                (
+                        SALE_STATUS = 'SALE_STATUS.ON_SALE'
+                    OR SALE_STATUS = 'SALE_STATUS.WAIT'
+                    OR SALE_STATUS = 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM'
+                    OR SALE_STATUS = 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER'
+                )
+                THEN
+                    'Y'
+                ELSE
+                    'N'
+                END
+            ELSE 'N' END AS GOODS_OUTMALL_SALE_STAT_UPDATE_YN,
+            II.UR_SUPPLIER_ID,
+            II.UNDELIVERABLE_AREA_TP
+        FROM
+            IL_GOODS T1
+            INNER JOIN IF_GOODS_MAPPING T2 ON T1.IL_GOODS_ID = T2.IL_GOODS_ID
+            INNER JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (T1.IL_GOODS_ID = GST.IL_GOODS_ID AND T1.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+            INNER JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+            INNER JOIN UR_WAREHOUSE UW ON (UW.UR_WAREHOUSE_ID = T1.UR_WAREHOUSE_ID)
+            INNER JOIN IL_ITEM II ON T1.IL_ITEM_CD = II.IL_ITEM_CD
+        WHERE
+            T2.GOODS_NO IN
+            <foreach collection="goodsIdList" item="value" separator="," open="(" close=")">
+                #{value}
+            </foreach>
+        AND T1.DEL_YN = 'N'
+        GROUP BY T1.IL_GOODS_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 검색 - 신제품
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getNewGoods" resultType="long">
+        /*	goodsSearch.getNewGoods	*/
+        SELECT IG.IL_GOODS_ID
+        FROM IL_GOODS IG
+            INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+            INNER JOIN IL_GOODS_CTGRY C ON C.IL_GOODS_ID = IG.IL_GOODS_ID AND C.BASIC_YN = 'Y'
+            INNER JOIN IL_CTGRY CC ON CC.IL_CTGRY_ID = C.IL_CTGRY_ID AND CC.USE_YN = 'Y' AND CC.DISP_YN = 'Y'
+            INNER JOIN IL_CTGRY_PRNTS_INFO T1 ON T1.IL_CTGRY_ID = C.IL_CTGRY_ID
+        WHERE IG.GOODS_TP NOT IN ('GOODS_TYPE.DISPOSAL', 'GOODS_TYPE.GIFT', 'GOODS_TYPE.PACKAGE', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+            AND IG.SALE_STATUS in ('SALE_STATUS.ON_SALE')
+            AND IG.DISP_YN = 'Y'
+            AND IG.DEL_YN = 'N'
+            AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(monthSub)">
+                AND IG.CREATE_DT <![CDATA[ > ]]> DATE_SUB(DATE(NOW()), INTERVAL #{monthSub} MONTH)
+            </if>
+            AND CC.MALL_DIV = #{mallDiv}
+            <if test="exceptShopOnly">
+                AND IG.GOODS_TP != 'GOODS_TYPE.SHOP_ONLY'
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandIdList)">
+                AND II.DP_BRAND_ID IN
+                <foreach collection="dpBrandIdList" item="dpBrandId" separator="," open="(" close=")">
+                    #{dpBrandId}
+                </foreach>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ctgryIdDepth1)">
+                AND T1.CTGRY_ID_DEPTH1 = #{ctgryIdDepth1}	/* 전시카테고리 대분류 */
+            </if>
+        ORDER BY IG.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 검색 - 추가 상품 용도
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.18		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="goodsAdditionalResultMap" type="kr.co.pulmuone.v1.goods.search.dto.vo.GoodsSearchAdditionalVo">
+        <result column="IL_GOODS_ID" property="goodsId" />
+        <result column="GOODS_NM" property="goodsName" />
+        <result column="GOODS_IMG_PATH" property="thumbnailPath" />
+    </resultMap>
+    <select id="getGoodsAdditional" resultMap="goodsAdditionalResultMap">
+        /*	goodsSearch.getGoodsAdditional	*/
+        SELECT A.IL_GOODS_ID
+            , A.GOODS_NM
+            , (CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                CASE WHEN A.GOODS_PACKAGE_IMG_TP = 'GOODS_PACKAGE_IMG_TP.NORMAL_GOODS' THEN ITM_IMG.MS_IMG ELSE IMG.MS_IMG END
+                ELSE ITM_IMG.MS_IMG END) AS GOODS_IMG_PATH
+        FROM IL_GOODS A
+            INNER JOIN IL_ITEM B ON A.IL_ITEM_CD = B.IL_ITEM_CD
+            LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = A.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+            LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = A.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+        WHERE A.IL_GOODS_ID IN
+            <foreach collection="goodsIdList" item="value" separator="," open="(" close=")">
+                #{value}
+            </foreach>
+            AND A.DEL_YN = 'N'
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 검색 - 마이페이지 > 쿠폰적용대상용도 by 출고처PK
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.08		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsCouponCoverageByUrWareHouseId" resultType="string">
+        /*	goodsSearch.getGoodsCouponCoverageByUrWareHouseId	*/
+        SELECT IFNULL(CONCAT(A.GOODS_NM, ' ',
+            IF(A.PACKAGE_UNIT_DISP_YN = 'Y', IF(A.GOODS_TP = 'GOODS_TYPE.PACKAGE', CONCAT('(',A.PACKAGE_UNIT_DESC,')'), CONCAT('(', CAST(B.SIZE_PER_PACKAGE AS float),
+            CASE
+            WHEN B.SIZE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.SIZE_UNIT_ETC
+            ELSE FN_COMN_CODE_DIC(B.SIZE_UNIT)
+            END
+            , IF(B.QTY_PER_PACKAGE IS NOT NULL, CONCAT('x', B.QTY_PER_PACKAGE,
+            CASE WHEN B.PACKAGE_UNIT = 'UNIT_TYPE.DIRECT_INPUT' THEN B.PACKAGE_UNIT_ETC
+            ELSE FN_COMN_CODE_DIC(B.PACKAGE_UNIT)
+            END
+            ), ''), ')'
+            )), '')
+            ), A.GOODS_NM) AS GOODS_NM
+        FROM IL_GOODS A
+            INNER JOIN IL_ITEM B ON A.IL_ITEM_CD = B.IL_ITEM_CD
+            INNER JOIN IL_ITEM_WAREHOUSE IIW ON B.IL_ITEM_CD = IIW.IL_ITEM_CD
+            INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+        WHERE A.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+            AND A.DISP_YN = 'Y'
+            AND A.DEL_YN = 'N'
+            AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+            AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+            AND USW.UR_WAREHOUSE_ID IN
+            <foreach collection="wareHouseIdList" item="wareHouseId" separator="," open="(" close=")">
+                #{wareHouseId}
+            </foreach>
+        GROUP BY A.GOODS_NM
+        ORDER BY A.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 검색 - 올가매장 전용관 - HMR 상품
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.21		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.goods.search.dto.vo.GoodsSearchHmrVo" id="getGoodsSearchHmrMap">
+        <result column="CTGRY_ID_DEPTH1"  property="ilCtgryId" />
+        <result column="IL_GOODS_ID"  property="ilGoodsId" />
+    </resultMap>
+    <select id="getGoodsSearchHmr" resultMap="getGoodsSearchHmrMap">
+        /*	goodsSearch.getGoodsSearchHmr	*/
+        SELECT T1.CTGRY_ID_DEPTH1
+            , IG.IL_GOODS_ID
+        FROM IL_GOODS IG
+            INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+            INNER JOIN IL_GOODS_CTGRY T2 ON IG.IL_GOODS_ID = T2.IL_GOODS_ID
+            INNER JOIN IL_CTGRY_PRNTS_INFO T1 ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+            INNER JOIN IL_CTGRY T3 ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+            JOIN (
+                SELECT DISTINCT(IL_ITEM_CD) AS IL_ITEM_CD
+                FROM IL_ITEM_WAREHOUSE IIW
+                    JOIN UR_SUPPLIER_WAREHOUSE USW ON IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+                WHERE USW.UR_WAREHOUSE_ID = (SELECT PS_VAL FROM PS_CONFIG WHERE ST_SHOP_ID = 1 AND USE_YN = 'Y' AND PS_KEY = 'WAREHOUSE_STORE_ID')
+                ) IIW ON IG.IL_ITEM_CD = IIW.IL_ITEM_CD
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+            INNER JOIN IL_ITEM_STORE_INFO IIS ON II.IL_ITEM_CD = IIS.IL_ITEM_CD
+        </if>
+        WHERE II.ERP_O2O_EXPOSURE_TP IN ('직제조', '손질')
+            AND T3.USE_YN = 'Y'
+            AND T3.DEL_YN = 'N'
+            AND T2.BASIC_YN = 'Y'
+            AND T3.MALL_DIV = #{mallDiv}
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+                    AND IIS.UR_STORE_ID = #{urStoreId}
+                </when>
+                <otherwise>
+                    AND IG.GOODS_TP != 'GOODS_TYPE.SHOP_ONLY'
+                </otherwise>
+            </choose>
+            AND T1.CTGRY_ID_DEPTH1 IN
+            <foreach collection="dpCtgryIdList" item="dpCtgryId" separator="," open="(" close=")">
+                #{dpCtgryId}
+            </foreach>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandIdList)">
+                AND II.DP_BRAND_ID IN
+                <foreach collection="dpBrandIdList" item="dpBrandId" separator="," open="(" close=")">
+                    #{dpBrandId}
+                </foreach>
+            </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 검색 - 올가매장 전용관 - 매장 상품
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.22		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsSearchShopOnly" resultType="long">
+        /*	goodsSearch.getGoodsSearchShopOnly	*/
+        SELECT IG.IL_GOODS_ID
+        FROM IL_GOODS IG
+            INNER JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+            JOIN (
+                SELECT DISTINCT(IL_ITEM_CD) AS IL_ITEM_CD
+                FROM IL_ITEM_WAREHOUSE IIW
+                    JOIN UR_SUPPLIER_WAREHOUSE USW ON IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+                WHERE USW.UR_WAREHOUSE_ID = (SELECT PS_VAL FROM PS_CONFIG WHERE ST_SHOP_ID = 1 AND USE_YN = 'Y' AND PS_KEY = 'WAREHOUSE_STORE_ID')
+            ) IIW ON IG.IL_ITEM_CD = IIW.IL_ITEM_CD
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+                INNER JOIN IL_ITEM_STORE_INFO IIS ON II.IL_ITEM_CD = IIS.IL_ITEM_CD
+            </if>
+        WHERE IG.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+            AND IG.DISP_YN = 'Y'
+            AND IG.DEL_YN = 'N'
+            AND NOW() BETWEEN IG.SALE_START_DT AND IG.SALE_END_DT
+            AND IG.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+            AND II.ERP_O2O_EXPOSURE_TP NOT IN ('직제조', '손질') /* HMR, 극신선 상품 제외 */
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+                    AND IIS.UR_STORE_ID = #{urStoreId}
+                </when>
+                <otherwise>
+                    AND IG.GOODS_TP != 'GOODS_TYPE.SHOP_ONLY'
+                </otherwise>
+            </choose>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandIdList)">
+                AND II.DP_BRAND_ID IN
+                <foreach collection="dpBrandIdList" item="dpBrandId" separator="," open="(" close=")">
+                    #{dpBrandId}
+                </foreach>
+            </if>
+            AND EXISTS (
+                SELECT 1
+                FROM IL_CTGRY_PRNTS_INFO T1
+                    INNER JOIN IL_GOODS_CTGRY T2 ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                    INNER JOIN IL_CTGRY T3 ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                WHERE T1.CTGRY_ID_DEPTH1 IN
+                    <foreach collection="dpCtgryIdList" item="dpCtgryId" separator="," open="(" close=")">
+                        #{dpCtgryId}
+                    </foreach>
+                    AND T3.USE_YN = 'Y'
+                    AND T3.DEL_YN = 'N'
+                    AND T2.BASIC_YN = 'Y'
+                    AND T3.MALL_DIV = #{mallDiv}
+                    AND T2.IL_GOODS_ID = IG.IL_GOODS_ID
+            )/* 전시카테고리 대분류 */
+    </select>
+
+    <select id="getOrgaFlyerGoods" resultType="long">
+        /* goodsSearch.getOrgaFlyerGoods */
+        SELECT IL_GOODS_ID
+        FROM IL_GOODS_FLYER
+        WHERE DISCOUNT_TP = #{discountType}
+    </select>
+</mapper>

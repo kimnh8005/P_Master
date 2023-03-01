@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.inside.DeliveryCompleteMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 자동 배송완료 설정기간 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.01		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDeliveryCompleteDay" resultType="int">
+		/* deliveryComplete.getDeliveryCompleteDay */
+		SELECT IFNULL(PC.PS_VAL, 0) AS PS_VAL	/* 자동 배송완료 설정기간 */
+		  FROM PS_CONFIG PC
+		 INNER JOIN ST_SHOP SS ON PC.ST_SHOP_ID = SS.ST_SHOP_ID
+		 					  AND SS.USE_YN 	= 'Y'
+		 WHERE PC.PS_KEY 	= #{deliveryCompleteDayKey}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송완료 대상 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.01		이규한          최초생성
+	 * @ 2021.08.09		배민영		   SPMO-422 배송완료일자(자동 배송완료기간)이 존재하는 경우 택배사 제외하지 않도록 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDeliveryCompleteList" resultType="kr.co.pulmuone.v1.batch.order.inside.dto.vo.OrderStatusInfoVo">
+		/* deliveryComplete.getDeliveryCompleteList */
+        SELECT OOD.OD_ORDER_ID				/* 주문 PK */
+		     , OOD.OD_ORDER_DETL_ID			/* 주문상세 PK */
+		     , OOD.ODID						/* 주문번호 */
+		  FROM OD_ORDER_DETL OOD
+		<!-- 자동 배송완료기간이 존재하지 않는 경우에만 택배사(CJ, 롯데) 제외되로록 수정 -->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(deliveryCompleteDay)">
+		 /* 택배사(CJ, 롯데) 제외 */
+		 INNER JOIN OD_TRACKING_NUMBER OTN
+		         ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID
+		        AND NOT EXISTS (SELECT 1
+                    			  FROM PS_CONFIG PC
+                    			 WHERE PS_GRP_TP = 'DELIVERY_TRACKING_SEARCH'
+                    			   AND PC.PS_KEY =  OTN.PS_SHIPPING_COMP_ID)
+		</if>
+		<!-- 일일 (마지막 배송일자가 현재일자와 동일하거나 작은 경우 배송완료)-->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(deliveryCompleteDay)">
+		 /* 마지막 배송일자가 현재일보다 작거나 같은 경우 */
+		 INNER JOIN (SELECT OOD.OD_ORDER_ID					/* 주문 PK */
+		     			  , OOD.OD_ORDER_DETL_ID			/* 주문상세 PK */
+		     			  , OOD.ODID						/* 주문번호 */
+		     			  , OOD.OD_ORDER_DETL_SEQ			/* 주문상세 순번 */
+		     			  , MAX(OODDS.DELIVERY_DT) AS DELIVERY_DT
+		  			   FROM OD_ORDER_DETL OOD
+		 			  INNER JOIN OD_ORDER_DETL_DAILY OODD
+		 		 		 	  ON (OOD.OD_ORDER_DETL_ID, OOD.OD_ORDER_ID, OOD.OD_ORDER_DETL_SEQ) = (OODD.OD_ORDER_DETL_ID, OODD.OD_ORDER_ID, OODD.OD_ORDER_DETL_SEQ)
+		 		 		 	 AND NULLIF(OODD.UR_STORE_ID, '') IS NOT NULL
+		 			  INNER JOIN OD_ORDER_DETL_DAILY_SCH OODDS
+		 		 			  ON OODD.OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+         			  WHERE OOD.ORDER_STATUS_CD = #{orderStatusCd}		/* 배송중 */
+         			  GROUP BY OOD.OD_ORDER_ID, OOD.OD_ORDER_DETL_ID, OOD.ODID, OOD.OD_ORDER_DETL_SEQ
+         			) DAILY ON (OOD.OD_ORDER_DETL_ID, OOD.OD_ORDER_ID, OOD.OD_ORDER_DETL_SEQ) = (DAILY.OD_ORDER_DETL_ID, DAILY.OD_ORDER_ID, DAILY.OD_ORDER_DETL_SEQ)
+         			       AND DATE_FORMAT(DAILY.DELIVERY_DT, '%Y-%m-%d 00:00:00') <![CDATA[<=]]> DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00')
+		</if>
+		 WHERE OOD.ORDER_STATUS_CD = #{orderStatusCd}	/* 배송중 */
+		 AND (OOD.ORDER_CNT - OOD.CANCEL_CNT) > 0
+		<!-- 일반 -->
+		<!-- 1. 배송중일에 자동 배송완료기간을 더한 날짜가 현재일보다 작거나 같으면서  -->
+		<!-- 2. 일일 스케줄 정보가 없거나, 일일 스케줄 정보가 있지만 일반 배송인 경우  -->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryCompleteDay)">
+		   /* 배송중일에 자동 배송완료기간을 더한 날짜가 현재일보다 작거나 같은 경우 자동 배송완료 처리 */
+		   AND (DATE_FORMAT(OOD.DI_DT, '%Y-%m-%d 00:00:00') + INTERVAL #{deliveryCompleteDay} DAY) <![CDATA[<=]]> DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00')
+		   	   /* 일일 스케줄 정보 x */
+		   AND (NOT EXISTS
+		   			(SELECT 1
+		 		 	   FROM OD_ORDER_DETL_DAILY OODD
+		 		 	  WHERE (OOD.OD_ORDER_DETL_ID, OOD.OD_ORDER_ID, OOD.OD_ORDER_DETL_SEQ) = (OODD.OD_ORDER_DETL_ID, OODD.OD_ORDER_ID, OODD.OD_ORDER_DETL_SEQ)
+         			)
+         	   /* 일일 스케줄정보가 존재하지만, 가맹점코드가 없으면, 일반 배송 */
+         		 OR EXISTS
+					(SELECT 1
+                       FROM OD_ORDER_DETL_DAILY OODD
+                      WHERE (OOD.OD_ORDER_DETL_ID, OOD.OD_ORDER_ID, OOD.OD_ORDER_DETL_SEQ) = (OODD.OD_ORDER_DETL_ID, OODD.OD_ORDER_ID, OODD.OD_ORDER_DETL_SEQ)
+		 		 		AND NULLIF(OODD.UR_STORE_ID, '') IS NULL
+         		    )
+         	   )
+		</if>
+		 GROUP BY OOD.OD_ORDER_ID, OOD.OD_ORDER_DETL_ID, OOD.ODID
+	</select>
+
+	<!-- 매장배송 배송완료 대상조회 -->
+	<select id="gutStoreDeliveryCompleteList" resultType="kr.co.pulmuone.v1.batch.order.inside.dto.vo.OrderStatusInfoVo">
+		/* deliveryComplete.gutStoreDeliveryCompleteList */
+		SELECT OD_ORDER_ID				/* 주문 PK */
+		     , OD_ORDER_DETL_ID			/* 주문상세 PK */
+		     , ODID						/* 주문번호 */
+		 FROM OD_ORDER_DETL ood
+		 WHERE DELIVERY_DT BETWEEN DATE_FORMAT(DATE_ADD(NOW(), INTERVAL -3 DAY),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(DATE_ADD(NOW(), INTERVAL -1 DAY),'%Y-%m-%d 23:59:59')
+		 AND GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+		 AND ORDER_STATUS_CD = #{inOrderStatusCd}
+		 AND (ORDER_CNT - CANCEL_CNT) > 0
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송완료 트래킹 대상 리스트(CJ/롯데) 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDeliveryCompleteTrackingList" resultType="kr.co.pulmuone.v1.batch.order.inside.dto.vo.OrderStatusInfoVo">
+		/* deliveryComplete.getDeliveryCompleteTrackingList */
+        SELECT OOD.OD_ORDER_ID				/* 주문 PK */
+		     , OOD.OD_ORDER_DETL_ID			/* 주문상세 PK */
+		     , OOD.ODID						/* 주문번호 */
+		     , OTN.PS_SHIPPING_COMP_ID 		/* 택배사 설정 PK */
+		     , OTN.TRACKING_NO				/* 개별송장번호 */
+		  FROM OD_ORDER_DETL OOD
+		 /* 택배사(CJ, 롯데) */
+		 INNER JOIN OD_TRACKING_NUMBER OTN
+		         ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID
+		        AND NULLIF(OTN.TRACKING_NO, '') IS NOT NULL
+		        AND EXISTS (SELECT 1
+                    		  FROM PS_CONFIG PC
+                    	     WHERE PS_GRP_TP = 'DELIVERY_TRACKING_SEARCH'
+                    		   AND PC.PS_KEY =  OTN.PS_SHIPPING_COMP_ID)
+		 WHERE OOD.ORDER_STATUS_CD = #{orderStatusCd}	/* 배송중 */
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 트래킹 택배사(CJ/롯데) 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getTrackingListShippingCompList" resultType="kr.co.pulmuone.v1.batch.order.inside.dto.vo.TrackingShippingCompVo">
+		/* deliveryComplete.getTrackingListShippingCompList */
+		SELECT PS_KEY	AS PS_SHIPPING_COMP_ID
+			 , PS_VAL   AS PS_SHIPPING_COMP_VAL
+			 , PS_NM	AS PS_SHIPPING_COMP_NM
+		  FROM PS_CONFIG PC
+		 WHERE PS_GRP_TP = 'DELIVERY_TRACKING_SEARCH'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송완료 변경 (배송중 -> 배송완료)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.01		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putDeliveryCompleteInfo">
+		/* deliveryComplete.putDeliveryCompleteInfo */
+		UPDATE OD_ORDER_DETL OOD
+		   SET OOD.ORDER_STATUS_CD		= #{orderStatusCd}	/* 정상주문상태 */
+		     , OOD.DC_ID 				= #{createId}		/* 배송완료등록자 */
+		     , OOD.DC_DT 				= NOW()				/* 배송완료일자 */
+		 WHERE OOD.OD_ORDER_ID 			= #{odOrderId}
+		   AND OOD.OD_ORDER_DETL_ID 	= #{odOrderDetlId}
+		   AND OOD.ODID					= #{odid}
+	</update>
+
+	<!-- 하이톡(녹즙) 스케줄 배송완료 저장 -->
+	<update id="putHitokScheduleDeliveryComplete">
+		/* deliveryComplete.putHitokScheduleDeliveryComplete */
+		UPDATE OD_ORDER_DETL_DAILY_SCH
+		   SET DELIVERY_YN = 'Y'
+		 WHERE DELIVERY_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59')
+	</update>
+
+	<!-- 잇슬림 일일배송 배송중 대상조회 -->
+	<select id="getEatsslimDailyDeliveryIngList" resultType="kr.co.pulmuone.v1.batch.order.inside.dto.vo.OrderStatusInfoVo">
+		/* deliveryComplete.getEatsslimDailyDeliveryIngList */
+		<![CDATA[
+		SELECT OD_ORDER_ID				/* 주문 PK */
+		     , OD_ORDER_DETL_ID			/* 주문상세 PK */
+		     , ODID						/* 주문번호 */
+		     , (SELECT UR_STORE_ID FROM OD_ORDER_DETL_DAILY WHERE OD_ORDER_ID = ood.OD_ORDER_ID AND OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID) AS UR_STORE_ID
+		     , OD_ORDER_DETL_SEQ
+		 FROM OD_ORDER_DETL ood
+		 WHERE CURRENT_DATE() >= DATE_FORMAT(DATE_ADD(DELIVERY_DT, INTERVAL -1 DAY) ,'%Y-%m-%d')
+		 AND UR_WAREHOUSE_ID = (SELECT PS_VAL FROM PS_CONFIG WHERE PS_GRP_TP = '7.WAREHOUSE' AND PS_KEY = #{urWarehouseId})
+		 AND ORDER_STATUS_CD = #{inOrderStatusCd}
+		 AND (ORDER_CNT - CANCEL_CNT) > 0
+		 ]]>
+	</select>
+
+	<!-- 잇슬림 일일배송 배송중 배치 -->
+	<update id="putEatsslimDailyDeliveryIng">
+		/* deliveryComplete.putEatsslimDailyDeliveryIng */
+		UPDATE OD_ORDER_DETL
+		   SET ORDER_STATUS_CD	= #{orderStatusCd}
+		     , DI_ID 			= #{createId}
+		     , DI_DT 			= NOW()
+		 WHERE OD_ORDER_ID 			= #{odOrderId}
+		   AND OD_ORDER_DETL_ID 	= #{odOrderDetlId}
+		   AND ODID					= #{odid}
+	</update>
+
+</mapper>

@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.GoodsStockExprMapper">
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 유통기한별 재고 연동 내역 관리 조회
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.08  이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getStockExprList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockExprResultVo">
+    /* stockExpr.getStockExprList */
+    SELECT  A.IL_ITEM_STOCK_EXPR_ID  /* SEQ */
+           ,A.BASE_DT                /* 기준일 */
+           ,A.EXPIRATION_DT          /* 유통기한 */
+	       ,DATEDIFF(EXPIRATION_DT, BASE_DT) AS REST_DISTRIBUTION_PERIOD /* 잔여 유통기간 */
+           ,C.IL_ITEM_CD             /* 품목코드 */
+           ,C.ITEM_NM                /* 품목명 */
+           ,C.ERP_IF_YN AS ERP_LINK_IF_YN /* ERP 연동여부 */
+	       ,C.ITEM_BARCODE AS BARCODE      /* 바코드 */
+           ,C.ITEM_TP                /* 마스터 품목유형 */
+           ,F.WAREHOUSE_NM           /* 출고처 */
+	       ,G.COMP_NM AS SUPPLIER_NM /* 공급처 */
+	       ,FN_COMN_CODE_DIC(C.STORAGE_METHOD_TP) AS STORAGE_METHOD_TP_NM /* 보관방법명 */
+	       ,A.STOCK_QTY              /* 재고량 */
+	  FROM IL_ITEM_STOCK_EXPR A
+	 INNER JOIN IL_ITEM_WAREHOUSE B
+	         ON A.IL_ITEM_WAREHOUSE_ID = B.IL_ITEM_WAREHOUSE_ID
+	 INNER JOIN  IL_ITEM C
+	         ON B.IL_ITEM_CD = C.IL_ITEM_CD
+	 INNER JOIN UR_BRAND UB
+		ON UB.UR_BRAND_ID = C.UR_BRAND_ID
+	 INNER JOIN  UR_SUPPLIER_WAREHOUSE D
+	         ON B.UR_SUPPLIER_WAREHOUSE_ID = D.UR_SUPPLIER_WAREHOUSE_ID
+	 INNER JOIN UR_SUPPLIER E
+	         ON D.UR_SUPPLIER_ID = E.UR_SUPPLIER_ID
+	 INNER JOIN UR_WAREHOUSE F
+	         ON D.UR_WAREHOUSE_ID = F.UR_WAREHOUSE_ID
+	 INNER JOIN UR_COMPANY G
+	         ON E.UR_COMPANY_ID = G.UR_COMPANY_ID
+    <where>
+
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'codeSearch')">
+		<if test="ilItemCodeArray !=null &amp;&amp; ilItemCodeArray.size() > 0">
+		    AND (
+				  C.IL_ITEM_CD IN
+				 <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							 #{data}
+				 </foreach>
+					OR
+				  C.ITEM_BARCODE IN
+				 <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							 #{data}
+				 </foreach>
+			    )
+	    </if>
+      </if>
+
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'condSearch')">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+	         AND C.ITEM_NM LIKE CONCAT('%', #{itemName}, '%') /* 품목명 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+	         AND D.UR_SUPPLIER_ID = #{urSupplierId} /* 공급업체 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+	         AND D.UR_WAREHOUSE_ID = #{urWarehouseId} /* 출고처 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+		     AND DATE_FORMAT(A.BASE_DT,'%Y%m%d') <![CDATA[ >= ]]> #{startCreateDate} /* 시작일자 */
+		    </if>
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+		     AND DATE_FORMAT(A.BASE_DT,'%Y%m%d') <![CDATA[ <= ]]> #{endCreateDate}   /* 종료일자 */
+		    </if>
+      </if>
+
+      <if test="selectConditionType == null">
+          A.BASE_DT = CURDATE()
+      </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+			AND E.UR_SUPPLIER_ID IN
+			<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+           		#{data}
+       		</foreach>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+			AND F.UR_WAREHOUSE_ID IN
+			<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+           		#{data}
+       		</foreach>
+		</if>
+
+    </where>
+    ORDER BY A.IL_ITEM_STOCK_EXPR_ID DESC
+
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 통합ERP 재고 연동 내역 관리 조회
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.09  이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getStockErpList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockExprResultVo">
+    /* stockExpr.getStockErpList */
+    SELECT  A.IL_ITEM_ERP_STOCK_ID   /* SEQ */
+           ,A.BASE_DT                /* 기준일 */
+           ,C.IL_ITEM_CD             /* 품목코드 */
+           ,C.ITEM_BARCODE AS BARCODE      /* 바코드 */
+           ,C.ITEM_NM                /* 품목명 */
+           ,F.WAREHOUSE_NM           /* 출고처 */
+	       ,G.COMP_NM AS SUPPLIER_NM /* 공급처 */
+	       ,FN_COMN_CODE_DIC(A.STOCK_TP) AS STOCK_TP_NM /* 재고타입명 */
+	       ,A.STOCK_QTY              /* 재고량 */
+	  FROM IL_ITEM_ERP_STOCK_HISTORY A
+	 INNER JOIN IL_ITEM_WAREHOUSE B
+	         ON A.IL_ITEM_WAREHOUSE_ID = B.IL_ITEM_WAREHOUSE_ID
+	 INNER JOIN  IL_ITEM C
+	         ON B.IL_ITEM_CD = C.IL_ITEM_CD
+	 INNER JOIN UR_BRAND UB
+		ON UB.UR_BRAND_ID = C.UR_BRAND_ID
+	 INNER JOIN  UR_SUPPLIER_WAREHOUSE D
+	         ON B.UR_SUPPLIER_WAREHOUSE_ID = D.UR_SUPPLIER_WAREHOUSE_ID
+	 INNER JOIN UR_SUPPLIER E
+	         ON D.UR_SUPPLIER_ID = E.UR_SUPPLIER_ID
+	 INNER JOIN UR_WAREHOUSE F
+	         ON D.UR_WAREHOUSE_ID = F.UR_WAREHOUSE_ID
+	 INNER JOIN UR_COMPANY G
+	         ON E.UR_COMPANY_ID = G.UR_COMPANY_ID
+    <where>
+     A.STOCK_TP NOT IN ('ERP_STOCK_TP.ORDER','ERP_STOCK_TP.PO') /* 발주와 주문은 제외 */
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'codeSearch')">
+		<if test="ilItemCodeArray !=null &amp;&amp; ilItemCodeArray.size() > 0">
+		    AND (
+				  C.IL_ITEM_CD IN
+				 <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							 #{data}
+				 </foreach>
+					OR
+				  C.ITEM_BARCODE IN
+				 <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							 #{data}
+				 </foreach>
+			    )
+	    </if>
+      </if>
+
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'condSearch')">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+	         AND C.ITEM_NM LIKE CONCAT('%', #{itemName}, '%') /* 품목명 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stockTp)">
+		     AND A.STOCK_TP = #{stockTp}   /* 재고유형 */
+		    </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+	         AND D.UR_SUPPLIER_ID = #{urSupplierId} /* 공급업체 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+	         AND D.UR_WAREHOUSE_ID = #{urWarehouseId} /* 출고처 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+		     AND DATE_FORMAT(A.BASE_DT,'%Y%m%d') <![CDATA[ >= ]]> #{startCreateDate} /* 시작일자 */
+		    </if>
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+		     AND DATE_FORMAT(A.BASE_DT,'%Y%m%d') <![CDATA[ <= ]]> #{endCreateDate}   /* 종료일자 */
+		    </if>
+	  </if>
+
+	  <if test="selectConditionType == null">
+		     AND A.BASE_DT = CURDATE()
+	  </if>
+
+    </where>
+    ORDER BY A.IL_ITEM_ERP_STOCK_ID DESC
+
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 재고 미연동 품목리스트 조회
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.10  이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="getStockNonErpList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockExprResultVo">
+    /* stockExpr.getStockNonErpList */
+    SELECT  A.IL_ITEM_WAREHOUSE_ID /* 품목별 출고처 관리SEQ */
+           ,IFNULL(A.UNLIMIT_STOCK_YN, '') AS UNLIMIT_STOCK_YN /* 재고미연동시 재고무제한 사용여부 */
+           ,IFNULL(A.NOT_IF_STOCK_CNT, 0) AS NOT_IF_STOCK_CNT  /* 미연동 재고 수량 */
+           ,CASE WHEN A.UNLIMIT_STOCK_YN = 'Y' THEN '무제한'
+                 WHEN A.UNLIMIT_STOCK_YN = 'N' THEN A.NOT_IF_STOCK_CNT
+            ELSE 0 END AS STOCK    /* 재고(엑셀에서 사용) */
+           ,B.IL_ITEM_CD           /* 품목코드 */
+           ,IFNULL(B.ITEM_BARCODE,'') AS BARCODE    /* 바코드 */
+	       ,B.ITEM_NM              /* 품목명 */
+	       ,B.ERP_CTGRY_LV1_ID     /* 카테고리 */
+	       ,B.ERP_IF_YN AS ERP_LINK_IF_YN /* ERP 연동여부 */
+	       ,B.ITEM_TP              /* 마스터 품목유형 */
+	       ,IFNULL(G.IL_GOODS_ID,'') AS IL_GOODS_ID   /* 상품코드 */
+			, IFNULL(DIC_GOODS_TYPE.DIC_MST_NM, '') AS GOODS_TP_NM /* 상품유형명 */
+	       ,G.GOODS_TP             /* 상품유형  */
+			, IFNULL(DIC_SALE_STATUS.DIC_MST_NM, '') AS SALE_STATUS_NM /* 판매상태 */
+	       ,E.WAREHOUSE_NM           /* 출고처 */
+	       ,F.COMP_NM AS SUPPLIER_NM /* 공급처 */
+	       ,A.PRE_ORDER_YN           /* 재고운영형태(선주문여부) */
+			, IFNULL(DIC_ERP_STORAGE_TYPE.DIC_MST_NM, '') AS STORAGE_METHOD_TP_NM /* 보관방법 */
+	       ,(SELECT CTGRY_STD_NM FROM IL_CTGRY_STD WHERE IL_CTGRY_STD_ID =
+	        (SELECT CTGRY_STD_ID_DEPTH1 FROM IL_CTGRY_STD_PRNTS_INFO WHERE IL_CTGRY_STD_ID = B.IL_CTGRY_STD_ID)) AS CTGRY_STD_NM /* 표준카테고리(대분류) */
+	  FROM IL_ITEM_WAREHOUSE A
+	 INNER JOIN  IL_ITEM B
+	        ON A.IL_ITEM_CD = B.IL_ITEM_CD
+	 INNER JOIN UR_BRAND UB
+		ON UB.UR_BRAND_ID = B.UR_BRAND_ID
+	 INNER JOIN  UR_SUPPLIER_WAREHOUSE C
+	        ON A.UR_SUPPLIER_WAREHOUSE_ID = C.UR_SUPPLIER_WAREHOUSE_ID
+	 INNER JOIN UR_SUPPLIER D
+	        ON C.UR_SUPPLIER_ID = D.UR_SUPPLIER_ID
+	 INNER JOIN UR_WAREHOUSE E
+	        ON C.UR_WAREHOUSE_ID = E.UR_WAREHOUSE_ID
+	 INNER JOIN UR_COMPANY F
+	        ON D.UR_COMPANY_ID = F.UR_COMPANY_ID
+	LEFT JOIN (
+		SELECT
+			T.*
+		FROM (
+			SELECT
+				IL_GOODS_ID
+				, UR_WAREHOUSE_ID
+				, IL_ITEM_CD
+				, SALE_STATUS
+				, GOODS_TP
+				, CASE
+					WHEN GOODS_TP = 'GOODS_TYPE.NORMAL' THEN 1
+					WHEN GOODS_TP = 'GOODS_TYPE.GIFT' THEN 2
+					WHEN GOODS_TP = 'GOODS_TYPE.ADDITIONAL' THEN 3
+					WHEN GOODS_TP = 'GOODS_TYPE.DAILY' THEN 4
+					WHEN GOODS_TP = 'GOODS_TYPE.INCORPOREITY' THEN 5
+	  				WHEN GOODS_TP = 'GOODS_TYPE.GIFT_FOOD_MARKETING' THEN 6
+					ELSE 7
+				END AS SORT
+			FROM
+				IL_GOODS
+			WHERE
+				DEL_YN = 'N'
+				AND GOODS_TP IN ('GOODS_TYPE.NORMAL', 'GOODS_TYPE.GIFT', 'GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.DAILY', 'GOODS_TYPE.INCORPOREITY', 'GOODS_TYPE.GIFT_FOOD_MARKETING') /* 일반, 증정, 추가, 일일, 무형  */
+			ORDER BY SORT
+			LIMIT 999999999999999999
+		)T
+		GROUP BY T.IL_ITEM_CD, T.UR_WAREHOUSE_ID
+	) G
+		ON G.UR_WAREHOUSE_ID = E.UR_WAREHOUSE_ID
+		AND G.IL_ITEM_CD = B.IL_ITEM_CD
+	LEFT JOIN (
+		SELECT
+			SCC.ST_COMN_CODE_ID
+			, GDM.DIC_MST_NM
+		FROM ST_COMN_CODE SCC
+			INNER JOIN GB_DIC_MST GDM
+				ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+		WHERE
+			SCC.ST_COMN_CODE_MST_CD = 'GOODS_TYPE'
+	) DIC_GOODS_TYPE
+		ON DIC_GOODS_TYPE.ST_COMN_CODE_ID = G.GOODS_TP
+	LEFT JOIN (
+		SELECT
+			SCC.ST_COMN_CODE_ID
+			, GDM.DIC_MST_NM
+		FROM ST_COMN_CODE SCC
+			INNER JOIN GB_DIC_MST GDM
+				ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+		WHERE
+			SCC.ST_COMN_CODE_MST_CD = 'SALE_STATUS'
+	) DIC_SALE_STATUS
+		ON DIC_SALE_STATUS.ST_COMN_CODE_ID = G.SALE_STATUS
+	LEFT JOIN (
+		SELECT
+			SCC.ST_COMN_CODE_ID
+			, GDM.DIC_MST_NM
+		FROM ST_COMN_CODE SCC
+			INNER JOIN GB_DIC_MST GDM
+				ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+		WHERE
+			SCC.ST_COMN_CODE_MST_CD = 'ERP_STORAGE_TYPE'
+	) DIC_ERP_STORAGE_TYPE
+		ON DIC_ERP_STORAGE_TYPE.ST_COMN_CODE_ID = B.STORAGE_METHOD_TP
+    <where>
+        E.STOCK_ORDER_YN = 'N' /* 재고 미연동(재고발주여부) */
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'codeSearch')">
+		<if test="ilItemCodeArray !=null &amp;&amp; ilItemCodeArray.size() > 0">
+		    AND (
+				  B.IL_ITEM_CD IN
+				 <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							 #{data}
+				 </foreach>
+					OR
+				  B.ITEM_BARCODE IN
+				 <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							 #{data}
+				 </foreach>
+			    )
+	    </if>
+      </if>
+
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'condSearch')">
+            <if test="saleStatusList !=null &amp;&amp; saleStatusList.size() > 0"> <!-- 판매상태 -->
+				AND G.SALE_STATUS IN
+				<foreach collection="saleStatusList" item="saleStatus" index="index" separator="," open="(" close=")">
+					#{saleStatus}
+				</foreach>
+			</if>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(isNoGoodsItem, 'Y')">
+					AND (
+						G.IL_GOODS_ID IS NULL
+						<if test="goodsTypeList !=null &amp;&amp; goodsTypeList.size() > 0"> <!-- 상품유형 -->
+							OR G.GOODS_TP IN
+							<foreach collection="goodsTypeList" item="goodsType" index="index" separator="," open="(" close=")">
+								#{goodsType}
+							</foreach>
+						</if>
+					)
+				</when>
+				<otherwise>
+					<if test="goodsTypeList !=null &amp;&amp; goodsTypeList.size() > 0"> <!-- 상품유형 -->
+						AND G.GOODS_TP IN
+						<foreach collection="goodsTypeList" item="goodsType" index="index" separator="," open="(" close=")">
+							#{goodsType}
+						</foreach>
+					</if>
+				</otherwise>
+			</choose>
+			<if test="storageMethodTypeList !=null &amp;&amp; storageMethodTypeList.size() > 0"> <!-- 보관방법 -->
+				AND B.STORAGE_METHOD_TP IN
+				<foreach collection="storageMethodTypeList" item="keepMethod" index="index" separator="," open="(" close=")">
+					#{keepMethod}
+				</foreach>
+			</if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stockOperType)">
+	        AND A.UNLIMIT_STOCK_YN = #{stockOperType} /* 재고미연동시 재고무제한 사용여부(Y: 재고 무제한) */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(bigCategory)">
+	        AND (SELECT CTGRY_STD_ID_DEPTH1 FROM IL_CTGRY_STD_PRNTS_INFO WHERE IL_CTGRY_STD_ID = B.IL_CTGRY_STD_ID) = #{bigCategory} /* 표준카테고리(대분류) */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)">
+	        AND C.UR_SUPPLIER_ID = #{urSupplierId} /* 공급업체 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroupByWarehouseId)">
+	        AND C.UR_WAREHOUSE_ID = #{warehouseGroupByWarehouseId} /* 출고처 */
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+	        AND B.ITEM_NM LIKE CONCAT('%', #{itemName}, '%') /* 품목명 */
+	        </if>
+	  </if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+			AND D.UR_SUPPLIER_ID IN
+			<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+          		#{data}
+      		</foreach>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+			AND E.UR_WAREHOUSE_ID IN
+			<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+           		#{data}
+       		</foreach>
+		</if>
+    </where>
+    ORDER BY A.IL_ITEM_WAREHOUSE_ID DESC
+
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description : 재고 미연동 품목리스트 - 재고수정
+   * @
+   * @ 수정일                   수정자   수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.11  이성준   최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putStockNonErp">
+  /* stockExpr.putStockNonErp */
+   UPDATE  IL_ITEM_WAREHOUSE
+	  SET  UNLIMIT_STOCK_YN           = #{popUnlimitStockYn}                            /* 재고미연동시 재고무제한 사용여부(Y: 재고 무제한) */
+	      ,NOT_IF_STOCK_CNT           = #{popStockCnt, javaType=long, jdbcType=INTEGER} /* 미연동 재고 수량 */
+		  ,MODIFY_ID                  = #{userVo.userId}                                /* 사용자ID */
+		  ,NOT_IF_STOCK_CNT_UPDATE_DT = NOW()
+	WHERE 1=1
+	  AND IL_ITEM_WAREHOUSE_ID = #{popIlItemWarehouseId, javaType=long, jdbcType=INTEGER} /* 품목별 출고처 관리SEQ */
+  </update>
+
+</mapper>

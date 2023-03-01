@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.notissue.PointNotIssueMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 미지급 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.04		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPointNotIssueListResultMap" type="kr.co.pulmuone.v1.promotion.notissue.dto.vo.PointNotIssueListVo">
+		<result column="PM_POINT_NOT_ISSUE_ID"  property="pmPointNotIssueId"/>
+		<result column="UR_USER_ID"  property="urUserId"/>
+		<result column="LOGIN_ID"  property="loginId"/>
+		<result column="USER_NM"  property="userNm"  />
+		<result column="POINT_PROCESS_TP"  property="pointProcessTp"  />
+		<result column="POINT_SETTLEMENT_TP"  property="pointSettlementTp"  />
+		<result column="POINT_SETTLEMENT_TP_NAME"  property="pointSettlementTpName"  />
+		<result column="SUM_AMOUNT"  property="sumAmount"  />
+		<result column="ISSUE_VAL"  property="issueVal"  />
+		<result column="PART_POINT_VAL"  property="partPointVal"  />
+		<result column="REDEPOSIT_POINT_VAL"  property="redepositPointVal"  />
+		<result column="DEPOSIT_DT"  property="depositDt"  />
+		<result column="EXPIRATION_DT"  property="expirationDt"  />
+        <result column="ERP_ORGANIZATION_NM"  property="organizationNm"/>
+		<result column="CREATE_DT"  property="createDt"  />
+		<result column="MAX_POINT"  property="maxPoint"  />
+	</resultMap>
+
+  <select id="getPointNotIssueList" resultMap="getPointNotIssueListResultMap">
+            /* notIssue.getPointNotIssueList */
+            SELECT  PNI.PM_POINT_NOT_ISSUE_ID
+            		, PNI.UR_USER_ID
+            		, U.LOGIN_ID
+            		, FN_DECRYPT(U.USER_NM) AS USER_NM
+            		, PNI.POINT_PROCESS_TP
+            		, FN_COMN_CODE_DIC(PNI.POINT_PROCESS_TP) AS POINT_PROCESS_TP_NAME
+            		, PNI.POINT_SETTLEMENT_TP
+            		, FN_COMN_CODE_DIC(PNI.POINT_SETTLEMENT_TP) AS POINT_SETTLEMENT_TP_NAME
+            		, AM.SUM_AMOUNT
+            		, PNI.ISSUE_VAL
+            		, PNI.PART_POINT_VAL
+            		, PNI.REDEPOSIT_POINT_VAL
+            		, PNI.DEPOSIT_DT
+            		, PNI.EXPIRATION_DT
+            		, PNI.CREATE_DT
+            		, #{maxPoint} AS MAX_POINT
+                    , IFNULL(PO.UR_ERP_ORGANIZATION_NM,'') AS ERP_ORGANIZATION_NM
+            FROM    PM_POINT_NOT_ISSUE PNI
+            INNER JOIN UR_USER U ON U.UR_USER_ID = PNI.UR_USER_ID
+            INNER JOIN (SELECT IFNULL(SUM(AMOUNT),0) AS SUM_AMOUNT, UR_USER_ID, PM_POINT_ID
+						FROM PM_POINT_USED_DETL
+						WHERE CLOSE_YN = 'N'
+						GROUP BY UR_USER_ID
+            ) AS AM ON AM.UR_USER_ID = PNI.UR_USER_ID
+            LEFT OUTER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = AM.PM_POINT_ID
+    <where>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+        <choose>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USER_NAME")'>
+            AND   FN_DECRYPT(U.USER_NM) IN
+                                <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                  #{findKeyword}
+                                </foreach>
+          </when>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USE_ID")'>
+            AND   U.LOGIN_ID IN
+                               <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+	                              #{findKeyword}
+	                           </foreach>
+          </when>
+        </choose>
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+              AND   PNI.POINT_PROCESS_TP = #{searchPointDetailType}
+            </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+		AND   PNI.CREATE_DT <![CDATA[>=]]> DATE_FORMAT(#{startDate}, '%Y-%m-%d 00:00:00')
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+        AND   PNI.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endDate}, '%Y-%m-%d 23:59:59')
+      </if>
+ 	</where>
+            ORDER BY PNI.CREATE_DT DESC
+  </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 미지급 내역 엑셀 다운로드
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.04		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+  <select id="getPointNotIssueListExportExcel" resultMap="getPointNotIssueListResultMap">
+            /* notIssue.getPointNotIssueListExportExcel */
+            SELECT  PNI.PM_POINT_NOT_ISSUE_ID
+            		, PNI.UR_USER_ID
+            		, U.LOGIN_ID
+            		, FN_DECRYPT(U.USER_NM) AS USER_NM
+            		, PNI.POINT_PROCESS_TP
+            		, FN_COMN_CODE_DIC(PNI.POINT_PROCESS_TP) AS POINT_PROCESS_TP_NAME
+            		, PNI.POINT_SETTLEMENT_TP
+            		, FN_COMN_CODE_DIC(PNI.POINT_SETTLEMENT_TP) AS POINT_SETTLEMENT_TP_NAME
+            		, AM.SUM_AMOUNT
+            		, CONCAT(IFNULL(FORMAT(PNI.ISSUE_VAL, 0),'0'), '원') AS ISSUE_VAL
+            		, CONCAT(IFNULL(FORMAT(PNI.PART_POINT_VAL, 0),'0'), '원') AS PART_POINT_VAL
+            		, CONCAT(IFNULL(FORMAT(PNI.REDEPOSIT_POINT_VAL, 0),'0'), '원') AS REDEPOSIT_POINT_VAL
+            		, PNI.DEPOSIT_DT
+                 	, IFNULL(PO.UR_ERP_ORGANIZATION_NM,'') AS ERP_ORGANIZATION_NM
+            		, PNI.EXPIRATION_DT
+            		, PNI.CREATE_DT
+            FROM    PM_POINT_NOT_ISSUE PNI
+	        INNER JOIN UR_USER U ON U.UR_USER_ID = PNI.UR_USER_ID
+	        INNER JOIN (SELECT IFNULL(SUM(AMOUNT),0) AS SUM_AMOUNT, UR_USER_ID, PM_POINT_ID
+						FROM PM_POINT_USED_DETL
+						WHERE CLOSE_YN = 'N'
+						GROUP BY UR_USER_ID
+				        ) AS AM ON AM.UR_USER_ID = PNI.UR_USER_ID
+	  		LEFT OUTER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = AM.PM_POINT_ID
+    <where>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+        <choose>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USER_NAME")'>
+            AND   FN_DECRYPT(U.USER_NM) IN
+                                <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                  #{findKeyword}
+                                </foreach>
+          </when>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USE_ID")'>
+            AND   U.LOGIN_ID IN
+                               <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+	                              #{findKeyword}
+	                           </foreach>
+          </when>
+        </choose>
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+              AND   PNI.POINT_PROCESS_TP = #{searchPointDetailType}
+            </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+		AND   PNI.CREATE_DT <![CDATA[>=]]> DATE_FORMAT(#{startDate}, '%Y-%m-%d 00:00:00')
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+        AND   PNI.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endDate}, '%Y-%m-%d 23:59:59')
+      </if>
+ 	</where>
+            ORDER BY PNI.CREATE_DT DESC
+  </select>
+
+
+
+
+</mapper>
+

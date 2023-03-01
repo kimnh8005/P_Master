@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.user.UserNotiBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 알림 히스토리 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.18		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addNotiHistory">
+		/*	userNotiBatch.addNotiHistory  */
+		INSERT INTO UR_NOTI_HISTORY (
+			UR_NOTI_TP, NOTI_TARGET_ID, CREATE_DT
+		) VALUES
+		<foreach item="insertData" index="index" collection="notiList" open="" separator="," close="">
+			(
+				#{insertData.userNotiType}
+				, #{insertData.notiTargetId}
+				, NOW()
+			)
+		</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 알림 대상 조회 - 기획전 시작
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.18		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.batch.user.noti.dto.vo.NotiBatchVo" id="userNotiResultMap">
+		<result column="NOTI_TARGET_ID"   property="notiTargetId"/>
+		<result column="TARGET_TITLE"  property="targetTitle"/>
+		<result column="TARGET_TYPE"  property="targetType"/>
+	</resultMap>
+	<select id="getNotiExhibitStart" resultMap="userNotiResultMap">
+		/*	userBuyerBatch.getNotiExhibitStart  */
+		SELECT *
+		FROM (
+			SELECT EE.EV_EXHIBIT_ID AS NOTI_TARGET_ID
+				, EE.TITLE AS TARGET_TITLE
+				, IFNULL(UNH.NOTI_TARGET_ID, 0) AS NOTI_TARGET_CNT
+				, EE.EXHIBIT_TP AS TARGET_TYPE
+			FROM EV_EXHIBIT EE
+				LEFT OUTER JOIN UR_NOTI_HISTORY UNH ON EE.EV_EXHIBIT_ID = UNH.NOTI_TARGET_ID AND UNH.UR_NOTI_TP = #{urNotiType}
+			WHERE EE.USE_YN = 'Y'
+				AND EE.DEL_YN = 'N'
+				AND EE.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+				AND (EE.ALWAYS_YN = 'Y' OR  (EE.ALWAYS_YN = 'N' AND NOW() BETWEEN EE.START_DT AND EE.END_DT))
+			UNION ALL
+			SELECT EE.EV_EXHIBIT_ID AS NOTI_TARGET_ID
+				, EE.TITLE AS TARGET_TITLE
+				, IFNULL(UNH.NOTI_TARGET_ID, 0) AS NOTI_TARGET_CNT
+				, EE.EXHIBIT_TP AS TARGET_TYPE
+			FROM EV_EXHIBIT EE
+				LEFT OUTER JOIN UR_NOTI_HISTORY UNH ON EE.EV_EXHIBIT_ID = UNH.NOTI_TARGET_ID AND UNH.UR_NOTI_TP = #{urNotiType}
+			WHERE EE.USE_YN = 'Y'
+				AND EE.DEL_YN = 'N'
+				AND EE.EXHIBIT_TP IN ('EXHIBIT_TP.SELECT', 'EXHIBIT_TP.GIFT')
+				AND EE.EXHIBIT_STATUS = 'EXHIBIT_STATUS.APPROVED'
+				AND (EE.ALWAYS_YN = 'Y' OR  (EE.ALWAYS_YN = 'N' AND NOW() BETWEEN EE.START_DT AND EE.END_DT))
+		) G1
+		WHERE G1.NOTI_TARGET_CNT = 0
+		ORDER BY G1.NOTI_TARGET_ID ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 알림 대상 조회 - 이벤트 시작
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.18		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNotiEventStart" resultMap="userNotiResultMap">
+		/*	userBuyerBatch.getNotiEventStart  */
+		SELECT *
+		FROM (
+			SELECT EE.EV_EVENT_ID AS NOTI_TARGET_ID
+				, EE.TITLE AS TARGET_TITLE
+				, IFNULL(UNH.NOTI_TARGET_ID, 0) AS NOTI_TARGET_CNT
+				, EE.EVENT_TP AS TARGET_TYPE
+			FROM EV_EVENT EE
+				LEFT OUTER JOIN UR_NOTI_HISTORY UNH ON EE.EV_EVENT_ID = UNH.NOTI_TARGET_ID AND UNH.UR_NOTI_TP = #{urNotiType}
+			WHERE EE.USE_YN = 'Y'
+				AND EE.DEL_YN = 'N'
+				AND NOW() BETWEEN EE.START_DT AND EE.END_DT
+		) G1
+		WHERE G1.NOTI_TARGET_CNT = 0
+		ORDER BY G1.NOTI_TARGET_ID ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 알림 대상 조회 - 이벤트 종료
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.18		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNotiEventEnd" resultMap="userNotiResultMap">
+		/*	userBuyerBatch.getNotiEventEnd  */
+		SELECT *
+		FROM (
+			SELECT EE.EV_EVENT_ID AS NOTI_TARGET_ID
+				, EE.TITLE AS TARGET_TITLE
+				, IFNULL(UNH.NOTI_TARGET_ID, 0) AS NOTI_TARGET_CNT
+				, EE.EVENT_TP AS TARGET_TYPE
+			FROM EV_EVENT EE
+				LEFT OUTER JOIN UR_NOTI_HISTORY UNH ON EE.EV_EVENT_ID = UNH.NOTI_TARGET_ID AND UNH.UR_NOTI_TP = #{urNotiType}
+			WHERE EE.USE_YN = 'Y'
+				AND EE.DEL_YN = 'N'
+				AND NOW() <![CDATA[ > ]]> EE.END_DT
+		) G1
+		WHERE G1.NOTI_TARGET_CNT = 0
+		ORDER BY G1.NOTI_TARGET_ID ASC
+	</select>
+
+</mapper>
+

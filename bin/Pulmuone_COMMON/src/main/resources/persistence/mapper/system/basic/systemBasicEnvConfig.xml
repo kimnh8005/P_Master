@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.basic.SystemBasicEnvConfigMapper">
+
+
+    <resultMap id="getEnvListResultMap" type="kr.co.pulmuone.v1.system.basic.dto.vo.GetEnvListResultVo">
+        <result column="ENV_KEY"    property="envKey"/>
+        <result column="ENV_VALUE"  property="envValue"/>
+    </resultMap>
+
+	<!-- 환경설정 목록을 조회한다. -->
+	<select id="getEnvList" resultMap="getEnvListResultMap">
+        /* envConf.getEnvList */
+		SELECT ENV_KEY
+		     , ENV_VAL  AS  ENV_VALUE
+		  FROM ST_ENV
+	</select>
+
+    <resultMap id="getLangListResultMap" type="kr.co.pulmuone.v1.system.basic.dto.vo.GetLangListResultVo">
+        <result column="ST_PROGRAM_ID"  property="stProgramId"/>
+        <result column="GB_LANG_ID"     property="gbLangId"   />
+        <result column="GB_DIC_MST_ID"  property="gbDicMstId" />
+        <result column="DIC_NAME"       property="dicName"    />
+        <result column="PG_ID"          property="pgId"       />
+    </resultMap>
+
+	<!-- 다국어정보를 조회한다. -->
+	<select id="getLangList" resultMap="getLangListResultMap">
+        /* envConf.getLangList */
+        SELECT INNER_T1.ST_PROGRAM_ID
+             , INNER_T2.GB_LANG_ID
+             , INNER_T1.GB_DIC_MST_ID
+             , INNER_T2.DIC_NAME
+             , INNER_T1.PG_ID
+          FROM (
+                SELECT INNER_T.GB_DIC_MST_ID
+                     , INNER_T.ST_PROGRAM_ID
+                     , SP.PG_ID
+                  FROM (
+                        SELECT GB_DIC_MST_ID, ST_PROGRAM_ID FROM GB_PG_FIELD
+                        UNION ALL
+                        SELECT GB_DIC_MST_ID, ST_PROGRAM_ID FROM GB_PG_CONTS
+                       ) INNER_T
+                  JOIN ST_PROGRAM AS SP
+                    ON SP.ST_PROGRAM_ID = INNER_T.ST_PROGRAM_ID
+               ) INNER_T1
+
+        LEFT JOIN (
+                    SELECT GB_DIC_MST_ID
+                         , GB_LANG_ID
+                         ,  DIC_NAME
+                      FROM (
+                            SELECT GB_DIC_MST_ID, GB_LANG_ID, DIC_NM  AS  DIC_NAME FROM GB_DIC
+                            UNION ALL
+                            SELECT GB_DIC_MST_ID, GB_LANG_ID, CONTENT  AS DIC_NAME FROM GB_CONTS
+                           ) INNER_T
+                     WHERE 1=1
+                  ) INNER_T2
+        ON INNER_T1.GB_DIC_MST_ID = INNER_T2.GB_DIC_MST_ID
+        ORDER BY INNER_T2.GB_LANG_ID
+                , INNER_T1.ST_PROGRAM_ID
+	</select>
+
+
+</mapper>

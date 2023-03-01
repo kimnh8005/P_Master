@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.shopping.ShoppingCartBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delCart">
+		/*	shoppingCartBatch.delCart	*/
+		DELETE FROM SP_CART
+		WHERE SP_CART_ID =#{spCartId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니PK로 장바구니 추가 구성상품 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delCartAddGoodsBySpCartId">
+		/*	shoppingCartBatch.delCartAddGoodsBySpCartId	*/
+		DELETE FROM	  SP_CART_ADD_GOODS
+		WHERE SP_CART_ID =	#{spCartId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니PK로 장바구니 기획전 구성상품 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.27		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delCartPickGoodsBySpCartId">
+		/*	shoppingCartBatch.delCartPickGoodsBySpCartId	*/
+		DELETE FROM	  SP_CART_PICK_GOODS
+		WHERE SP_CART_ID = #{spCartId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 정리대상 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getMaintenanceCart" resultType="long">
+		/*	shoppingCartBatch.getMaintenanceCart	*/
+		SELECT SP_CART_ID
+		FROM SP_CART
+		WHERE DATEDIFF(NOW(), CREATE_DT) <![CDATA[ >= ]]> #{cartMaintenancePeriod}
+			AND MODIFY_DT IS NULL
+		UNION ALL
+		SELECT SP_CART_ID
+		FROM SP_CART
+		WHERE DATEDIFF(NOW(), MODIFY_DT) <![CDATA[ >= ]]> #{cartMaintenancePeriod}
+			AND MODIFY_DT IS NOT NULL
+	</select>
+
+</mapper>

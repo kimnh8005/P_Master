@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.monitoring.YunginNotiSmsSendBatchMapper">
+
+    <resultMap type="kr.co.pulmuone.v1.batch.monitoring.dto.vo.YunginNotiSmsSendVo" id="yunginNotiSmsSendResultMap">
+        <result column="IF_DT"                   property="ifDt"/>
+        <result column="NORMAL_PFF_ORD_CNT"      property="normalPffOrdCnt"/>
+        <result column="NORMAL_PFF_FROZEN_CNT"   property="normalPffFrozenCnt"/>
+        <result column="NORMAL_PFF_CNT"          property="normalPffCnt"/>
+        <result column="DAWN_PFF_ORD_CNT"        property="dawnPffOrdCnt"/>
+        <result column="DAWN_PFF_FROZEN_CNT"     property="dawnPffFrozenCnt"/>
+        <result column="DAWN_PFF_CNT"            property="dawnPffCnt"/>
+    </resultMap>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 용인물류 D1, D2출고 주문 택배, 새벽을 기준으로 주문건수(냉동건수), 상품수량 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.26		김만환          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getYunginNotiOrderInfo" parameterType="int" resultMap="yunginNotiSmsSendResultMap">
+            /* yunginNotiSmsSendBatch.getYunginNotiOrderInfo */
+            SELECT  CONCAT(CONCAT(DATE_FORMAT(ADDDATE(NOW(), #{ifDt}), '%Y'),'년 '),CONCAT(DATE_FORMAT(ADDDATE(NOW(), #{ifDt}), '%m'),'월'),CONCAT(DATE_FORMAT(ADDDATE(NOW(), #{ifDt}), '%d'),'일')) AS IF_DT
+                  , IFNULL(N.NORMAL_PFF_ORD_CNT, 0) AS NORMAL_PFF_ORD_CNT
+                  , IFNULL(NF.NORMAL_PFF_FROZEN_CNT, 0) AS NORMAL_PFF_FROZEN_CNT
+                  , IFNULL(N.NORMAL_PFF_CNT, 0) AS NORMAL_PFF_CNT
+                  , IFNULL(D.DAWN_PFF_ORD_CNT, 0) AS DAWN_PFF_ORD_CNT
+                  , IFNULL(DF.DAWN_PFF_FROZEN_CNT, 0) AS DAWN_PFF_FROZEN_CNT
+                  , IFNULL(D.DAWN_PFF_CNT, 0) AS DAWN_PFF_CNT
+              FROM ( SELECT '---' AS ID FROM DUAL ) M
+              /*용인출고 택배 */
+              LEFT OUTER JOIN (
+                            SELECT
+                                    '---' NORMAL_PFF_SUMMARY
+                                  , COUNT(DISTINCT oo.ODID) NORMAL_PFF_ORD_CNT
+                                  , SUM(ood.ORDER_CNT - ood.CANCEL_CNT) NORMAL_PFF_CNT
+                              FROM OD_ORDER oo
+                              INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+                              INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = 'WAREHOUSE_YONGIN_ID' /* 출고처 */
+                              INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+                             WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+                               AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+                               AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+                               AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+                               AND ood.ORDER_STATUS_CD = 'IC' /* 결제완료 */
+                               AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.NORMAL' /* 배송유형 */
+                            ) N
+                            ON M.ID = N.NORMAL_PFF_SUMMARY
+              /* 용인출고 냉동 택배 */
+              LEFT OUTER JOIN (
+                            SELECT
+                                    '---' NORMAL_PFF_FROZEN_SUMMARY
+                                  , COUNT(DISTINCT oo.ODID) NORMAL_PFF_FROZEN_CNT
+                              FROM OD_ORDER oo
+                              INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+                              INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = 'WAREHOUSE_YONGIN_ID' /* 출고처 */
+                              INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+                              INNER JOIN IL_ITEM ii ON ood.IL_ITEM_CD = ii.IL_ITEM_CD
+                             WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+                               AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+                               AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+                               AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+                               AND ood.ORDER_STATUS_CD = 'IC' /* 결제완료 */
+                               AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.NORMAL' /* 배송유형 */
+                               AND ii.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.FROZEN'
+                            ) NF
+                            ON M.ID = NF.NORMAL_PFF_FROZEN_SUMMARY
+              /* 용인출고 새벽 */
+              LEFT OUTER JOIN (
+                            SELECT
+                                    '---' DAWN_PFF_SUMMARY
+                                  , COUNT(DISTINCT oo.ODID) DAWN_PFF_ORD_CNT
+                                  , SUM(ood.ORDER_CNT - ood.CANCEL_CNT) DAWN_PFF_CNT
+                              FROM OD_ORDER oo
+                              INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+                              INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = 'WAREHOUSE_YONGIN_ID' /* 출고처 */
+                              INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+                             WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+                               AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+                               AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+                               AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+                               AND ood.ORDER_STATUS_CD = 'IC' /* 결제완료 */
+                               AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN' /* 배송유형 */
+                            ) D
+                            ON M.ID = D.DAWN_PFF_SUMMARY
+              /* 용인출고 냉동새벽 */
+              LEFT OUTER JOIN (
+                            SELECT
+                                    '---' DAWN_PFF_FROZEN_SUMMARY
+                                  , COUNT(DISTINCT oo.ODID) DAWN_PFF_FROZEN_CNT
+                              FROM OD_ORDER oo
+                              INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+                              INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY = 'WAREHOUSE_YONGIN_ID' /* 출고처 */
+                              INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+                              INNER JOIN IL_ITEM ii ON ood.IL_ITEM_CD = ii.IL_ITEM_CD
+                             WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+                               AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+                               AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+                               AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(ADDDATE(NOW(), #{ifDt}),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+                               AND ood.ORDER_STATUS_CD = 'IC' /* 결제완료 */
+                               AND ood.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN' /* 배송유형 */
+                               AND ii.STORAGE_METHOD_TP = 'ERP_STORAGE_TYPE.FROZEN'
+                            ) DF
+                            ON M.ID = DF.DAWN_PFF_FROZEN_SUMMARY
+    </select>
+
+</mapper>

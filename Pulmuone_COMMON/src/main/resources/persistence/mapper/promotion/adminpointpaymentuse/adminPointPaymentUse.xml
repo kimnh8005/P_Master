@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.adminpointpaymentuse.AdminPointPaymentUseMapper">
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 지급/차감 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.12		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getAdminPointPaymentUseListResultMap" type="kr.co.pulmuone.v1.promotion.adminpointpaymentuse.dto.vo.AdminPointPaymentUseVo">
+		<result column="POINT_DETAIL_TP"  property="pointDetailType"/>
+		<result column="POINT_DETAIL_TYPE_NAME"  property="pointDetailTypeName"/>
+		<result column="UR_ERP_ORGANIZATION_NM"  property="erpOrganizationName"/>
+		<result column="ADMIN_USER_NAME"  property="adminUserName"  />
+		<result column="ADMIN_USER_ID"  property="adminUserId"  />
+		<result column="LOGIN_ID"  property="urUserId"  />
+		<result column="UR_USER_NAME"  property="urUserName"  />
+		<result column="PAYMENT_TP"  property="paymentType"  />
+		<result column="PAYMENT_TYPE_NAME"  property="paymentTypeName"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+		<result column="USE_DATE"  property="pointUseDate"  />
+		<result column="POINT_USED_MSG"  property="pointUsedMsg"  />
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+	</resultMap>
+
+  <select id="getAdminPointPaymentUseList" resultMap="getAdminPointPaymentUseListResultMap">
+            /* adminPointPaymentUse.getAdminPointPaymentUseList */
+            SELECT  P.POINT_DETAIL_TP
+                  , FN_COMN_CODE_DIC(P.POINT_DETAIL_TP) AS POINT_DETAIL_TYPE_NAME
+                  , PO.UR_ERP_ORGANIZATION_CD
+                  , PO.UR_ERP_ORGANIZATION_NM
+                  , CASE WHEN P.MODIFY_ID IS NOT NULL THEN FN_DECRYPT(U2.USER_NM)
+                         ELSE FN_DECRYPT(U1.USER_NM)
+                    END AS ADMIN_USER_NAME
+                  , CASE WHEN P.MODIFY_ID IS NOT NULL THEN U2.LOGIN_ID
+                         ELSE U1.LOGIN_ID
+                    END AS ADMIN_USER_ID
+                  , U0.LOGIN_ID
+                  , FN_DECRYPT(U0.USER_NM) AS UR_USER_NAME
+                  , P.PAYMENT_TP
+                  , FN_COMN_CODE_DIC(P.PAYMENT_TP ) AS PAYMENT_TYPE_NAME
+                  , FORMAT(P.ISSUE_VAL,0) AS ISSUE_VAL
+                  , P.VALIDITY_DAY
+                  , P.POINT_USED_MSG
+                  , P.PM_POINT_ID
+                  , PU.CREATE_DT  AS USE_DATE
+            FROM    PM_POINT_USED PU
+                        INNER JOIN UR_USER U0 ON U0.UR_USER_ID = PU.UR_USER_ID
+                        INNER JOIN PM_POINT P ON  P.PM_POINT_ID = PU.PM_POINT_ID
+                                              AND (P.APPR_STAT = 'APPR_STAT.APPROVED' OR P.APPR_STAT='APPR_STAT.APPROVED_BY_SYSTEM')
+                                            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointType)">
+                                              AND P.POINT_TP = #{pointType}
+                                            </if>
+                        INNER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = P.PM_POINT_ID
+                        INNER JOIN UR_USER U1 ON U1.UR_USER_ID = P.CREATE_ID
+                        LEFT OUTER JOIN UR_USER U2 ON U2.UR_USER_ID = P.MODIFY_ID
+    <where>
+      <choose>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray) and condiValueArray.size() > 0'>
+              AND   FN_DECRYPT(U0.USER_NM) IN
+                                          <foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+                                            #{condiValueArray}
+                                          </foreach>
+            </if>
+          </if>
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+              <!--
+              AND   CASE WHEN P.MODIFY_ID IS NOT NULL THEN U2.LOGIN_ID
+                         ELSE U1.LOGIN_ID
+                    END IN
+              -->
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray) and condiValueArray.size() > 0'>
+              AND   U0.LOGIN_ID IN
+                        <foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+                          #{condiValueArray}
+                        </foreach>
+            </if>
+          </if>
+        </when>
+        <otherwise>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grantAuthEmployeeNumber)">
+              AND   CASE WHEN P.MODIFY_ID IS NOT NULL THEN U2.LOGIN_ID
+                         ELSE U1.LOGIN_ID
+                    END = #{grantAuthEmployeeNumber}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(roleGroup)">
+              AND   PO.UR_ERP_ORGANIZATION_CD = #{roleGroup}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointType)">
+              AND   P.POINT_DETAIL_TP = #{searchPointType}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+              AND   P.POINT_USED_MSG LIKE CONCAT('%',#{pointUsedMsg},'%')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+              AND   PU.CREATE_DT <![CDATA[>=]]> DATE_FORMAT(#{startDate}, '%Y-%m-%d 00:00:00')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+              AND   PU.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endDate}, '%Y-%m-%d 23:59:59')
+            </if>
+        </otherwise>
+      </choose>
+    </where>
+            ORDER BY PU.CREATE_DT DESC
+  </select>
+
+	<select id="getAdminPointPaymentUseListCount" resultType="int">
+
+		/* adminPointPaymentUse.getAdminPointPaymentUseListCount */
+			SELECT COUNT(*)
+			FROM
+			(
+				SELECT  P.POINT_DETAIL_TP
+						, FN_COMN_CODE_DIC(P.POINT_DETAIL_TP) AS POINT_DETAIL_TYPE_NAME
+						, PO.UR_ERP_ORGANIZATION_CD
+						, PO.UR_ERP_ORGANIZATION_NM
+						<!-- , UO.ERP_ORGANIZATION_CD
+						, UO.ERP_ORGANIZATION_NM -->
+						, CASE WHEN P.MODIFY_ID IS NULL THEN FN_DECRYPT((SELECT UU.USER_NM FROM UR_USER UU WHERE P.MODIFY_ID = UU.UR_USER_ID))
+						       ELSE FN_DECRYPT((SELECT UU.USER_NM FROM UR_USER UU WHERE P.CREATE_ID = UU.UR_USER_ID ))
+						       END AS ADMIN_USER_NAME
+						, CASE WHEN P.MODIFY_ID IS NULL THEN P.MODIFY_ID
+						       ELSE P.CREATE_ID
+						       END AS ADMIN_USER_ID
+						, PU.UR_USER_ID
+						, FN_DECRYPT((SELECT UU.USER_NM FROM UR_USER UU WHERE PU.UR_USER_ID = UU.UR_USER_ID)) AS UR_USER_NAME
+						, P.PAYMENT_TP
+						, FN_COMN_CODE_DIC(P.PAYMENT_TP ) AS PAYMENT_TYPE_NAME
+						, P.ISSUE_VAL
+						, P.VALIDITY_DAY
+						, (SELECT MAX(PU.CREATE_DT) AS CREATE_DT FROM PM_POINT_USED PU	WHERE PU.PM_POINT_ID = P.PM_POINT_ID ) AS USE_DATE
+						, P.POINT_USED_MSG
+						, P.PM_POINT_ID
+				FROM PM_POINT P
+				INNER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON P.PM_POINT_ID = PO.PM_POINT_ID
+				<!-- INNER JOIN UR_ERP_ORGANIZATION UO ON UO.ERP_ORGANIZATION_CD = PO.UR_ERP_ORGANIZATION_CD -->
+				LEFT OUTER JOIN PM_POINT_USED PU ON   P.PM_POINT_ID = PU.PM_POINT_ID
+				WHERE P.POINT_TP = 'POINT_TYPE.ADMIN'
+			) A
+			WHERE 1=1
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+						AND A.UR_USER_NAME IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+						AND A.UR_USER_ID IN
+						<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+							#{condiValueArray}
+						</foreach>
+					</if>
+				</when>
+				<otherwise>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grantAuthEmployeeNumber)">
+						AND A.ADMIN_USER_ID = #{grantAuthEmployeeNumber}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(roleGroup)">
+					    AND A.ERP_ORGANIZATION_CD = #{roleGroup}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointType)">
+					    AND A.POINT_DETAIL_TP = #{searchPointType}
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+					    AND A.POINT_USED_MSG LIKE CONCAT('%',#{pointUsedMsg},'%')
+					</if>
+
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+							AND A.USE_DATE BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+						</if>
+					</if>
+				</otherwise>
+			</choose>
+	</select>
+
+
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 지급/차감 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.12		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="adminPointPaymentUseListExcelResultMap" type="kr.co.pulmuone.v1.promotion.adminpointpaymentuse.dto.vo.AdminPointPaymentUseVo">
+		<result column="POINT_DETAIL_TP"  property="pointDetailType"/>
+		<result column="POINT_DETAIL_TYPE_NAME"  property="pointDetailTypeName"/>
+		<result column="UR_ERP_ORGANIZATION_NM"  property="erpOrganizationName"/>
+		<result column="ADMIN_USER_NAME"  property="adminUserName"  />
+		<result column="ADMIN_USER_ID"  property="adminUserId"  />
+		<result column="LOGIN_ID"  property="urUserId"  />
+		<result column="UR_USER_NAME"  property="urUserName"  />
+		<result column="PAYMENT_TP"  property="paymentType"  />
+		<result column="PAYMENT_TYPE_NAME"  property="paymentTypeName"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+		<result column="USE_DATE"  property="pointUseDate"  />
+		<result column="POINT_USED_MSG"  property="pointUsedMsg"  />
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="NO_EXCEL"  property="noExcel"  />
+	</resultMap>
+	<select id="adminPointPaymentUseListExcel" resultMap="adminPointPaymentUseListExcelResultMap">
+			/* adminPointPaymentUse.adminPointPaymentUseListExcel */
+            SELECT  P.POINT_DETAIL_TP
+                  , FN_COMN_CODE_DIC(P.POINT_DETAIL_TP) AS POINT_DETAIL_TYPE_NAME
+                  , PO.UR_ERP_ORGANIZATION_CD
+                  , PO.UR_ERP_ORGANIZATION_NM
+                  , CASE WHEN P.MODIFY_ID IS NOT NULL THEN FN_DECRYPT(U2.USER_NM)
+                         ELSE FN_DECRYPT(U1.USER_NM)
+                    END AS ADMIN_USER_NAME
+                  , CASE WHEN P.MODIFY_ID IS NOT NULL THEN U2.LOGIN_ID
+                          ELSE U1.LOGIN_ID
+                    END AS ADMIN_USER_ID
+                  , U0.LOGIN_ID
+                  , FN_DECRYPT(U0.USER_NM) AS UR_USER_NAME
+                  , P.PAYMENT_TP
+                  , FN_COMN_CODE_DIC(P.PAYMENT_TP ) AS PAYMENT_TYPE_NAME
+                  , FORMAT(P.ISSUE_VAL,0) AS ISSUE_VAL
+                  , P.VALIDITY_DAY
+                  , P.POINT_USED_MSG
+                  , P.PM_POINT_ID
+                  , PU.CREATE_DT  AS USE_DATE
+            FROM    PM_POINT_USED PU
+                        INNER JOIN UR_USER U0 ON U0.UR_USER_ID = PU.UR_USER_ID
+                        INNER JOIN PM_POINT P ON  P.PM_POINT_ID = PU.PM_POINT_ID
+                                              AND (P.APPR_STAT = 'APPR_STAT.APPROVED' OR P.APPR_STAT='APPR_STAT.APPROVED_BY_SYSTEM')
+                                            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointType)">
+                                              AND P.POINT_TP = #{pointType}
+                                            </if>
+                        INNER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = P.PM_POINT_ID
+                        INNER JOIN UR_USER U1 ON U1.UR_USER_ID = P.CREATE_ID
+                        LEFT OUTER JOIN UR_USER U2 ON U2.UR_USER_ID = P.MODIFY_ID
+    <where>
+      <choose>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray) and condiValueArray.size() > 0'>
+              AND   FN_DECRYPT(U0.USER_NM) IN
+                                          <foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+                                            #{condiValueArray}
+                                          </foreach>
+            </if>
+          </if>
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+                <!--
+                AND   CASE WHEN P.MODIFY_ID IS NOT NULL THEN U2.LOGIN_ID
+                           ELSE U1.LOGIN_ID
+                      END IN
+                -->
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray) and condiValueArray.size() > 0'>
+              AND   U0.LOGIN_ID IN
+                                <foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+                                  #{condiValueArray}
+                                </foreach>
+            </if>
+          </if>
+        </when>
+        <otherwise>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grantAuthEmployeeNumber)">
+              AND   CASE WHEN P.MODIFY_ID IS NOT NULL THEN U2.LOGIN_ID
+                         ELSE U1.LOGIN_ID
+                    END = #{grantAuthEmployeeNumber}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(roleGroup)">
+              AND   PO.UR_ERP_ORGANIZATION_CD = #{roleGroup}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointType)">
+              AND   P.POINT_DETAIL_TP = #{searchPointType}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+              AND   P.POINT_USED_MSG LIKE CONCAT('%',#{pointUsedMsg},'%')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+              AND   PU.CREATE_DT <![CDATA[>=]]> DATE_FORMAT(#{startDate}, '%Y-%m-%d 00:00:00')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+              AND   PU.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endDate}, '%Y-%m-%d 23:59:59')
+            </if>
+        </otherwise>
+      </choose>
+    </where>
+            ORDER BY PU.CREATE_DT DESC
+	</select>
+
+</mapper>

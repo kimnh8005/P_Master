@@ -1,0 +1,211 @@
+<form id="inputForm" name="inputForm" method="post" onsubmit="return false">
+    <div class="fb__sect">
+        <div id="contents" class="pop-contents">
+            <span style="float:right;margin-bottom:5px;">
+                <button type="button" id="fnAddDiscount" class="btn-point btn-m" data-bind="enabled: isAddDiscountEnabled, events:{click: fnAddDiscount}">할인 추가</button>
+            </span>
+            <body>
+                <table class="datatable v-type">
+                    <thead>
+                        <tr>
+                            <th style="width:90px;"><label>상태</label></th>
+                            <th style="width:270px;"><label>시작일</label></th>
+                            <th style="width:270px;"><label>종료일</label></th>
+                            <th style="width:120px;"><label>할인유형</label></th>
+                            <th style="width:120px;"><label>정상가</label></th>
+                            <th style="width:120px;"><label>할인율</label></th>
+                            <th style="width:120px;"><label>할인액</label></th>
+                            <th style="width:120px;"><label>판매가</label></th>
+                            <th style="width:120px;"><label>마진율</label></th>
+                            <th style="width:120px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="goodsDiscountTbody" data-template="row-template" data-bind="source: goodsDiscountList">
+                    </tbody>
+                </table>
+            </body>
+        </div>
+		<div class="fb__sect grid-sect" data-bind="visible: apprDivVisible">
+			<div class="wrap-tit">
+				<div class="ea-title">
+					<h3>승인관리자 정보</h3>
+				</div>
+				<div class="btn-area" style="float:right;">
+					<button id="fnApprAdmin" class="btn-point btn-m" type="button" data-bind="events:{click: fnApprAdmin}">승인관리자 지정</button>
+					<button id="fnApprClear" class="set-btn-type5" type="button" data-bind="events:{click: fnApprClear}">초기화</button>
+				</div>
+			</div>
+			<div id="apprGrid"></div>
+		</div>
+	</div>
+	<span class="btn-area">
+		<button id="fnApprCancel" class="btn-gray btn-l btn-point" type="button" data-bind="events:{click: fnApprCancel}, visible: apprCancelBtnVisible">요청철회</button>
+		<button id="fnSave" type="button" class="btn-point btn-l" data-bind="events:{click: fnSave}, visible: saveBtnVisible">저장</button>
+	</span>
+</form>
+
+<!-- 할인 Template -->
+<script id="row-template" type="text/x-kendo-template">
+#
+	let nowDateTime = kendo.parseDate( fnGetToday("yyyy-MM-dd HH:mm"), "yyyy-MM-dd HH:mm");
+	let startDateTime = kendo.parseDate((discountStartDate + " " + discountStartHour + ":" + discountStartMinute), "yyyy-MM-dd HH:mm");
+	let endDateTime = kendo.parseDate((discountEndDate + " " + discountEndHour + ":" + discountEndMinute), "yyyy-MM-dd HH:mm");
+
+	let nowValue = true;
+
+	if(startDateTime > nowDateTime){
+		nowValue = false;
+	}
+#
+    <tr>
+        <td style="text-align:center">	<!-- 상태 -->
+			#: viewModel.fnGetCodeName(approvalStatusCode, "approvalStatusDropdownData") #
+        </td>
+        <td style="text-align:center">	<!-- 시작일 -->
+			# if( approvalStatusCode != "APPR_STAT.NONE" ){ #
+                #= kendo.toString(kendo.parseDate(discountStartDate + " " + discountStartHour + ":" + discountStartMinute), "yyyy-MM-dd HH:mm") #
+			#}else{#
+                <div class="complex-condition">
+                    <input id="discountStartDate" name="discountStartDate" type="text" style="width:90px" required
+                           class="datepicker-wrapper marginR5"
+                           data-role="datepicker"
+				           data-format="{0: yyyy-MM-dd}"
+                           data-date-input="true"
+                           data-min="#: viewModel.fnGetDiscountStartMinDate(viewModel.goodsDiscountList.indexOf(viewModel.goodsDiscountList.getByUid(uid))) #"
+                           data-max="#: viewModel.fnGetDiscountStartMaxDate(viewModel.goodsDiscountList.indexOf(viewModel.goodsDiscountList.getByUid(uid))) #"
+                           data-bind="value: discountStartDate,
+                                      events: { change: fnDiscountStartDateChange }" />
+
+                    <input name="discountStartHour" style="width:50px" required
+                           class="fb__custom__select left-input marginR5"
+                           data-role="dropdownlist"
+                           data-auto-bind="false"
+                           data-value-primitive="true"
+                           data-text-field="NAME"
+                           data-value-field="CODE"
+                           data-bind="value: discountStartHour,
+                                      source: discountStartHourDropdownData,
+                                      events: { change: fnDiscountStartHourChange }" />
+
+                    <input name="discountStartMinute" style="width:50px" required
+                           class="fb__custom__select left-input"
+                           data-role="dropdownlist"
+                           data-auto-bind="false"
+                           data-value-primitive="true"
+                           data-text-field="NAME"
+                           data-value-field="CODE"
+                           data-bind="value: discountStartMinute,
+                                      source: discountStartMinuteDropdownData,
+                                      events: { change: fnDiscountStartMinuteChange }" />
+                </div>
+			#}#
+        </td>
+        <td style="text-align:center">	<!-- 종료일 -->
+			# if( approvalStatusCode == "APPR_STAT.REQUEST" || approvalStatusCode == "APPR_STAT.SUB_APPROVED"
+	            || (approvalStatusCode == "APPR_STAT.APPROVED" && !nowValue)){ #
+                #= kendo.toString(kendo.parseDate(discountEndDate + " " + discountEndHour + ":" + discountEndMinute), "yyyy-MM-dd HH:mm") #
+			#}else{#
+                <div class="complex-condition">
+                    <input name="discountEndDate" type="text" style="width:90px" required
+                           class="datepicker-wrapper marginR5"
+                           data-role="datepicker"
+				           data-format="{0: yyyy-MM-dd}"
+                           data-date-input="true"
+                           data-min="#: viewModel.fnGetDiscountEndMinDate(viewModel.goodsDiscountList.indexOf(viewModel.goodsDiscountList.getByUid(uid))) #"
+                           data-max="#: viewModel.fnGetDiscountEndMaxDate(viewModel.goodsDiscountList.indexOf(viewModel.goodsDiscountList.getByUid(uid))) #"
+                           data-bind="value: discountEndDate,
+                                      events: { change: fnDiscountEndDateChange }" />
+
+                    <input name="discountEndHour" style="width:50px" required
+                           class="fb__custom__select left-input marginR5"
+                           data-role="dropdownlist"
+                           data-auto-bind="false"
+                           data-value-primitive="true"
+                           data-text-field="NAME"
+                           data-value-field="CODE"
+                           data-bind="value: discountEndHour,
+                                      source: discountEndHourDropdownData,
+                                      events: { change: fnDiscountEndHourChange }" />
+
+                    <input name="discountEndMinute" style="width:50px" required
+                           class="fb__custom__select left-input"
+                           data-role="dropdownlist"
+                           data-auto-bind="false"
+                           data-value-primitive="true"
+                           data-text-field="NAME"
+                           data-value-field="CODE"
+                           data-bind="value: discountEndMinute,
+                                      source: discountEndMinuteDropdownData,
+                                      events: { change: fnDiscountEndMinuteChange }" />
+                </div>
+			#}#
+        </td>
+		<td style="text-align:center">	<!-- 할인유형 -->
+			# if( approvalStatusCode != "APPR_STAT.NONE" || discountTypeCode == "GOODS_DISCOUNT_TP.EMPLOYEE" ){ #
+                #: viewModel.fnGetCodeName(discountMethodTypeCode, "discountMethodTypeDropdownData") #
+			#}else{#
+                <input name="discountMethodTypeCode"
+                       class="fb__custom__select left-input"
+                       data-role="dropdownlist"
+                       data-auto-bind="false"
+                       data-value-primitive="true"
+                       data-text-field="NAME"
+                       data-value-field="CODE"
+                       data-bind="value: discountMethodTypeCode,
+                                  source: discountMethodTypeDropdownData,
+                                  events: { change: fnDiscountMethodTypeChange }"
+                       style="width: 100%;"/>
+			#}#
+		</td>
+		<td style="text-align:right">	<!-- 정상가 -->
+            #= kendo.toString(itemRecommendedPrice, "n0") #
+		</td>
+		<td style="text-align:center">	<!-- 할인율 -->
+			# if( approvalStatusCode != "APPR_STAT.NONE" ){ #
+                #= kendo.toString(discountRatio, "n0") # %
+			#}else{#
+                <input name="discountRatio"
+                       data-role="numerictextbox"
+                       data-format="n0"
+                       data-min="0"
+                       data-decimals="0"
+                       data-spinners="false"
+                       data-restrict-decimals="true"
+                       data-bind="value: discountRatio,
+                                  enabled: isDiscountRatioEnabled,
+                                  events: { change: fnDiscountRatioChange }"
+                       style="width: 80px;text-align:right;"> %
+			#}#
+		</td>
+		<td style="text-align:right">	<!-- 할인액 -->
+            #= kendo.toString(discountAmount, "n0") #
+		</td>
+		<td style="text-align:right">	<!-- 판매가 -->
+			# if( approvalStatusCode != "APPR_STAT.NONE" ){ #
+                #= kendo.toString(discountSalePrice, "n0") #
+			#}else{#
+                <input name="discountSalePrice"
+                       data-role="numerictextbox"
+                       data-format="n0"
+                       data-min="0"
+                       data-decimals="0"
+                       data-spinners="false"
+                       data-restrict-decimals="true"
+                       data-bind="value: discountSalePrice,
+                                  enabled: isDiscountSalePriceEnabled,
+                                  events: { change: fnDiscountSalePriceChange }"
+                       style="width: 100%;text-align:right;">
+			#}#
+		</td>
+		<td style="text-align:center">	<!-- 마진율 -->
+            #= kendo.toString(marginRate, "n0") # %
+		</td>
+		<td style="text-align:center">	<!-- 삭제버튼 -->
+            # if( (approvalStatusCode != "APPR_STAT.APPROVED" || (approvalStatusCode == "APPR_STAT.APPROVED" && (nowDateTime <= startDateTime))) ){ #
+				<button type="button" class="btn-red btn-s" data-bind="events:{click: fnDiscountDeleteRow}">삭제</button>
+			# } else if (nowDateTime >= startDateTime){ #
+				<button type="button" class="btn-white btn-s" data-bind="events:{click: fnDiscountEndDateUpdateRow}">기간수정</button>
+			# }#
+		</td>
+    </tr>
+</script>

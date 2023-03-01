@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.inspect.InspectNoticeMapper">
+
+    <resultMap id="getInspectNoticeMap" type="kr.co.pulmuone.v1.customer.inspect.dto.vo.InspectNoticeVo">
+		<result column="CS_INSPECT_NOTICE_ID"    property="csInspectNoticeId" />
+		<result column="INSPECT_NAME"              property="inspectName" />
+		<result column="MAIN_TITLE"              property="mainTitle" />
+        <result column="SUB_TITLE" 		         property="subTitle" />
+        <result column="START_DT"       	     property="startDt" />
+        <result column="END_DT" 	             property="endDt" />
+        <result column="CREATE_NAME"      	     property="createName" />
+        <result column="CREATE_DT"      	     property="createDt" />
+		<result column="MODIFY_NAME"      	     property="modifyName" />
+		<result column="MODIFY_DT"      	     property="modifyDt" />
+    </resultMap>
+
+	<resultMap id="getInspectNoticeIpListMap" type="kr.co.pulmuone.v1.customer.inspect.dto.vo.InspectNoticeIpVo">
+		<result column="CS_INSPECT_NOTICE_IP_ID"    property="csInspectNoticeIpId" />
+		<result column="CS_INSPECT_NOTICE_ID"       property="csInspectNoticeId" />
+		<result column="IP_ADDRESS"                 property="ipAddress" />
+		<result column="CREATE_ID"      	        property="createId" />
+		<result column="CREATE_DT"      	        property="createDt" />
+	</resultMap>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기정검 정보조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 202.11.25		최윤석    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getInspectNotice" resultMap="getInspectNoticeMap">
+		SELECT
+			MAX(CIN.CS_INSPECT_NOTICE_ID) AS CS_INSPECT_NOTICE_ID
+			 , CIN.INSPECT_NAME
+			 , CIN.MAIN_TITLE
+			 , CIN.SUB_TITLE
+			 , CIN.START_DT
+			 , CIN.END_DT
+			 , FN_DECRYPT(UU.USER_NM) AS CREATE_NAME
+			 , CIN.CREATE_DT
+			 , FN_DECRYPT(UU.USER_NM) AS MODIFY_NAME
+			 , CIN.MODIFY_DT
+		FROM
+			CS_INSPECT_NOTICE CIN
+				INNER JOIN UR_USER UU ON CIN.CREATE_ID = UU.UR_USER_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기정검IP 정보조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 202.11.25		최윤석    	   최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getAllInspectNoticeIpList" resultMap="getInspectNoticeIpListMap">
+		SELECT
+			INET_NTOA(IP_ADDRESS) AS IP_ADDRESS
+		FROM
+			CS_INSPECT_NOTICE_IP
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: INSPECTNOTICE 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.01		최윤석          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addInspectNotice">
+		INSERT INTO CS_INSPECT_NOTICE
+		(
+		      INSPECT_NAME
+			, MAIN_TITLE
+			, SUB_TITLE
+			, START_DT
+			, END_DT
+			, CREATE_ID
+			, CREATE_DT
+			, MODIFY_ID
+			, MODIFY_DT
+		)
+		VALUES
+		(
+			#{inspectName},
+			#{mainTitle},
+			#{subTitle},
+			#{startDt},
+			#{endDt},
+			#{createId},
+			NOW(),
+			#{modifyId},
+			NOW()
+		)
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: INSPECTNOTICE_IP 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.01		최윤석          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addAllInspectNoticeIp">
+		INSERT INTO CS_INSPECT_NOTICE_IP
+		(
+		      CS_INSPECT_NOTICE_ID
+			, IP_ADDRESS
+			, CREATE_ID
+			, CREATE_DT
+		)
+		VALUES
+		   <foreach collection="list" item="item" separator=" , ">
+			   (
+				   #{item.csInspectNoticeId},
+			       INET_ATON(#{item.ipAddress}),
+				   #{item.createId},
+				   NOW()
+			   )
+		   </foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: INSPECT_NOTICE 정보 삭제
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.02		최윤석		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteInspectNotice">
+		DELETE
+		FROM CS_INSPECT_NOTICE
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: INSPECT_NOTICE_IP 정보 삭제
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.02		최윤석		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="deleteAllInspectNoticeIp">
+		DELETE
+		FROM CS_INSPECT_NOTICE_IP
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 서버시간이 정기점검 시간에 포함되는지 체크
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.02		최윤석		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIsBetweenServerTime" resultType="Boolean">
+		SELECT
+		    #{serverDatetime} BETWEEN CIN.START_DT AND CIN.END_DT AS IS_BETWEEN_DT
+		FROM CS_INSPECT_NOTICE CIN;
+	</select>
+
+</mapper>

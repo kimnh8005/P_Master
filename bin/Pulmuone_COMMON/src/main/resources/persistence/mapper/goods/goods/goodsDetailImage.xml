@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsDetailImageMapper">
+
+<!--───────────────────────────────────────────────────────────────────────
+  * description      : 상품상세 이미지 다운로드 리스트 조회
+  * @
+  * @ 수정일         수정자          수정내용
+  * @ ──────────────────────────────────────────────────────────────────────
+  * @ 2021.09.28    안치열          NEW 변경
+  * @
+ ────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsDetailImageList" resultType="kr.co.pulmuone.v1.goods.goods.dto.GoodsDetailImageDto">
+        /* goodsDetailImage.getGoodsDetailImageList */
+        SELECT IGDI.MODIFY_DT MODIFY_DATE
+            , IG.IL_GOODS_ID GOODS_ID
+            , II.IL_ITEM_CD ITEM_CODE
+            , II.ITEM_BARCODE ITEM_BARCODE
+            , IG.GOODS_TP GOODS_TYPE
+            , GOODS_TYPE_CODE.NAME AS GOODS_TYPE_NAME
+            , IG.GOODS_NM GOODS_NAME
+            , IGDI.CHG_GOODS_DETL_YN
+            , IGDI.CHG_SPCE_YN
+            , CASE WHEN IGDI.CHG_GOODS_DETL_YN = 'Y' AND IGDI.CHG_SPCE_YN = 'Y' THEN '상품상세정보 / 상품고시정보'
+                   WHEN IGDI.CHG_GOODS_DETL_YN = 'Y' AND IGDI.CHG_SPCE_YN = 'N' THEN '상품상세정보'
+                   WHEN IGDI.CHG_GOODS_DETL_YN = 'N' AND IGDI.CHG_SPCE_YN = 'Y' THEN '상품고시정보'
+                   ELSE ''
+              END AS GOODS_UPDATE_STATUS_EXCEL
+            , CONCAT(FN_DECRYPT(UU.USER_NM), ' (', UU.LOGIN_ID, ')') AS CHARGE_NAME_EXCEL
+            , CONCAT(IFNULL(II.IL_ITEM_CD,'-'), ' / ', IFNULL(II.ITEM_BARCODE,'-')) AS ITEM_CODE_EXCEL
+            , IGDI.MODIFY_ID MODIFY_ID
+            , IGDI.PC_IMG_NM PC_IMG_NM
+            , FN_DECRYPT(UU.USER_NM) AS CHARGE_NAME
+            , UU.LOGIN_ID AS CHARGE_ID
+        FROM IL_GOODS_DETL_IMG IGDI
+        LEFT JOIN IL_GOODS IG ON IGDI.IL_GOODS_ID = IG.IL_GOODS_ID
+        LEFT JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+        LEFT JOIN (
+            SELECT
+                A.ST_COMN_CODE_ID AS CODE
+                , B.DIC_NM AS NAME
+            FROM ST_COMN_CODE A
+            INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+            WHERE A.ST_COMN_CODE_MST_CD = 'GOODS_TYPE'
+            AND A.USE_YN = UPPER('Y')
+        ) GOODS_TYPE_CODE ON GOODS_TYPE_CODE.CODE = IG.GOODS_TP
+        LEFT JOIN UR_USER UU ON UU.UR_USER_ID = IGDI.MODIFY_ID
+        INNER JOIN (
+            SELECT MAX(MODIFY_DT) MODIFY_DT , IL_GOODS_ID
+            FROM IL_GOODS_DETL_IMG
+            GROUP BY IL_GOODS_ID
+        ) MAX_ID ON MAX_ID.MODIFY_DT = IGDI.MODIFY_DT AND MAX_ID.IL_GOODS_ID = IGDI.IL_GOODS_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(selectConditionType)">
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, "singleSection")'> <!-- 최근 수정일 -->
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)"> <!-- 복수검색 -->
+                            <choose>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ALL")'> <!-- 전체 -->
+                                    AND
+                                    (
+                                    IG.IL_GOODS_ID IN
+                                    <foreach collection="findKeywordList" item="goodsId" index="index" separator="," open="(" close=")">
+                                        #{goodsId}
+                                    </foreach>
+                                    OR
+                                    II.IL_ITEM_CD IN
+                                    <foreach collection="findKeywordList" item="itemCode" index="index" separator="," open="(" close=")">
+                                        #{itemCode}
+                                    </foreach>
+                                    OR
+                                    II.ERP_ITEM_BARCODE IN
+                                    <foreach collection="findKeywordList" item="erpItemBarcode" index="index" separator="," open="(" close=")">
+                                        #{erpItemBarcode}
+                                    </foreach>
+                                    OR
+                                    II.ITEM_BARCODE IN
+                                    <foreach collection="findKeywordList" item="itemBarcode" index="index" separator="," open="(" close=")">
+                                        #{itemBarcode}
+                                    </foreach>
+                                    )
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "GOODS_CODE")'> <!-- 상품코드 -->
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        IG.IL_GOODS_ID IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(IG.IL_GOODS_ID AS UNSIGNED)  IN
+                                    </if>
+                                    <foreach collection="findKeywordList" item="goodsId" index="index" separator="," open="(" close=")">
+                                        #{goodsId}
+                                    </foreach>
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ITEM_CODE")'> <!-- 마스터 품목코드 -->
+
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        II.IL_ITEM_CD IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(II.IL_ITEM_CD AS UNSIGNED)  IN
+                                    </if>
+
+                                    <foreach collection="findKeywordList" item="itemCode" index="index" separator="," open="(" close=")">
+                                        #{itemCode}
+                                    </foreach>
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ITEM_BARCODE")'> <!-- 품목 바코드 -->
+                                    AND
+                                    (
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        II.ERP_ITEM_BARCODE IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(II.ERP_ITEM_BARCODE AS UNSIGNED)  IN
+                                    </if>
+
+                                    <foreach collection="findKeywordList" item="erpItemBarcode" index="index" separator="," open="(" close=")">
+                                        #{erpItemBarcode}
+                                    </foreach>
+                                    OR
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        II.ITEM_BARCODE IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(II.ITEM_BARCODE AS UNSIGNED)  IN
+                                    </if>
+                                    <foreach collection="findKeywordList" item="itemBarcode" index="index" separator="," open="(" close=")">
+                                        #{itemBarcode}
+                                    </foreach>
+                                    )
+                                </when>
+                            </choose>
+                        </if>
+                    </when>
+                    <otherwise>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsName)"> <!-- 상품명 -->
+                            AND IG.GOODS_NM LIKE CONCAT('%', #{goodsName}, '%')
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUpdateType)"> <!-- 업데이트 항목 -->
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUpdateType, 'GOODS_DETAIL')"> <!-- 상품상세정보 -->
+                                    AND IGDI.CHG_GOODS_DETL_YN = 'Y'
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUpdateType, 'GOODS_NOTICE')"> <!-- 상품고시정보 -->
+                                    AND IGDI.CHG_SPCE_YN = 'Y'
+                                </when>
+                            </choose>
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(chargeType, 'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(charge)">
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createName')"> <!-- 등록자명 -->
+                                    AND FN_DECRYPT(UU.USER_NM) = #{charge}
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createId')"> <!-- 등록자 LOGIN ID -->
+                                    AND UU.LOGIN_ID = #{charge}
+                                </when>
+                            </choose>
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)"> <!-- 업데이트일 검색 -->
+                            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+                                AND IGDI.MODIFY_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                            </if>
+                        </if>
+                    </otherwise>
+                </choose>
+            </if>
+            AND IGDI.IMG_GEN_YN ='Y'
+        </where>
+        ORDER BY MODIFY_DATE DESC
+
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn,'Y') ">
+            <include refid="_common.pageLimit"/>
+        </if>
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품상세 이미지 다운로드 리스트 총 Count
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.01		안치열			최초생성
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getGoodsDetailImageListCount" resultType="long">
+        /* goodsDetailImage.getGoodsDetailImageList */
+        SELECT COUNT(*) AS TOTAL_CNT
+        FROM IL_GOODS_DETL_IMG IGDI
+        LEFT JOIN IL_GOODS IG ON IGDI.IL_GOODS_ID = IG.IL_GOODS_ID
+        LEFT JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+        LEFT JOIN (
+        SELECT
+        A.ST_COMN_CODE_ID AS CODE
+        , B.DIC_NM AS NAME
+        FROM ST_COMN_CODE A
+        INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+        WHERE A.ST_COMN_CODE_MST_CD = 'GOODS_TYPE'
+        AND A.USE_YN = UPPER('Y')
+        ) GOODS_TYPE_CODE ON GOODS_TYPE_CODE.CODE = IG.GOODS_TP
+        LEFT JOIN UR_USER UU ON UU.UR_USER_ID = IGDI.MODIFY_ID
+        INNER JOIN (
+        SELECT MAX(MODIFY_DT) MODIFY_DT , IL_GOODS_ID
+        FROM IL_GOODS_DETL_IMG
+        GROUP BY IL_GOODS_ID
+        ) MAX_ID ON MAX_ID.MODIFY_DT = IGDI.MODIFY_DT AND MAX_ID.IL_GOODS_ID = IGDI.IL_GOODS_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(selectConditionType)">
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, "singleSection")'> <!-- 최근 수정일 -->
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)"> <!-- 복수검색 -->
+                            <choose>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ALL")'> <!-- 전체 -->
+                                    AND
+                                    (
+                                    IG.IL_GOODS_ID IN
+                                    <foreach collection="findKeywordList" item="goodsId" index="index" separator="," open="(" close=")">
+                                        #{goodsId}
+                                    </foreach>
+                                    OR
+                                    II.IL_ITEM_CD IN
+                                    <foreach collection="findKeywordList" item="itemCode" index="index" separator="," open="(" close=")">
+                                        #{itemCode}
+                                    </foreach>
+                                    OR
+                                    II.ERP_ITEM_BARCODE IN
+                                    <foreach collection="findKeywordList" item="erpItemBarcode" index="index" separator="," open="(" close=")">
+                                        #{erpItemBarcode}
+                                    </foreach>
+                                    OR
+                                    II.ITEM_BARCODE IN
+                                    <foreach collection="findKeywordList" item="itemBarcode" index="index" separator="," open="(" close=")">
+                                        #{itemBarcode}
+                                    </foreach>
+                                    )
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "GOODS_CODE")'> <!-- 상품코드 -->
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        IG.IL_GOODS_ID IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(IG.IL_GOODS_ID AS UNSIGNED)  IN
+                                    </if>
+                                    <foreach collection="findKeywordList" item="goodsId" index="index" separator="," open="(" close=")">
+                                        #{goodsId}
+                                    </foreach>
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ITEM_CODE")'> <!-- 마스터 품목코드 -->
+
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        II.IL_ITEM_CD IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(II.IL_ITEM_CD AS UNSIGNED)  IN
+                                    </if>
+
+                                    <foreach collection="findKeywordList" item="itemCode" index="index" separator="," open="(" close=")">
+                                        #{itemCode}
+                                    </foreach>
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchCondition, "ITEM_BARCODE")'> <!-- 품목 바코드 -->
+                                    AND
+                                    (
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        II.ERP_ITEM_BARCODE IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(II.ERP_ITEM_BARCODE AS UNSIGNED)  IN
+                                    </if>
+
+                                    <foreach collection="findKeywordList" item="erpItemBarcode" index="index" separator="," open="(" close=")">
+                                        #{erpItemBarcode}
+                                    </foreach>
+                                    OR
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'Y')">
+                                        II.ITEM_BARCODE IN
+                                    </if>
+                                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findKeywordStrFlag, 'N')">
+                                        CAST(II.ITEM_BARCODE AS UNSIGNED)  IN
+                                    </if>
+                                    <foreach collection="findKeywordList" item="itemBarcode" index="index" separator="," open="(" close=")">
+                                        #{itemBarcode}
+                                    </foreach>
+                                    )
+                                </when>
+                            </choose>
+                        </if>
+                    </when>
+                    <otherwise>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsName)"> <!-- 상품명 -->
+                            AND IG.GOODS_NM LIKE CONCAT('%', #{goodsName}, '%')
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUpdateType)"> <!-- 업데이트 항목 -->
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUpdateType, 'GOODS_DETAIL')"> <!-- 상품상세정보 -->
+                                    AND IGDI.CHG_GOODS_DETL_YN = 'Y'
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchUpdateType, 'GOODS_NOTICE')"> <!-- 상품고시정보 -->
+                                    AND IGDI.CHG_SPCE_YN = 'Y'
+                                </when>
+                            </choose>
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(chargeType, 'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(charge)">
+                            <choose>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createName')"> <!-- 등록자명 -->
+                                    AND FN_DECRYPT(UU.USER_NM) = #{charge}
+                                </when>
+                                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createId')"> <!-- 등록자 LOGIN ID -->
+                                    AND UU.LOGIN_ID = #{charge}
+                                </when>
+                            </choose>
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)"> <!-- 업데이트일 검색 -->
+                            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+                                AND IGDI.MODIFY_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                            </if>
+                        </if>
+                    </otherwise>
+                </choose>
+            </if>
+            AND IGDI.IMG_GEN_YN ='Y'
+        </where>
+    </select>
+
+<!--───────────────────────────────────────────────────────────────────────
+  * description      : 상품고시정보 업데이트 상품코드 조회
+  * @
+  * @ 수정일         수정자          수정내용
+  * @ ──────────────────────────────────────────────────────────────────────
+  * @ 2021.09.28    안치열          NEW 변경
+  * @
+ ────────────────────────────────────────────────────────────────────────-->
+    <select id="getSpecGoodsIdList" resultType="kr.co.pulmuone.v1.goods.etc.dto.vo.GoodsDetailImageVo">
+        /* goodsDetailImage.getSpecGoodsIdList */
+        SELECT IL_GOODS_ID
+        FROM IL_GOODS
+        WHERE IL_ITEM_CD IN (
+            SELECT IL_ITEM_CD
+            FROM IL_ITEM
+            WHERE IL_SPEC_MASTER_ID IN (
+                SELECT IL_SPEC_MASTER_ID
+                FROM IL_SPEC_MASTER_FIELD
+                WHERE IL_SPEC_FIELD_ID = #{specificsFieldId}
+            )
+        )
+        AND GOODS_TP <![CDATA[<>]]>  'GOODS_TYPE.PACKAGE'
+        UNION
+        SELECT DISTINCT IL_GOODS_ID
+        FROM IL_GOODS_PACKAGE_GOODS_MAPPING
+        WHERE TARGET_GOODS_ID IN (
+            SELECT IL_GOODS_ID
+            FROM IL_GOODS
+            WHERE IL_ITEM_CD IN (
+                SELECT IL_ITEM_CD
+                FROM IL_ITEM
+                WHERE IL_SPEC_MASTER_ID IN (
+                    SELECT IL_SPEC_MASTER_ID
+                    FROM IL_SPEC_MASTER_FIELD
+                    WHERE IL_SPEC_FIELD_ID = #{specificsFieldId}
+                )
+            )
+        )
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description      : 상품상세정보 업데이트 상품코드 조회
+      * @
+      * @ 수정일         수정자          수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.09.28    안치열          NEW 변경
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <select id="getDetailGoodsIdList" resultType="kr.co.pulmuone.v1.goods.etc.dto.vo.GoodsDetailImageVo">
+        /* goodsDetailImage.getDetailGoodsIdList */
+        SELECT  IL_GOODS_ID
+        FROM IL_GOODS
+        WHERE IL_ITEM_CD IN (
+            SELECT IL_ITEM_CD
+            FROM IL_ITEM
+            WHERE IL_SPEC_MASTER_ID = #{specificsMasterId}
+        )
+        AND GOODS_TP <![CDATA[<>]]> 'GOODS_TYPE.PACKAGE'
+        UNION
+        SELECT DISTINCT IL_GOODS_ID
+        FROM IL_GOODS_PACKAGE_GOODS_MAPPING
+        WHERE TARGET_GOODS_ID IN (
+            SELECT  IL_GOODS_ID
+            FROM IL_GOODS
+            WHERE IL_ITEM_CD IN (
+                    SELECT IL_ITEM_CD
+                    FROM IL_ITEM
+                    WHERE IL_SPEC_MASTER_ID = #{specificsMasterId}
+            )
+        )
+    </select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+  * description      : 품목정보 업데이트 후 상품코드 조회
+  * @
+  * @ 수정일         수정자          수정내용
+  * @ ──────────────────────────────────────────────────────────────────────
+  * @ 2021.09.28    안치열          NEW 변경
+  * @
+ ────────────────────────────────────────────────────────────────────────-->
+    <select id="getUpdateItemInfo" resultType="kr.co.pulmuone.v1.goods.etc.dto.vo.GoodsDetailImageVo">
+        /* goodsDetailImage.getUpdateItemInfo */
+        SELECT  IL_GOODS_ID
+        FROM IL_GOODS
+        WHERE IL_ITEM_CD = #{ilItemCode}
+        AND GOODS_TP  <![CDATA[<>]]>  'GOODS_TYPE.PACKAGE'
+        UNION
+        SELECT DISTINCT IL_GOODS_ID
+        FROM IL_GOODS_PACKAGE_GOODS_MAPPING
+        WHERE TARGET_GOODS_ID IN (
+            SELECT  IL_GOODS_ID
+            FROM IL_GOODS
+            WHERE IL_ITEM_CD = #{ilItemCode}
+        )
+    </select>
+
+<!--───────────────────────────────────────────────────────────────────────
+  * description      : 상품정보 업데이트 후 상품코드 조회
+  * @
+  * @ 수정일         수정자          수정내용
+  * @ ──────────────────────────────────────────────────────────────────────
+  * @ 2021.09.28    안치열          NEW 변경
+  * @
+ ────────────────────────────────────────────────────────────────────────-->
+    <select id="getUpdateGoodsInfoForDetailImage" resultType="kr.co.pulmuone.v1.goods.etc.dto.vo.GoodsDetailImageVo">
+        /* goodsDetailImage.getUpdateGoodsInfoForDetailImage */
+        SELECT  IL_GOODS_ID
+        FROM IL_GOODS
+        WHERE IL_GOODS_ID = #{ilGoodsId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description     : 상품 상세 이미지 배치 생성 유무
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.28     안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getImageBatchYn" resultType="boolean">
+        /*  goodsDetailImage.getImageBatchYn */
+        SELECT CASE WHEN (SELECT COUNT(1)
+                          FROM IL_GOODS_DETL_IMG
+                          WHERE IL_GOODS_ID = #{ilGoodsId}
+                          AND IMG_GEN_YN = 'N'
+                          LIMIT 1) > 0
+                          THEN 1
+               ELSE 0
+               END CHK_IMG_GEN_YN
+        FROM DUAL
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description      : 상품 상세 이미지 관리 등록
+      * @
+      * @ 수정일         수정자          수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.09.27    안치열          NEW 변경
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <insert id="putUpdateGoodsIdInfoForDetailImage" useGeneratedKeys="true" keyProperty="specificsFieldId">
+        /* goodsDetailImage.putUpdateGoodsIdInfoForDetailImage */
+        INSERT INTO IL_GOODS_DETL_IMG
+        (
+            IL_GOODS_ID
+            , CHG_GOODS_DETL_YN
+            , CHG_SPCE_YN
+            , MODIFY_DT
+            , MODIFY_ID
+            , IMG_GEN_YN
+        )
+        VALUES
+        (
+            #{ilGoodsId}
+            , #{chgGoodsDetlYn}
+            , #{chgSpceYn}
+            , NOW()
+            , #{createId}
+            , #{imgGenYn}
+        )
+    </insert>
+
+
+</mapper>

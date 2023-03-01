@@ -1,0 +1,1414 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.registration.OrderRegistrationMapper">
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.18		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrder" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderVo">
+		/*	orderRegistration.addOrder  */
+		INSERT INTO OD_ORDER
+			(OD_ORDER_ID, ODID, OM_SELLERS_ID, COLLECTION_MALL_ID, OUTMALL_ID, UR_GROUP_ID, UR_GROUP_NM, UR_USER_ID, UR_EMPLOYEE_CD, GUEST_CI,
+			BUYER_NM, BUYER_HP, BUYER_TEL, BUYER_MAIL, GOODS_NM, IL_GOODS_ID,
+			SELLERS_GROUP_CD, ORDER_PAYMENT_TYPE, BUYER_TYPE_CD, AGENT_TYPE_CD, ORDER_HPN_CD, GIFT_YN, UR_PCID_CD,
+			UR_STORE_ID, UR_STORE_SCHEDULE_ID, STORE_SCHEDULE_NO, STORE_START_TIME, STORE_END_TIME,
+			ORDER_YN, CREATE_DT, ORDER_COPY_YN, ORDER_CREATE_YN)
+		VALUES
+			(#{odOrderId}, #{odid}, #{omSellersId}, #{collectionMallId}, #{outmallId}, #{urGroupId}, #{urGroupNm}, #{urUserId}, #{urEmployeeCd}, #{guestCi},
+			FN_ENCRYPT(#{buyerNm}), FN_ENCRYPT(#{buyerHp}), FN_ENCRYPT(#{buyerTel}), FN_ENCRYPT(#{buyerMail}), #{goodsNm}, #{ilGoodsId},
+			#{sellersGroupCd}, #{orderPaymentType}, #{buyerTypeCd}, #{agentTypeCd}, #{orderHpnCd}, #{giftYn}, #{urPcidCd},
+			#{urStoreId}, #{urStoreScheduleId}, #{storeScheduleNo}, #{storeStartTime}, #{storeEndTime},
+			#{orderYn}, NOW(), IFNULL(#{orderCopyYn}, 'N'), IFNULL(#{orderCreateYn}, 'N'))
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 날짜 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.20		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDt" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDtVo">
+		/*	orderRegistration.addOrderDt  */
+		INSERT INTO OD_ORDER_DT
+			(OD_ORDER_ID, CREATE_DT, IR_ID, IR_DT, IB_ID, IB_DT, IC_ID, IC_DT)
+		VALUES
+			(#{odOrderId}, NOW(), #{irId}, IF(#{irId} <![CDATA[>]]> 0, NOW(), NULL), #{ibId}, IF(#{ibId} <![CDATA[>]]> 0, NOW(), NULL), #{icId}, IF(#{icId} <![CDATA[>]]> 0, NOW(), NULL))
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 날짜 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.15		홍진영	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderPresent" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPresentVo">
+		/*	orderRegistration.addOrderPresent  */
+		INSERT INTO OD_ORDER_PRESENT
+			(OD_ORDER_ID, PRESENT_ID, PRESENT_RECEIVE_NM, PRESENT_RECEIVE_HP, PRESENT_CARD_TYPE, PRESENT_CARD_MSG, PRESENT_AUTH_CD, PRESENT_EXPIRATION_DT, PRESENT_ORDER_STATUS)
+		VALUES
+			(#{odOrderId}, #{presentId}, FN_ENCRYPT(#{presentReceiveNm}), FN_ENCRYPT(#{presentReceiveHp}), #{presentCardType}, #{presentCardMsg}, #{presentAuthCd}, #{presentExpirationDt}, #{presentOrderStatus})
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 배송지 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.20		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addShippingZone" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderShippingZoneVo">
+		/*	orderRegistration.addShippingZone  */
+		INSERT INTO OD_SHIPPING_ZONE
+			(OD_SHIPPING_ZONE_ID, OD_ORDER_ID, DELIVERY_TYPE, SHIPPING_TYPE, RECV_NM, RECV_HP, RECV_TEL, RECV_MAIL, RECV_ZIP_CD, RECV_ADDR1, RECV_ADDR2, RECV_BLD_NO, DELIVERY_MSG, DOOR_MSG_CD, DOOR_MSG, UR_STORE_ID, CREATE_DT)
+		VALUES
+			(#{odShippingZoneId}, #{odOrderId}, #{deliveryType}, #{shippingType}, FN_ENCRYPT(#{recvNm}), FN_ENCRYPT(#{recvHp}), FN_ENCRYPT(#{recvTel}), FN_ENCRYPT(#{recvMail}), FN_ENCRYPT(#{recvZipCd}), FN_ENCRYPT(#{recvAddr1}), FN_ENCRYPT(#{recvAddr2}), #{recvBldNo}, #{deliveryMsg}, #{doorMsgCd}, FN_ENCRYPT(#{doorMsg}), #{urStoreId}, NOW())
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 배송지 이력 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.20		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addShippingZoneHist" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderShippingZoneHistVo">
+		/*	orderRegistration.addShippingZoneHist  */
+		INSERT INTO OD_SHIPPING_ZONE_HIST
+			(OD_SHIPPING_ZONE_ID, OD_ORDER_ID, DELIVERY_TYPE, SHIPPING_TYPE, RECV_NM, RECV_HP, RECV_TEL, RECV_MAIL, RECV_ZIP_CD, RECV_ADDR1, RECV_ADDR2, RECV_BLD_NO, DELIVERY_MSG, DOOR_MSG_CD, DOOR_MSG, CREATE_DT)
+		VALUES
+			(
+			 #{odShippingZoneId},
+			 <choose>
+			     <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(odOrderId) and odOrderId > 0">
+			         #{odOrderId},
+			     </when>
+			     <otherwise>
+			         (SELECT OD_ORDER_ID FROM OD_SHIPPING_ZONE WHERE OD_SHIPPING_ZONE_ID = #{odShippingZoneId}),
+			     </otherwise>
+			 </choose>
+			 #{deliveryType},
+			 #{shippingType},
+			 FN_ENCRYPT(#{recvNm}),
+			 FN_ENCRYPT(#{recvHp}),
+			 FN_ENCRYPT(#{recvTel}),
+			 FN_ENCRYPT(#{recvMail}),
+			 FN_ENCRYPT(#{recvZipCd}),
+			 FN_ENCRYPT(#{recvAddr1}),
+			 FN_ENCRYPT(#{recvAddr2}),
+			 #{recvBldNo},
+			 #{deliveryMsg},
+			 #{doorMsgCd},
+			 FN_ENCRYPT(#{doorMsg}),
+			 NOW()
+			 )
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 배송비 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.20		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addShippingPrice" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderShippingPriceVo">
+		/*	orderRegistration.addShippingPrice  */
+		INSERT INTO OD_SHIPPING_PRICE
+			(OD_SHIPPING_PRICE_ID, IL_SHIPPING_TMPL_ID, PAYMENT_METHOD, `METHOD`, ORDER_SHIPPING_PRICE, JEJU_ISLAND_SHIPPING_PRICE, SHIPPING_PRICE, PM_COUPON_ISSUE_ID, PM_COUPON_NM, SHIPPING_DISCOUNT_PRICE, ORG_SHIPPING_PRICE, SETL_YN, CREATE_DT)
+		VALUES
+			(#{odShippingPriceId}, #{ilShippingTmplId}, #{paymentMethod}, #{method}, #{orderShippingPrice}, #{jejuIslandShippingPrice}, #{shippingPrice}, #{pmCouponIssueId}, #{pmCouponNm}, #{shippingDiscountPrice}, #{orgShippingPrice}, #{setlYn}, NOW())
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.20		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDetl" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlVo">
+		/*	orderRegistration.addOrderDetl  */
+		INSERT INTO OD_ORDER_DETL
+		(
+			  OD_ORDER_DETL_ID 				/** 주문상세 PK*/
+			, OD_ORDER_DETL_SEQ 			/** 주문상세 순번(라인번호) 주문번호에 대한 순번*/
+			, OD_ORDER_ID 					/** 주문 PK*/
+			, ODID							/** 주문 번호 */
+			, OD_ORDER_DETL_STEP_ID 		/** 주문상세 정렬 키*/
+			, OD_ORDER_DETL_DEPTH_ID 		/** 주문상세 뎁스*/
+			, OD_ORDER_DETL_PARENT_ID 		/** 주문상세 부모 ID*/
+			, OD_SHIPPING_PRICE_ID 			/** 주문 배송비 PK : OD_SHIPPING_PRICE.OD_SHIPPING_PRICE_ID*/
+			, OD_SHIPPING_ZONE_ID 			/** 주문 배송지 PK : OD_SHIPPING_ZONE.OD_SHIPPING_ZONE_ID*/
+			, IL_GOODS_SHIPPING_TEMPLATE_ID /** 배송비 정책 PK : IL_GOODS_SHIPPING_TEMPLATE.IL_GOODS_SHIPPING_TEMPLATE_ID*/
+			, UR_WAREHOUSE_ID 				/** 출고처 PK : UR_WAREHOUSE.UR_WAREHOUSE_ID*/
+			, UR_SUPPLIER_ID 				/** 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID*/
+			, IL_GOODS_RESERVE_OPTN_ID 		/** 예약정보 PK : IL_GOODS_RESERVE_OPTN.IL_GOODS_RESERVE_OPTN_ID*/
+			, EV_EXHIBIT_ID 				/** 기획전 PK : EV_EXHIBIT.EV_EXHIBIT_ID*/
+			, PROMOTION_TP 					/** 기획전 유형 골라담기(균일가)(CART_PROMOTION_TP.EXHIBIT_SELECT), 녹즙내맘대로 주문 (CART_PROMOTION_TP.GREENJUICE_SELECT)*/
+			, ORDER_STATUS_CD 				/** 정상주문상태 OD_STATUS_INFO.STATUS_CD*/
+			, COLLECTION_MALL_DETAIL_ID 	/** 수집몰 상세번호 (이지어드민 SEQ)*/
+			, OUTMALL_DETAIL_ID 			/** 외부몰 상세번호 (이지어드민 ORDER_ID_SEQ, ORDER_ID_SEQ2)*/
+			, UR_WAREHOUSE_GRP_CD 			/** 출고처그룹 공통코드: (WAREHOUSE_GROUP)  OWN: 자사, ACCOUNT: 거래처, ACCOUNT_Orga: 산지직송, ACCOUNT_SOURCING: 업체소싱, ACCOUNT_JUICE: 녹즙건강생활*/
+			, STORAGE_TYPE_CD 				/** 상품보관방법 IL_ITEM.STORAGE_METHOD_TP 공통코드(ERP_STORAGE_TYPE) COOL: 냉장, FROZEN: 냉동, ROOM: 실온, ORDINARY: 상온, ETC: 기타, NOT_DEFINED: 미정*/
+			, GOODS_TP_CD 					/** 상품유형 IL_GOODS.GOODS_TP 공통코드(GOODS_TYPE) NORMAL: 일반, DISPOSAL: 폐기임박, GIFT: 증정, ADDITIONAL: 추가, PACKAGE: 묶음, DAILY: 일일, SHOP_ONLY: 매장, RENTAL: 렌탈, INCORPOREITY: 무형*/
+			, GOODS_DAILY_TP 				/** 일일상품 유형(GOODS_DAILY_TP : GREENJUICE/BABYMEAL/EATSSLIM )*/
+			, ORDER_STATUS_DELI_TP 			/** 주문상태 배송유형 공통코드: ORDER_STATUS_DELI_TP*/
+			, GOODS_DELIVERY_TYPE 			/** 배송유형 공통코드(GOODS_DELIVERY_TYPE) NORMAL: 일반, DAWN: 새벽, SHOP: 매장, DAILY: 일일, NO_DELIVERY: 배송안함, RESERVATION: 예약*/
+			, SALE_TP_CD 					/** 판매유형 IL_GOODS.SALE_TP 공통코드(SALE_TYPE) NORMAL: 일반, REGULAR: 일반/정기, RESERVATION: 예약, SHOP: 매장, DAILY: 일일*/
+			, IL_CTGRY_STD_ID 				/** 표준카테고리 : IL_ITEM.IL_CTGRY_STD_ID*/
+			, IL_CTGRY_DISPLAY_ID 			/** 전시카테고리 : IL_GOODS_CTGRY.IL_CTGRY_ID , BASIC_YN=Y, MALL_DIV = MALL_DIV.PULMU */
+			, IL_CTGRY_MALL_ID 				/** 몰인몰카테고리 : IL_GOODS_CTGRY.IL_CTGRY_ID , BASIC_YN=Y, MALL_DIV = MALL_DIV.PULMU*/
+			, ITEM_BARCODE 					/** 품목바코드 : IL_ITEM.ITEM_BARCODE*/
+			, IL_ITEM_CD 					/** 품목코드 PK : IL_ITEM.IL_ITEM_CD*/
+			, IL_GOODS_ID 					/** 상품 PK : IL_GOODS.IL_GOODS_ID*/
+			, GOODS_NM 						/** 상품명 : IL_GOODS.GOODS_NM*/
+			, TAX_YN 						/** 과세구분(Y: 과세, N: 면세) : IL_ITEM.TAX_YN*/
+			, GOODS_DISCOUNT_TP 			/** 할인유형(NONE, 우선, 올가, 즉시, 적용불가) : 공통코드(GOODS_DISCOUNT_TP)*/
+			, PRD_SEQ 						/** 이지어드민 상품관리번호*/
+			, ORDER_CNT 					/** 주문수량*/
+			, CANCEL_CNT 					/** 주문취소수량*/
+			, STANDARD_PRICE 				/** 원가 : IL_GOODS.STANDARD_PRICE*/
+			, RECOMMENDED_PRICE 			/** 정상가 : IL_GOODS.RECOMMENDED_PRICE*/
+			, SALE_PRICE 					/** 판매가 : IL_GOODS.SALE_PRICE*/
+			, TOT_SALE_PRICE				/** 총판매가 */
+			, CART_COUPON_PRICE 			/** 장바구니쿠폰할인금액*/
+			, GOODS_COUPON_PRICE 			/** 상품쿠폰할인금액*/
+			, DIRECT_PRICE 					/** 상품,장바구니쿠폰 할인 제외한 할인금액*/
+			, PAID_PRICE 					/** 결제금액 (쿠폰까지 할인된 금액)*/
+			, DR_ID 						/** 배송준비중등록자*/
+			, DR_DT 						/** 배송준비중일자*/
+			, DI_ID 						/** 배송중등록자*/
+			, DI_DT 						/** 배송중일자*/
+			, DC_ID 						/** 배송완료등록자*/
+			, DC_DT 						/** 배송완료일자*/
+			, BF_ID 						/** 구매확정등록자*/
+			, BF_DT 						/** 구매확정일자*/
+			, ORDER_IF_ID 					/** 주문 I/F 등록자*/
+			, ORDER_IF_DT 					/** 주문 I/F 일자*/
+			, SHIPPING_ID 					/** 출고예정일등록자*/
+			, SHIPPING_DT 					/** 출고예정일일자*/
+			, DELIVERY_ID 					/** 도착예정일등록자*/
+			, DELIVERY_DT 					/** 도착예정일일자*/
+			, BATCH_EXEC_FL 				/** 배치실행여부*/
+			, BATCH_EXEC_DT 				/** 배치실행일자*/
+			, CREATE_DT						/** 재배송 확인 등록일자 */
+			, PM_AD_EXTERNAL_CD				/** 외부광고코드PK */
+			, PM_AD_INTERNAL_PAGE_CD		/** 내부광고코드-페이지코드 */
+			, PM_AD_INTERNAL_CONTENT_CD		/** 내부광고코드-영역코드 */
+			, OUTMALL_TYPE					/** 외부몰타입 */
+		)
+		VALUES
+		(
+			  #{odOrderDetlId} 				/** 주문상세 pk*/
+			, #{odOrderDetlSeq}				/** 주문상세 순번(라인번호) 주문번호에 대한 순번*/
+			, #{odOrderId} 					/** 주문 pk*/
+			, #{odid}
+			, #{odOrderDetlStepId} 			/** 주문상세 정렬 키*/
+			, #{odOrderDetlDepthId} 		/** 주문상세 뎁스*/
+			, #{odOrderDetlParentId} 		/** 주문상세 부모 id*/
+			, #{odShippingPriceId} 			/** 주문 배송비 pk : odShippingPrice.odShippingPriceId*/
+			, #{odShippingZoneId} 			/** 주문 배송지 pk : odShippingZone.odShippingZoneId*/
+			, #{ilGoodsShippingTemplateId} 	/** 배송비 정책 pk : ilGoodsShippingTemplate.ilGoodsShippingTemplateId*/
+			, #{urWarehouseId} 				/** 출고처 pk : urWarehouse.urWarehouseId*/
+			, #{urSupplierId} 				/** 공급업체 pk : ilItem.urSupplierId*/
+			, #{ilGoodsReserveOptnId} 		/** 예약정보 pk : ilGoodsReserveOptn.ilGoodsReserveOptnId*/
+			, #{evExhibitId} 				/** 기획전 pk : evExhibit.evExhibitId*/
+			, #{promotionTp} 				/** 기획전 유형 골라담기(균일가)(cartPromotionTp.exhibitSelect), 녹즙내맘대로 주문 (cartPromotionTp.greenjuiceSelect)*/
+			, #{orderStatusCd} 				/** 정상주문상태 odStatusInfo.statusCd*/
+			, #{collectionMallDetailId} 	/** 수집몰 상세번호 (이지어드민 seq)*/
+			, #{outmallDetailId} 			/** 외부몰 상세번호 (이지어드민 orderIdSeq, orderIdSeq2)*/
+			, #{urWarehouseGrpCd} 			/** 출고처그룹 공통코드: (warehouseGroup)  own: 자사, account: 거래처, accountOrga: 산지직송, accountSourcing: 업체소싱, accountJuice: 녹즙건강생활*/
+			, #{storageTypeCd} 				/** 상품보관방법 ilItem.storageMethodTp 공통코드(erpStorageType) cool: 냉장, frozen: 냉동, room: 실온, ordinary: 상온, etc: 기타, notDefined: 미정*/
+			, #{goodsTpCd} 					/** 상품유형 ilGoods.goodsTp 공통코드(goodsType) normal: 일반, disposal: 폐기임박, gift: 증정, additional: 추가, package: 묶음, daily: 일일, shopOnly: 매장, rental: 렌탈, incorporeity: 무형*/
+			, #{goodsDailyTp} 				/** 일일상품 유형(goodsDailyTp : greenjuice/babymeal/eatsslim )*/
+			, #{orderStatusDeliTp} 			/** 주문상태 배송유형 공통코드: orderStatusDeliTp*/
+			, #{goodsDeliveryType} 			/** 배송유형 공통코드(goodsDeliveryType) normal: 일반, dawn: 새벽, shop: 매장, daily: 일일, noDelivery: 배송안함, reservation: 예약*/
+			, #{saleTpCd} 					/** 판매유형 ilGoods.saleTp 공통코드(saleType) normal: 일반, regular: 일반/정기, reservation: 예약, shop: 매장, daily: 일일*/
+			, #{ilCtgryStdId} 				/** 표준카테고리 : ilItem.ilCtgryStdId*/
+			, #{ilCtgryDisplayId} 			/** 전시카테고리 : ilGoodsCtgry.ilCtgryId , basicYn=y, mallDiv = mallDiv.pulmu */
+			, #{ilCtgryMallId} 				/** 몰인몰카테고리 : ilGoodsCtgry.ilCtgryId , basicYn=y, mallDiv = mallDiv.pulmu*/
+			, #{itemBarcode} 				/** 품목바코드 : ilItem.itemBarcode*/
+			, IFNULL(#{ilItemCd}, '') 					/** 품목코드 pk : ilItem.ilItemCd*/
+			, #{ilGoodsId} 					/** 상품 pk : ilGoods.ilGoodsId*/
+			, #{goodsNm} 					/** 상품명 : ilGoods.goodsNm*/
+			, #{taxYn} 						/** 과세구분(y: 과세, n: 면세) : ilItem.taxYn*/
+			, #{goodsDiscountTp} 			/** 할인유형(none, 우선, 올가, 즉시, 적용불가) : 공통코드(goodsDiscountTp)*/
+			, #{prdSeq} 					/** 이지어드민 상품관리번호*/
+			, #{orderCnt} 					/** 주문수량*/
+			, #{cancelCnt} 					/** 주문취소수량*/
+			, #{standardPrice} 				/** 원가 : ilGoods.standardPrice*/
+			, #{recommendedPrice} 			/** 정상가 : ilGoods.recommendedPrice*/
+			, #{salePrice} 					/** 판매가 : ilGoods.salePrice*/
+			, #{totSalePrice}				/** 총판매가 */
+			, #{cartCouponPrice} 			/** 장바구니쿠폰할인금액*/
+			, #{goodsCouponPrice} 			/** 상품쿠폰할인금액*/
+			, #{directPrice} 				/** 상품,장바구니쿠폰 할인 제외한 할인금액*/
+			, #{paidPrice} 					/** 결제금액 (쿠폰까지 할인된 금액)*/
+			, 0 							/** 배송준비중등록자*/
+			, NULL							/** 배송준비중일자*/
+			, 0 							/** 배송중등록자*/
+			, NULL 							/** 배송중일자*/
+			, 0 							/** 배송완료등록자*/
+			, NULL 							/** 배송완료일자*/
+			, 0 							/** 구매확정등록자*/
+			, #{bfDt} 						/** 구매확정일자*/
+			, #{orderIfId} 					/** 주문 i/f 등록자*/
+			, #{orderIfDt} 					/** 주문 i/f 일자*/
+			, #{shippingId} 				/** 출고예정일등록자*/
+			, #{shippingDt} 				/** 출고예정일일자*/
+			, #{deliveryId} 				/** 도착예정일등록자*/
+			, #{deliveryDt} 				/** 도착예정일일자*/
+			, IFNULL(#{batchExecFl}, 'N') 				/** 배치실행여부*/
+			, #{batchExecDt} 				/** 배치실행일자*/
+			, #{createDt}					/** 재배송 확인 등록일자 */
+			, #{pmAdExternalCd}				/** 외부광고코드PK */
+			, #{pmAdInternalPageCd}			/** 내부광고코드-페이지코드 */
+			, #{pmAdInternalContentCd}		/** 내부광고코드-영역코드 */
+			, #{outmallType}				/** 외부몰타입 */
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+
+	 * description 		: 주문 상세 할인정보 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.20		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDetlDiscount" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlDiscountVo">
+		/*	orderRegistration.addOrderDetlDiscount  */
+		INSERT INTO OD_ORDER_DETL_DISCOUNT
+			(OD_ORDER_ID, OD_ORDER_DETL_ID, DISCOUNT_TP, PM_COUPON_ISSUE_ID, PM_COUPON_ID, PM_COUPON_NM, DISCOUNT_PRICE, PS_EMPL_DISC_GRP_ID, UR_BRAND_ID)
+		VALUES
+			(#{odOrderId}, #{odOrderDetlId}, #{discountTp}, #{pmCouponIssueId}, IFNULL((SELECT PM_COUPON_ID FROM PM_COUPON_ISSUE WHERE PM_COUPON_ISSUE_ID = #{pmCouponIssueId}), 0), #{pmCouponNm}, #{discountPrice}, #{psEmplDiscGrpId}, #{urBrandId})
+
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 묶음/골라담기등 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDetlPack" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlPackVo">
+		/*	orderRegistration.addOrderDetlPack  */
+		INSERT INTO OD_ORDER_DETL_PACK
+			(OD_ORDER_DETL_ID, OD_ORDER_DETL_STEP_ID, OD_ORDER_ID, GOODS_TP_CD, GOODS_DELIVERY_TYPE, PROMOTION_TP, IL_GOODS_ID, GOODS_NM, ORDER_CNT, STANDARD_PRICE, RECOMMENDED_PRICE, SALE_PRICE, CART_COUPON_PRICE, GOODS_COUPON_PRICE, DIRECT_PRICE, PAID_PRICE)
+		VALUES
+			(#{odOrderDetlId}, #{odOrderDetlStepId}, #{odOrderId}, #{goodsTpCd}, #{goodsDeliveryType}, #{promotionTp}, #{ilGoodsId}, #{goodsNm}, #{orderCnt}, #{standardPrice}, #{recommendedPrice}, #{salePrice}, #{cartCouponPrice}, #{goodsCouponPrice}, #{directPrice}, #{paidPrice})
+
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 결제 정보 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.15		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPayment" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPaymentVo">
+		/*	orderRegistration.addPayment  */
+		INSERT INTO OD_PAYMENT
+		(OD_ORDER_ID, OD_CLAIM_ID, OD_PAYMENT_MASTER_ID, SALE_PRICE, CART_COUPON_PRICE, GOODS_COUPON_PRICE, DIRECT_PRICE, PAID_PRICE, SHIPPING_PRICE, TAXABLE_PRICE, NON_TAXABLE_PRICE, PAYMENT_PRICE, POINT_PRICE)
+		VALUES(#{odOrderId}, #{odClaimId}, #{odPaymentMasterId}, #{salePrice}, #{cartCouponPrice}, #{goodsCouponPrice}, #{directPrice}, #{paidPrice}, #{shippingPrice}, #{taxablePrice}, #{nonTaxablePrice}, #{paymentPrice}, #{pointPrice});
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 결제 마스터 정보 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.15		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPaymentMaster" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPaymentMasterVo">
+		/*	orderRegistration.addPaymentMaster  */
+		INSERT INTO OD_PAYMENT_MASTER
+		(OD_PAYMENT_MASTER_ID, `TYPE`, STATUS, PAY_TP, PG_SERVICE, TID, AUTH_CD, CARD_NUMBER, CARD_QUOTA_INTEREST, CARD_QUOTA, VIRTUAL_ACCOUNT_NUMBER, BANK_NM, INFO, PAID_DUE_DT, PAID_HOLDER, ESCROW_YN, SALE_PRICE, CART_COUPON_PRICE, GOODS_COUPON_PRICE, DIRECT_PRICE, PAID_PRICE, SHIPPING_PRICE, TAXABLE_PRICE, NON_TAXABLE_PRICE, PAYMENT_PRICE, POINT_PRICE, SETL_NO, RESPONSE_DATA, APPROVAL_DT, CREATE_DT)
+		VALUES(#{odPaymentMasterId}, #{type}, #{status}, #{payTp}, #{pgService}, #{tid}, #{authCd}, #{cardNumber}, #{cardQuotaInterest}, #{cardQuota}, #{virtualAccountNumber}, #{bankNm}, #{info}, #{paidDueDt}, #{paidHolder}, #{escrowYn}, #{salePrice}, #{cartCouponPrice}, #{goodsCouponPrice}, #{directPrice}, #{paidPrice}, #{shippingPrice}, #{taxablePrice}, #{nonTaxablePrice}, #{paymentPrice}, #{pointPrice}, #{setlNo}, #{responseData}, #{approvalDt}, NOW())
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 승인 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putApprovalOrder" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderVo">
+		/* orderRegistration.putApprovalOrder */
+        UPDATE OD_ORDER
+            SET
+            ORDER_YN = #{orderYn}
+            <if test="orderPaymentType != null">
+            ,ORDER_PAYMENT_TYPE = #{orderPaymentType}
+            </if>
+        WHERE
+        	OD_ORDER_ID = #{odOrderId}
+    </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 승인 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putApprovalOrderDetl" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlVo">
+		/* orderRegistration.putApprovalOrderDetl */
+        UPDATE OD_ORDER_DETL
+            SET
+            ORDER_STATUS_CD = #{orderStatusCd}
+        WHERE
+        	OD_ORDER_ID = #{odOrderId}
+    </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 결제 마스터 승인 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putApprovalPaymentMaster" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPaymentMasterVo">
+		/* orderRegistration.putApprovalPaymentMaster */
+        UPDATE OD_PAYMENT_MASTER
+            SET
+            STATUS			= #{status},
+            PAY_TP			= #{payTp},
+            PG_SERVICE		= #{pgService},
+            TID				= #{tid},
+            AUTH_CD			= #{authCd},
+            CARD_NUMBER		= #{cardNumber},
+            CARD_QUOTA_INTEREST	= #{cardQuotaInterest},
+            CARD_QUOTA		= #{cardQuota},
+            VIRTUAL_ACCOUNT_NUMBER	= #{virtualAccountNumber},
+            BANK_NM			= #{bankNm},
+            INFO			= #{info},
+            PAID_DUE_DT		= #{paidDueDt},
+            PAID_HOLDER		= #{paidHolder},
+            PART_CANCEL_YN	= #{partCancelYn},
+            ESCROW_YN		= #{escrowYn},
+            APPROVAL_DT		= NOW(),
+            RESPONSE_DATA	= #{responseData}
+        WHERE
+        	OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+    </update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 결제 마스터 결제 승인 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPayApprovalPaymentMaster" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPaymentMasterVo">
+		/* orderRegistration.putPayApprovalPaymentMaster */
+        UPDATE OD_PAYMENT_MASTER
+            SET
+            STATUS			= #{status},
+            AUTH_CD			= #{authCd},
+            APPROVAL_DT		= #{approvalDt},
+            RESPONSE_DATA	= #{responseData}
+        WHERE
+        	OD_PAYMENT_MASTER_ID = #{odPaymentMasterId}
+    </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문서 결제 입금대기 일자 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.01		홍진영	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putApprovalOrderDtIr" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPaymentMasterVo">
+		/* orderRegistration.putApprovalOrderDtIr */
+        UPDATE OD_ORDER_DT
+            SET
+            IR_DT = NOW()
+        WHERE
+        	OD_ORDER_ID = #{odOrderId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문서 결제 결제완료 일자 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.01		홍진영	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putApprovalOrderDtIc" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPaymentMasterVo">
+		/* orderRegistration.putApprovalOrderDtIc */
+        UPDATE OD_ORDER_DT
+            SET
+            IC_DT = NOW()
+        WHERE
+        	OD_ORDER_ID = #{odOrderId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 일일배송 패턴 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.01		홍진영	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDetlDaily" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlDailyVo">
+		/*	orderRegistration.addOrderDetlDaily  */
+		INSERT INTO OD_ORDER_DETL_DAILY
+		(OD_ORDER_DETL_DAILY_ID, OD_ORDER_ID, OD_ORDER_DETL_ID, OD_ORDER_DETL_SEQ, IL_GOODS_ID, GOODS_CYCLE_TP, GOODS_CYCLE_TERM_TP, MON_CNT, TUE_CNT, WED_CNT, THU_CNT, FRI_CNT, SET_CNT, ORDER_CNT, ALLERGY_YN, DAILY_BULK_YN, SCHEDULE_YN, DAILY_PACK_YN, STORE_DELIVERY_TP, UR_STORE_ID)
+		VALUES(#{odOrderDetlDailyId}, #{odOrderId}, #{odOrderDetlId}, #{odOrderDetlSeq}, #{ilGoodsId}, #{goodsCycleTp}, #{goodsCycleTermTp}, #{monCnt}, #{tueCnt}, #{wedCnt}, #{thuCnt}, #{friCnt}, #{setCnt}, #{orderCnt}, #{allergyYn}, #{dailyBulkYn}, #{scheduleYn}, #{dailyPackYn}, #{storeDeliveryType}, #{urStoreId})
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문서 상세 라인번호 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetlSeq" parameterType="long">
+		/*	orderRegistration.putOrderDetlSeq  */
+		UPDATE OD_ORDER_DETL T1 INNER JOIN  (
+								SELECT
+									OD_ORDER_DETL_ID, ROW_NUMBER() OVER (ORDER BY OD_ORDER_DETL_STEP_ID DESC) AS ROW_NUM
+								FROM
+									OD_ORDER_DETL
+								WHERE OD_ORDER_ID = #{odOrderId}
+							) T2 ON T1.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+		SET T1.OD_ORDER_DETL_SEQ  = T2.ROW_NUM
+		WHERE T1.OD_ORDER_ID = #{odOrderId}
+    </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description        : 주문서 일일배송 상세  라인번호 업데이트
+	 * @ 수정일         수정자         수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09       이명수          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetlDailySeq" parameterType="long">
+	   /* orderRegistration.putOrderDetlDailySeq  */
+	   UPDATE OD_ORDER_DETL_DAILY T1 INNER JOIN  (
+	                     SELECT
+	                        OD_ORDER_DETL_ID, OD_ORDER_DETL_SEQ
+	                     FROM
+	                        OD_ORDER_DETL
+	                     WHERE OD_ORDER_ID = #{odOrderId}
+	                  ) T2 ON T1.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+	   SET T1.OD_ORDER_DETL_SEQ  = T2.OD_ORDER_DETL_SEQ
+	   WHERE T1.OD_ORDER_ID = #{odOrderId}
+	  </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문상세 일일배송 스케쥴 등록
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.02		이명수	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDetlDailySch" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlDailySchVo">
+		/*	orderRegistration.addOrderDetlDailySch  */
+		INSERT INTO OD_ORDER_DETL_DAILY_SCH
+		(OD_ORDER_DETL_DAILY_SCH_SEQ, OD_ORDER_DETL_DAILY_ID, DELIVERY_DT, PS_SHIPPING_COMP_ID, TRACKING_NO, ORDER_CNT, DELIVERY_YN, ORDER_SCH_STATUS, USE_YN,OD_SHIPPING_ZONE_ID)
+		VALUES(#{odOrderDetlDailySchSeq}, #{odOrderDetlDailyId}, #{deliveryDt}, #{psShippingCompId}, #{trackingNo}, #{orderCnt}, #{deliveryYn}, #{orderSchStatus}, #{useYn},#{odShippingZoneId})
+	</insert>
+
+	<!-- 주문상세 스캐줄 요일 리스트 resultMap -->
+	<resultMap id="getOrderDetailScheduleDayOfWeekListResultMap" type="kr.co.pulmuone.v1.order.schedule.dto.OrderDetailScheduleListDto">
+		<result column="DELV_DATE"			property="delvDate"/>
+		<result column="DELV_DATE_WEEK_DAY"			property="delvDateWeekDay"/>
+	</resultMap>
+
+	<select id="getOrderDetailScheduleDayOfWeekList" resultMap="getOrderDetailScheduleDayOfWeekListResultMap">
+		/*	orderRegistration.getOrderDetailScheduleDayOfWeekList  */
+		SELECT DATE_FORMAT(DELV_DATE, '%Y-%m-%d') AS DELV_DATE
+			, DAYOFWEEK(DELV_DATE) AS DELV_DATE_WEEK_DAY
+		FROM
+		(
+			SELECT *
+				FROM
+			(SELECT ADDDATE(NOW() ,T4*10000 + T3*1000 + T2*100 + T1*10 + T0) DELV_DATE FROM
+			(SELECT 0 T0 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T0,
+			(SELECT 0 T1 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T1,
+			(SELECT 0 T2 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T2,
+			(SELECT 0 T3 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T3,
+			(SELECT 0 T4 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) T4) DAY_OF_WEEK_INFO
+			WHERE
+				NOT EXISTS ( SELECT 'X'
+	 		   					FROM
+	 		   						PS_HOLIDAY
+								WHERE HOLIDAY_DT = DATE_FORMAT(DAY_OF_WEEK_INFO.DELV_DATE, '%Y-%m-%d')
+
+				)
+		) DAY_OF_WEEK_INFO
+		WHERE DAYOFWEEK(DELV_DATE) IN
+			<foreach collection="deliveryDayOfWeekList" item="dayOfWeekCode" index="index" separator="," open="(" close=")">
+				#{dayOfWeekCode}
+			</foreach>
+			AND DELV_DATE BETWEEN #{changeDate}  AND #{changeDate} + INTERVAL 6 MONTH
+		ORDER BY DELV_DATE ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문상세스텝ID 업데이트
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.24		김명진	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putOdOrderDetlStepId">
+		/*	orderRegistration.putOdOrderDetlStepId  */
+		UPDATE
+			OD_ORDER_DETL
+		SET
+			OD_ORDER_DETL_STEP_ID = OD_ORDER_DETL_STEP_ID - 1
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+		  AND
+				OD_ORDER_DETL_STEP_ID <![CDATA[>]]> TRUNCATE(#{odOrderDetlStepId}/1000, 0)*1000
+		  AND
+			OD_ORDER_DETL_STEP_ID <![CDATA[<]]> (#{odOrderDetlStepId}/1000)*1000
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문상세 등록 - Insert Select
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.24		김명진	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="selectAddOrderDetl">
+		/*	orderRegistration.selectAddOrderDetl  */
+		INSERT INTO OD_ORDER_DETL
+		(OD_ORDER_DETL_ID, OD_ORDER_DETL_SEQ, OD_ORDER_ID, ODID, OD_ORDER_DETL_STEP_ID
+		, OD_ORDER_DETL_DEPTH_ID, OD_ORDER_DETL_PARENT_ID, OD_SHIPPING_PRICE_ID
+		, OD_SHIPPING_ZONE_ID, IL_GOODS_SHIPPING_TEMPLATE_ID, UR_WAREHOUSE_ID, UR_SUPPLIER_ID, IL_GOODS_RESERVE_OPTN_ID, EV_EXHIBIT_ID, PROMOTION_TP, ORDER_STATUS_CD
+		, COLLECTION_MALL_DETAIL_ID, OUTMALL_DETAIL_ID, UR_WAREHOUSE_GRP_CD, STORAGE_TYPE_CD, GOODS_TP_CD, GOODS_DAILY_TP, ORDER_STATUS_DELI_TP, GOODS_DELIVERY_TYPE
+		, SALE_TP_CD, IL_CTGRY_STD_ID, IL_CTGRY_DISPLAY_ID, IL_CTGRY_MALL_ID, ITEM_BARCODE, IL_ITEM_CD, IL_GOODS_ID
+		, GOODS_NM, TAX_YN, GOODS_DISCOUNT_TP, PRD_SEQ
+		, ORDER_CNT, CANCEL_CNT, STANDARD_PRICE, RECOMMENDED_PRICE, SALE_PRICE, TOT_SALE_PRICE, CART_COUPON_PRICE
+		, GOODS_COUPON_PRICE, DIRECT_PRICE, PAID_PRICE, REDELIVERY_TYPE
+		<if test="orderDetlVo.ecId > 0">
+		, EC_ID, EC_DT
+		</if>
+		, ORDER_IF_ID, ORDER_IF_DT, SHIPPING_ID, SHIPPING_DT, DELIVERY_ID, DELIVERY_DT, BATCH_EXEC_FL
+		, BATCH_EXEC_DT, DELIVERY_TYPE_CD, SALES_EXEC_FL, SALES_EXEC_DT)
+		SELECT
+			#{orderDetlVo.odOrderDetlId}, #{orderDetlVo.odOrderDetlSeq}, #{orderDetlVo.odOrderId}, ODID, #{orderDetlVo.odOrderDetlStepId}
+			, #{orderDetlVo.odOrderDetlDepthId}, #{orderDetlVo.odOrderDetlParentId}, #{orderDetlVo.odShippingPriceId}
+			, OD_SHIPPING_ZONE_ID, IL_GOODS_SHIPPING_TEMPLATE_ID, #{orderDetlVo.urWarehouseId}, #{orderDetlVo.urSupplierId}, IL_GOODS_RESERVE_OPTN_ID, EV_EXHIBIT_ID, PROMOTION_TP, #{orderDetlVo.orderStatusCd}
+			, COLLECTION_MALL_DETAIL_ID, OUTMALL_DETAIL_ID, UR_WAREHOUSE_GRP_CD, STORAGE_TYPE_CD, GOODS_TP_CD, GOODS_DAILY_TP, #{orderDetlVo.orderStatusDeliTp}, #{orderDetlVo.goodsDeliveryType}
+			, SALE_TP_CD, IL_CTGRY_STD_ID, IL_CTGRY_DISPLAY_ID, IL_CTGRY_MALL_ID, #{orderDetlVo.itemBarcode}, #{orderDetlVo.ilItemCd}, #{orderDetlVo.ilGoodsId}
+			, #{orderDetlVo.goodsNm}, TAX_YN, GOODS_DISCOUNT_TP, PRD_SEQ
+			, #{orderDetlVo.orderCnt}, #{orderDetlVo.cancelCnt}, #{orderDetlVo.standardPrice}, #{orderDetlVo.recommendedPrice}, #{orderDetlVo.salePrice}, #{orderDetlVo.totSalePrice}, #{orderDetlVo.cartCouponPrice}
+			, #{orderDetlVo.goodsCouponPrice}, #{orderDetlVo.directPrice}, #{orderDetlVo.paidPrice}, #{orderDetlVo.redeliveryType}
+		<if test="orderDetlVo.ecId > 0">
+				, #{orderDetlVo.ecId}, now()
+			</if>
+			 , ORDER_IF_ID, #{orderDetlVo.orderIfDt}, SHIPPING_ID, #{orderDetlVo.shippingDt}, DELIVERY_ID, #{orderDetlVo.deliveryDt}, #{orderDetlVo.batchExecFl}
+			 , #{orderDetlVo.batchExecDt}, DELIVERY_TYPE_CD, #{orderDetlVo.salesExecFl}, #{orderDetlVo.salesExecDt}
+		FROM
+			OD_ORDER_DETL
+		WHERE
+			OD_ORDER_DETL_ID = #{prevOdOrderDetlId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문상세할인정보 등록 - Insert Select
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.24		김명진	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="selectAddOrderDetlDiscount">
+		/*	orderRegistration.selectAddOrderDetlDiscount  */
+		INSERT INTO OD_ORDER_DETL_DISCOUNT
+		(OD_ORDER_ID, OD_ORDER_DETL_ID, DISCOUNT_TP, PM_COUPON_ISSUE_ID, PM_COUPON_ID, PM_COUPON_NM, DISCOUNT_PRICE, PS_EMPL_DISC_GRP_ID, UR_BRAND_ID, PS_EMPL_DISC_MASTER_ID)
+		SELECT
+			*
+		FROM
+		  (
+			SELECT
+				#{odOrderId},
+				#{odOrderDetlId},
+				OODD.DISCOUNT_TP,
+				OODD.PM_COUPON_ISSUE_ID,
+				OODD.PM_COUPON_ID,
+				OODD.PM_COUPON_NM,
+				CASE OODD.DISCOUNT_TP
+					WHEN 'GOODS_DISCOUNT_TP.GOODS_COUPON'
+					THEN
+				    	#{goodsCouponPrice}
+					ELSE
+					    CASE
+					        WHEN #{reDeliveryType} = 'R'
+					        THEN
+								CASE
+									WHEN (OOD.ORDER_CNT - OOD.CANCEL_CNT) = 0
+									THEN OODD.DISCOUNT_PRICE - FLOOR(((OOD.CANCEL_CNT - #{claimCnt}) * FLOOR(OODD.DISCOUNT_PRICE / #{orderCnt})) * #{discountRate} / 100)
+									ELSE (#{claimCnt} * FLOOR(OODD.DISCOUNT_PRICE / #{orderCnt}))
+								END
+					        ELSE
+								CASE
+									WHEN (OOD.ORDER_CNT - OOD.CANCEL_CNT) = 0
+									THEN
+										CASE #{isLastYn}
+											WHEN 'N'
+											THEN FLOOR((OODD.DISCOUNT_PRICE - ((#{orderCnt}-#{claimCnt}) * FLOOR(OODD.DISCOUNT_PRICE / #{orderCnt}))) * #{discountRate} / 100)
+											ELSE (OODD.DISCOUNT_PRICE - ((#{orderCnt}-#{claimCnt}) * FLOOR(OODD.DISCOUNT_PRICE / #{orderCnt}))) - IFNULL(T1.DISCOUNT_PRICE, 0)
+										END
+									ELSE
+										CASE #{isLastYn}
+											WHEN 'N'
+											THEN FLOOR((#{claimCnt} * FLOOR(OODD.DISCOUNT_PRICE / #{orderCnt})) * #{discountRate} / 100)
+											ELSE (#{claimCnt} * FLOOR(OODD.DISCOUNT_PRICE / #{orderCnt})) - IFNULL(T1.DISCOUNT_PRICE, 0)
+										END
+								END
+					    END
+				END AS DISCOUNT_PRICE,
+				OODD.PS_EMPL_DISC_GRP_ID,
+				OODD.UR_BRAND_ID,
+				OODD.PS_EMPL_DISC_MASTER_ID
+			FROM
+				OD_ORDER_DETL_DISCOUNT OODD
+			INNER JOIN
+				OD_ORDER_DETL OOD ON OODD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+			LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_ID,
+						DISCOUNT_TP,
+						SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						OD_ORDER_ID = #{odOrderId}
+					AND
+						OD_ORDER_DETL_ID IN
+					<foreach collection="odOrderDetlIds" item="odOrderDetlId" index="index" separator="," open="(" close=")">
+						#{odOrderDetlId}
+					</foreach>
+					GROUP BY OD_ORDER_ID, DISCOUNT_TP
+				) T1 ON OODD.OD_ORDER_ID = T1.OD_ORDER_ID AND OODD.DISCOUNT_TP = T1.DISCOUNT_TP
+			WHERE
+				OODD.OD_ORDER_ID = #{odOrderId}
+			AND
+				OODD.OD_ORDER_DETL_ID = #{targetOdOrderDetlId}
+			AND
+				OODD.DISCOUNT_TP IN (
+					'GOODS_DISCOUNT_TP.EMPLOYEE'
+					, 'GOODS_DISCOUNT_TP.GOODS_COUPON'
+					, 'GOODS_DISCOUNT_TP.CART_COUPON'
+				)
+			) A
+		WHERE
+			A.DISCOUNT_PRICE <![CDATA[>]]> 0
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문상세배송금액 등록 - Insert Select
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.24		김명진	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="selectAddOrderDetlShippingPrice">
+		/*	orderRegistration.selectAddOrderDetlShippingPrice  */
+		INSERT INTO OD_SHIPPING_PRICE
+		(OD_SHIPPING_PRICE_ID, IL_SHIPPING_TMPL_ID, PAYMENT_METHOD, METHOD, SHIPPING_PRICE, PM_COUPON_ISSUE_ID,
+		 PM_COUPON_NM, SHIPPING_DISCOUNT_PRICE, ORG_SHIPPING_PRICE, SETL_YN, CREATE_DT)
+		SELECT
+			#{orderShippingPriceVo.odShippingPriceId}, IL_SHIPPING_TMPL_ID, PAYMENT_METHOD, METHOD, SHIPPING_PRICE, PM_COUPON_ISSUE_ID,
+			PM_COUPON_NM, SHIPPING_DISCOUNT_PRICE, ORG_SHIPPING_PRICE, SETL_YN, NOW()
+		FROM
+			OD_SHIPPING_PRICE
+		WHERE
+				OD_SHIPPING_PRICE_ID = (
+				SELECT
+					OD_SHIPPING_PRICE_ID
+				FROM
+					OD_ORDER_DETL
+				WHERE
+					OD_ORDER_DETL_ID = #{prevOdOrderDetlId}
+			)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 환불 정보 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.31		홍진영	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addAccount" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderAccountVo">
+		/*	orderRegistration.addAccount  */
+		INSERT INTO OD_ORDER_ACCOUNT
+			(OD_ORDER_ID, BANK_CD, ACCOUNT_HOLDER, ACCOUNT_NUMBER, CREATE_DT)
+		VALUES(#{odOrderId}, #{bankCd}, FN_ENCRYPT(#{accountHolder}), FN_ENCRYPT(#{accountNumber}), NOW())
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 현금영수증 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.31		홍진영	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCashReceipt" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderCashReceiptVo">
+		/*	orderRegistration.addOrderCashReceipt  */
+		INSERT INTO OD_ORDER_CASH_RECEIPT
+		(OD_ORDER_ID, OD_PAYMENT_MASTER_ID, CASH_RECEIPT_TYPE, CASH_PRICE, CASH_NO, CASH_RECEIPT_NO, CASH_RECEIPT_AUTH_NO, CREATE_DT)
+		VALUES(#{odOrderId}, #{odPaymentMasterId}, #{cashReceiptType}, #{cashPrice}, FN_ENCRYPT(#{cashNo}), #{cashReceiptNo}, #{cashReceiptAuthNo}, NOW())
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문 신규 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03 	이규한          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyOdOrder">
+		/* orderRegistration.addOrderCopyOdOrder */
+		INSERT INTO OD_ORDER		/* 주문 */
+		(
+			OD_ORDER_ID 			/* 주문 PK */
+			, ODID 					/* 주문번호 16자리 년,월,일 + 난수Ex 2020년 01월 01일 >> 2020010101234567 */
+			, SELLERS_GROUP_CD 		/* 판매처그룹 공통코드(SELLERS_GROUP) */
+			, OM_SELLERS_ID 		/* 판매처 PK : OM_SELLERS.OM_SELLERS_ID */
+			, COLLECTION_MALL_ID 	/* 수집몰주문번호 (이지어드민 PACK, SEQ 조합) */
+			, OUTMALL_ID 			/* 외부몰주문번호(이지어드민 ORDER_ID) */
+			, UR_GROUP_ID 			/* 회원 그룹 ID : UR_GROUP.UR_GROUP_ID */
+			, UR_GROUP_NM 			/* 회원 그룹명 : UR_GROUP.UR_GROUP_NM */
+			, UR_USER_ID 			/* 회원 ID : UR_USER.UR_USER_ID */
+			, UR_EMPLOYEE_CD 		/* 임직원사번 : UR_EMPLOYEE.UR_EMPLOYEE_CD */
+			, GUEST_CI 				/* 비회원 CI */
+			, BUYER_NM 				/* 주문자 명 */
+			, BUYER_HP 				/* 주문자 핸드폰 */
+			, BUYER_TEL 			/* 주문자 연락처 */
+			, BUYER_MAIL 			/* 주문자 이메일 */
+			, GOODS_NM 				/* 주문상품명 */
+			, ORDER_PAYMENT_TYPE 	/* 결제수단 : 공통코드(PAY_TP) */
+			, BUYER_TYPE_CD 		/* 주문자 유형 : 공통코드(BUYER_TYPE) */
+			, AGENT_TYPE_CD 		/* 주문 유형 : 공통코드(AGENT_TYPE) */
+			, ORDER_HPN_CD 			/* 주문경로 ERP I/F 주문경로 필요 */
+			, GIFT_YN 				/* 일반주문: N, 선물하기주문: Y */
+			, UR_PCID_CD 			/* 사용자환경정보 : UR_PCID.UR_PCID_CD */
+			, ORDER_YN 				/* 정상주문여부 */
+			, CREATE_DT 			/* 등록일 */
+			, IL_GOODS_ID 			/* 대표상품PK */
+			, ORDER_COPY_SAL_IF_YN  /* 주문복사 매출만연동 여부 */
+			, ORDER_COPY_ODID       /* 주문복사 원본 주문번호 */
+			, ORDER_COPY_YN			/* 주문복사여부 */
+			, ORDER_CREATE_YN		/* 주문생성여부 */
+		)
+		SELECT
+			#{orderVo.odOrderId} 			/* 주문 PK */
+			, #{orderVo.odid} 				/* 주문번호 16자리 년,월,일 + 난수Ex 2020년 01월 01일 >> 2020010101234567 */
+			, CASE WHEN (#{orderVo.orderPaymentType} = 'PAY_TP.CARD') THEN 'SELLERS_GROUP.MALL' ELSE SELLERS_GROUP_CD END SELLERS_GROUP_CD 	/* 판매처그룹 공통코드(SELLERS_GROUP) */
+			, CASE WHEN (#{orderVo.orderPaymentType} = 'PAY_TP.CARD') THEN 0 ELSE OM_SELLERS_ID END 										/* 판매처 PK : OM_SELLERS.OM_SELLERS_ID */
+			, COLLECTION_MALL_ID 	/* 수집몰주문번호 (이지어드민 PACK, SEQ 조합) */
+			, OUTMALL_ID 			/* 외부몰주문번호(이지어드민 ORDER_ID) */
+			, UR_GROUP_ID 			/* 회원 그룹 ID : UR_GROUP.UR_GROUP_ID */
+			, UR_GROUP_NM 			/* 회원 그룹명 : UR_GROUP.UR_GROUP_NM */
+			, UR_USER_ID 			/* 회원 ID : UR_USER.UR_USER_ID */
+			, UR_EMPLOYEE_CD 		/* 임직원사번 : UR_EMPLOYEE.UR_EMPLOYEE_CD */
+			, GUEST_CI 				/* 비회원 CI */
+			, BUYER_NM 				/* 주문자 명 */
+			, BUYER_HP 				/* 주문자 핸드폰 */
+			, BUYER_TEL 			/* 주문자 연락처 */
+			, BUYER_MAIL 			/* 주문자 이메일 */
+			, #{orderVo.goodsNm} 				/* 주문상품명 */
+			, #{orderVo.orderPaymentType} 	/* 결제수단 : 공통코드(PAY_TP) */
+			, BUYER_TYPE_CD 		/* 주문자 유형 : 공통코드(BUYER_TYPE) */
+			, AGENT_TYPE_CD 		/* 주문 유형 : 공통코드(AGENT_TYPE) */
+			, ORDER_HPN_CD 			/* 주문경로 ERP I/F 주문경로 필요 */
+			, GIFT_YN 				/* 일반주문: N, 선물하기주문: Y */
+			, UR_PCID_CD 			/* 사용자환경정보 : UR_PCID.UR_PCID_CD */
+			, #{orderVo.orderYn} 	/* 정상주문여부 */
+			, NOW() 				/* 등록일 */
+			, #{orderVo.ilGoodsId} 			/* 대표상품PK */
+			, #{orderVo.orderCopySalIfYn}
+			, #{orderVo.orderCopyOdid}
+			, #{orderVo.orderCopyYn}	/* 주문복사여부 */
+			, #{orderVo.orderCreateYn}	/* 주문생성여부 */
+		FROM
+			OD_ORDER
+      	WHERE
+      		OD_ORDER_ID = #{srchOdOrderId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문상세 신규 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.15 	강상국          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyOrderDetl">
+		/* orderRegistration.addOrderCopyOrderDetl */
+		INSERT INTO OD_ORDER_DETL		/* 주문상세 */
+		(
+			OD_ORDER_DETL_ID 				/* 주문상세 PK */
+			, OD_ORDER_DETL_SEQ 			/* 주문상세 순번(라인번호) 주문번호에 대한 순번 */
+			, OD_ORDER_ID 					/* 주문 PK */
+			, ODID 							/* 주문번호 */
+			, OD_ORDER_DETL_STEP_ID 		/* 주문상세 정렬 키 */
+			, OD_ORDER_DETL_DEPTH_ID 		/* 주문상세 뎁스 */
+			, OD_ORDER_DETL_PARENT_ID 		/* 주문상세 부모 ID */
+			, OD_SHIPPING_PRICE_ID 			/* 주문 배송비 PK : OD_SHIPPING_PRICE.OD_SHIPPING_PRICE_ID */
+			, OD_SHIPPING_ZONE_ID 			/* 주문 배송지 PK : OD_SHIPPING_ZONE.OD_SHIPPING_ZONE_ID */
+			, IL_GOODS_SHIPPING_TEMPLATE_ID /* 배송비 정책 PK : IL_GOODS_SHIPPING_TEMPLATE.IL_GOODS_SHIPPING_TEMPLATE_ID */
+			, UR_WAREHOUSE_ID 				/* 출고처 PK : UR_WAREHOUSE.UR_WAREHOUSE_ID */
+			, UR_SUPPLIER_ID 				/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+			, IL_GOODS_RESERVE_OPTN_ID 		/* 예약정보 PK : IL_GOODS_RESERVE_OPTN.IL_GOODS_RESERVE_OPTN_ID */
+			, EV_EXHIBIT_ID 				/* 기획전 PK : EV_EXHIBIT.EV_EXHIBIT_ID */
+			, PROMOTION_TP 					/* 기획전 유형 골라담기(균일가)(CART_PROMOTION_TP.EXHIBIT_SELECT), 녹즙내맘대로 주문 (CART_PROMOTION_TP.GREENJUICE_SELECT) */
+			, ORDER_STATUS_CD 				/* 정상주문상태 OD_STATUS_INFO.STATUS_CD */
+			, COLLECTION_MALL_DETAIL_ID 	/* 수집몰 상세번호 (이지어드민 SEQ) */
+			, OUTMALL_DETAIL_ID 			/* 외부몰 상세번호 (이지어드민 ORDER_ID_SEQ, ORDER_ID_SEQ2) */
+			, UR_WAREHOUSE_GRP_CD 			/* 출고처그룹 공통코드: (WAREHOUSE_GROUP)  OWN: 자사, ACCOUNT: 거래처, ACCOUNT_Orga: 산지직송, ACCOUNT_SOURCING: 업체소싱, ACCOUNT_JUICE: 녹즙건강생활 */
+			, STORAGE_TYPE_CD 				/* 상품보관방법 IL_ITEM.STORAGE_METHOD_TP 공통코드(ERP_STORAGE_TYPE) COOL: 냉장, FROZEN: 냉동, ROOM: 실온, ORDINARY: 상온, ETC: 기타, NOT_DEFINED: 미정 */
+			, GOODS_TP_CD 					/* 상품유형 IL_GOODS.GOODS_TP 공통코드(GOODS_TYPE) NORMAL: 일반, DISPOSAL: 폐기임박, GIFT: 증정, ADDITIONAL: 추가, PACKAGE: 묶음, DAILY: 일일, SHOP_ONLY: 매장, RENTAL: 렌탈, INCORPOREITY: 무형 */
+			, GOODS_DAILY_TP 				/* 일일상품 유형(GOODS_DAILY_TP : GREENJUICE/BABYMEAL/EATSSLIM ) */
+			, ORDER_STATUS_DELI_TP 			/* 주문상태 배송유형 공통코드: ORDER_STATUS_DELI_TP */
+			, GOODS_DELIVERY_TYPE 			/* 배송유형 공통코드(GOODS_DELIVERY_TYPE) NORMAL: 일반, DAWN: 새벽, SHOP: 매장, DAILY: 일일, NO_DELIVERY: 배송안함, RESERVATION: 예약 */
+			, SALE_TP_CD 					/* 판매유형 IL_GOODS.SALE_TP 공통코드(SALE_TYPE) NORMAL: 일반, REGULAR: 일반/정기, RESERVATION: 예약, SHOP: 매장, DAILY: 일일 */
+			, IL_CTGRY_STD_ID 				/* 표준카테고리 : IL_ITEM.IL_CTGRY_STD_ID */
+			, IL_CTGRY_DISPLAY_ID 			/* 전시카테고리 : IL_GOODS_CTGRY.IL_CTGRY_ID , BASIC_YN=Y, MALL_DIV = MALL_DIV.PULMU  */
+			, IL_CTGRY_MALL_ID 				/* 몰인몰카테고리 : IL_GOODS_CTGRY.IL_CTGRY_ID , BASIC_YN=Y, MALL_DIV = MALL_DIV.PULMU */
+			, ITEM_BARCODE 					/* 품목바코드 : IL_ITEM.ITEM_BARCODE */
+			, IL_ITEM_CD 					/* 품목코드 PK : IL_ITEM.IL_ITEM_CD */
+			, IL_GOODS_ID 					/* 상품 PK : IL_GOODS.IL_GOODS_ID */
+			, GOODS_NM 						/* 상품명 : IL_GOODS.GOODS_NM */
+			, TAX_YN 						/* 과세구분(Y: 과세, N: 면세) : IL_ITEM.TAX_YN */
+			, GOODS_DISCOUNT_TP 			/* 할인유형(NONE, 우선, 올가, 즉시, 적용불가) : 공통코드(GOODS_DISCOUNT_TP) */
+			, PRD_SEQ 						/* 이지어드민 상품관리번호 */
+			, ORDER_CNT 					/* 주문수량 */
+			, STANDARD_PRICE 				/* 원가 : IL_GOODS.STANDARD_PRICE */
+			, RECOMMENDED_PRICE 			/* 정상가 : IL_GOODS.RECOMMENDED_PRICE */
+			, SALE_PRICE 					/* 판매가 : IL_GOODS.SALE_PRICE */
+			, TOT_SALE_PRICE				/* 총 판매가 */
+			, CART_COUPON_PRICE 			/* 장바구니쿠폰할인금액 */
+			, GOODS_COUPON_PRICE 			/* 상품쿠폰할인금액 */
+			, DIRECT_PRICE 					/* 상품,장바구니쿠폰 할인 제외한 할인금액 */
+			, PAID_PRICE 					/* 결제금액 (쿠폰까지 할인된 금액) */
+			, ORDER_IF_ID 					/* 주문 I/F 등록자 */
+			, ORDER_IF_DT 					/* 주문 I/F 일자 */
+			, SHIPPING_ID 					/* 출고예정일등록자 */
+			, SHIPPING_DT 					/* 출고예정일일자 */
+			, DELIVERY_ID 					/* 도착예정일등록자 */
+			, DELIVERY_DT 					/* 도착예정일일자 */
+			, BATCH_EXEC_FL 				/* 배치실행여부(N: I/F배치실행안함, Y: I/F배치실행완료, C: 주문복사를 통해 매출만 연동했을 경우) */
+			, OUTMALL_TYPE 					/* 외부몰 타입 E: 이지어드민 S: 사방넷 */
+			, CREATE_DT 					/* 등록일자  */
+		)
+		SELECT
+			#{orderDetlVo.odOrderDetlId} 			/* 주문상세 PK */
+			, #{orderDetlVo.odOrderDetlSeq} 		/* 주문상세 순번(라인번호) 주문번호에 대한 순번 */
+			, #{orderDetlVo.odOrderId} 				/* 주문 PK */
+			, #{orderDetlVo.odid} 					/* 주문번호 */
+			, #{orderDetlVo.odOrderDetlStepId}		/* 주문상세 정렬 키 */
+			, #{orderDetlVo.odOrderDetlDepthId} 	/* 주문상세 뎁스 */
+			, #{orderDetlVo.odOrderDetlParentId}	/* 주문상세 부모 ID */
+			, #{orderDetlVo.odShippingPriceId} 		/* 주문 배송비 PK : OD_SHIPPING_PRICE.OD_SHIPPING_PRICE_ID */
+			, #{orderDetlVo.odShippingZoneId} 		/* 주문 배송지 PK : OD_SHIPPING_ZONE.OD_SHIPPING_ZONE_ID */
+			, IL_GOODS_SHIPPING_TEMPLATE_ID		/* 배송비 정책 PK : IL_GOODS_SHIPPING_TEMPLATE.IL_GOODS_SHIPPING_TEMPLATE_ID */
+			, UR_WAREHOUSE_ID 					/* 출고처 PK : UR_WAREHOUSE.UR_WAREHOUSE_ID */
+			, UR_SUPPLIER_ID 					/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+			, IL_GOODS_RESERVE_OPTN_ID 			/* 예약정보 PK : IL_GOODS_RESERVE_OPTN.IL_GOODS_RESERVE_OPTN_ID */
+			, EV_EXHIBIT_ID 					/* 기획전 PK : EV_EXHIBIT.EV_EXHIBIT_ID */
+			, PROMOTION_TP 						/* 기획전 유형 골라담기(균일가)(CART_PROMOTION_TP.EXHIBIT_SELECT), 녹즙내맘대로 주문 (CART_PROMOTION_TP.GREENJUICE_SELECT) */
+			, #{orderDetlVo.orderStatusCd} 		/* 정상주문상태 OD_STATUS_INFO.STATUS_CD */
+			, COLLECTION_MALL_DETAIL_ID 		/* 수집몰 상세번호 (이지어드민 SEQ) */
+			, OUTMALL_DETAIL_ID 				/* 외부몰 상세번호 (이지어드민 ORDER_ID_SEQ, ORDER_ID_SEQ2) */
+			, UR_WAREHOUSE_GRP_CD 				/* 출고처그룹 공통코드: (WAREHOUSE_GROUP)  OWN: 자사, ACCOUNT: 거래처, ACCOUNT_Orga: 산지직송, ACCOUNT_SOURCING: 업체소싱, ACCOUNT_JUICE: 녹즙건강생활 */
+			, STORAGE_TYPE_CD 					/* 상품보관방법 IL_ITEM.STORAGE_METHOD_TP 공통코드(ERP_STORAGE_TYPE) COOL: 냉장, FROZEN: 냉동, ROOM: 실온, ORDINARY: 상온, ETC: 기타, NOT_DEFINED: 미정 */
+			, GOODS_TP_CD 						/* 상품유형 IL_GOODS.GOODS_TP 공통코드(GOODS_TYPE) NORMAL: 일반, DISPOSAL: 폐기임박, GIFT: 증정, ADDITIONAL: 추가, PACKAGE: 묶음, DAILY: 일일, SHOP_ONLY: 매장, RENTAL: 렌탈, INCORPOREITY: 무형 */
+			, GOODS_DAILY_TP 					/* 일일상품 유형(GOODS_DAILY_TP : GREENJUICE/BABYMEAL/EATSSLIM ) */
+			, ORDER_STATUS_DELI_TP 				/* 주문상태 배송유형 공통코드: ORDER_STATUS_DELI_TP */
+			, GOODS_DELIVERY_TYPE 				/* 배송유형 공통코드(GOODS_DELIVERY_TYPE) NORMAL: 일반, DAWN: 새벽, SHOP: 매장, DAILY: 일일, NO_DELIVERY: 배송안함, RESERVATION: 예약 */
+			, SALE_TP_CD 						/* 판매유형 IL_GOODS.SALE_TP 공통코드(SALE_TYPE) NORMAL: 일반, REGULAR: 일반/정기, RESERVATION: 예약, SHOP: 매장, DAILY: 일일 */
+			, IL_CTGRY_STD_ID 					/* 표준카테고리 : IL_ITEM.IL_CTGRY_STD_ID */
+			, IL_CTGRY_DISPLAY_ID 				/* 전시카테고리 : IL_GOODS_CTGRY.IL_CTGRY_ID , BASIC_YN=Y, MALL_DIV = MALL_DIV.PULMU  */
+			, IL_CTGRY_MALL_ID 					/* 몰인몰카테고리 : IL_GOODS_CTGRY.IL_CTGRY_ID , BASIC_YN=Y, MALL_DIV = MALL_DIV.PULMU */
+			, ITEM_BARCODE 						/* 품목바코드 : IL_ITEM.ITEM_BARCODE */
+			, IL_ITEM_CD 						/* 품목코드 PK : IL_ITEM.IL_ITEM_CD */
+			, IL_GOODS_ID 						/* 상품 PK : IL_GOODS.IL_GOODS_ID */
+			, GOODS_NM 							/* 상품명 : IL_GOODS.GOODS_NM */
+			, TAX_YN 							/* 과세구분(Y: 과세, N: 면세) : IL_ITEM.TAX_YN */
+			, GOODS_DISCOUNT_TP 				/* 할인유형(NONE, 우선, 올가, 즉시, 적용불가) : 공통코드(GOODS_DISCOUNT_TP) */
+			, PRD_SEQ 							/* 이지어드민 상품관리번호 */
+			, #{orderDetlVo.orderCnt} 			/* 주문수량 */
+			, STANDARD_PRICE 					/* 원가 : IL_GOODS.STANDARD_PRICE */
+			, RECOMMENDED_PRICE 				/* 정상가 : IL_GOODS.RECOMMENDED_PRICE */
+			, SALE_PRICE 						/* 판매가 : IL_GOODS.SALE_PRICE */
+			, CASE WHEN ORDER_CNT = #{orderDetlVo.orderCnt} THEN TOT_SALE_PRICE ELSE (SALE_PRICE * #{orderDetlVo.orderCnt}) END  /* 총판매가 */
+			, #{orderDetlVo.cartCouponPrice} 	/* 장바구니쿠폰할인금액 */
+			, #{orderDetlVo.goodsCouponPrice} 	/* 상품쿠폰할인금액 */
+			, DIRECT_PRICE 						/* 상품,장바구니쿠폰 할인 제외한 할인금액 */
+			, #{orderDetlVo.paidPrice} 			/* 결제금액 (쿠폰까지 할인된 금액) */
+			, #{orderDetlVo.orderIfId} 			/* 주문 I/F 등록자 */
+			, #{orderDetlVo.orderIfDt} 			/* 주문 I/F 일자 */
+			, #{orderDetlVo.shippingId} 		/* 출고예정일등록자 */
+			, #{orderDetlVo.shippingDt} 		/* 출고예정일일자 */
+			, #{orderDetlVo.deliveryId} 		/* 도착예정일등록자 */
+			, #{orderDetlVo.deliveryDt} 		/* 도착예정일일자 */
+			, #{orderDetlVo.batchExecFl} 		/* 배치실행여부(N: I/F배치실행안함, Y: I/F배치실행완료, C: 주문복사를 통해 매출만 연동했을 경우) */
+			, OUTMALL_TYPE 						/* 외부몰 타입 E: 이지어드민 S: 사방넷 */
+			, DATE_FORMAT(NOW(), '%Y%m%d')		/* 등록일자  */
+		FROM
+			OD_ORDER_DETL
+      	WHERE
+      		OD_ORDER_DETL_ID = #{srchOdOrderDetlId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문상세 할인금액 정보 신규 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16 	강상국          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyOrderDetlDiscount">
+		/* orderRegistration.addOrderCopyOrderDetlDiscount */
+		INSERT INTO OD_ORDER_DETL_DISCOUNT		/* 주문상세 할인금액 */
+		(
+			OD_ORDER_ID 				/* 주문 PK */
+			, OD_ORDER_DETL_ID 			/* 주문상세 PK */
+			, DISCOUNT_TP 				/* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인) */
+			, PM_COUPON_ISSUE_ID 		/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+			, PM_COUPON_ID 				/* 쿠폰 PK */
+			, PM_COUPON_NM 				/* 쿠폰명 */
+			, DISCOUNT_PRICE 			/* 할인금액 */
+			, PS_EMPL_DISC_GRP_ID 		/* 임직원 할인그룹 */
+			, UR_BRAND_ID 				/* 임직원 혜택 표준 브랜드 : UR_BRAND.UR_BRAND_ID */
+		)
+		SELECT
+			#{orderDetlDiscountVo.odOrderId} 				/* 주문 PK */
+			, #{orderDetlDiscountVo.odOrderDetlId} 			/* 주문상세 PK */
+			, DISCOUNT_TP 				/* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인) */
+			, PM_COUPON_ISSUE_ID 		/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+			, PM_COUPON_ID 				/* 쿠폰 PK */
+			, PM_COUPON_NM 				/* 쿠폰명 */
+			, CASE 	WHEN DISCOUNT_TP = 'GOODS_DISCOUNT_TP.GOODS_COUPON' THEN #{goodsCouponPrice}
+ 					WHEN DISCOUNT_TP = 'GOODS_DISCOUNT_TP.CART_COUPON' THEN #{cartCouponPrice}
+ 					ELSE DISCOUNT_PRICE END 	/* 할인금액 */
+			, PS_EMPL_DISC_GRP_ID 				/* 임직원 할인그룹 */
+			, UR_BRAND_ID 						/* 임직원 혜택 표준 브랜드 : UR_BRAND.UR_BRAND_ID */
+		FROM
+			OD_ORDER_DETL_DISCOUNT
+      	WHERE
+      		OD_ORDER_ID = #{srchOdOrderId}
+      		AND OD_ORDER_DETL_ID = #{srchOdOrderDetlId}
+      		AND DISCOUNT_TP IN ('GOODS_DISCOUNT_TP.PRIORITY', 'GOODS_DISCOUNT_TP.IMMEDIATE')
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문상세 묶음상품 신규 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16 	강상국          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyOrderDetlPack">
+		/* orderRegistration.addOrderCopyOrderDetlPack */
+		INSERT INTO OD_ORDER_DETL_PACK		/* 주문상세 묶음상품 */
+		(
+			OD_ORDER_DETL_ID 		/* 주문상세 PK */
+			, OD_ORDER_DETL_STEP_ID /* 주문상세 정렬 키 */
+			, OD_ORDER_ID 			/* 주문 PK */
+			, GOODS_TP_CD 			/* 상품유형 IL_GOODS.GOODS_TP 공통코드(GOODS_TYPE) NORMAL: 일반, DISPOSAL: 폐기임박, GIFT: 증정, ADDITIONAL: 추가, PACKAGE: 묶음, DAILY: 일일, SHOP_ONLY: 매장, RENTAL: 렌탈, INCORPOREITY: 무형 */
+			, GOODS_DELIVERY_TYPE 	/* 배송유형 공통코드(GOODS_DELIVERY_TYPE) NORMAL: 일반, DAWN: 새벽, SHOP: 매장, DAILY: 일일, NO_DELIVERY: 배송안함, RESERVATION: 예약 */
+			, PROMOTION_TP 			/* 기획전 유형 골라담기(균일가)(CART_PROMOTION_TP.EXHIBIT_SELECT), 녹즙내맘대로 주문 (CART_PROMOTION_TP.GREENJUICE_SELECT) */
+			, IL_GOODS_ID 			/* 상품 PK : IL_GOODS.IL_GOODS_ID */
+			, GOODS_NM 				/* 상품명 : IL_GOODS.GOODS_NM */
+			, ORDER_CNT 			/* 주문수량 */
+			, STANDARD_PRICE 		/* 원가 : IL_GOODS.STANDARD_PRICE */
+			, RECOMMENDED_PRICE 	/* 정상가 : IL_GOODS.RECOMMENDED_PRICE */
+			, SALE_PRICE 			/* 판매가 : IL_GOODS.SALE_PRICE */
+			, CART_COUPON_PRICE 	/* 장바구니쿠폰할인금액 */
+			, GOODS_COUPON_PRICE 	/* 상품쿠폰할인금액 */
+			, DIRECT_PRICE 			/* 상품,장바구니쿠폰 할인 제외한 할인금액 */
+			, PAID_PRICE 			/* 결제금액 (쿠폰까지 할인된 금액) */
+		)
+		SELECT
+			  #{orderDetlPackVo.odOrderDetlId} 		/* 주문상세 PK */
+			, #{orderDetlPackVo.odOrderDetlStepId} 	/* 주문상세 정렬 키 */
+			, #{orderDetlPackVo.odOrderId} 			/* 주문 PK */
+			, GOODS_TP_CD 			/* 상품유형 IL_GOODS.GOODS_TP 공통코드(GOODS_TYPE) NORMAL: 일반, DISPOSAL: 폐기임박, GIFT: 증정, ADDITIONAL: 추가, PACKAGE: 묶음, DAILY: 일일, SHOP_ONLY: 매장, RENTAL: 렌탈, INCORPOREITY: 무형 */
+			, GOODS_DELIVERY_TYPE 	/* 배송유형 공통코드(GOODS_DELIVERY_TYPE) NORMAL: 일반, DAWN: 새벽, SHOP: 매장, DAILY: 일일, NO_DELIVERY: 배송안함, RESERVATION: 예약 */
+			, PROMOTION_TP 			/* 기획전 유형 골라담기(균일가)(CART_PROMOTION_TP.EXHIBIT_SELECT), 녹즙내맘대로 주문 (CART_PROMOTION_TP.GREENJUICE_SELECT) */
+			, IL_GOODS_ID 			/* 상품 PK : IL_GOODS.IL_GOODS_ID */
+			, GOODS_NM 				/* 상품명 : IL_GOODS.GOODS_NM */
+			, ORDER_CNT 			/* 주문수량 */
+			, STANDARD_PRICE 		/* 원가 : IL_GOODS.STANDARD_PRICE */
+			, RECOMMENDED_PRICE 	/* 정상가 : IL_GOODS.RECOMMENDED_PRICE */
+			, SALE_PRICE 			/* 판매가 : IL_GOODS.SALE_PRICE */
+			, #{orderDetlPackVo.cartCouponPrice} 	/* 장바구니쿠폰할인금액 */
+			, #{orderDetlPackVo.goodsCouponPrice} 	/* 상품쿠폰할인금액 */
+			, DIRECT_PRICE 			/* 상품,장바구니쿠폰 할인 제외한 할인금액 */
+			, #{orderDetlPackVo.paidPrice} 			/* 결제금액 (쿠폰까지 할인된 금액) */
+		FROM
+			OD_ORDER_DETL_PACK
+      	WHERE
+      		OD_ORDER_DETL_ID = #{srchOdOrderDetlId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문상세 일일배송 패턴 신규 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16 	강상국          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyOrderDetlDaily">
+		/* orderRegistration.addOrderCopyOrderDetlDaily */
+		INSERT INTO OD_ORDER_DETL_DAILY		/* 주문상세 일일배송 패턴 */
+		(
+			OD_ORDER_DETL_DAILY_ID 	/* 주문 상세 일일배송 패턴 PK */
+			, OD_ORDER_ID 			/* 주문 PK */
+			, OD_ORDER_DETL_ID 		/* 주문상세 PK */
+			, OD_ORDER_DETL_SEQ 	/* 주문 상세 순번(라인번호) */
+			, IL_GOODS_ID 			/* 상품 PK : IL_GOODS.IL_GOODS_ID */
+			, GOODS_CYCLE_TP 		/* 배송주기 공통코드:GOODS_CYCLE_TP */
+			, GOODS_CYCLE_TERM_TP 	/* 배송기간 공통코드:GOODS_CYCLE_TERM_TP */
+			, MON_CNT 				/* 월요일 수량 */
+			, TUE_CNT 				/* 화요일 수량 */
+			, WED_CNT 				/* 수요일 수량 */
+			, THU_CNT 				/* 목요일 수량 */
+			, FRI_CNT 				/* 금요일 수량 */
+			, SET_CNT 				/* 세트수량 */
+			, ORDER_CNT 			/* 최초 상품 주문 수량 */
+			, ALLERGY_YN 			/* 알러지식단 여부 Y:알러지식단 */
+			, DAILY_BULK_YN 		/* 일괄배송 여부 Y: 일괄배송 */
+			, STORE_DELIVERY_TP 	/* 배송장소코드 (공통코드 STORE_DELIVERY_TYPE) */
+			, SCHEDULE_YN 			/* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+			, DAILY_PACK_YN 		/* 골라담기  패키지 상품 여부 Y/N Y인경우 I/F 타지 않음 */
+			, UR_STORE_ID 			/* 스토어 PK */
+			, DAILY_PATTERN 		/* 배송 패턴 */
+		)
+		SELECT
+			#{odOrderDetlDailyId} 	/* 주문 상세 일일배송 패턴 PK */
+			, #{odOrderId} 			/* 주문 PK */
+			, #{odOrderDetlId} 		/* 주문상세 PK */
+			, #{odOrderDetlSeq} 	/* 주문 상세 순번(라인번호) */
+			, IL_GOODS_ID 			/* 상품 PK : IL_GOODS.IL_GOODS_ID */
+			, GOODS_CYCLE_TP 		/* 배송주기 공통코드:GOODS_CYCLE_TP */
+			, GOODS_CYCLE_TERM_TP 	/* 배송기간 공통코드:GOODS_CYCLE_TERM_TP */
+			, MON_CNT 				/* 월요일 수량 */
+			, TUE_CNT 				/* 화요일 수량 */
+			, WED_CNT 				/* 수요일 수량 */
+			, THU_CNT 				/* 목요일 수량 */
+			, FRI_CNT 				/* 금요일 수량 */
+			, SET_CNT 				/* 세트수량 */
+			, ORDER_CNT 			/* 최초 상품 주문 수량 */
+			, ALLERGY_YN 			/* 알러지식단 여부 Y:알러지식단 */
+			, DAILY_BULK_YN 		/* 일괄배송 여부 Y: 일괄배송 */
+			, STORE_DELIVERY_TP 	/* 배송장소코드 (공통코드 STORE_DELIVERY_TYPE) */
+			, SCHEDULE_YN 			/* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+			, DAILY_PACK_YN 		/* 골라담기  패키지 상품 여부 Y/N Y인경우 I/F 타지 않음 */
+			, UR_STORE_ID 			/* 스토어 PK */
+			, DAILY_PATTERN 		/* 배송 패턴 */
+		FROM
+			OD_ORDER_DETL_DAILY
+      	WHERE
+      		OD_ORDER_ID = #{srchOdOrderId}
+      		AND OD_ORDER_DETL_ID = #{srchOdOrderDetlId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문상세 일일배송 스케쥴 신규 생성
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16 	강상국          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyOrderDetlDailySch">
+		/* orderRegistration.addOrderCopyOrderDetlDailySch */
+		INSERT INTO OD_ORDER_DETL_DAILY_SCH		/* 주문상세 일일배송 스케쥴 */
+		(
+			OD_ORDER_DETL_DAILY_SCH_SEQ 	/* 주문 상세 일일배송 패턴 라인번호 */
+			, OD_ORDER_DETL_DAILY_ID 		/* 주문 상세 일일배송 패턴 PK */
+			, DELIVERY_DT 					/* 도착예정일일자 */
+			, PS_SHIPPING_COMP_ID 			/* 택배사 설정 PK */
+			, TRACKING_NO 					/* 개별송장번호 */
+			, ORDER_CNT 					/* 주문수량 */
+			, DELIVERY_YN 					/* 배송완료 여부 */
+			, ORDER_SCH_STATUS 				/* 스케줄 주문 상태(1:주문, 2:취소) */
+			, USE_YN 						/* Y' COMMENT '스케줄 사용 여부 */
+			, OD_SHIPPING_ZONE_ID 			/* 주문배송지 PK */
+		)
+		SELECT
+			OD_ORDER_DETL_DAILY_SCH_SEQ 	/* 주문 상세 일일배송 패턴 라인번호 */
+			, #{odOrderDetlDailyId} 		/* 주문 상세 일일배송 패턴 PK */
+			, DELIVERY_DT 					/* 도착예정일일자 */
+			, PS_SHIPPING_COMP_ID 			/* 택배사 설정 PK */
+			, TRACKING_NO 					/* 개별송장번호 */
+			, ORDER_CNT 					/* 주문수량 */
+			, DELIVERY_YN 					/* 배송완료 여부 */
+			, ORDER_SCH_STATUS 				/* 스케줄 주문 상태(1:주문, 2:취소) */
+			, USE_YN 						/* Y' COMMENT '스케줄 사용 여부 */
+			, #{odShippingZoneId} 			/* 주문배송지 PK */
+		FROM
+			OD_ORDER_DETL_DAILY_SCH
+      	WHERE
+      		OD_ORDER_DETL_DAILY_ID = #{srchOdOrderDetlDailyId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문 배송지 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyShippingZone">
+		/*	orderRegistration.addOrderCopyShippingZone  */
+		INSERT INTO OD_SHIPPING_ZONE	/* 주문 배송지 */
+		(
+			OD_SHIPPING_ZONE_ID 	/* 주문 배송지 PK */
+			, OD_ORDER_ID 			/* 주문 PK */
+			, DELIVERY_TYPE 		/* 배송타입 : 공통코드(DELIVERY_TYPE) */
+			, SHIPPING_TYPE 		/* 주문타입1:배송,2:교환배송,3:반품(역배송),4:수거 */
+			, RECV_NM 				/* 수령인 명 */
+			, RECV_HP 				/* 수령인 핸드폰 */
+			, RECV_TEL 				/* 수령인 연락처 */
+			, RECV_MAIL 			/* 수령인 이메일 */
+			, RECV_ZIP_CD 			/* 수령인 우편번호 */
+			, RECV_ADDR1 			/* 수령인 주소 1 */
+			, RECV_ADDR2 			/* 수령인 주소 2 */
+			, RECV_BLD_NO 			/* 건물번호 */
+			, DELIVERY_MSG 			/* 배송요청사항 */
+			, DOOR_MSG_CD 			/* 출입정보타입 공통코드(ACCESS_INFORMATION) */
+			, DOOR_MSG 				/* 배송출입 현관 비밀번호 */
+			, UR_STORE_ID 			/* 스토어 코드(ERP연동) */
+			, CREATE_DT 			/* 등록일 */
+		)
+		SELECT
+			#{orderShippingZoneVo.odShippingZoneId} 		/* 주문 배송지 PK */
+			, #{orderShippingZoneVo.odOrderId} 				/* 주문 PK */
+			, DELIVERY_TYPE 			/* 배송타입 : 공통코드(DELIVERY_TYPE) */
+			, SHIPPING_TYPE 			/* 주문타입1:배송,2:교환배송,3:반품(역배송),4:수거 */
+			, FN_ENCRYPT(#{orderShippingZoneVo.recvNm}) 	/* 수령인 명 */
+			, FN_ENCRYPT(#{orderShippingZoneVo.recvHp}) 	/* 수령인 핸드폰 */
+			, FN_ENCRYPT(#{orderShippingZoneVo.recvTel}) 	/* 수령인 연락처 */
+			, FN_ENCRYPT(#{orderShippingZoneVo.recvMail}) 	/* 수령인 이메일 */
+			, FN_ENCRYPT(#{orderShippingZoneVo.recvZipCd}) 	/* 수령인 우편번호 */
+			, FN_ENCRYPT(#{orderShippingZoneVo.recvAddr1}) 	/* 수령인 주소 1 */
+			, FN_ENCRYPT(#{orderShippingZoneVo.recvAddr2}) 	/* 수령인 주소 2 */
+			, #{orderShippingZoneVo.recvBldNo} 				/* 건물번호 */
+			, #{orderShippingZoneVo.deliveryMsg} 			/* 배송요청사항 */
+			, #{orderShippingZoneVo.doorMsgCd} 				/* 출입정보타입 공통코드(ACCESS_INFORMATION) */
+			, FN_ENCRYPT(#{orderShippingZoneVo.doorMsg}) 	/* 배송출입 현관 비밀번호 */
+			, UR_STORE_ID 				/* 스토어 코드(ERP연동) */
+			, NOW() 					/* 등록일 */
+		FROM
+			OD_SHIPPING_ZONE
+      	WHERE
+      		OD_SHIPPING_ZONE_ID = #{srchOdShippingZoneId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문배송지이력 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyShippingZoneHist">
+		/*	orderRegistration.addOrderCopyShippingZoneHist  */
+		INSERT INTO OD_SHIPPING_ZONE_HIST	/* 주문 배송지이력 */
+		(
+			OD_SHIPPING_ZONE_ID 		/* 주문 배송지 PK */
+			, OD_ORDER_ID 				/* 주문 PK */
+			, DELIVERY_TYPE 			/* 배송타입 : 공통코드(DELIVERY_TYPE) */
+			, SHIPPING_TYPE 			/* 주문타입1:배송,2:교환배송,3:반품(역배송),4:수거 */
+			, RECV_NM 					/* 수령인 명 */
+			, RECV_HP 					/* 수령인 핸드폰 */
+			, RECV_TEL 					/* 수령인 연락처 */
+			, RECV_MAIL 				/* 수령인 이메일 */
+			, RECV_ZIP_CD 				/* 수령인 우편번호 */
+			, RECV_ADDR1 				/* 수령인 주소 1 */
+			, RECV_ADDR2 				/* 수령인 주소 2 */
+			, RECV_BLD_NO 				/* 건물번호 */
+			, DELIVERY_MSG 				/* 배송요청사항 */
+			, DOOR_MSG_CD 				/* 출입정보타입 공통코드(DOOR_MSG_CD) */
+			, DOOR_MSG 					/* 배송출입 현관 비밀번호 */
+			, CREATE_DT 				/* 등록일 */
+		)
+		SELECT
+			#{orderShippingZoneHistVo.odShippingZoneId} 		/* 주문 배송지 PK */
+			, #{orderShippingZoneHistVo.odOrderId} 				/* 주문 PK */
+			, DELIVERY_TYPE 									/* 배송타입 : 공통코드(DELIVERY_TYPE) */
+			, SHIPPING_TYPE 									/* 주문타입1:배송,2:교환배송,3:반품(역배송),4:수거 */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.recvNm}) 	/* 수령인 명 */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.recvHp}) 	/* 수령인 핸드폰 */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.recvTel}) 	/* 수령인 연락처 */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.recvMail}) 	/* 수령인 이메일 */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.recvZipCd}) 	/* 수령인 우편번호 */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.recvAddr1}) 	/* 수령인 주소 1 */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.recvAddr2}) 	/* 수령인 주소 2 */
+			, #{orderShippingZoneHistVo.recvBldNo}			 	/* 건물번호 */
+			, #{orderShippingZoneHistVo.deliveryMsg} 			/* 배송요청사항 */
+			, #{orderShippingZoneHistVo.doorMsgCd} 				/* 출입정보타입 공통코드(ACCESS_INFORMATION) */
+			, FN_ENCRYPT(#{orderShippingZoneHistVo.doorMsg}) 	/* 배송출입 현관 비밀번호 */
+			, NOW() 											/* 등록일 */
+		FROM
+			OD_SHIPPING_ZONE_HIST
+      	WHERE
+      		OD_SHIPPING_ZONE_ID = #{srchOdShippingZoneId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문복사 주문배송비 등록
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.16		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderCopyShippingPrice">
+		/*	orderRegistration.addOrderCopyShippingPrice  */
+		INSERT INTO OD_SHIPPING_PRICE	/* 주문상세 배송비 */
+		(
+			OD_SHIPPING_PRICE_ID 		/* 주문 배송비 PK */
+			, IL_SHIPPING_TMPL_ID	 	/* 배송정책 PK : IL_SHIPPING_TEMPLATE.IL_SHIPPING_TMPL_ID */
+			, PAYMENT_METHOD 			/* 1:선불 2:착불 */
+			, METHOD 					/* 1' COMMENT '1: 택배 */
+			, SHIPPING_PRICE 			/* 배송비 */
+			, PM_COUPON_ISSUE_ID 		/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+			, PM_COUPON_NM 				/* 쿠폰명 */
+			, SHIPPING_DISCOUNT_PRICE 	/* 배송비 할인금액 */
+			, ORG_SHIPPING_PRICE		/* 정산배송비 금액 */
+			, ORDER_SHIPPING_PRICE
+			, CREATE_DT 				/* 등록일  */
+		)
+		SELECT
+			#{orderShippingPriceVo.odShippingPriceId} 		/* 주문 배송비 PK */
+			, IL_SHIPPING_TMPL_ID	 	/* 배송정책 PK : IL_SHIPPING_TEMPLATE.IL_SHIPPING_TMPL_ID */
+			, PAYMENT_METHOD 			/* 1:선불 2:착불 */
+			, METHOD 					/* 1' COMMENT '1: 택배 */
+			,
+				CASE WHEN #{sellersGroupCd} = 'SELLERS_GROUP.MALL' THEN
+					CASE WHEN #{orderShippingPriceVo.shippingPrice} - SHIPPING_DISCOUNT_PRICE <![CDATA[<]]> 0 THEN 0 ELSE #{orderShippingPriceVo.shippingPrice} END /* 배송비 */
+				ELSE
+					 SHIPPING_PRICE
+				END
+			, PM_COUPON_ISSUE_ID 		/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+			, PM_COUPON_NM 				/* 쿠폰명 */
+			, SHIPPING_DISCOUNT_PRICE 	/* 배송비 할인금액 */
+			,
+				CASE WHEN #{sellersGroupCd} = 'SELLERS_GROUP.MALL' THEN
+					CASE WHEN #{orderShippingPriceVo.shippingPrice} - SHIPPING_DISCOUNT_PRICE <![CDATA[<]]> 0 THEN SHIPPING_DISCOUNT_PRICE ELSE #{orderShippingPriceVo.shippingPrice} + SHIPPING_DISCOUNT_PRICE END
+				ELSE
+					ORG_SHIPPING_PRICE
+				END
+			,
+				CASE WHEN #{sellersGroupCd} = 'SELLERS_GROUP.MALL' THEN
+					CASE WHEN #{orderShippingPriceVo.shippingPrice} - SHIPPING_DISCOUNT_PRICE <![CDATA[<]]> 0 THEN SHIPPING_DISCOUNT_PRICE ELSE #{orderShippingPriceVo.shippingPrice} + SHIPPING_DISCOUNT_PRICE END
+				ELSE
+					ORDER_SHIPPING_PRICE
+				END
+			, NOW() 					/* 등록일 */
+		FROM
+			OD_SHIPPING_PRICE
+      	WHERE
+      		OD_SHIPPING_PRICE_ID = #{srchOdShippingPriceId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문상세 일일배송 배송지 등록
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.26		이명수	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderDetlDailyZone" >
+		/*	orderRegistration.addOrderDetlDailyZone  */
+		INSERT INTO OD_ORDER_DETL_DAILY_ZONE
+		(OD_ORDER_DETL_ID, OD_SHIPPING_ZONE_ID, START_DT, END_DT, USE_YN)
+		SELECT
+			T1.OD_ORDER_DETL_ID,
+			T2.OD_SHIPPING_ZONE_ID,
+			(SELECT MIN(DELIVERY_DT) FROM OD_ORDER_DETL_DAILY_SCH WHERE USE_YN = 'Y'
+			AND OD_ORDER_DETL_DAILY_ID IN
+			(
+				SELECT
+					OD_ORDER_DETL_DAILY_ID
+				FROM
+					OD_ORDER_DETL_DAILY T1
+				WHERE
+					OD_ORDER_DETL_SEQ <![CDATA[>]]> 0
+				  	<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(promotionTp, "CART_PROMOTION_TP.GREENJUICE_SELECT")'>
+							AND OD_ORDER_ID = #{odOrderId}
+						</when>
+						<otherwise>
+							AND OD_ORDER_DETL_ID = T3.OD_ORDER_DETL_ID
+						</otherwise>
+					</choose>
+			)) AS START_DT,
+			(SELECT MAX(DELIVERY_DT) FROM OD_ORDER_DETL_DAILY_SCH WHERE USE_YN = 'Y'
+			AND OD_ORDER_DETL_DAILY_ID IN
+			(
+				SELECT
+					OD_ORDER_DETL_DAILY_ID
+				FROM
+					OD_ORDER_DETL_DAILY T1
+				WHERE
+					OD_ORDER_DETL_SEQ <![CDATA[>]]> 0
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(promotionTp, "CART_PROMOTION_TP.GREENJUICE_SELECT")'>
+							AND OD_ORDER_ID = #{odOrderId}
+						</when>
+						<otherwise>
+							AND OD_ORDER_DETL_ID = T3.OD_ORDER_DETL_ID
+						</otherwise>
+					</choose>
+			)) AS END_DT
+			, 'Y'AS USE_YN
+		FROM
+			OD_ORDER_DETL_DAILY T1
+			INNER JOIN OD_ORDER_DETL_DAILY_SCH T2 ON T1.OD_ORDER_DETL_DAILY_ID = T2.OD_ORDER_DETL_DAILY_ID
+			INNER JOIN OD_ORDER_DETL T3 ON T3.OD_ORDER_DETL_ID = T1.OD_ORDER_DETL_ID
+		WHERE
+			T1.OD_ORDER_ID = #{odOrderId}
+			AND T1.OD_ORDER_DETL_SEQ <![CDATA[>]]> 0
+		  	AND T2.USE_YN = 'Y'
+		GROUP BY T1.OD_ORDER_DETL_ID
+	</insert>
+
+	<select id="getOrderCopySalIfYn" resultType="kr.co.pulmuone.v1.order.order.dto.vo.OrderVo">
+	/*	orderRegistration.getOrderCopySalIfYn  */
+		SELECT
+			ORDER_COPY_SAL_IF_YN,
+			IFNULL(ORDER_COPY_ODID, '') AS ORDER_COPY_ODID
+		FROM
+			OD_ORDER
+		WHERE
+				OD_ORDER_ID = #{odOrderId}
+			AND ORDER_YN = 'Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상태 변경 이력 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.11     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="putOrderDetailStatusHist" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlHistVo">
+		/*	orderStatus.putOrderDetailStatusHist  */
+		INSERT INTO OD_ORDER_DETL_HIST (
+		OD_ORDER_ID
+		, OD_ORDER_DETL_ID
+		, OD_ORDER_DETL_SEQ
+		, PREV_STATUS_CD
+		, STATUS_CD
+		, HIST_MSG
+		, CREATE_ID
+		, CREATE_DT
+		)
+		SELECT  OD_ORDER_ID
+		, OD_ORDER_DETL_ID
+		, OD_ORDER_DETL_SEQ
+		, ORDER_STATUS_CD
+		, #{statusCd}
+		, #{histMsg}
+		, #{createId}
+		, NOW()
+		FROM	OD_ORDER_DETL
+		WHERE	1 = 1
+		<choose>
+			<when test="odOrderDetlId != 0"> AND OD_ORDER_DETL_ID = #{odOrderDetlId} </when>
+			<otherwise> AND	OD_ORDER_ID = #{odOrderId} </otherwise>
+		</choose>
+	</insert>
+
+
+
+
+
+</mapper>

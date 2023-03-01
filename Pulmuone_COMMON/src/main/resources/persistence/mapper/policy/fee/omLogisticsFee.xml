@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.fee.OmLogisticsFeeMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 물류 수수료 관리
+	────────────────────────────────────────────────────────────────────────-->
+
+    <sql id="whereOmLogisticsFeeRetrieve">
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrWarehouseId)">
+            AND OLF.UR_WAREHOUSE_ID = #{searchUrWarehouseId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+            AND OLF.UR_SUPPLIER_ID = #{searchUrSupplierId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(calcTypeList)">
+            AND OLF.CALC_TYPE IN
+            <foreach collection="calcTypeList" item="calcTypeList" separator="," open="(" close=")">
+                #{calcTypeList}
+            </foreach>
+        </if>
+    </sql>
+
+	<resultMap id="omLogisticsFeeListDtoMap" type="kr.co.pulmuone.v1.policy.fee.dto.OmLogisticsFeeListDto">
+        <result column="OM_LOGISTICS_FEE_ID" property="omLogisticsFeeId" />
+        <result column="UR_WAREHOUSE_ID" property="urWarehouseId" />
+        <result column="WAREHOUSE_NM" property="warehouseNm" />
+        <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+        <result column="SUPPLIER_NM" property="supplierNm" />
+        <result column="CALC_TYPE" property="calcType" />
+        <result column="FEE" property="fee" />
+        <result column="START_DT" property="startDt" />
+        <result column="CREATE_DT" property="createDt" />
+	</resultMap>
+
+    <!-- 물류 수수료 목록 조회 -->
+	<select id="getOmLogisticsFeeList" resultMap="omLogisticsFeeListDtoMap">
+	    /* OmLogisticsFeeMapper.getOmLogisticsFeeList */
+	    <![CDATA[
+        SELECT
+            OLF.OM_LOGISTICS_FEE_ID
+            , OLF.UR_WAREHOUSE_ID
+            , UW.WAREHOUSE_NM
+            , OLF.UR_SUPPLIER_ID
+            , OLF.SUPPLIER_NM
+            , OLF.CALC_TYPE
+            , OLF.FEE
+            , OLF.START_DT
+            , DATE_FORMAT(OLF.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DT
+        FROM OM_LOGISTICS_FEE OLF
+        INNER JOIN UR_WAREHOUSE UW ON UW.UR_WAREHOUSE_ID = OLF.UR_WAREHOUSE_ID
+        INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = OLF.UR_SUPPLIER_ID
+        INNER JOIN UR_COMPANY SUC ON SUC.UR_COMPANY_ID = US.UR_COMPANY_ID
+        WHERE CONCAT(OLF.UR_WAREHOUSE_ID,OLF.UR_SUPPLIER_ID,OLF.START_DT) IN (
+                /* 미래 시작일자는 모두 조회 */
+        		SELECT CONCAT(UR_WAREHOUSE_ID,UR_SUPPLIER_ID,START_DT)
+	        	FROM OM_LOGISTICS_FEE
+	        	WHERE STR_TO_DATE(START_DT, '%Y-%m-%d') > NOW()
+	        	UNION ALL
+	        	/* 과거 시작일자는 최근 1건 조회 */
+	        	SELECT CONCAT(UR_WAREHOUSE_ID,UR_SUPPLIER_ID,MAX(START_DT))
+	        	FROM OM_LOGISTICS_FEE
+	        	WHERE STR_TO_DATE(START_DT, '%Y-%m-%d') <= NOW()
+	        	GROUP BY UR_WAREHOUSE_ID, UR_SUPPLIER_ID
+              )
+        ]]>
+        <include refid="whereOmLogisticsFeeRetrieve" />
+        ORDER BY UW.WAREHOUSE_NM DESC, SUC.COMP_NM DESC, OLF.START_DT
+	</select>
+
+    <resultMap id="omLogisticsFeeVoMap" type="kr.co.pulmuone.v1.policy.fee.dto.OmLogisticsFeeDto">
+        <result column="OM_LOGISTICS_FEE_ID" property="omLogisticsFeeId" />
+        <result column="UR_WAREHOUSE_ID" property="urWarehouseId" />
+        <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+        <result column="CALC_TYPE" property="calcType" />
+        <result column="FEE" property="fee" />
+        <result column="START_DT" property="startDt" />
+    </resultMap>
+
+    <!-- 물류 수수료 상세 조회 -->
+	<select id="getOmLogisticsFee" resultMap="omLogisticsFeeVoMap">
+	    /* OmLogisticsFeeMapper.getOmLogisticsFee */
+        SELECT
+            OM_LOGISTICS_FEE_ID
+            , UR_WAREHOUSE_ID
+            , UR_SUPPLIER_ID
+            , CALC_TYPE
+            , FEE
+            , START_DT
+        FROM OM_LOGISTICS_FEE
+        WHERE OM_LOGISTICS_FEE_ID = #{omLogisticsFeeId}
+	</select>
+
+    <resultMap id="omLogisticsFeeHistListDto" type="kr.co.pulmuone.v1.policy.fee.dto.OmLogisticsFeeHistListDto">
+        <result column="OM_LOGISTICS_FEE_HIST_ID" property="omLogisticsFeeHistId" />
+        <result column="CALC_TYPE" property="calcType" />
+        <result column="FEE" property="fee" />
+        <result column="START_DT" property="startDt" />
+    </resultMap>
+
+    <!-- 물류 수수료 이력 목록 조회 -->
+    <select id="getOmLogisticsFeeHistList" resultMap="omLogisticsFeeHistListDto">
+        /* OmLogisticsFeeMapper.getOmLogisticsFeeHistList */
+        SELECT
+            OM_LOGISTICS_FEE_HIST_ID
+            , CALC_TYPE
+            , FEE
+            , START_DT
+        FROM OM_LOGISTICS_FEE_HIST
+        WHERE UR_WAREHOUSE_ID = #{urWarehouseId}
+        AND UR_SUPPLIER_ID = #{urSupplierId}
+        ORDER BY START_DT DESC, CREATE_DT DESC
+    </select>
+
+    <!-- 물류 수수료 등록 -->
+    <insert id="addOmLogisticsFee">
+        /* OmLogisticsFeeMapper.addOmLogisticsFee */
+        INSERT INTO OM_LOGISTICS_FEE
+        (
+            UR_WAREHOUSE_ID
+            , UR_SUPPLIER_ID
+            , SUPPLIER_NM
+            , CALC_TYPE
+            , FEE
+            , START_DT
+            , CREATE_ID
+            , CREATE_DT
+        )
+        VALUES
+        (
+            #{urWarehouseId}
+            , #{urSupplierId}
+            , (
+                SELECT
+                    C.COMP_NM
+                FROM UR_SUPPLIER S
+                JOIN UR_COMPANY C
+                ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+                AND C.USE_YN = 'Y'
+                AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+                and S.UR_SUPPLIER_ID = #{urSupplierId}
+              )
+            , #{calcType}
+            , #{fee}
+            , DATE_FORMAT(STR_TO_DATE(REPLACE(#{startDt},'-',''), '%Y%m%d'), '%Y-%m-%d')
+            , #{userVo.userId}
+            , NOW()
+        )
+
+        <selectKey resultType="long" keyProperty="omLogisticsFeeId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+	</insert>
+
+    <!-- 물류 수수료 수정 -->
+    <update id="putOmLogisticsFee">
+        /* OmLogisticsFeeMapper.putOmLogisticsFee */
+        UPDATE OM_LOGISTICS_FEE
+        SET CALC_TYPE = #{calcType}
+            , FEE = #{fee}
+            , START_DT = DATE_FORMAT(STR_TO_DATE(REPLACE(#{startDt},'-',''), '%Y%m%d'), '%Y-%m-%d')
+            , MODIFY_ID = #{userVo.userId}
+            , MODIFY_DT = NOW()
+        WHERE OM_LOGISTICS_FEE_ID = #{omLogisticsFeeId}
+    </update>
+
+    <!-- 물류 수수료 이력 등록 -->
+    <insert id="addOmLogisticsFeeHist">
+        /* OmLogisticsFeeMapper.addOmLogisticsFeeHist */
+        INSERT INTO OM_LOGISTICS_FEE_HIST
+        (
+            UR_WAREHOUSE_ID
+            , UR_SUPPLIER_ID
+            , SUPPLIER_NM
+            , CALC_TYPE
+            , FEE
+            , START_DT
+            , CREATE_ID
+            , CREATE_DT
+        )
+        VALUES
+        (
+            #{urWarehouseId}
+            , #{urSupplierId}
+            , (
+                SELECT
+                    C.COMP_NM
+                FROM UR_SUPPLIER S
+                JOIN UR_COMPANY C
+                ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+                AND C.USE_YN = 'Y'
+                AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+                and S.UR_SUPPLIER_ID = #{urSupplierId}
+              )
+            , #{calcType}
+            , #{fee}
+            , DATE_FORMAT(STR_TO_DATE(REPLACE(#{startDt},'-',''), '%Y%m%d'), '%Y-%m-%d')
+            , #{userVo.userId}
+            , NOW()
+        )
+
+        <selectKey resultType="long" keyProperty="omLogisticsFeeHistId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+</mapper>

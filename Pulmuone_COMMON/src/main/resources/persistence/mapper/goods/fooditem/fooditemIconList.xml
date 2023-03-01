@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.fooditem.FooditemIconListMapper">
+
+    <!-- 식단품목아이콘 목록 조회 -->
+    <select id="getFooditemIconList" resultType="kr.co.pulmuone.v1.goods.fooditem.dto.vo.FooditemIconVo">
+        /* fooditemIconList.getFooditemIconList */
+        SELECT
+            IFI.IL_FOODITEM_ICON_ID
+             , IFI.FOODITEM_ICON_NM AS FOODITEM_ICON_NAME
+             , CASE IFI.FOODITEM_TYPE
+                 WHEN 'B' THEN '베이비밀'
+                 WHEN 'E' THEN '잇슬림'
+               END AS FOODITEM_TYPE
+             , IF(IFI.USE_YN = 'Y', '예', '아니오') AS USE_YN
+             , IFI.IMG_PATH AS IMAGE_PATH
+             , IFI.IMG_NM AS IMAGE_NAME
+             , IFI.IMG_ORIGIN_NM AS IMAGE_ORIGIN_NAME
+             , UU1.LOGIN_ID AS CREATE_LOGIN_ID
+             , FN_DECRYPT(UU1.USER_NM) AS CREATE_LOGIN_NAME
+             , DATE_FORMAT(IFI.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+             , UU2.LOGIN_ID AS MODIFY_LOGIN_ID
+             , CASE WHEN UU2.USER_NM IS NULL
+                    THEN ''
+               ELSE FN_DECRYPT(UU2.USER_NM)
+                END MODIFY_LOGIN_NAME
+             , DATE_FORMAT(IFI.MODIFY_DT, '%Y-%m-%d %T') AS MODIFY_DATE
+          FROM IL_FOODITEM_ICON IFI
+          JOIN UR_USER UU1
+            ON UU1.UR_USER_ID = IFI.CREATE_ID
+     LEFT JOIN UR_USER UU2
+            ON UU2.UR_USER_ID = IFI.MODIFY_ID
+         WHERE IFI.DEL_YN = 'N'
+       <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIconName)">
+           AND IFI.FOODITEM_ICON_NM LIKE CONCAT('%',#{searchIconName},'%')
+       </if>
+       <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchUseYn,'ALL')">
+           AND IFI.USE_YN = #{searchUseYn}
+       </if>
+         ORDER BY IFI.CREATE_DT DESC
+    </select>
+
+    <!-- 식단품목아이콘 상세 조회 -->
+    <select id="getFooditemIcon" resultType="kr.co.pulmuone.v1.goods.fooditem.dto.vo.FooditemIconVo">
+        /* fooditemIconList.getFooditemIcon */
+        SELECT
+            IFI.IL_FOODITEM_ICON_ID
+             , IFI.FOODITEM_ICON_NM AS FOODITEM_ICON_NAME
+             , IFI.FOODITEM_TYPE
+             , IFI.TITLE_NM
+             , IFI.USE_YN
+             , IFI.DEFAULT_DESC
+             , IFI.IMG_PATH AS IMAGE_PATH
+             , IFI.IMG_NM AS IMAGE_NAME
+             , IFI.IMG_ORIGIN_NM AS IMAGE_ORIGIN_NAME
+             , UU1.LOGIN_ID AS CREATE_LOGIN_ID
+             , FN_DECRYPT(UU1.USER_NM) AS CREATE_LOGIN_NAME
+             , DATE_FORMAT(IFI.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+             , UU2.LOGIN_ID AS MODIFY_LOGIN_ID
+             , CASE WHEN UU2.USER_NM IS NULL
+                        THEN ''
+                   ELSE FN_DECRYPT(UU2.USER_NM)
+                    END MODIFY_LOGIN_NAME
+             , DATE_FORMAT(IFI.MODIFY_DT, '%Y-%m-%d %T') AS MODIFY_DATE
+          FROM IL_FOODITEM_ICON IFI
+          JOIN UR_USER UU1
+            ON UU1.UR_USER_ID = IFI.CREATE_ID
+     LEFT JOIN UR_USER UU2
+            ON UU2.UR_USER_ID = IFI.MODIFY_ID
+         WHERE IFI.IL_FOODITEM_ICON_ID = #{ilFooditemIconId}
+    </select>
+
+    <!-- 식단품목아이콘 추가 -->
+    <insert id="addFooditemIcon" useGeneratedKeys="true" keyProperty="ilFooditemIconId">
+        /* fooditemIconList.addFooditemIcon */
+        INSERT INTO IL_FOODITEM_ICON
+        (
+        FOODITEM_ICON_NM
+        , FOODITEM_TYPE
+        , TITLE_NM
+        , USE_YN
+        , DEFAULT_DESC
+        , IMG_PATH
+        , IMG_NM
+        , IMG_ORIGIN_NM
+        , CREATE_ID
+        , CREATE_DT
+        )
+        VALUES
+        (
+        #{fooditemIconName}
+        , #{fooditemType}
+        , #{titleNm}
+        , #{useYn}
+        , #{defaultDesc}
+        , #{imagePath}
+        , #{imageName}
+        , #{imageOriginName}
+        , #{userVo.userId}
+        , NOW()
+        )
+    </insert>
+
+    <!-- 식단품목아이콘 수정 -->
+    <update id="putFooditemIcon">
+        /* fooditemIconList.putFooditemIcon */
+        UPDATE IL_FOODITEM_ICON
+           SET FOODITEM_ICON_NM = #{fooditemIconName}
+             , FOODITEM_TYPE = #{fooditemType}
+             , TITLE_NM = #{titleNm}
+             , USE_YN = #{useYn}
+             , DEFAULT_DESC = #{defaultDesc}
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(imageOriginName)">
+             , IMG_PATH = #{imagePath}
+             , IMG_NM = #{imageName}
+             , IMG_ORIGIN_NM = #{imageOriginName}
+         </if>
+             , MODIFY_ID = #{userVo.userId}
+             , MODIFY_DT = NOW()
+         WHERE IL_FOODITEM_ICON_ID = #{ilFooditemIconId}
+    </update>
+
+    <!-- 식단품목아이콘 삭제 -->
+    <update id="delFooditemIcon">
+        /* fooditemIconList.delFooditemIcon */
+        UPDATE IL_FOODITEM_ICON
+           SET DEL_YN = 'Y'
+             , MODIFY_ID = #{userVo.userId}
+             , MODIFY_DT = NOW()
+         WHERE IL_FOODITEM_ICON_ID = #{ilFooditemIconId}
+    </update>
+</mapper>

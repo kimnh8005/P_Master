@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.delivery.ShippingZoneMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 상세 송장번호 등록/업데이트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.28 	이명수          최초생성
+     * @ 2021.02.09		최윤지			DOOR_ETC, DELIVERY_MSG_CD 추가
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putShippingZone" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderShippingZoneVo">
+		/*	orderShippingZone.putShippingZone  */
+		UPDATE
+			OD_SHIPPING_ZONE SET
+				RECV_NM			= FN_ENCRYPT(#{recvNm}),
+				RECV_HP			= FN_ENCRYPT(#{recvHp}),
+				RECV_ZIP_CD		= FN_ENCRYPT(#{recvZipCd}),
+				RECV_ADDR1		= FN_ENCRYPT(#{recvAddr1}),
+				RECV_ADDR2		= FN_ENCRYPT(#{recvAddr2}),
+				RECV_BLD_NO		= #{recvBldNo},
+				DELIVERY_MSG    = #{deliveryMsg},
+				DOOR_MSG_CD		= #{doorMsgCd},
+				DOOR_MSG        = FN_ENCRYPT(#{doorMsg}),
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+				UR_STORE_ID		= #{urStoreId},
+				</if>
+				CREATE_DT		= NOW()
+			WHERE
+				OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+	</update>
+
+ <!--───────────────────────────────────────────────────────────────────────
+     * description         : 주문 배송지 PK로 주문배송지 단건 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.04     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderShippingZone" resultType="kr.co.pulmuone.v1.order.order.dto.vo.OrderShippingZoneVo">
+    /* orderShippingZone.getOrderShippingZone */
+        SELECT
+		    OD_SHIPPING_ZONE_ID
+		    ,OD_ORDER_ID
+		    ,DELIVERY_TYPE
+		    ,SHIPPING_TYPE
+		    ,RECV_NM
+		    ,RECV_HP
+		    ,RECV_TEL
+		    ,RECV_MAIL
+		    ,RECV_ZIP_CD
+		    ,RECV_ADDR1
+		    ,RECV_ADDR2
+		    ,RECV_BLD_NO
+		    ,DELIVERY_MSG
+		    ,DOOR_MSG_CD
+		    ,DOOR_MSG
+		    ,UR_STORE_ID
+		    ,CREATE_DT
+		FROM
+		    OD_SHIPPING_ZONE OSZ
+		WHERE
+		    OSZ.OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+		LIMIT 1
+    </select>
+
+</mapper>

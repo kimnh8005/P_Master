@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.display.CategoryBoostingMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 전시관리  - 카테고리 부스팅 관리 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getCategoryBoostingListResultMap" type="kr.co.pulmuone.v1.display.dictionary.dto.CategoryBoostingGridDto">
+        <result column="NO"                    property="no" />
+        <result column="DP_CTGRY_BOOSTING_ID"  property="dpCtgryBoostingId"/>
+        <result column="IL_CTGRY_ID"           property="ilCtgryId"/>
+        <result column="CTGRY_NAME"           property="ctgryName"/>
+        <result column="SEARCH_WORD"           property="searchWord"/>
+        <result column="BOOSTING_SCORE"        property="boostingScore"/>
+        <result column="USE_YN"                property="useYn"/>
+    </resultMap>
+
+    <sql id="categoryBoostingSearchCondition">
+        <where>
+            AND IC.DEPTH = 1
+            AND IC.DEL_YN ='N'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilCtgryId)">
+                AND DCB.IL_CTGRY_ID = #{ilCtgryId}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchWord)">
+                AND DCB.SEARCH_WORD LIKE CONCAT('%',#{searchWord},'%')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+                AND DCB.USE_YN = UPPER(#{useYn})
+            </if>
+        </where>
+    </sql>
+
+
+    <select id="getCategoryBoostingList" resultMap="getCategoryBoostingListResultMap" parameterType="kr.co.pulmuone.v1.display.dictionary.dto.CategoryBoostingSearchRequestDto">
+        /* categoryBoosting.getCategoryBoostingList */
+        SELECT
+            @rownum := @rownum + 1 AS NO
+            , T.*
+        FROM
+        (
+            SELECT
+            DCB.DP_CTGRY_BOOSTING_ID
+            , DCB.IL_CTGRY_ID
+            , IC.CTGRY_NM  AS CTGRY_NAME
+            , DCB.SEARCH_WORD
+            , DCB.BOOSTING_SCORE
+            , DCB.USE_YN
+            FROM DP_CTGRY_BOOSTING DCB
+            INNER JOIN IL_CTGRY IC ON IC.IL_CTGRY_ID = DCB.IL_CTGRY_ID
+            JOIN (SELECT @rownum := 0) R
+            <include refid="categoryBoostingSearchCondition" />
+            ORDER BY DP_CTGRY_BOOSTING_ID ASC
+        ) T
+        ORDER BY NO DESC
+        <if test="ePage gt 0">
+            <include refid="_common.pageLimit"/>
+        </if>
+    </select>
+
+    <select id="getCategoryBoostingListCount" resultType="int">
+        /* categoryBoosting.getCategoryBoostingListCount */
+        SELECT COUNT(*)
+        FROM DP_CTGRY_BOOSTING DCB
+        INNER JOIN IL_CTGRY IC ON IC.IL_CTGRY_ID = DCB.IL_CTGRY_ID
+        <include refid="categoryBoostingSearchCondition" />
+    </select>
+
+    <insert id="addCategoryBoosting" >
+        /* categoryBoosting.addCategoryBoosting */
+        INSERT INTO DP_CTGRY_BOOSTING(
+            IL_CTGRY_ID
+            , SEARCH_WORD
+            , BOOSTING_SCORE
+            , USE_YN
+            , CREATE_ID
+        )
+        VALUES
+        <foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+            (
+             #{insertData.ilCtgryId}
+            , #{insertData.searchWord}
+            , #{insertData.boostingScore}
+            , #{insertData.useYn}
+            , #{insertData.userVo.userId}
+            )
+        </foreach>
+    </insert>
+
+    <delete id="deleteCategoryBoosting">
+        /* categoryBoosting.deleteCategoryBoosting */
+        DELETE FROM DP_CTGRY_BOOSTING
+        WHERE DP_CTGRY_BOOSTING_ID IN  (
+        <foreach item="deleteData" index="index" collection="list" open="" separator="," close="">
+            #{deleteData.dpCtgryBoostingId}
+        </foreach>
+        )
+    </delete>
+
+    <update id="updateCategoryBoosting">
+        /* categoryBoosting.updateCategoryBoosting */
+        <foreach item="updateData" index="index" collection="list"  separator="; ">
+            UPDATE DP_CTGRY_BOOSTING
+            SET   IL_CTGRY_ID     = #{updateData.ilCtgryId}
+            , SEARCH_WORD	= #{updateData.searchWord}
+            , BOOSTING_SCORE	= #{updateData.boostingScore}
+            , USE_YN         = #{updateData.useYn}
+            , MODIFY_ID 	    = #{updateData.userVo.userId}
+            WHERE DP_CTGRY_BOOSTING_ID = #{updateData.dpCtgryBoostingId}
+        </foreach>
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시관리 카테고리 부스팅 중복체크
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.06		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="checkCategoryBoostingDuplicate" resultType="int">
+        /* categoryBoosting.checkCategoryBoostingDuplicate */
+        SELECT
+            COUNT(*)
+        FROM
+            DP_CTGRY_BOOSTING
+        WHERE
+        <foreach item="insertData" index="index" collection="list" open="(" separator="or" close=")">
+            IL_CTGRY_ID = #{insertData.ilCtgryId}
+            AND SEARCH_WORD = #{insertData.searchWord}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(insertData.dpCtgryBoostingId)">
+	            AND DP_CTGRY_BOOSTING_ID != #{insertData.dpCtgryBoostingId}
+	        </if>
+        </foreach>
+    </select>
+
+    <resultMap id="getBoostingCategoryListResultMap" type="kr.co.pulmuone.v1.display.dictionary.dto.BoostingTargetCategoryDto">
+        <result column="IL_CTGRY_ID"  property="ilCategoryId"/>
+        <result column="CTGRY_NM"  property="categoryName"/>
+    </resultMap>
+    <select id="getBoostingCategoryList" resultMap="getBoostingCategoryListResultMap">
+		/* categoryBoosting.getBoostingCategoryList */
+		SELECT
+			  IL_CTGRY_ID
+			, CTGRY_NM
+		FROM IL_CTGRY
+		WHERE MALL_DIV = 'MALL_DIV.PULMUONE'
+		AND DEPTH = 1
+		AND DEL_YN = 'N'
+	</select>
+
+
+</mapper>
+
+

@@ -1,0 +1,836 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.claim.OrderClaimMapper">
+
+	<resultMap id="getOrderPayShippingInfoResultMap" type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimPayShippingDto">
+		<result column="OD_ORDER_ID"		property="odOrderId"/>
+		<result column="ODID"				property="odid"/>
+		<result column="GOODS_NM"			property="goodsNm"/>
+		<result column="PAID_PRICE"			property="paidPrice"/>
+		<result column="CART_COUPON_PRICE"	property="cartCouponPrice"/>
+		<result column="GOODS_COUPON_PRICE"	property="goodsCouponPrice"/>
+		<result column="POINT_PRICE"		property="pointPrice"/>
+		<result column="SHIPPING_PRICE"		property="shippingPrice"/>
+		<result column="PAYMENT_PRICE"		property="paymentPrice"/>
+		<result column="TAXABLE_PRICE"		property="taxablePrice"/>
+		<result column="NON_TAXABLE_PRICE"	property="nonTaxablePrice"/>
+		<result column="RECV_ZIP_CD"		property="recvZipCd"/>
+		<result column="REFUND_PRICE"		property="refundPrice"/>
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 결제, 배송지 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderPayShippingInfo" resultMap="getOrderPayShippingInfoResultMap">
+	   /* orderClaim.getOrderPayShippingInfo */
+		SELECT OD.OD_ORDER_ID
+		     , OD.ODID
+		     , OD.GOODS_NM
+		     , OP.PAID_PRICE
+		     , OP.CART_COUPON_PRICE
+		     , OP.GOODS_COUPON_PRICE
+		     , OP.POINT_PRICE
+		     , OP.SHIPPING_PRICE
+		     , OP.PAYMENT_PRICE
+		     , OP.TAXABLE_PRICE
+		     , OP.NON_TAXABLE_PRICE
+		     , FN_DECRYPT(OSZ.RECV_ZIP_CD) AS RECV_ZIP_CD
+		     , IFNULL((
+		     	SELECT SUM(OC.REFUND_PRICE)
+		     	FROM OD_CLAIM OC
+		     	WHERE 1 = 1
+		     	AND OC.OD_ORDER_ID = OD.OD_ORDER_ID
+		     ), 0) AS REFUND_PRICE
+		FROM OD_ORDER OD
+		INNER JOIN OD_PAYMENT OP ON OD.OD_ORDER_ID = OP.OD_ORDER_ID
+		INNER JOIN OD_SHIPPING_ZONE OSZ ON OD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		WHERE 1 = 1
+		AND OD.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+
+	<resultMap id="getOrderDetlWarehouseShippingListResultMap" type="kr.co.pulmuone.v1.order.claim.dto.OrderDetlWarehouseShippingDto">
+		<result column="OD_ORDER_DETL_ID"		property="odOrderDetlId"/>
+		<result column="SALE_PRICE"				property="salePrice"/>
+		<result column="PAID_PRICE"				property="paidPrice"/>
+		<result column="COUPON_PRICE"			property="couponPrice"/>
+		<result column="ORDER_CNT"				property="orderCnt"/>
+		<result column="GOODS_TP_CD"			property="goodsTpCd"/>
+		<result column="UR_WAREHOUSE_ID"		property="urWarehouseId"/>
+		<result column="IL_SHIPPING_TMPL_ID"	property="ilShippingTmplId"/>
+		<result column="IL_SHIPPING_TMPL_NM"	property="ilGoodsShippingTemplateNm"/>
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 출고처 기준 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.27     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDetlWarehouseShippingList" resultMap="getOrderDetlWarehouseShippingListResultMap">
+	   /* orderClaim.getOrderDetlWarehouseShippingList */
+		SELECT OOD.OD_ORDER_DETL_ID															/* 주문상세 PK */
+		     , OOD.SALE_PRICE																/* 상품판매가 */
+		     , OOD.PAID_PRICE																/* 결제금액 */
+		     , (OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE) AS COUPON_PRICE				/* 할인금액 */
+		     , (OOD.ORDER_CNT - OOD.CANCEL_CNT) 				AS ORDER_CNT				/* 주문수량 */
+		     , OOD.GOODS_TP_CD																/* 상품타입 */
+		     , OOD.UR_WAREHOUSE_ID															/* 출고처 PK */
+		     , ST.IL_SHIPPING_TMPL_ID														/* 배송정책 PK */
+		     , ST.NAME 											AS IL_SHIPPING_TMPL_NM		/* 배송정책명 */
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		INNER JOIN IL_SHIPPING_TEMPLATE ST ON OSP.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N'
+		WHERE 1 = 1
+		AND OD.OD_ORDER_ID = #{odOrderId}
+		AND (OOD.ORDER_CNT - OOD.CANCEL_CNT) > 0
+		ORDER BY OOD.UR_WAREHOUSE_ID, OOD.IL_GOODS_SHIPPING_TEMPLATE_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문PK, 쿠폰발급PK로 주문클레임 상세 할인금액 조회
+     * @
+     * @ 수정일                수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.23    천혜현          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderClaimDetlDiscountPrice" resultType="int">
+        /* orderClaim.getOrderClaimDetlDiscountPrice */
+        SELECT
+		    SUM(OCDD.DISCOUNT_PRICE) AS DISCOUNT_PRICE
+		FROM
+		    OD_CLAIM_DETL_DISCOUNT OCDD
+		WHERE
+		    OCDD.OD_ORDER_ID = #{odOrderId}
+		    AND OCDD.PM_COUPON_ISSUE_ID = #{pmCouponIssueId}
+    </select>
+
+
+
+	<select id="getOrderClaimUserOrderCnt" resultType="int">
+		/* orderClaim.getOrderClaimUserOrderCnt */
+		SELECT
+			COUNT(*) AS CNT
+		FROM
+			OD_ORDER T1
+			INNER JOIN OD_CLAIM T2 ON T1.OD_ORDER_ID = T2.OD_ORDER_ID
+		WHERE
+				T2.OD_CLAIM_ID	= #{odClaimId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(guestCi)">
+			AND T1.GUEST_CI	= #{guestCi}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+			AND T1.UR_USER_ID	= #{urUserId}
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 주문 클레임 상세 조회
+     * @
+     * @ 수정일                수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.13    이명수          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderClaimDetlListResultMap" type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRestoreDto">
+		<result column="OD_ORDER_DETL_ID"		property="odOrderDetlId"/>
+		<result column="OD_CLAIM_DETL_ID"		property="odClaimDetlId"/>
+		<result column="ORDER_CNT"				property="orderCnt"/>
+		<result column="CANCEL_CNT"				property="cancelCnt"/>
+		<result column="CLAIM_CNT"				property="claimCnt"/>
+		<result column="RESULT_CNT"				property="resultCnt"/>
+		<result column="ORDER_STATUS_CD"		property="orderStatusCd"/>
+		<result column="CLAIM_STATUS_CD"		property="claimStatusCd"/>
+	</resultMap>
+	<select id="getOrderClaimDetlList" resultMap="getOrderClaimDetlListResultMap">
+	   /* orderClaim.getOrderClaimDetlList */
+		SELECT
+			T1.OD_ORDER_DETL_ID,
+			T2.OD_CLAIM_DETL_ID,
+			T1.ORDER_CNT,
+			T1.CANCEL_CNT,
+			T2.CLAIM_CNT,
+			T1.CANCEL_CNT - T2.CLAIM_CNT AS RESULT_CNT,
+			T2.ORDER_STATUS_CD,
+			T2.CLAIM_STATUS_CD
+		FROM
+			OD_ORDER_DETL T1
+			INNER JOIN OD_CLAIM_DETL T2 ON T1.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+		WHERE
+			T2.OD_CLAIM_ID = #{odClaimId}
+		ORDER BY T2.OD_CLAIM_DETL_ID ASC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 주문 클레임 상태 변경
+	 * @
+	 * @ 수정일                수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.13    이명수          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderClaimDetlClaimStatusCd">
+		/* orderClaim.putOrderClaimDetlClaimStatusCd */
+		UPDATE OD_CLAIM_DETL
+			SET CLAIM_STATUS_CD = #{targetStatusCd}
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 주문 상세 취소 가능 수량 계산
+	 * @
+	 * @ 수정일                수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.13    이명수          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetlCancelCnt">
+		/* orderClaim.putOrderDetlCancelCnt */
+		UPDATE
+			OD_ORDER_DETL T1
+		INNER JOIN (
+			SELECT
+				oc.OD_ORDER_ID
+				, ocd.OD_ORDER_DETL_ID
+				, SUM(ocd.CLAIM_CNT) AS CLAIM_CNT
+			FROM OD_CLAIM oc
+			INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID
+			WHERE oc.CLAIM_YN = 'Y'
+			AND oc.OD_ORDER_ID = (SELECT OD_ORDER_ID FROM OD_CLAIM WHERE OD_CLAIM_ID = #{odClaimId})
+			AND ocd.CLAIM_STATUS_CD = #{claimStatusCd}
+			GROUP BY oc.OD_ORDER_ID, ocd.OD_ORDER_DETL_ID
+		) T2 ON T1.OD_ORDER_ID = T2.OD_ORDER_ID AND T1.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+		SET T1.CANCEL_CNT = T1.CANCEL_CNT - T2.CLAIM_CNT
+	</update>
+
+	<!-- 거부사유 등록 -->
+	<update id="putRejectReasonMsg">
+		/* orderClaim.putRejectReasonMsg */
+		UPDATE OD_CLAIM
+			SET REJECT_REASON_MSG = #{rejectReasonMsg}
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</update>
+
+	<update id="putOdClaimDetlDiscountNoUse">
+		/* orderClaim.putOdClaimDetlDiscountNoUse */
+		UPDATE
+		OD_CLAIM_DETL_DISCOUNT
+		SET USE_YN = 'N'
+		WHERE
+		OD_CLAIM_ID = #{odClaimId}
+		<if test="odClaimDetlIds != null and odClaimDetlIds.size != 0">
+			AND OD_CLAIM_DETL_ID IN
+			<foreach collection="odClaimDetlIds" item="odClaimDetlId" separator="," open="(" close=")">
+				#{odClaimDetlId}
+			</foreach>
+		</if>
+	</update>
+
+	<update id="putOdClaimDetlNoUse">
+		/* orderClaim.putOdClaimDetlNoUse */
+		UPDATE OD_CLAIM x
+		INNER JOIN (
+					  SELECT
+						oc.OD_CLAIM_ID
+					  FROM OD_CLAIM oc
+					  INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID
+					  WHERE oc.CLAIM_YN = 'Y'
+					  AND oc.OD_ORDER_ID = (SELECT OD_ORDER_ID FROM OD_CLAIM WHERE OD_CLAIM_ID = #{odClaimId})
+					  AND ocd.CLAIM_STATUS_CD = #{claimStatusCd}
+					  GROUP BY oc.OD_CLAIM_ID
+				  ) y ON x.OD_CLAIM_ID = y.OD_CLAIM_ID
+		SET x.CLAIM_YN = 'N'
+	</update>
+
+	<select id="getOrderClaimAddPaymentMaster" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRestoreResultDto">
+		/* orderClaim.getOrderClaimAddPaymentMaster */
+		WITH OD_ORDER_INFO AS (
+			SELECT	OD_ORDER_ID
+			FROM	OD_CLAIM
+			WHERE	OD_CLAIM_ID = #{odClaimId}
+		)
+		SELECT
+			OD.OD_ORDER_ID,
+			OD.ODID,
+			OP.OD_CLAIM_ID,
+			OPM.OD_PAYMENT_MASTER_ID,
+			OPM.TYPE,
+			OPM.STATUS,
+			OPM.PAY_TP,
+			OPM.PG_SERVICE,
+			OPM.TID,
+			OPM.AUTH_CD,
+			OPM.CARD_NUMBER,
+			OPM.CARD_QUOTA_INTEREST,
+			OPM.CARD_QUOTA,
+			OPM.VIRTUAL_ACCOUNT_NUMBER,
+			OPM.BANK_NM,
+			OPM.INFO,
+			OPM.PAID_DUE_DT,
+			OPM.PAID_HOLDER,
+			OPM.PART_CANCEL_YN,
+			OPM.ESCROW_YN,
+			OPM.ESCROW_CONNECT_YN,
+			OPM.SALE_PRICE,
+			OPM.CART_COUPON_PRICE,
+			OPM.GOODS_COUPON_PRICE,
+			OPM.DIRECT_PRICE,
+			OPM.PAID_PRICE,
+			OPM.SHIPPING_PRICE,
+			OPM.TAXABLE_PRICE,
+			OPM.NON_TAXABLE_PRICE,
+			OPM.PAYMENT_PRICE,
+			OPM.POINT_PRICE,
+			OPM.SETL_NO,
+			OPM.RESPONSE_DATA,
+			OPM.APPROVAL_DT,
+			OPM.CREATE_DT,
+			IFNULL(T1.REFUND_CNT, 0) AS REFUND_CNT,
+		    OPM.PAYMENT_PRICE - IFNULL(T1.REFUND_PAYMENT_PRICE, 0) AS REFUND_PAYMENT_PRICE
+		FROM
+			OD_PAYMENT OP
+		INNER JOIN
+			OD_ORDER_INFO OOI ON OP.OD_ORDER_ID = OOI.OD_ORDER_ID
+		INNER JOIN
+			OD_ORDER OD ON OOI.OD_ORDER_ID = OD.OD_ORDER_ID
+		INNER JOIN
+			OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					OP.OD_CLAIM_ID,
+					OPM.TID,
+					COUNT(1) AS REFUND_CNT,
+				    SUM(OPM.PAYMENT_PRICE) AS REFUND_PAYMENT_PRICE
+				FROM
+					OD_PAYMENT OP
+				INNER JOIN
+					OD_ORDER_INFO OOI ON OP.OD_ORDER_ID = OOI.OD_ORDER_ID
+				INNER JOIN
+					OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+				WHERE
+					OPM.TYPE = #{refundType}
+				AND
+					OPM.STATUS = #{status}
+				GROUP BY OP.OD_CLAIM_ID, OPM.TID
+			) T1 ON T1.OD_CLAIM_ID = OP.OD_CLAIM_ID AND T1.TID = OPM.TID
+		WHERE
+		    OPM.STATUS = #{status}
+		AND
+			OPM.TYPE = #{type}
+		AND
+		    OPM.PAY_TP != 'PAY_TP.VIRTUAL_BANK'
+	</select>
+
+	<select id="getOrderAgentType" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimOutmallPaymentInfoDto">
+		/* orderClaim.getOrderAgentType */
+		SELECT
+			OD.AGENT_TYPE_CD,
+			OPM.PAY_TP
+		FROM OD_ORDER OD
+		INNER JOIN OD_PAYMENT OP ON OD.OD_ORDER_ID = OP.OD_ORDER_ID
+		INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+		WHERE OD.OD_ORDER_ID = #{odOrderId}
+		  AND OPM.TYPE = 'G'
+		ORDER BY OPM.CREATE_DT
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 승인관리 - CS환불 승인요청 내역 조회
+	 * @
+	 * @ 수정일              수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.14    		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprovalCsRefundList" resultType="kr.co.pulmuone.v1.order.claim.dto.ApprovalCsRefundListDto">
+		/*	orderClaim.getApprovalCsRefundList  */
+		SELECT
+			OC.OD_CS_ID AS OD_CS_ID
+			, OO.OD_ORDER_ID AS OD_ORDER_ID
+			, OO.ODID AS ODID
+			, OC.REFUND_PRICE AS REFUND_PRICE
+		    , FN_COMN_CODE_DIC(OC.CS_REFUND_TP) AS CS_REFUND_TP
+			, OC.CS_REFUND_APPROVE_CD AS CS_REFUND_APPROVE_CD
+			, OC.APPR_STAT
+			, FN_COMN_CODE_DIC(OC.APPR_STAT) AS APPR_STAT_NAME
+			, REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID
+			, FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+			, OC.APPR_REQ_DT AS APPROVAL_REQUEST_DT
+			, SUBUU.LOGIN_ID AS APPROVAL_SUB_USER_ID
+			, FN_DECRYPT(SUBUU.USER_NM) AS APPROVAL_SUB_USER_NAME
+			, SUBGUU.LOGIN_ID AS APPROVAL_SUB_GRANT_USER_ID
+			, FN_DECRYPT(SUBGUU.USER_NM) AS APPROVAL_SUB_GRANT_USER_NAME
+			, SUBCHG.LOGIN_ID AS APPROVAL_SUB_CHANGE_USER_ID
+			, FN_DECRYPT(SUBCHG.USER_NM) AS APPROVAL_SUB_CHANGE_USER_NAME
+			, OC.APPR_SUB_CHG_DT AS APPROVAL_SUB_CHANGE_DT
+			, APPRUU.LOGIN_ID AS APPROVAL_USER_ID
+			, FN_DECRYPT(APPRUU.USER_NM) AS APPROVAL_USER_NAME
+			, APPRGUU.LOGIN_ID AS APPROVAL_GRANT_USER_ID
+			, FN_DECRYPT(APPRGUU.USER_NM) AS APPROVAL_GRANT_USER_NAME
+			, CHGUU.LOGIN_ID AS APPROVAL_CHANGE_USER_ID
+			, FN_DECRYPT(CHGUU.USER_NM) AS APPROVAL_CHANGE_USER_NAME
+			, OC.APPR_CHG_DT AS APPROVAL_CHANGE_DT
+			, CASE
+				WHEN OC.APPR_STAT = 'APPR_STAT.DENIED' THEN IFNULL((
+					SELECT STATUS_CMNT
+					FROM OD_CS_INFO_STATUS_HISTORY OCSH
+					WHERE OCSH.OD_CS_ID = OC.OD_CS_ID
+						AND OCSH.APPR_STAT = 'APPR_STAT.DENIED'
+					ORDER BY OCSH.OD_CS_INFO_STATUS_HISTORY_ID DESC
+					LIMIT 1
+				), '')
+				ELSE ''
+			END AS APPR_STAT_CMNT
+		FROM OD_CS_INFO OC
+			INNER JOIN OD_ORDER OO ON (OO.OD_ORDER_ID = OC.OD_ORDER_ID)
+			LEFT JOIN UR_USER SUBUU
+				ON OC.APPR_SUB_USER_ID = SUBUU.UR_USER_ID
+			LEFT JOIN UR_EMPLOYEE SUBUE
+				ON OC.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+			LEFT JOIN UR_EMPLOYEE SUBGUE
+				ON SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+				AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+				AND SUBUE.GRANT_AUTH_USER_ID = SUBGUE.UR_USER_ID
+				AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+			LEFT JOIN UR_USER SUBGUU
+				ON SUBGUE.UR_USER_ID = SUBGUU.UR_USER_ID
+			LEFT JOIN UR_USER SUBCHG
+				ON OC.APPR_SUB_CHG_USER_ID = SUBCHG.UR_USER_ID
+			LEFT JOIN UR_USER APPRUU
+				ON OC.APPR_USER_ID = APPRUU.UR_USER_ID
+			LEFT JOIN UR_EMPLOYEE APPRUE
+				ON OC.APPR_USER_ID = APPRUE.UR_USER_ID
+			LEFT JOIN UR_EMPLOYEE APPRGUE
+				ON APPRUE.GRANT_AUTH_USER_ID IS NOT NULL
+				AND APPRUE.GRANT_AUTH_STOP_YN = 'N'
+				AND APPRUE.GRANT_AUTH_USER_ID = APPRGUE.UR_USER_ID
+				AND CURDATE() BETWEEN APPRUE.GRANT_AUTH_START_DT AND APPRUE.GRANT_AUTH_END_DT
+			LEFT JOIN UR_USER APPRGUU
+				ON APPRGUE.UR_USER_ID = APPRGUU.UR_USER_ID
+			LEFT JOIN UR_USER CHGUU
+				ON OC.APPR_CHG_USER_ID = CHGUU.UR_USER_ID
+			LEFT OUTER JOIN UR_USER REQUU
+				ON OC.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+		WHERE 1=1
+			<include refid="whereApprovalCsRefundList" />
+		ORDER BY OC.APPR_REQ_DT DESC
+	</select>
+
+	<sql id="whereApprovalCsRefundList">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'singleSection') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSingleType,'ORDER_ID') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(codeSearchList)">
+					AND OO.ODID IN
+					<foreach item="data" index="index" collection="codeSearchList" open="(" separator="," close=")">
+						#{data}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSingleType,'OUTMALL_ID') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(codeSearchList)">
+					AND OO.OUTMALL_ID IN
+					<foreach item="data" index="index" collection="codeSearchList" open="(" separator="," close=")">
+						#{data}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSingleType,'COLLECTION_MALL_ID') ">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(codeSearchList)">
+					AND OO.COLLECTION_MALL_ID IN
+					<foreach item="data" index="index" collection="codeSearchList" open="(" separator="," close=")">
+						#{data}
+					</foreach>
+				</if>
+			</if>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType,'multiSection') ">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)"> <!-- 기간검색 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CREATE_DATE")'><!-- 주문일자 -->
+							AND OO.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						</when>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "PAY_DATE")'><!-- 결제일자 -->
+							AND EXISTS (
+								SELECT
+									'X'
+								FROM
+									OD_ORDER S1
+									INNER JOIN OD_PAYMENT S2 ON S1.OD_ORDER_ID = S2.OD_ORDER_ID
+									INNER JOIN OD_PAYMENT_MASTER S3 ON S2.OD_PAYMENT_MASTER_ID = S3.OD_PAYMENT_MASTER_ID
+								WHERE
+										S1.OD_ORDER_ID = OO.OD_ORDER_ID
+									AND APPROVAL_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+							)
+						</when>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CLAIM_REQUEST_DATE")'> <!-- 클레임요청 일자 -->
+							AND OC.APPR_REQ_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						</when>
+					</choose>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUserType)">
+		        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUser)">
+		          <choose>
+		            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'ID')">
+		              AND   REQUU.LOGIN_ID = #{searchApprReqUser}
+		            </when>
+		            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'NAME')">
+		              AND   FN_DECRYPT(REQUU.USER_NM) = #{searchApprReqUser}
+		            </when>
+		          </choose>
+		        </if>
+		     </if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUserType)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUser)">
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'ID')">
+							AND (
+								SUBUU.LOGIN_ID = #{searchApprChgUser}
+								OR
+								APPRUU.LOGIN_ID = #{searchApprChgUser}
+							    OR
+								SUBGUU.LOGIN_ID = #{searchApprChgUser}
+								OR
+								APPRGUU.LOGIN_ID = #{searchApprChgUser}
+							)
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'NAME')">
+							AND (
+								FN_DECRYPT(SUBUU.USER_NM) = #{searchApprChgUser}
+								OR
+								FN_DECRYPT(APPRUU.USER_NM) = #{searchApprChgUser}
+							    OR
+								FN_DECRYPT(SUBGUU.USER_NM) = #{searchApprChgUser}
+		                        OR
+								FN_DECRYPT(APPRGUU.USER_NM) = #{searchApprChgUser}
+							)
+						</when>
+					</choose>
+				</if>
+			</if>
+	        <if test="approvalStatusArray.size() > 0">
+		        AND OC.APPR_STAT IN
+		        <foreach item="data" index="index" collection="approvalStatusArray" open="(" separator="," close=")">
+	            	#{data}
+			  	</foreach>
+	        </if>
+	        <if test="csRefundTpList.size() > 0">
+				AND OC.CS_REFUND_TP IN
+				<foreach collection="csRefundTpList" item="csRefundTp" index="index" separator="," open="(" close=")">
+					#{csRefundTp}
+				</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)"> <!-- 검색어 -->
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "BUYER_NAME")'> <!-- 주문자명 -->
+						AND OO.BUYER_NM = FN_ENCRYPT(#{findKeyword})
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "BUYER_ID")'> <!-- 주문자ID -->
+						AND EXISTS ( SELECT 'X'
+						FROM UR_USER
+						WHERE UR_USER_ID = OO.UR_USER_ID
+						AND LOGIN_ID = #{findKeyword})
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "ORDER_ID")'> <!-- 주문번호  -->
+						AND OO.ODID = #{findKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "OUTMALL_ID")'> <!-- 외부몰 주문번호  -->
+						AND OO.OUTMALL_ID = #{findKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "COLLECTION_MALL_ID")'> <!-- 수집몰 주문번호  -->
+						AND OO.COLLECTION_MALL_ID = #{findKeyword}
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "GOODS_NAME")'> <!-- 상품명 -->
+						AND EXISTS ( SELECT 'X'
+							FROM OD_CS_INFO_DETL OCD
+								JOIN OD_ORDER_DETL ODD ON (ODD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID)
+								LEFT JOIN OD_ORDER_DETL_PACK OODP ON (OODP.OD_ORDER_DETL_ID = ODD.OD_ORDER_DETL_PARENT_ID)
+							WHERE OCD.OD_CS_ID = OC.OD_CS_ID
+								AND IF(OODP.GOODS_NM IS NULL, ODD.GOODS_NM LIKE CONCAT('%', #{findKeyword}, '%'), ODD.GOODS_NM LIKE CONCAT('%', #{findKeyword}, '%') OR OODP.GOODS_NM LIKE CONCAT('%', #{findKeyword}, '%')) )
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "GOODS_ID")'> <!-- 상품코드 -->
+						AND EXISTS ( SELECT 'X'
+							FROM OD_CS_INFO_DETL OCD
+								JOIN OD_ORDER_DETL ODD ON (ODD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID)
+								LEFT JOIN OD_ORDER_DETL_PACK OODP ON (OODP.OD_ORDER_DETL_ID = ODD.OD_ORDER_DETL_PARENT_ID)
+							WHERE OCD.OD_CS_ID = OC.OD_CS_ID
+								AND IF(OODP.GOODS_NM IS NULL, ODD.IL_GOODS_ID = #{findKeyword} , ODD.IL_GOODS_ID = #{findKeyword} OR OODP.IL_GOODS_ID = #{findKeyword}) )
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "ITEM_CODE")'> <!-- 품목코드 -->
+						AND EXISTS ( SELECT 'X'
+								FROM OD_CS_INFO_DETL OCD
+									JOIN OD_ORDER_DETL ODD ON (ODD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID)
+								WHERE OCD.OD_CS_ID = OC.OD_CS_ID
+									AND ODD.IL_ITEM_CD = #{findKeyword} )
+					</when>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchMultiType, "ITEM_BARCODE")'> <!-- 품목바코드 -->
+						AND EXISTS ( SELECT 'X'
+								FROM OD_CS_INFO_DETL OCD
+									JOIN OD_ORDER_DETL ODD ON (ODD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID)
+								WHERE OCD.OD_CS_ID = OC.OD_CS_ID
+									AND ODD.ITEM_BARCODE = #{findKeyword} )
+					</when>
+				</choose>
+			</if>
+		</if>
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description    : CS환불승인 요청 철회
+     * @
+     * @ 수정일      수정자 수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.17   홍진영 최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putCancelRequestApprovalCsRefund">
+    /*  orderClaim.putCancelRequestApprovalCsRefund */
+    UPDATE  OD_CS_INFO
+    SET     APPR_STAT  = #{apprStat}
+          , APPR_SUB_USER_ID      = NULL
+          , APPR_SUB_CHG_USER_ID  = NULL
+          , APPR_SUB_CHG_DT       = NULL
+          , APPR_USER_ID          = NULL
+          , APPR_CHG_USER_ID      = NULL
+          , APPR_CHG_DT           = NULL
+    WHERE   OD_CS_ID         = #{taskPk}
+  </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description    : CS환불승인 상태이력 등록
+     * @
+     * @ 수정일      수정자 수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.17   홍진영 최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addClaimStatusHistory">
+    /*  orderClaim.addClaimStatusHistory */
+	INSERT INTO OD_CS_INFO_STATUS_HISTORY (
+	  OD_CS_ID
+      <!-- , STATUS -->
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+      , STATUS_CMNT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+      , PREV_CS_REFUND_APPROVE_CD
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+      , PREV_APPR_STAT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+      , CS_REFUND_APPROVE_CD
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+      , APPR_STAT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+      , APPR_SUB_USER_ID
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+      , APPR_USER_ID
+      </if>
+      , CREATE_DT
+      , CREATE_ID
+    ) VALUES (
+      #{taskPk}
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+      ,#{statusComment}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+      ,#{prevMasterStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+      ,#{prevApprStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+      ,#{masterStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+      ,#{apprStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+      ,#{apprSubUserId}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+      ,#{apprUserId}
+      </if>
+      ,SYSDATE()
+      ,#{userVo.userId}
+    )
+  </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : CS환불승인 승인처리
+     * @
+     * @ 수정일      수정자 수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.17   홍진영 최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+  <update id="putApprovalProcessCsRefund">
+    /*  orderClaim.putApprovalProcessCsRefund */
+    UPDATE  OD_CS_INFO
+    SET     APPR_STAT             = #{apprStat}
+	  	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+		  , CS_REFUND_APPROVE_CD = #{masterStat}
+	  	</if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.SUB_APPROVED')">
+          , APPR_SUB_CHG_DT       = SYSDATE()
+          , APPR_SUB_CHG_USER_ID  = #{userVo.userId}
+        </if>
+      	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.APPROVED')">
+          , APPR_CHG_DT           = SYSDATE()
+          , APPR_CHG_USER_ID      = #{userVo.userId}
+      	</if>
+    WHERE   OD_CS_ID         = #{taskPk}
+  </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : CS환불 승인 폐기처리
+     * @
+     * @ 수정일		수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.06	원종한	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putDisposalApprovalCsRefund">
+		/* orderClaim.putDisposalApprovalCsRefund */
+		UPDATE OD_CS_INFO
+		SET
+			APPR_STAT = #{apprStat}
+			, OD_CS_YN = 'N'
+		WHERE
+			OD_CS_ID = #{taskPk}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 주문 클레임 CS환불승인상태 변경
+	 * @
+	 * @ 수정일         수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.03    천혜현          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+<!--	<update id="putOrderClaimCsRefundApproveCd">-->
+<!--		/* orderClaim.putOrderClaimCsRefundApproveCd */-->
+<!--		UPDATE OD_CLAIM-->
+<!--		SET CS_REFUND_APPROVE_CD = #{csRefundApproveCd}-->
+<!--			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(claimYn)">-->
+<!--				, CLAIM_YN = #{claimYn}-->
+<!--			</if>-->
+<!--		WHERE-->
+<!--			OD_CLAIM_ID = #{odClaimId}-->
+<!--	</update>-->
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 클레임 정보 변경
+	 * @
+	 * @ 수정일         수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.03    김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderClaimTargetTp">
+		/* orderClaim.putOrderClaimTargetTp */
+		UPDATE OD_CLAIM
+		SET REFUND_PRICE = #{refundPrice}
+		  , REFUND_POINT_PRICE = #{refundPointPrice}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(targetTp)">
+		  , TARGET_TP = #{targetTp}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(directPaymentYn)">
+		  , DIRECT_PAYMENT_YN = #{directPaymentYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(addPaymentTp)">
+		  , ADD_PAYMENT_TP = #{addPaymentTp}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(returnsYn)">
+		  , RETURNS_YN = #{returnsYn}
+		</if>
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 현금영수증 발행정보 조회(관리자가 BOS에서 발급한 건에 한함)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.24     천혜현          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderCashReceiptByBos" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimCashReceiptDto">
+		/* orderClaim.getOrderCashReceiptByBos */
+		SELECT
+			OOCR.OD_ORDER_CASH_RECEIPT_ID
+			 , OOCR.CASH_RECEIPT_TYPE
+			 , OOCR.CASH_PRICE
+			 , FN_DECRYPT(OOCR.CASH_NO) AS CASH_NO
+			 , OOCR.CASH_RECEIPT_AUTH_NO
+			 , OPM.TID
+			 , OPM.PAY_TP
+			 , OPM.PG_SERVICE
+			 , OPM.OD_PAYMENT_MASTER_ID
+			 , OO.UR_USER_ID
+			 , OO.GUEST_CI
+			 , OO.ODID
+		     , OO.OD_ORDER_ID
+			 , OO.GOODS_NM
+			 , FN_DECRYPT(OO.BUYER_NM) AS BUYER_NM
+			 , FN_DECRYPT(OO.BUYER_MAIL) AS BUYER_MAIL
+			 , FN_DECRYPT(OO.BUYER_HP) AS BUYER_HP
+		FROM
+			OD_ORDER_CASH_RECEIPT OOCR
+			JOIN OD_PAYMENT_MASTER OPM ON OPM.OD_PAYMENT_MASTER_ID = OOCR.OD_PAYMENT_MASTER_ID
+			JOIN OD_ORDER OO ON OO.OD_ORDER_ID = OOCR.OD_ORDER_ID
+		WHERE
+			OOCR.CASH_RECEIPT_TYPE IN ('CASH_RECEIPT.DEDUCTION','CASH_RECEIPT.PROOF') /* 현금영수증 발행구분(CASH_RECEIPT.DEDUCTION:소득공제, CASH_RECEIPT.PROOF:지출증빙) */
+			AND OOCR.CANCEL_YN = 'N'
+			AND OOCR.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 현금영수증 재발행 금액 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.24     천혜현          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderCashReceiptReissuePrice" resultType="kr.co.pulmuone.v1.order.order.dto.vo.OrderPaymentVo">
+		/* orderClaim.getOrderCashReceiptReissuePrice */
+		SELECT
+			SUM(IFNULL(IF(OPM.`TYPE` = 'F', OPM.TAXABLE_PRICE * -1, OPM.TAXABLE_PRICE),0)) AS TAXABLE_PRICE  /* F:환불 */
+			,SUM(IFNULL(IF(OPM.`TYPE` = 'F', OPM.NON_TAXABLE_PRICE * -1, OPM.NON_TAXABLE_PRICE),0)) AS NON_TAXABLE_PRICE
+			,SUM(IFNULL(IF(OPM.`TYPE` = 'F', OPM.PAYMENT_PRICE * -1, OPM.PAYMENT_PRICE),0)) AS PAYMENT_PRICE
+		FROM
+			OD_PAYMENT_MASTER OPM
+		WHERE
+			OPM.STATUS = 'IC' /* IC:결제완료 */
+			AND OPM.OD_PAYMENT_MASTER_ID IN (SELECT OP.OD_PAYMENT_MASTER_ID FROM OD_PAYMENT OP WHERE OP.OD_ORDER_ID = #{odOrderId})
+			AND OPM.TID = #{tid}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 현금 영수증 취소값 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.24	    천혜현          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderCashReceiptCancelYn">
+		/* orderClaim.putOrderCashReceiptCancelYn */
+		UPDATE
+			OD_ORDER_CASH_RECEIPT
+		SET
+			CANCEL_YN = 'Y'
+		  , CANCEL_DT = NOW()
+		WHERE
+			OD_ORDER_CASH_RECEIPT_ID = #{odOrderCashReceiptId}
+	</update>
+
+</mapper>

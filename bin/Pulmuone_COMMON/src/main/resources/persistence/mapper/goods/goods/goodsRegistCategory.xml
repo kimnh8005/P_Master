@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsRegistCategoryMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 전시 카테고리 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.10		임상건          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsRegistCategoryVo" id="getDisplayCategoryListMap">
+		<result column="IL_CTGRY_ID"					property="ilCtgryId"/>
+		<result column="CTGRY_NM"						property="categoryName"/>
+		<result column="DEPTH"							property="depth"/>
+		<result column="PRNTS_CTGRY_ID"					property="parentsCategoryId"/>
+		<result column="ADULT_YN"						property="adultYn"/>
+		<result column="SORT"							property="sort"/>
+		<result column="ISLEAF"							property="isleaf"/>
+		<result column="PRNT_CTGRY_NAME"				property="parentCtgryName"/>
+		<result column="CTGRY_FULL_NAME"				property="categoryFullName"/>
+		<result column="MALL_DIV"						property="mallDiv"/>
+	</resultMap>
+
+	<select id="getDisplayCategoryList" resultMap="getDisplayCategoryListMap">
+		/* goodsRegistCategory.getDisplayCategoryList */
+		SELECT
+			IL_CTGRY_ID
+		,	CTGRY_NM
+		,	DEPTH
+		,	PRNTS_CTGRY_ID
+		,	ADULT_YN
+		,	SORT
+		,	CASE
+				( SELECT count(*) FROM IL_CTGRY cs2 WHERE cs2.PRNTS_CTGRY_ID=cs.IL_CTGRY_ID AND cs2.DEL_YN = 'N' LIMIT 0,1 )
+			WHEN
+				0
+			THEN
+				'false'
+			ELSE
+				'true'
+			END as ISLEAF
+		,	( SELECT CTGRY_NM FROM IL_CTGRY WHERE IL_CTGRY_ID = #{ilCtgryId}) AS PRNT_CTGRY_NAME
+		,	IFNULL(FN_CTGRY_FULL_NAME(IL_CTGRY_ID),'') AS CTGRY_FULL_NAME
+		,	MALL_DIV
+		FROM
+			IL_CTGRY cs
+		WHERE
+			DEL_YN = 'N'
+		AND	USE_YN = 'Y'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilCtgryId)">
+			AND PRNTS_CTGRY_ID = #{ilCtgryId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+			AND MALL_DIV = #{mallDiv}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(depth)">
+			AND DEPTH = #{depth}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(mallDiv,'MALL_DIV.NONE')">
+				AND PRNTS_CTGRY_ID IN
+				<foreach item="data" index="index" collection="masterCategoryIdArray" open="(" separator="," close=")">
+					#{data}
+				</foreach>
+			</if>
+		</if>
+		ORDER BY MALL_DIV, SORT ASC
+	</select>
+
+	<select id="recentCategory1DepthIdList" resultMap="getDisplayCategoryListMap">
+		/* goodsRegistCategory.recentCategory1DepthIdList */
+		SELECT
+			IL_CTGRY_ID
+		FROM
+			IL_CTGRY
+		WHERE
+			DEPTH = '0'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+			AND MALL_DIV = #{mallDiv}
+		</if>
+		AND	USE_YN = 'Y'
+		AND DEL_YN = 'N'
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 전시 카테고리 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.01		임상건          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.goods.dto.vo.GoodsRegistCategoryVo" id="ilGoodsDisplayCategoryListMap">
+		<result column="IL_GOODS_CTGRY_ID"				property="ilGoodsCtgryId"/>
+		<result column="IL_GOODS_ID"					property="ilGoodsId"/>
+		<result column="IL_CTGRY_ID"					property="ilCtgryId"/>
+		<result column="MALL_DIV"						property="mallDiv"/>
+		<result column="BASIC_YN"						property="basicYn"/>
+		<result column="MALLINMALL_BASIC_YN"			property="mallInMallBasicYn"/>
+		<result column="CTGRY_FULL_NAME"				property="categoryFullName"/>
+	</resultMap>
+
+	<select id="ilGoodsDisplayCategoryList" resultMap="getDisplayCategoryListMap">
+		/* goodsRegistCategory.ilGoodsDisplayCategoryList */
+		SELECT
+			A.IL_GOODS_CTGRY_ID
+		,	A.IL_GOODS_ID
+		,	A.IL_CTGRY_ID
+		,	A.MALL_DIV
+		,	A.BASIC_YN
+		,	A.BASIC_YN AS MALLINMALL_BASIC_YN
+		,	IFNULL(FN_CTGRY_FULL_NAME(A.IL_CTGRY_ID),'') AS CTGRY_FULL_NAME
+		FROM
+			IL_GOODS_CTGRY A
+		WHERE
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsId)">
+			A.IL_GOODS_ID = #{ilGoodsId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+			AND MALL_DIV = #{mallDiv}
+		</if>
+		ORDER BY MALL_DIV DESC
+	</select>
+</mapper>
+

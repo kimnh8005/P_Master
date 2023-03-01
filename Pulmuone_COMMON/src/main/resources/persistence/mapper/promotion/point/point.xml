@@ -1,0 +1,2751 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.point.PromotionPointMapper">
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 설정 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.17		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointSettingResultVo" id="getPointSettingListResultMap">
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="POINT_TP"  property="pointType"  />
+		<result column="POINT_TYPE_NAME"  property="pointTypeName" />
+		<result column="POINT_NM"  property="pointName" />
+		<result column="ISSUE_DATE"  property="issueDate"  />
+		<result column="ERP_ORGANIZATION_NM"  property="organizationName"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="NOMAL_AMOUNT"  property="normalAmount"  />
+		<result column="PHOTO_AMOUNT"  property="photoAmount"  />
+		<result column="PREMIUM_AMOUNT"  property="premiumAmount"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+		<result column="NORMAL_VALIDITY_DAY"  property="normalValidityDay"  />
+		<result column="PHOTO_VALIDITY_DAY"  property="photoValidityDay"  />
+		<result column="PREMIUM_VALIDITY_DAY"  property="premiumValidityDay"  />
+		<result column="ISSUE_BUDGET"  property="issueBudget"  />
+		<result column="STATUS"  property="status"  />
+		<result column="POINT_MASTER_STAT"  property="pointMasterStat"  />
+		<result column="APPR_STAT"  property="apprStat"  />
+		<result column="APPR_REQ_DT"  property="apprReqDate"  />
+		<result column="APPR_REQ_USER_ID"  property="apprReqUserId"  />
+		<result column="APPR_CHG_DT"  property="apprChgDate"  />
+		<result column="APPR_CHG_USER_ID"  property="apprChgUserId"  />
+		<result column="STATUS_NAME"  property="statusName"  />
+		<result column="COMMENT"  property="comment"  />
+		<result column="BUTTON_STATUS"  property="buttonStatus"  />
+		<result column="FIX_SERIAL_NUMBER"  property="fixSerialNumber"  />
+		<result column="VALIDITY_TP"  property="validityType"  />
+		<result column="VALIDITY_END_DT"  property="validityEndDate"  />
+		<result column="TICKET_COLLECT_YN"  property="ticketCollectYn"/>
+		<result column="SERIAL_NUMBER_TP"  property="serialNumberTp"/>
+		<result column="SUM_ISSUE_VAL" property="sumIssueVal"/>
+		<result column="GROUP_PM_POINT_ID_LIST" property="groupPmPointIdList" />
+        <result column="PAY_METHOD_TYPE" property="payMethodType" />
+	</resultMap>
+
+    <select id="getPointSettingList" resultMap="getPointSettingListResultMap">
+        /* point.getPointSettingList */
+        SELECT 	A.*
+			  , SUM(A.ISSUE_VAL) AS SUM_ISSUE_VAL
+			  , CASE WHEN A.POINT_TP = 'POINT_TYPE.AUTO'  THEN CONCAT(FN_COMN_CODE_DIC(A.POINT_DETAIL_TP), '/ 지급예산 ' )
+				WHEN A.POINT_TP = 'POINT_TYPE.ADMIN' THEN CONCAT(FN_COMN_CODE_DIC(A.POINT_DETAIL_TP), '/', FN_COMN_CODE_DIC(A.PAYMENT_TP) , '/ ',
+				(COUNT(*)),'명' , '/ ',
+				FN_COMN_CODE_DIC(A.POINT_USED_TP) , '/', A.POINT_USED_MSG )
+				ELSE ''
+				END AS COMMENT
+        	  , GROUP_CONCAT(DISTINCT A.PM_POINT_ID) AS GROUP_PM_POINT_ID_LIST
+		FROM
+		(SELECT  PP.PM_POINT_ID
+              , PP.POINT_TP
+              , FN_COMN_CODE_DIC(PP.POINT_TP) AS POINT_TYPE_NAME
+              , PP.POINT_NM
+              , PP.ISSUE_START_DT
+              , PP.ISSUE_END_DT
+              , CONCAT(DATE_FORMAT(PP.ISSUE_START_DT,'%Y-%m-%d')  ,'~', DATE_FORMAT(PP.ISSUE_END_DT,'%Y-%m-%d') ) AS ISSUE_DATE
+              , PO.UR_ERP_ORGANIZATION_NM AS ERP_ORGANIZATION_NM
+              , CASE  WHEN PP.POINT_TP = 'POINT_TYPE.SERIAL_NUMBER' THEN PP.ISSUE_VAL
+                      WHEN PP.POINT_TP = 'POINT_TYPE.AUTO' THEN PP.ISSUE_VAL
+                      WHEN PP.POINT_TP = 'POINT_TYPE.ADMIN' THEN PP.ISSUE_VAL
+                END AS ISSUE_VAL
+              , CASE  WHEN  PP.POINT_TP = 'POINT_TYPE.SERIAL_NUMBER'
+                            THEN  CASE WHEN PP.VALIDITY_DAY IS NULL THEN PP.VALIDITY_END_DT
+                                       ELSE PP.VALIDITY_DAY
+                                  END
+                      WHEN  PP.POINT_TP = 'POINT_TYPE.FEEDBACK' THEN PP.VALIDITY_DAY
+                      WHEN  PP.POINT_TP = 'POINT_TYPE.AUTO' THEN PP.VALIDITY_DAY
+                      WHEN  PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' THEN '-'
+                      WHEN  PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' THEN PP.VALIDITY_DAY
+                END AS VALIDITY_DAY
+              , PP.VALIDITY_END_DT
+              , PPU.NOMAL_AMOUNT
+              , PPU.PHOTO_AMOUNT
+              , PPU.PREMIUM_AMOUNT
+              <!-- , PP.STATUS -->
+              , PP.POINT_MASTER_STAT    <!-- 적립금마스터상태 -->
+              , PP.APPR_STAT            <!-- 적립금승인상태 -->
+              , PP.APPR_REQ_DT            <!-- 승인요청일 -->
+              , PP.APPR_REQ_USER_ID      <!-- 승인요청자 -->
+              , PP.APPR_CHG_DT            <!-- 승인처리일 -->
+              , PP.APPR_CHG_USER_ID      <!-- 승인처리자 -->
+              , PP.ISSUE_BUDGET
+              , CASE WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND  PP.APPR_STAT = 'APPR_STAT.APPROVED' AND  PP.ISSUE_END_DT <![CDATA[<]]> DATE(NOW()) THEN '지급기간만료'
+                     WHEN PP.APPR_STAT = 'APPR_STAT.APPROVED' AND  PP.ISSUE_START_DT <![CDATA[>]]> NOW() THEN '지급기간대기'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' THEN '지급'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' THEN '차감'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED_BY_SYSTEM' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' THEN '지급'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED_BY_SYSTEM' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' THEN '차감'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP <![CDATA[<>]]> 'POINT_TYPE.ADMIN' THEN '지급중'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.CANCEL' THEN '요청철회'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.DENIED' THEN '승인반려'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.REQUEST' THEN '승인요청'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN '1차 승인완료'
+                     WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.NONE' THEN '저장'
+                     ELSE FN_COMN_CODE_DIC(PP.POINT_MASTER_STAT)
+                END AS STATUS_NAME
+              <!--
+              , CASE WHEN PP.STATUS = 'POINT_APPROVAL_STAT.SAVE' THEN 'ADMIN_BUTTON_N'
+                     WHEN PP.STATUS = 'POINT_APPROVAL_STAT.REJECT_APPROVAL' THEN 'ADMIN_BUTTON_N'
+                     WHEN PP.STATUS  = 'POINT_APPROVAL_STAT.CANCEL_REQUEST' THEN 'ADMIN_BUTTON_N'
+                     ELSE 'ADMIN_BUTTON_Y'
+                END AS BUTTON_SATUS
+              -->
+              , CASE WHEN PP.APPR_STAT = 'APPR_STAT.NONE' THEN 'ADMIN_BUTTON_N'
+                     WHEN PP.APPR_STAT = 'APPR_STAT.DENIED' THEN 'ADMIN_BUTTON_N'
+                     ELSE 'ADMIN_BUTTON_Y'
+                END AS BUTTON_SATUS
+              , PP.FIX_SERIAL_NUMBER
+              , PP.VALIDITY_TP
+              , PP.CREATE_DT
+              , PP.USE_YN
+              , PP.TICKET_COLLECT_YN
+              , PP.SERIAL_NUMBER_TP
+			  , IFNULL(PP.GR_PM_POINT_ID, PP.PM_POINT_ID) AS GR_PM_POINT_ID
+			  , PP.POINT_DETAIL_TP
+			  , PP.PAYMENT_TP
+			  , PP.POINT_USED_TP
+			  , PP.POINT_USED_MSG
+		      , PP.PAY_METHOD_TYPE
+        FROM    PM_POINT PP
+		LEFT OUTER JOIN PM_POINT_ISSUE PPI ON PP.PM_POINT_ID = PPI.PM_POINT_ID
+		LEFT OUTER JOIN PM_POINT_USER_GRADE PPU ON PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID= PP.PM_POINT_ID
+        LEFT OUTER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = PP.PM_POINT_ID
+        WHERE   PP.USE_YN = 'Y'
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPointDivision, 'POINT_ID')">
+				AND   PP.PM_POINT_ID LIKE  CONCAT('%', trim(#{searchPointName}),'%')
+			</when>
+			<otherwise>
+				AND   PP.POINT_NM LIKE  CONCAT('%', trim(#{searchPointName}),'%')
+			</otherwise>
+		</choose>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointType)">
+          AND   PP.POINT_TP = #{searchPointType}
+        </if>
+        <!--
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointStatus)">
+          AND   PP.APPR_STAT = #{searchPointStatus}
+        </if>
+        -->
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointStatus)">
+      <choose>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPointStatus,'APPR_STAT.APPROVED')">
+          AND   PP.APPR_STAT = #{searchPointStatus}
+          AND   PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED'
+          AND   ((PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION')
+          		 OR (PP.APPR_STAT = 'APPR_STAT.APPROVED_BY_SYSTEM' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION')
+          		 OR (PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP  <![CDATA[<>]]>  'POINT_TYPE.ADMIN' AND   PP.ISSUE_END_DT  >  DATE(NOW())   ))
+        </when>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPointStatus,'POINT_PAYMENT_TP.DEDUCTION')">
+          AND   ((PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION')
+          		  OR (PP.APPR_STAT = 'APPR_STAT.APPROVED_BY_SYSTEM' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION'))
+        </when>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPointStatus,'APPR_STAT.STOP')">
+          AND   PP.APPR_STAT = 'APPR_STAT.APPROVED'
+          AND   PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.STOP'
+        </when>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchPointStatus,'APPR_STAT.EXPIRED')">
+          AND   PP.APPR_STAT = 'APPR_STAT.APPROVED'
+          AND   PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED'
+          AND  PP.ISSUE_END_DT <![CDATA[<]]> DATE(NOW())
+        </when>
+        <otherwise>
+          AND   PP.APPR_STAT = #{searchPointStatus}
+          AND   PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'
+        </otherwise>
+      </choose>
+    </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+          AND   PP.CREATE_DT <![CDATA[>=]]> DATE_FORMAT(#{startCreateDate}, '%Y-%m-%d 00:00:00')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+          AND   PP.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endCreateDate}, '%Y-%m-%d 23:59:59')
+        </if>
+    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIssueTicketType)">
+      <choose>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchIssueTicketType, 'TICKET_COLLECT_TYPE.TICKET_COLLECT_Y')">
+          AND   PP.TICKET_COLLECT_YN = 'Y'
+        </when>
+        <otherwise>
+          AND   PP.TICKET_COLLECT_YN = 'N'
+        </otherwise>
+      </choose>
+    </if>
+        ) AS A
+		GROUP BY A.GR_PM_POINT_ID
+		ORDER BY A.CREATE_DT DESC
+	</select>
+
+	<select id="getPointInfoById" resultMap="getPointDetailResultMap">
+		/* point.getPointInfoById */
+
+		SELECT PP.PM_POINT_ID
+			 , PP.POINT_TP
+			 , PP.POINT_DETAIL_TP
+			 , PP.POINT_NM
+			 , PP.ISSUE_START_DT
+			 , PP.ISSUE_END_DT
+			 , PP.ISSUE_BUDGET
+			 , PP.ISSUE_QTY_LIMIT
+			 , PP.PAYMENT_TP
+			 , PP.ISSUE_VAL
+			 , PP.PAYMENT_STANDARD_DETL_VAL
+			 , PP.POINT_USED_TP
+			 , PP.POINT_USED_MSG
+			 , PP.VALIDITY_TP
+			 , PP.VALIDITY_DAY
+			 , PP.VALIDITY_END_DT
+			 , PP.ISSUE_QTY
+			 , PP.ISSUE_QTY_LIMIT
+			 , PP.SERIAL_NUMBER_TP
+			 , PP.SERIAL_NUMBER_TP AS RANDOM_TYPE_SELECT
+			 , PP.FIX_SERIAL_NUMBER
+			 , PP.CREATE_DT
+			 , PP.MODIFY_DT
+			 , PP.POINT_MASTER_STAT
+			 , PP.APPR_STAT
+			 , PP.APPR_REQ_DT
+			 , PP.APPR_REQ_USER_ID
+			 , PP.APPR_CHG_DT
+			 , PP.APPR_CHG_USER_ID
+			 , PP.POINT_ADMIN_YN
+			 , PP.APPR_SUB_USER_ID
+			 , PP.APPR_USER_ID
+			 , PP.TICKET_COLLECT_YN
+			 , PP.APPR_REQ_USER_ID
+		FROM PM_POINT PP
+		WHERE PP.PM_POINT_ID = #{pmPointId}
+	</select>
+
+
+	<select id="getPointSettingListCount" resultType="int">
+
+		/*	point.getPointSettingListCount */
+
+		SELECT COUNT(*)
+		FROM PM_POINT PP
+		WHERE 1=1
+		AND PP.USE_YN = 'Y'
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointName)">
+				AND PP.POINT_NM = #{searchPointName}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointType)">
+				AND PP.POINT_TP = #{searchPointType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointStatus)">
+				AND PP.APPR_STAT = #{searchPointStatus}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND PP.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    </if>
+			</if>
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 설정 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.25		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointSettingResultVo" id="getPointDetailResultMap">
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="POINT_TP"  property="pointType"  />
+		<result column="POINT_DETAIL_TP"  property="pointPaymentDetailType"  />
+		<result column="POINT_DETAIL_TP"  property="autoIssueSelect"  />
+		<result column="POINT_TYPE_NAME"  property="pointTypeName" />
+		<result column="POINT_NM"  property="pointName" />
+		<result column="ISSUE_START_DT"  property="issueStartDate"  />
+		<result column="ISSUE_END_DT"  property="issueEndDate"  />
+		<result column="ERP_ORGANIZATION_NM"  property="organizationName"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="NORMAL_AMOUNT"  property="normalAmount"  />
+		<result column="PHOTO_AMOUNT"  property="photoAmount"  />
+		<result column="PREMIUM_AMOUNT"  property="premiumAmount"  />
+		<result column="NORMAL_VALIDITY_DAY"  property="normalValidityDay"  />
+		<result column="PHOTO_VALIDITY_DAY"  property="photoValidityDay"  />
+		<result column="PREMIUM_VALIDITY_DAY"  property="premiumValidityDay"  />
+		<result column="ISSUE_BUDGET"  property="issueBudget"  />
+		<result column="ISSUE_QTY_LIMIT"  property="issueQtyLimit"  />
+		<result column="STATUS"  property="status"  />
+		<result column="STATUS_NAME"  property="statusName"  />
+		<result column="UR_ERP_ORGANIZATION_CD"  property="erpOrganizationCode"  />
+		<result column="ERP_ORGANIZATION_NM"  property="erpOrganizationName"  />
+		<result column="PAYMENT_TP"  property="pointPaymentType"  />
+		<result column="POINT_DETAIL_TP"  property="pointPaymentDetailType"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="POINT_USED_TP"  property="issueReasonType"  />
+		<result column="POINT_USED_MSG"  property="issueReason"  />
+		<result column="VALIDITY_TP"  property="validityType"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+		<result column="VALIDITY_END_DT"  property="validityDate"  />
+		<result column="ISSUE_QTY"  property="issueQty"  />
+		<result column="PAYMENT_STANDARD_DETL_VAL"  property="issueDayCount"  />
+		<result column="SERIAL_NUMBER_TP"  property="serialNumberType"  />
+		<result column="RANDOM_TYPE_SELECT"  property="randNumTypeSelect"  />
+		<result column="FIX_SERIAL_NUMBER"  property="fixSerialNumber"  />
+		<result column="CREATE_INFO"  property="createInfo"/>
+		<result column="CREATE_NAME"  property="createName"/>
+		<result column="CREATE_DT"  property="createDate"/>
+		<result column="CREATE_ID" property="createId"/>
+		<result column="CREATE_LOGIN_ID"  property="createLoginId"/>
+		<result column="MODIFY_INFO"  property="modifyInfo"/>
+		<result column="MODIFY_NAME"  property="modifyName"/>
+		<result column="MODIFY_LOGIN_ID"  property="modifyLoginId"/>
+		<result column="MODIFY_DT"  property="modifyDate"/>
+		<result column="ISSUE_INFO_USER"  property="issueInfoUser"/>
+		<result column="STOP_ISSUE_USER_INFO"  property="stopIssueUserInfo"/>
+		<result column="POINT_ADMIN_YN"  property="pointAdminYn"/>
+		<result column="STATUS_CMNT"  property="statusCmnt"/>
+		<result column="APPR_SUB_USER_ID"  property="apprSubUserId"/>
+		<result column="APPR_USER_ID"  property="apprUserId"/>
+		<result column="TICKET_COLLECT_YN"  property="ticketCollectYn"/>
+		<result column="APPR_REQ_USER_ID"  property="apprReqUserId"/>
+		<result column="TICKET_COLLECT_INFO"  property="ticketCollectInfo"/>
+		<result column="PAY_METHOD_TYPE" property="payMethodType"/>
+		<result column="GR_PM_POINT_ID" property="grPmPointId"/>
+	</resultMap>
+	<select id="getPointDetail" resultMap="getPointDetailResultMap">
+
+		/*	point.getPointDetail	*/
+
+		SELECT PP.PM_POINT_ID
+			 , PP.POINT_TP
+			 , PP.POINT_DETAIL_TP
+			 , FN_COMN_CODE_DIC(PP.POINT_TP) AS POINT_TYPE_NAME
+  		     , PP.POINT_NM
+  		     , PP.ISSUE_START_DT
+  		     , PP.ISSUE_END_DT
+             , PP.ISSUE_BUDGET
+             , PP.ISSUE_QTY_LIMIT
+             , OG.UR_ERP_ORGANIZATION_CD
+             , OG.UR_ERP_ORGANIZATION_NM AS ERP_ORGANIZATION_NM
+             , PP.PAYMENT_TP
+             , PP.ISSUE_VAL
+             , PP.PAYMENT_STANDARD_DETL_VAL
+             , PP.POINT_USED_TP
+             , PP.POINT_USED_MSG
+             , PP.VALIDITY_TP
+             , PP.VALIDITY_DAY
+             , PP.VALIDITY_END_DT
+             , PP.ISSUE_QTY
+             , PP.ISSUE_QTY_LIMIT
+             , PP.SERIAL_NUMBER_TP
+             , PP.SERIAL_NUMBER_TP AS RANDOM_TYPE_SELECT
+             , PP.FIX_SERIAL_NUMBER
+             , ( SELECT PPU.NOMAL_AMOUNT FROM PM_POINT_USER_GRADE PPU WHERE PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID= PP.PM_POINT_ID ) AS AMOUNT
+             , ( SELECT PPU.NOMAL_AMOUNT FROM PM_POINT_USER_GRADE PPU WHERE PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID= PP.PM_POINT_ID ) AS NORMAL_AMOUNT
+             , ( SELECT PPU.PHOTO_AMOUNT FROM PM_POINT_USER_GRADE PPU WHERE PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID= PP.PM_POINT_ID ) AS PHOTO_AMOUNT
+             , ( SELECT PPU.PREMIUM_AMOUNT FROM PM_POINT_USER_GRADE PPU WHERE PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID= PP.PM_POINT_ID ) AS PREMIUM_AMOUNT
+             , FN_DECRYPT(UU.USER_NM) AS CREATE_NAME
+             , UU.LOGIN_ID AS CREATE_LOGIN_ID
+             , PP.CREATE_DT
+             , PP.MODIFY_DT
+		     , PP.CREATE_ID
+             , FN_DECRYPT(UR.USER_NM) AS MODIFY_NAME
+             , UR.LOGIN_ID AS MODIFY_LOGIN_ID
+             , CONCAT(PP.CREATE_DT, ' ' , FN_DECRYPT(UU.USER_NM),'(',UU.LOGIN_ID,')') AS CREATE_INFO
+             , CONCAT(PP.MODIFY_DT, ' ' , FN_DECRYPT(UR.USER_NM),'(',UR.LOGIN_ID ,')') AS MODIFY_INFO
+             , ( SELECT CONCAT(PC1.CREATE_DT, ' ' , FN_DECRYPT(U.USER_NM ),'(',PC1.CREATE_ID ,')')
+				   FROM PM_POINT_STATUS_HISTORY PC1
+				   INNER JOIN UR_USER U ON PC1.CREATE_ID = U.UR_USER_ID
+				   WHERE PM_POINT_ID = #{pmPointId}
+				   AND PC1.CREATE_DT = (SELECT MAX( PCSH.CREATE_DT)
+				     					  FROM PM_POINT_STATUS_HISTORY PCSH
+				     					 WHERE PCSH.PM_POINT_ID = #{pmPointId}
+				     					   AND APPR_STAT = 'APPR_STAT.APPROVED')) AS ISSUE_INFO_USER
+		   	 , ( SELECT CONCAT(PC1.CREATE_DT, ' ' , FN_DECRYPT(U.USER_NM ),'(',PC1.CREATE_ID ,')')
+			   FROM PM_POINT_STATUS_HISTORY PC1
+			   INNER JOIN UR_USER U ON PC1.CREATE_ID = U.UR_USER_ID
+			   WHERE PM_POINT_ID = #{pmPointId}
+			   AND PC1.CREATE_DT = (SELECT MAX( PCSH.CREATE_DT)
+			                          FROM PM_POINT_STATUS_HISTORY PCSH
+			                         WHERE PCSH.PM_POINT_ID = #{pmPointId}
+			                           AND POINT_MASTER_STAT = 'POINT_MASTER_STAT.STOP')) AS STOP_ISSUE_USER_INFO
+             <!-- , PP.STATUS -->
+             , PP.POINT_MASTER_STAT
+             , PP.APPR_STAT
+             , PP.APPR_REQ_DT
+             , PP.APPR_REQ_USER_ID
+             , PP.APPR_CHG_DT
+             , PP.APPR_CHG_USER_ID
+			 <!-- , CASE WHEN PP.APPR_STAT = 'APPR_STAT.APPROVED' AND  PP.ISSUE_END_DT    <![CDATA[<]]>    NOW() THEN '지급기간만료'
+					 WHEN PP.APPR_STAT = 'APPR_STAT.APPROVED' AND  PP.ISSUE_START_DT    <![CDATA[>]]>     NOW() THEN '지급기간대기'
+					 WHEN PP.APPR_STAT = 'APPR_STAT.APPROVED' THEN '지급 중'
+					 ELSE FN_COMN_CODE_DIC(PP.APPR_STAT)
+				END AS STATUS_NAME -->
+			 <!-- , CASE WHEN PP.STATUS = 'POINT_APPROVAL_STAT.ACCEPT_APPROVAL' AND  PP.ISSUE_END_DT   <![CDATA[<]]>   NOW() THEN '지급기간만료'
+					 WHEN PP.STATUS = 'POINT_APPROVAL_STAT.ACCEPT_APPROVAL' AND  PP.ISSUE_START_DT   <![CDATA[>]]>   NOW() THEN '지급기간대기'
+					 WHEN PP.STATUS = 'POINT_APPROVAL_STAT.ACCEPT_APPROVAL' THEN '지급 중'
+					 ELSE FN_COMN_CODE_DIC(PP.STATUS)
+				END AS STATUS_NAME -->
+			 , CASE WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND  PP.APPR_STAT = 'APPR_STAT.APPROVED' AND  PP.ISSUE_END_DT <![CDATA[<]]> DATE(NOW()) THEN '지급기간만료'
+						   WHEN PP.APPR_STAT = 'APPR_STAT.APPROVED' AND  PP.ISSUE_START_DT <![CDATA[>]]> NOW() THEN '지급기간대기'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' THEN '지급기간만료'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED_BY_SYSTEM' AND PP.POINT_TP = 'POINT_TYPE.ADMIN' THEN '지급기간만료'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED' AND PP.APPR_STAT = 'APPR_STAT.APPROVED' AND PP.POINT_TP <![CDATA[<>]]> 'POINT_TYPE.ADMIN' THEN '지급중'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.CANCEL' THEN '요청철회'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.DENIED' THEN '승인반려'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.REQUEST' THEN '승인요청'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN '1차 승인완료'
+						   WHEN PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.SAVE'AND PP.APPR_STAT = 'APPR_STAT.NONE' THEN '저장'
+						   ELSE FN_COMN_CODE_DIC(PP.POINT_MASTER_STAT)
+			  END AS STATUS_NAME
+			 , PP.POINT_ADMIN_YN
+			 , PCI.STATUS_CMNT
+			 , PP.APPR_SUB_USER_ID
+             , PP.APPR_USER_ID
+			 , PP.TICKET_COLLECT_YN
+			 , CONCAT(PP.TICKET_COLLECT_DT, ' ' , FN_DECRYPT(UT.USER_NM ),'(',UT.LOGIN_ID ,')') AS TICKET_COLLECT_INFO
+			 , PP.APPR_REQ_USER_ID
+			 , PP.PAY_METHOD_TYPE
+			 , IFNULL(PP.GR_PM_POINT_ID, PP.PM_POINT_ID)AS GR_PM_POINT_ID
+		FROM PM_POINT PP
+			INNER JOIN (SELECT PCSH.PM_POINT_STATUS_HISTORY_ID, PCSH.STATUS_CMNT, PCSH.PM_POINT_ID , PCSH.APPR_STAT FROM PM_POINT_STATUS_HISTORY PCSH
+							WHERE PCSH.PM_POINT_STATUS_HISTORY_ID = (
+							SELECT MAX(PM_POINT_STATUS_HISTORY_ID)FROM PM_POINT_STATUS_HISTORY WHERE PM_POINT_ID = #{pmPointId})) PCI ON PP.PM_POINT_ID = PCI.PM_POINT_ID AND PP.APPR_STAT = PCI.APPR_STAT
+			INNER JOIN UR_USER UU ON PP.CREATE_ID = UU.UR_USER_ID
+            LEFT JOIN UR_USER UR ON PP.MODIFY_ID = UR.UR_USER_ID
+			LEFT JOIN (SELECT PO.UR_ERP_ORGANIZATION_CD
+					, PO.UR_ERP_ORGANIZATION_NM
+					, PO.PERCENTAGE
+					, PO.PM_POINT_ID
+			FROM PM_COUPON_POINT_SHARE_ORGANIZATION PO
+			) OG ON OG.PM_POINT_ID = PP.PM_POINT_ID
+			LEFT OUTER JOIN UR_USER UT ON PP.TICKET_COLLECT_USER_ID = UT.UR_USER_ID
+		WHERE PP.PM_POINT_ID = #{pmPointId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 난수번호  조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.25		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSerialNumberListResultMap" type="kr.co.pulmuone.v1.promotion.point.dto.vo.AccountInfoVo">
+		<result column="NO"  property="no"/>
+		<result column="SERIAL_NUMBER"  property="serialNumber"/>
+	</resultMap>
+	<select id="getSerialNumberList" resultMap="getSerialNumberListResultMap">
+			/* point.getSerialNumberList */
+			SELECT  @rownum:=@rownum+1 AS NO, FN_DECRYPT(PSM.SERIAL_NUMBER) AS SERIAL_NUMBER
+			FROM (SELECT @rownum:=0) r, PM_POINT PP
+			INNER JOIN PM_SERIAL_NUMBER PSM ON PP.PM_POINT_ID = PSM.PM_POINT_ID
+			WHERE PP.PM_POINT_ID  = #{pmPointId}
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.25		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserListResultMap" type="kr.co.pulmuone.v1.promotion.point.dto.vo.AccountInfoVo">
+		<result column="NO"  property="no"/>
+		<result column="LOGIN_ID"  property="loginId"/>
+		<result column="USER_NAME"  property="userName"/>
+		<result column="ISSUE_VAL" property="issueVal"/>
+	</resultMap>
+	<select id="getUserList" resultMap="getUserListResultMap">
+			/* point.getUserList */
+			SELECT  @rownum:=@rownum+1 AS NO, (SELECT LOGIN_ID FROM UR_USER WHERE UR_USER_ID = PCI.UR_USER_ID) AS LOGIN_ID
+				,(SELECT FN_DECRYPT(USER_NM) FROM UR_USER WHERE UR_USER_ID = PCI.UR_USER_ID) AS USER_NAME
+				, PP.ISSUE_VAL
+			FROM (SELECT @rownum:=0) r, PM_POINT PP
+			INNER JOIN PM_POINT_ISSUE PCI ON PP.PM_POINT_ID = PCI.PM_POINT_ID
+			WHERE IFNULL(PP.GR_PM_POINT_ID,PP.PM_POINT_ID) = #{grPmPointId}
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.25		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserGradeListResultMap" type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointUserGradeVo">
+		<result column="REVIEW_DETAIL_TP"  property="reviewType"/>
+		<result column="REVIEW_DETAIL_TP_NAME"  property="userGroupName"/>
+		<result column="NOMAL_AMOUNT"  property="normalAmount"  />
+		<result column="PHOTO_AMOUNT"  property="photoAmount"  />
+		<result column="PREMIUM_AMOUNT"  property="premiumAmount"  />
+		<result column="POINT_MASTER_STAT"  property="pointStatus"  />
+		<result column="UR_GROUP_MASTER_ID"  property="userMaster"  />
+		<result column="COPY_TYPE"  property="copyType"  />
+	</resultMap>
+	<select id="getUserGradeList" resultMap="getUserGradeListResultMap">
+			/* point.getUserGradeList */
+			SELECT PG.REVIEW_DETAIL_TP
+			 	    , UG.GROUP_NM AS REVIEW_DETAIL_TP_NAME
+			 	    , PG.NOMAL_AMOUNT
+			 	    , PG.PHOTO_AMOUNT
+			 	    , PG.PREMIUM_AMOUNT
+			 	    , PP.POINT_MASTER_STAT
+			 	    , UG.UR_GROUP_MASTER_ID
+			 	    , #{copyType} AS COPY_TYPE
+			 FROM PM_POINT_USER_GRADE PG
+			 JOIN PM_POINT PP ON PP.PM_POINT_ID = PG.PM_POINT_ID
+			 JOIN UR_GROUP UG ON UG.UR_GROUP_ID = PG.UR_GROUP_ID
+			WHERE PG.PM_POINT_ID = #{pmPointId}
+			AND PG.REVIEW_DETAIL_TP IS NOT NULL
+	</select>
+
+
+
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 발급 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPointSetting">
+		/*	point.addPointSetting  */
+		INSERT INTO PM_POINT (
+		    POINT_TP
+		  , POINT_NM
+		  , ISSUE_START_DT
+		  , ISSUE_END_DT
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQty)">
+		  , ISSUE_QTY
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueBudget)">
+		  , ISSUE_BUDGET
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDate)">
+		  , VALIDITY_END_DT
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDay)">
+		  , VALIDITY_DAY
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQtyLimit)">
+		  , ISSUE_QTY_LIMIT
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentDetailType)">
+		  , POINT_DETAIL_TP
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+		  , SERIAL_NUMBER_TP
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(fixSerialNumber)">
+		  , FIX_SERIAL_NUMBER
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentType)">
+		  , PAYMENT_TP
+		  </if>
+		  <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pointType, "POINT_TYPE.ADMIN")'>
+		  , PAY_METHOD_TYPE
+		  </if>
+		  <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(payMethodType, "POINT_PAY_METHOD_TP.EXCEL_LARGE_PAY")'>
+		  , GR_PM_POINT_ID
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReasonType)">
+		  , POINT_USED_TP
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+		  , POINT_USED_MSG
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityType)">
+		  , VALIDITY_TP
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueValue)">
+		  , ISSUE_VAL
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueDayCount)">
+		  , PAYMENT_STANDARD_DETL_VAL
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointAdmin)">
+		  , POINT_ADMIN_YN
+		  </if>
+		  , POINT_PROCESS_TP
+		  , POINT_SETTLEMENT_TP
+		  , ISSUE_DEPT_CD
+		  <!-- , STATUS -->
+		  , POINT_MASTER_STAT
+		  , APPR_STAT
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+		  , APPR_SUB_USER_ID
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+		  , APPR_USER_ID
+		  , APPR_REQ_USER_ID
+		  , APPR_REQ_DT
+		  </if>
+		  , CREATE_DT
+		  , CREATE_ID
+		) VALUES (
+		    #{pointType}
+		  <choose>
+		  	  <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pointAdmin,'Y')">
+		  	  , CONCAT((SELECT G.DIC_MST_NM FROM ST_COMN_CODE S
+               JOIN GB_DIC_MST G ON S.GB_DIC_MST_ID = G.GB_DIC_MST_ID
+			   WHERE ST_COMN_CODE_ID =#{pointPaymentType}),'/',
+			   	(SELECT G.DIC_MST_NM FROM ST_COMN_CODE S
+               JOIN GB_DIC_MST G ON S.GB_DIC_MST_ID = G.GB_DIC_MST_ID
+			   WHERE ST_COMN_CODE_ID =#{pointPaymentDetailType}),'/',
+			   #{issueValue},'원')
+		  	  </when>
+		  	  <otherwise>
+		  		, #{pointName}
+		  	  </otherwise>
+		  </choose>
+		  , #{issueStartDate}
+		  , #{issueEndDate}
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQty)">
+		  , #{issueQty}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueBudget)">
+		  , #{issueBudget}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDate)">
+		  , #{validityDate}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDay)">
+		  , #{validityDay}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQtyLimit)">
+		  , #{issueQtyLimit}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentDetailType)">
+		  , #{pointPaymentDetailType}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+		  , #{serialNumberType}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(fixSerialNumber)">
+		  , trim(#{fixSerialNumber})
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentType)">
+		  , #{pointPaymentType}
+		  </if>
+		  <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pointType, "POINT_TYPE.ADMIN")'>
+		  , #{payMethodType}
+		  </if>
+		  <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(payMethodType, "POINT_PAY_METHOD_TP.EXCEL_LARGE_PAY")'>
+		  , #{grPmPointId}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReasonType)">
+		  , #{issueReasonType}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+		  , #{issueReason}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityType)">
+		  , #{validityType}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueValue)">
+		  , #{issueValue}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueDayCount)">
+		  , #{issueDayCount}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointAdmin)">
+		  , #{pointAdmin}
+		  </if>
+		  , FN_GET_POINT_PROCESS_TP(#{pointType},#{pointPaymentDetailType},#{pointPaymentType})
+		  , FN_GET_POINT_SETTLEMENT_TP(#{pointType},#{pointPaymentDetailType},#{pointPaymentType})
+		  <choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalCode)">
+				, #{erpRegalCode}
+			</when>
+			<otherwise>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+						, (SELECT C.FIN_ORGANIZATION_CD
+						FROM ST_ROLE_TYPE A
+						JOIN ST_AUTH_USER_MAPPING B ON A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID AND B.UR_USER_ID = #{urUserId}
+						JOIN UR_ERP_EMPLOYEE C ON C.ERP_ORGANIZATION_CD = A.ERP_ORGANIZATION_CD AND FIN_ORGANIZATION_CD IS NOT NULL
+						LIMIT 1)
+					</when>
+					<otherwise>
+						, (SELECT C.FIN_ORGANIZATION_CD
+						FROM ST_ROLE_TYPE A
+						JOIN ST_AUTH_USER_MAPPING B ON A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID AND B.UR_USER_ID = #{userVo.userId}
+						JOIN UR_ERP_EMPLOYEE C ON C.ERP_ORGANIZATION_CD = A.ERP_ORGANIZATION_CD AND FIN_ORGANIZATION_CD IS NOT NULL
+						LIMIT 1)
+					</otherwise>
+				</choose>
+
+			</otherwise>
+		  </choose>
+		  <!-- , #{status} -->
+		  , #{pointMasterStat}
+		  , #{apprStat}
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+		  ,#{apprSubUserId}
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+		  , #{apprUserId}
+		  , #{userVo.userId}
+		  , NOW()
+		  </if>
+		  ,  NOW()
+		  <choose>
+		  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				, #{urUserId}
+			</when>
+			<otherwise>
+				, #{userVo.userId}
+			</otherwise>
+		  </choose>
+
+		)
+
+		<selectKey resultType="String" keyProperty="pmPointId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 엑셀 대량 지급 수정시 INSERT
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.26		문동현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="insertPmPointExcel">
+		/*	point.insertPmPointExcel  */
+		INSERT INTO PM_POINT (
+		POINT_TP
+		, POINT_NM
+		, ISSUE_START_DT
+		, ISSUE_END_DT
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQty)">
+			, ISSUE_QTY
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueBudget)">
+			, ISSUE_BUDGET
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDate)">
+			, VALIDITY_END_DT
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDay)">
+			, VALIDITY_DAY
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQtyLimit)">
+			, ISSUE_QTY_LIMIT
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentDetailType)">
+			, POINT_DETAIL_TP
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+			, SERIAL_NUMBER_TP
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(fixSerialNumber)">
+			, FIX_SERIAL_NUMBER
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentType)">
+			, PAYMENT_TP
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pointType, "POINT_TYPE.ADMIN")'>
+			, PAY_METHOD_TYPE
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(payMethodType, "POINT_PAY_METHOD_TP.EXCEL_LARGE_PAY")'>
+			, GR_PM_POINT_ID
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReasonType)">
+			, POINT_USED_TP
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+			, POINT_USED_MSG
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityType)">
+			, VALIDITY_TP
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueValue)">
+			, ISSUE_VAL
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueDayCount)">
+			, PAYMENT_STANDARD_DETL_VAL
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointAdmin)">
+			, POINT_ADMIN_YN
+		</if>
+		, POINT_PROCESS_TP
+		, POINT_SETTLEMENT_TP
+		, ISSUE_DEPT_CD
+		<!-- , STATUS -->
+		, POINT_MASTER_STAT
+		, APPR_STAT
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			, APPR_SUB_USER_ID
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			, APPR_USER_ID
+			, APPR_REQ_USER_ID
+			, APPR_REQ_DT
+		</if>
+		, CREATE_DT
+		, CREATE_ID
+		, MODIFY_DT
+		, MODIFY_ID
+		) VALUES (
+		#{pointType}
+		, #{pointName}
+		, #{issueStartDate}
+		, #{issueEndDate}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQty)">
+			, #{issueQty}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueBudget)">
+			, #{issueBudget}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDate)">
+			, #{validityDate}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityDay)">
+			, #{validityDay}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQtyLimit)">
+			, #{issueQtyLimit}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentDetailType)">
+			, #{pointPaymentDetailType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+			, #{serialNumberType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(fixSerialNumber)">
+			, trim(#{fixSerialNumber})
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentType)">
+			, #{pointPaymentType}
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pointType, "POINT_TYPE.ADMIN")'>
+			, #{payMethodType}
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(payMethodType, "POINT_PAY_METHOD_TP.EXCEL_LARGE_PAY")'>
+			, #{grPmPointId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReasonType)">
+			, #{issueReasonType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+			, #{issueReason}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityType)">
+			, #{validityType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueValue)">
+			, #{issueValue}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueDayCount)">
+			, #{issueDayCount}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointAdmin)">
+			, #{pointAdmin}
+		</if>
+		, FN_GET_POINT_PROCESS_TP(#{pointType},#{pointPaymentDetailType},#{pointPaymentType})
+		, FN_GET_POINT_SETTLEMENT_TP(#{pointType},#{pointPaymentDetailType},#{pointPaymentType})
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpRegalCode)">
+				, #{erpRegalCode}
+			</when>
+			<otherwise>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+						, (SELECT C.FIN_ORGANIZATION_CD
+						FROM ST_ROLE_TYPE A
+						JOIN ST_AUTH_USER_MAPPING B ON A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID AND B.UR_USER_ID = #{urUserId}
+						JOIN UR_ERP_EMPLOYEE C ON C.ERP_ORGANIZATION_CD = A.ERP_ORGANIZATION_CD AND FIN_ORGANIZATION_CD IS NOT NULL
+						LIMIT 1)
+					</when>
+					<otherwise>
+						, (SELECT C.FIN_ORGANIZATION_CD
+						FROM ST_ROLE_TYPE A
+						JOIN ST_AUTH_USER_MAPPING B ON A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID AND B.UR_USER_ID = #{userVo.userId}
+						JOIN UR_ERP_EMPLOYEE C ON C.ERP_ORGANIZATION_CD = A.ERP_ORGANIZATION_CD AND FIN_ORGANIZATION_CD IS NOT NULL
+						LIMIT 1)
+					</otherwise>
+				</choose>
+
+			</otherwise>
+		</choose>
+		<!-- , #{status} -->
+		, #{pointMasterStat}
+		, #{apprStat}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			,#{apprSubUserId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			, #{apprUserId}
+			, #{userVo.userId}
+			, NOW()
+		</if>
+		,  #{createDate}
+		,  #{createId}
+        ,  NOW()
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+                , #{urUserId}
+            </when>
+            <otherwise>
+                , #{userVo.userId}
+            </otherwise>
+        </choose>
+		)
+
+		<selectKey resultType="String" keyProperty="pmPointId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 난수번호 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addSerialNumber">
+		/*	point.addSerialNumber */
+
+			INSERT INTO PM_SERIAL_NUMBER
+			(
+				PM_POINT_ID
+				, ISSUER_TP
+				, STATUS
+				, SERIAL_NUMBER
+				, USE_TP
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDate)">
+				, CREATE_DT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useDate)">
+				, USE_DT
+				</if>
+				, APPROVAL_YN
+			)
+			VALUES
+			(
+				#{pmPointId}
+				,'풀무원'
+				,#{serialNumberStatus}
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberType,'SERIAL_NUMBER_TYPE.FIXED_VALUE')">
+						,trim(#{fixSerialNumber})
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(randNumTypeSelect,'SERIAL_NUMBER_TYPE.AUTO_CREATE')">
+						,FN_ENCRYPT(FN_RANDOM_CHK_STR())
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(randNumTypeSelect,'SERIAL_NUMBER_TYPE.EXCEL_UPLOAD')">
+						,FN_ENCRYPT(trim(#{fixSerialNumber}))
+					</when>
+				</choose>
+				,#{serialNumberUseType}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDate)">
+				,#{createDate}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useDate)">
+				,#{useDate}
+				</if>
+				, 'N'
+			)
+
+	</insert>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.28		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPointSetting">
+		/* point.putPointSetting */
+		UPDATE 	PM_POINT
+		SET 	POINT_TP = #{pointType}
+				, POINT_NM = #{pointName}
+				, ISSUE_START_DT = #{issueStartDate}
+				, ISSUE_END_DT = #{issueEndDate}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQty)">
+			    , ISSUE_QTY = #{issueQty}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueBudget)">
+			    , ISSUE_BUDGET = #{issueBudget}
+			    </if>
+			    <choose>
+				    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(validityDate)">
+				    , VALIDITY_END_DT = NULL
+				    </when>
+				    <otherwise>
+				    , VALIDITY_END_DT = #{validityDate}
+				    </otherwise>
+			    </choose>
+			    <choose>
+				    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(validityDay)">
+				    , VALIDITY_DAY = NULL
+				    </when>
+				    <otherwise>
+			    	, VALIDITY_DAY = #{validityDay}
+				    </otherwise>
+			    </choose>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueQtyLimit)">
+			    , ISSUE_QTY_LIMIT = #{issueQtyLimit}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentDetailType)">
+			    , POINT_DETAIL_TP = #{pointPaymentDetailType}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(serialNumberType)">
+			    , SERIAL_NUMBER_TP = #{serialNumberType}
+			    </if>
+			    <choose>
+			    	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(serialNumberType,'SERIAL_NUMBER_TYPE.FIXED_VALUE')">
+			    	, FIX_SERIAL_NUMBER = NULL
+			    	</when>
+			    	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberType,'SERIAL_NUMBER_TYPE.FIXED_VALUE')">
+					    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(fixSerialNumber)">
+					    , FIX_SERIAL_NUMBER = trim(#{fixSerialNumber})
+					    </if>
+			    	</when>
+			    </choose>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointPaymentType)">
+			    , PAYMENT_TP = #{pointPaymentType}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReasonType)">
+			    , POINT_USED_TP = #{issueReasonType}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueReason)">
+			    , POINT_USED_MSG = #{issueReason}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(validityType)">
+			    , VALIDITY_TP = #{validityType}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueValue)">
+			    , ISSUE_VAL = #{issueValue}
+			    </if>
+			    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(issueDayCount)">
+			    , PAYMENT_STANDARD_DETL_VAL = #{issueDayCount}
+			    </if>
+				, POINT_PROCESS_TP = FN_GET_POINT_PROCESS_TP(#{pointType},#{pointPaymentDetailType},#{pointPaymentType})
+				, POINT_SETTLEMENT_TP = FN_GET_POINT_SETTLEMENT_TP(#{pointType},#{pointPaymentDetailType},#{pointPaymentType})
+				, ISSUE_DEPT_CD = #{erpOrganizationCode}
+				<!-- , STATUS = #{status} -->
+				, POINT_MASTER_STAT  = #{pointMasterStat}
+				, APPR_STAT  = #{apprStat}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				, APPR_SUB_USER_ID = #{apprSubUserId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				, APPR_REQ_USER_ID = #{userVo.userId}
+				, APPR_USER_ID   = #{apprUserId}
+				</if>
+				<choose>
+				  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+						,MODIFY_ID		 =  #{urUserId}
+					</when>
+					<otherwise>
+						,MODIFY_ID		 = #{userVo.userId}
+					</otherwise>
+				</choose>
+				,MODIFY_DT		 = NOW()
+		WHERE  	PM_POINT_ID  = #{pmPointId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: GR_PM_POINT_ID로 PM_POINT 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.11.02		문동현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPmPointId" resultType="String">
+		SELECT PP.PM_POINT_ID
+		FROM PM_POINT PP
+		WHERE PP.GR_PM_POINT_ID = #{grPmPointId}
+		  AND PP.PM_POINT_ID IN ( SELECT PPI.PM_POINT_ID
+								  FROM PM_POINT_ISSUE PPI
+								  WHERE PPI.UR_USER_ID = #{userId} )
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: GR_PM_POINT_ID로 PM_POINT 전체 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.11.02		문동현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPmPointIdList" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PointSettingResultVo">
+		  SELECT PP.PM_POINT_ID
+			FROM PM_POINT PP
+			WHERE PP.GR_PM_POINT_ID = #{grPmPointId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: GR_PM_POINT_ID값으로 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.26		문동현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="removeGroupPointInfo">
+		DELETE
+		FROM PM_POINT PP
+		WHERE PP.GR_PM_POINT_ID = #{grPmPointId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 분담조직 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.28		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="removeOrganization">
+	/* point.removeOrganization */
+		DELETE
+		FROM 	PM_COUPON_POINT_SHARE_ORGANIZATION
+		WHERE  	PM_POINT_ID = #{pmPointId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 발급 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.28		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="remomveBosPointIssue">
+	/* point.remomveBosPointIssue */
+		DELETE
+		FROM 	PM_POINT_ISSUE
+		WHERE  	PM_POINT_ID = #{pmPointId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 난수번호 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.28		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="removePointUserGrade">
+	/* point.removePointUserGrade */
+		DELETE
+		FROM 	PM_POINT_USER_GRADE
+		WHERE  	PM_POINT_ID = #{pmPointId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 난수번호 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.28		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="removeSerialNumber">
+	/* point.removeSerialNumber */
+		DELETE
+		FROM 	PM_SERIAL_NUMBER
+		WHERE  	PM_POINT_ID = #{pmPointId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 상태이력 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPointStatusHistory">
+		/*	point.addPointStatusHistory */
+
+			INSERT INTO PM_POINT_STATUS_HISTORY
+			(
+				PM_POINT_ID
+				<!-- , STATUS -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+				, PREV_POINT_MASTER_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+				, PREV_APPR_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+				, POINT_MASTER_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+				, APPR_STAT
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+				, STATUS_CMNT
+				</if>
+				, POINT_TP
+				, POINT_NM
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				, APPR_SUB_USER_ID
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				, APPR_USER_ID
+				</if>
+				, APPR_REQ_USER_ID
+				, CREATE_DT
+				, CREATE_ID
+			)
+			VALUES
+			(
+				#{taskPk}
+				<!-- ,#{status} -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+				,#{prevMasterStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+				,#{prevApprStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+				,#{masterStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+				,#{apprStat}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+				,#{statusComment}
+				</if>
+					, (SELECT POINT_TP FROM PM_POINT WHERE PM_POINT_ID = #{taskPk})
+					, (SELECT POINT_NM FROM PM_POINT WHERE PM_POINT_ID = #{taskPk})
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				,#{apprSubUserId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				,#{apprUserId}
+				</if>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED_BY_SYSTEM')">
+						,0
+					</when>
+					<otherwise>
+						,#{approvalRequestUserId}
+					</otherwise>
+				</choose>
+				,NOW()
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED_BY_SYSTEM')">
+						,0
+					</when>
+					<otherwise>
+						,#{userVo.userId}
+					</otherwise>
+				</choose>
+			)
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 회원등급 설정 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPointUserGrade">
+		/*	point.addPointUserGrade */
+
+			INSERT INTO PM_POINT_USER_GRADE
+			(
+				PM_POINT_ID
+				, REVIEW_TP
+				, REVIEW_DETAIL_TP
+				, UR_GROUP_ID
+				, NOMAL_AMOUNT
+				, PHOTO_AMOUNT
+				, PREMIUM_AMOUNT
+				, CREATE_DT
+				, CREATE_ID
+			)
+			VALUES
+			<foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+			(
+				#{insertData.pmPointId}
+				,#{insertData.reviewType}
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(insertData.userGroupName)">
+					,(SELECT B.GROUP_LEVEL_TP
+							FROM UR_GROUP_MASTER A
+				        	JOIN  UR_GROUP B ON  A.UR_GROUP_MASTER_ID = B.UR_GROUP_MASTER_ID
+							WHERE A.UR_GROUP_MASTER_ID = #{insertData.userMaster}
+							AND B.GROUP_NM = #{insertData.userGroupName})
+					</when>
+					<otherwise>
+					, NULL
+					</otherwise>
+				</choose>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(insertData.userGroupName)">
+						,(SELECT B.UR_GROUP_ID
+							FROM UR_GROUP_MASTER A
+				        	JOIN  UR_GROUP B ON  A.UR_GROUP_MASTER_ID = B.UR_GROUP_MASTER_ID
+							WHERE A.UR_GROUP_MASTER_ID = #{insertData.userMaster}
+							AND B.GROUP_NM = #{insertData.userGroupName})
+					</when>
+					<otherwise>
+					, NULL
+					</otherwise>
+				</choose>
+				,#{insertData.normalAmount}
+				,#{insertData.photoAmount}
+				,#{insertData.premiumAmount}
+				,NOW()
+				,#{insertData.userId}
+			)
+			</foreach>
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 회원등급 설정 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addBosPointIssue">
+		/*	point.addBosPointIssue */
+
+			INSERT INTO PM_POINT_ISSUE
+			(
+				PM_POINT_ID
+				, UR_USER_ID
+				, CREATE_DT
+				, CREATE_ID
+			)
+			VALUES
+			(
+				#{pmPointId}
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+						, #{urUserId}
+					</when>
+					<otherwise>
+						, (SELECT UR_USER_ID FROM UR_USER WHERE LOGIN_ID = #{loginId})
+					</otherwise>
+				</choose>
+				,NOW()
+				<choose>
+				  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userId)">
+						, #{userId}
+					</when>
+					<otherwise>
+						, #{userVo.userId}
+					</otherwise>
+				</choose>
+			)
+
+	</insert>
+
+	<select id="getUserIdCnt" resultType="int">
+
+		/*	point.getUserIdCnt */
+
+		SELECT COUNT(*)
+		FROM UR_USER
+		WHERE LOGIN_ID = #{loginId}
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 회원등급 설정 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPmPointStatus">
+
+		/* point.putPmPointStatus */
+		UPDATE 	PM_POINT
+		SET 	 <!-- STATUS = #{status} -->
+				POINT_MASTER_STAT = #{pointMasterStat}
+				,APPR_STAT = #{apprStat}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.REQUEST')">
+				,APPR_REQ_USER_ID = NOW()
+				,APPR_REQ_DT = NOW()
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED')">
+				,APPR_CHG_DT = NOW()
+				,APPR_CHG_USER_ID = #{userVo.userId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pointType,'POINT_TYPE.ADMIN')">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED')">
+						, VALIDITY_END_DT = (SELECT VALIDITYDAY FROM (SELECT DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-%d'), INTERVAL (VALIDITY_DAY) DAY) AS VALIDITYDAY FROM PM_POINT WHERE PM_POINT_ID = #{pmPointId}) AS TEMP)
+					</if>
+				</if>
+				<choose>
+				  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+						,MODIFY_ID		 =  #{urUserId}
+					</when>
+					<otherwise>
+						,MODIFY_ID		 = #{userVo.userId}
+					</otherwise>
+				</choose>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				, APPR_SUB_USER_ID = #{apprSubUserId}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+				, APPR_REQ_USER_ID = #{userVo.userId}
+				, APPR_USER_ID   = #{apprUserId}
+				</if>
+				,MODIFY_DT		 = NOW()
+		WHERE  	PM_POINT_ID      = #{pmPointId}
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 회원등급 설정 등록 ( 엑셀 대량 지급 )
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.11.02		문동현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putGrPmPointStatus">
+
+		/* point.putPmPointStatus */
+		UPDATE 	PM_POINT
+		SET 	 <!-- STATUS = #{status} -->
+		POINT_MASTER_STAT = #{pointMasterStat}
+		,APPR_STAT = #{apprStat}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.REQUEST')">
+			,APPR_REQ_USER_ID = NOW()
+			,APPR_REQ_DT = NOW()
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED')">
+			,APPR_CHG_DT = NOW()
+			,APPR_CHG_USER_ID = #{userVo.userId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(pointType,'POINT_TYPE.ADMIN')">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStat,'APPR_STAT.APPROVED')">
+				, VALIDITY_END_DT = (SELECT VALIDITYDAY FROM (SELECT DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-%d'), INTERVAL (VALIDITY_DAY) DAY) AS VALIDITYDAY FROM PM_POINT WHERE PM_POINT_ID = #{pmPointId}) AS TEMP)
+			</if>
+		</if>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				,MODIFY_ID		 =  #{urUserId}
+			</when>
+			<otherwise>
+				,MODIFY_ID		 = #{userVo.userId}
+			</otherwise>
+		</choose>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			, APPR_SUB_USER_ID = #{apprSubUserId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+			, APPR_REQ_USER_ID = #{userVo.userId}
+			, APPR_USER_ID   = #{apprUserId}
+		</if>
+		,MODIFY_DT		 = SYSDATE()
+		WHERE  	GR_PM_POINT_ID      = #{grPmPointId}
+
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 개인별 사용가능 적립금 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.08		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserPointResultMap" type="kr.co.pulmuone.v1.promotion.point.dto.vo.UploadInfoVo">
+		<result column="AMOUNT"  property="amount"/>
+		<result column="UR_USER_ID"  property="urUserId"/>
+		<result column="USER_NAME"  property="userName"  />
+	</resultMap>
+	<select id="getUserPoint" resultMap="getUserPointResultMap">
+
+		/*	point.getUserPoint */
+		SELECT IFNULL(SUM(AMOUNT),0) AS AMOUNT
+			 , PP.UR_USER_ID
+			 , FN_DECRYPT(UU.USER_NM) AS USER_NAME
+		FROM PM_POINT_USED_DETL PP
+		JOIN UR_USER UU ON UU.UR_USER_ID = PP.UR_USER_ID
+		WHERE PP.CLOSE_YN = 'N'
+		<choose>
+		  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+			AND PP.UR_USER_ID = #{urUserId}
+			</when>
+			<otherwise>
+			AND PP.UR_USER_ID = (SELECT UR_USER_ID FROM UR_USER WHERE LOGIN_ID = #{loginId})
+			</otherwise>
+		</choose>
+
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 지급/차감 승인 Validation Check
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.16		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getAdminAmountCheckResultMap" type="kr.co.pulmuone.v1.promotion.point.dto.vo.UploadInfoVo">
+		<result column="USE_AMOUNT"  property="useAmount"/>
+		<result column="ROLE_VALIDITY_AMOUNT"  property="roleValidityAmount"  />
+		<result column="ISSUE_VAL"  property="issueVal"  />
+	</resultMap>
+	<select id="getAdminAmountCheck" resultMap="getAdminAmountCheckResultMap">
+
+		/*	point.getAdminAmountCheck */
+		WITH RV AS(
+			SELECT D.AMOUNT, B.ST_ROLE_TP_ID
+			FROM ST_AUTH_USER_MAPPING A
+			JOIN ST_ROLE_TYPE B ON A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID
+			JOIN PM_POINT_ADMIN_SETTING_TARGET C ON B.ST_ROLE_TP_ID = C.ST_ROLE_TP_ID
+			JOIN PM_POINT_ADMIN_SETTING D ON C.PM_POINT_ADMIN_SETTING_ID = D.PM_POINT_ADMIN_SETTING_ID AND D.DEL_YN = 'N'
+			<choose>
+			   <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmPointId)">
+			   WHERE A.UR_USER_ID = (SELECT CREATE_ID FROM PM_POINT WHERE PM_POINT_ID = #{pmPointId})
+			   </when>
+			   <otherwise>
+			   WHERE A.UR_USER_ID = #{userVo.userId}
+			   </otherwise>
+		   </choose>
+		   ORDER BY A.CREATE_DT  LIMIT 1
+		   )
+		SELECT
+				 IFNULL(SUM(PP.ISSUE_VAL),0) AS USE_AMOUNT
+			   , (SELECT AMOUNT FROM RV) AS ROLE_VALIDITY_AMOUNT
+			   <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmPointId)">
+			   , (SELECT ISSUE_VAL FROM PM_POINT WHERE PM_POINT_ID = #{pmPointId}) AS ISSUE_VAL
+			   </if>
+		FROM PM_POINT PP
+		JOIN
+		(SELECT R.UR_USER_ID, G.AMOUNT
+		 FROM ST_AUTH_USER_MAPPING R
+		 JOIN RV AS G ON G.ST_ROLE_TP_ID = R.ST_ROLE_TP_ID ) AS RU ON PP.CREATE_ID = RU.UR_USER_ID
+		WHERE PP.APPR_STAT IN ('APPR_STAT.APPROVED','APPR_STAT.APPROVED_BY_SYSTEM')
+		AND PP.POINT_TP = 'POINT_TYPE.ADMIN'
+		AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+		AND ( PP.CREATE_DT <![CDATA[>]]> (LAST_DAY(NOW() - interval 1 month) + interval 1 DAY)  AND PP.CREATE_DT  <![CDATA[<=]]> LAST_DAY(NOW()) )
+
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 설정유효기간
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.21		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getGroupValidityDayResultMap" type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointSettingResultVo">
+		<result column="VALIDITY_DAY"  property="validityDay"/>
+	</resultMap>
+	<select id="getGroupValidityDay" resultMap="getGroupValidityDayResultMap">
+
+		/*	point.getGroupValidityDay */
+		SELECT D.AMOUNT, B.ST_ROLE_TP_ID, D.VALIDITY_DAY
+		FROM ST_AUTH_USER_MAPPING A
+		JOIN ST_ROLE_TYPE B ON A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID
+		JOIN PM_POINT_ADMIN_SETTING_TARGET C ON B.ST_ROLE_TP_ID = C.ST_ROLE_TP_ID
+		JOIN PM_POINT_ADMIN_SETTING D ON C.PM_POINT_ADMIN_SETTING_ID = D.PM_POINT_ADMIN_SETTING_ID AND D.DEL_YN = 'N'
+		WHERE A.UR_USER_ID = #{loginId}
+		ORDER BY A.CREATE_DT  LIMIT 1
+
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 상태이력 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.04		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPointStatusHistoryMap" type="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalStatusVo">
+		<result column="POINT_MASTER_STAT"  property="masterStat"/>
+		<result column="APPR_STAT"  property="apprStat"/>
+		<result column="PM_POINT_ID"  property="taskPk"/>
+		<result column="APPR_REQ_USER_ID"  property="approvalRequestUserId"/>
+		<result column="APPR_SUB_USER_ID"  property="apprSubUserId"/>
+		<result column="APPR_USER_ID"  property="apprUserId"/>
+	</resultMap>
+
+	<select id="getPointStatusHistory" resultMap="getPointStatusHistoryMap">
+
+		/*	point.getPointStatusHistory */
+		SELECT PP.POINT_MASTER_STAT
+			 , PP.APPR_STAT
+			 , PP.PM_POINT_ID
+			 , PP.APPR_REQ_USER_ID AS APPR_REQ_USER_ID
+			 , PP.APPR_SUB_USER_ID AS APPR_SUB_USER_ID
+			 , PP.APPR_USER_ID AS APPR_USER_ID
+		FROM PM_POINT_STATUS_HISTORY PP
+		WHERE PP.PM_POINT_ID = #{pmPointId}
+		AND PP.CREATE_DT  = (SELECT MAX(CREATE_DT)
+							 FROM PM_POINT_STATUS_HISTORY
+							 WHERE PM_POINT_ID = #{pmPointId})
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 이용권 승인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.16		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPmSerialNumberApproval">
+
+		/* point.putPmSerialNumberApproval */
+		UPDATE 	PM_SERIAL_NUMBER
+		SET 	APPROVAL_YN  = 'Y'
+		WHERE  	PM_POINT_ID  = #{pmPointId}
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 설정 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.22		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="removePoint">
+	/* point.removePoint */
+		UPDATE 	PM_POINT
+		SET 	USE_YN = 'N'
+				,MODIFY_ID		 = #{userVo.userId}
+				,MODIFY_DT		 = NOW()
+		WHERE  	IFNULL(GR_PM_POINT_ID,PM_POINT_ID)      = #{pmPointId}
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금명 수정
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16      안치열         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="updatePointName">
+	/* point.updatePointName */
+		UPDATE 	PM_POINT
+		SET 	POINT_NM	     = #{pointName}
+				,MODIFY_ID		 = #{userVo.userId}
+				,MODIFY_DT		 = NOW()
+		WHERE  	PM_POINT_ID     = #{pmPointId}
+
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+         * description 		: 적립금 사유 수정
+         * @
+         * @ 수정일			 수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.09.15      정동훈         최초생성
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+	<update id="updatePointIssueReason">
+	/* point.updatePointIssueReason */
+		UPDATE 	PM_POINT
+		SET 	POINT_USED_MSG	 = #{issueReason}
+				,MODIFY_ID		 = #{userVo.userId}
+				,MODIFY_DT		 = SYSDATE()
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(grPmPointId)">
+			WHERE  	PM_POINT_ID     = #{pmPointId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grPmPointId)">
+			WHERE  	GR_PM_POINT_ID     = #{grPmPointId}
+		</if>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 난수번호 중복 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateSerialNumber" resultType="int">
+
+		/*	point.getDuplicateSerialNumber */
+
+		SELECT COUNT(*)
+		FROM PM_SERIAL_NUMBER PSN
+		LEFT JOIN PM_POINT PP ON PP.PM_POINT_ID = PSN.PM_POINT_ID AND PP.APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.REQUEST')
+		AND PP.ISSUE_END_DT <![CDATA[>]]>  NOW()
+		WHERE PSN.SERIAL_NUMBER = FN_ENCRYPT(trim(#{serialNumber}))
+
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 분담조직 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrganization">
+		/*	point.addOrganization */
+
+			INSERT INTO PM_COUPON_POINT_SHARE_ORGANIZATION
+			(
+				PM_POINT_ID
+				, UR_ERP_ORGANIZATION_CD
+				, UR_ERP_ORGANIZATION_NM
+				, ERP_REGAL_CD
+				, ERP_REGAL_NM
+				, PERCENTAGE
+				, CREATE_DT
+				, CREATE_ID
+			)
+			VALUES
+			(
+				#{pmPointId}
+				,#{erpOrganizationCode}
+				,#{erpOrganizationName}
+				,#{erpRegalCode}
+				,#{erpRegalName}
+				,100
+				,NOW()
+				<choose>
+				  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+						, #{urUserId}
+					</when>
+					<otherwise>
+						, #{userVo.userId}
+					</otherwise>
+				</choose>
+			)
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 조회 - 사용가능
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPointUsable" resultType="String">
+		/*	point.getPointUsable	*/
+		SELECT SUM(AMOUNT) AS SUM_AMOUNT
+		FROM PM_POINT_USED_DETL
+		WHERE UR_USER_ID = #{urUserId}
+			AND CLOSE_YN = 'N'
+		GROUP BY UR_USER_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 조회 - 소멸예정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPointExpectExpired" resultType="String">
+		/*	point.getPointExpectExpired	*/
+		SELECT SUM(AMOUNT) AS SUM_AMOUNT
+		FROM PM_POINT_USED_DETL
+		WHERE UR_USER_ID = #{urUserId}
+			AND CLOSE_YN = 'N'
+			AND EXPIRATION_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+		GROUP BY UR_USER_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 조회 - 유저 적립금 정보 List
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.CommonGetPointListByUserVo" id="getPointListByUserResultMap">
+		<result column="PAYMENT_TYPE_NAME"  property="paymentTypeName" />
+		<result column="CREATE_DATE"        property="createDate" />
+		<result column="EXPIRATION_DATE"    property="expirationDate"  />
+		<result column="AMOUNT"             property="amount"  />
+		<result column="POINT_PROCESS_TP"   property="pointProcessType"  />
+		<result column="CMNT"               property="comment"  />
+	</resultMap>
+	<select id="getPointListByUser" resultMap="getPointListByUserResultMap">
+		/*	point.getPointListByUser	*/
+		SELECT *
+		FROM (
+			SELECT '적립' AS PAYMENT_TYPE_NAME
+				,DATE_FORMAT(PPU.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE
+				,DATE_FORMAT(PPUD.EXPIRATION_DT, '%Y-%m-%d') AS EXPIRATION_DATE
+				,PPUD.AMOUNT
+				,PPUD.POINT_PROCESS_TP
+				,IF(PPUD.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE'), IFNULL(PP.POINT_USED_MSG,PPU.CMNT), '') AS CMNT
+				,PPU.CREATE_DT AS SORT_SEQ
+				,PPU.PAYMENT_TP
+			    ,CASE WHEN PP.POINT_NM IS NULL THEN IFNULL(PP.POINT_NM,'')
+			      	   							ELSE
+			      	   							  	CASE WHEN PPUD.POINT_PROCESS_TP IN('POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPAE','POINT_PROCESS_TP.DVCH')
+			      	   							  		  THEN
+			      	   							  	  			CASE WHEN CHAR_LENGTH(TRIM(PP.POINT_NM)) <![CDATA[>]]> #{deviceCount} THEN CONCAT(SUBSTR(PP.POINT_NM, 1, #{deviceCount}),'...')
+																	  ELSE PP.POINT_NM
+																	  END
+			      	     								  ELSE
+			      	     								    	PP.POINT_NM
+			      	   							  	  	  END
+		   			   							END AS POINT_NM
+			FROM PM_POINT_USED PPU
+				INNER JOIN PM_POINT_USED_DETL PPUD ON PPU.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+				LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = PPU.PM_POINT_ID
+			WHERE PPU.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+				AND PPUD.POINT_PROCESS_TP NOT IN ('POINT_PROCESS_TP.DPRO', 'POINT_PROCESS_TP.DVRO')
+				AND PPU.CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				AND PPU.UR_USER_ID = #{urUserId}
+			UNION ALL
+			/* 적립 -> 사용취소의 경우 같은 주문 건 그룹화 */
+			SELECT GP.PAYMENT_TYPE_NAME, GP.CREATE_DATE, GP.EXPIRATION_DATE
+				, SUM(GP.AMOUNT) AS AMOUNT
+				, GP.POINT_PROCESS_TP, GP.CMNT
+				, MAX(GP.SORT_SEQ) AS SORT_SEQ
+				, GP.PAYMENT_TP
+			    , CASE WHEN GP.POINT_PROCESS_TP IN('POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPAE','POINT_PROCESS_TP.DVCH')
+			      	   THEN
+							CASE WHEN CHAR_LENGTH(TRIM(GP.POINT_NM)) <![CDATA[>]]> #{deviceCount} THEN CONCAT(SUBSTR(GP.POINT_NM, 1 ,#{deviceCount}),'...')
+							  	 ELSE GP.POINT_NM
+							  	 END
+					   ELSE
+							GP.POINT_NM
+					   END AS POINT_NM
+			FROM (
+				SELECT '적립' AS PAYMENT_TYPE_NAME
+					,DATE_FORMAT(PPU.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE
+					,DATE_FORMAT(PPUD.EXPIRATION_DT, '%Y-%m-%d') AS EXPIRATION_DATE
+					,PPUD.AMOUNT
+					,PPUD.POINT_PROCESS_TP
+					,IF(PPUD.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE'), PP.POINT_USED_MSG , '') AS CMNT
+					,PPU.CREATE_DT AS SORT_SEQ
+					,PPU.PAYMENT_TP
+					,PPU.REF_NO1
+					, DATE_FORMAT(PPU.CREATE_DT,'%Y-%m-%d %H:%i') + INTERVAL
+						(CASE
+						WHEN TIME_FORMAT(PPU.CREATE_DT,'%s') <![CDATA[ < ]]>  10 THEN 0
+						WHEN TIME_FORMAT(PPU.CREATE_DT,'%s') <![CDATA[ < ]]>  20 THEN 10
+						WHEN TIME_FORMAT(PPU.CREATE_DT,'%s') <![CDATA[ < ]]>  30 THEN 20
+						WHEN TIME_FORMAT(PPU.CREATE_DT,'%s') <![CDATA[ < ]]>  40 THEN 30
+						WHEN TIME_FORMAT(PPU.CREATE_DT,'%s') <![CDATA[ < ]]>  50 THEN 40
+						WHEN TIME_FORMAT(PPU.CREATE_DT,'%s') <![CDATA[ <= ]]>  59 THEN 50
+						END) SECOND AS CREATE_DATE_HM
+					, IFNULL(PP.POINT_NM,'')AS POINT_NM
+				FROM PM_POINT_USED PPU
+					INNER JOIN PM_POINT_USED_DETL PPUD ON PPU.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+					LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = PPU.PM_POINT_ID
+				WHERE PPU.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+					AND PPUD.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPRO', 'POINT_PROCESS_TP.DVRO')
+					AND PPU.CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+					AND PPU.UR_USER_ID = #{urUserId}
+			) GP
+			GROUP BY GP.PAYMENT_TYPE_NAME, GP.CREATE_DATE, GP.EXPIRATION_DATE, GP.POINT_PROCESS_TP, GP.CMNT, GP.REF_NO1, GP.PAYMENT_TP, GP.CREATE_DATE_HM
+			UNION ALL
+			/* 사용 -> 같은 건 그룹화 */
+			SELECT G1.PAYMENT_TYPE_NAME, G1.CREATE_DATE, G1.EXPIRATION_DATE
+				, SUM(G1.AMOUNT) AS AMOUNT
+				, G1.POINT_PROCESS_TP, G1.CMNT
+				, MAX(G1.SORT_SEQ) AS SORT_SEQ
+				, G1.PAYMENT_TP
+				, CASE WHEN G1.POINT_PROCESS_TP IN('POINT_PROCESS_TP.DPME','POINT_PROCESS_TP.DPAE','POINT_PROCESS_TP.DVCH')
+				THEN
+				CASE WHEN CHAR_LENGTH(TRIM(G1.POINT_NM)) <![CDATA[>]]> #{deviceCount} THEN CONCAT(SUBSTR(G1.POINT_NM, 1 ,#{deviceCount}),'...')
+				ELSE G1.POINT_NM
+				END
+				ELSE
+				  G1.POINT_NM
+				END AS POINT_NM
+			FROM (
+					SELECT (CASE WHEN PPUD.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SDNC', 'POINT_SETTLEMENT_TP.SDVC') THEN '적립'
+							WHEN PPUD.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNP', 'POINT_SETTLEMENT_TP.SWVP') THEN '사용'
+							WHEN PPUD.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNE', 'POINT_SETTLEMENT_TP.SWVE') THEN '소멸'
+							ELSE '기타' END) AS PAYMENT_TYPE_NAME
+						,DATE_FORMAT(PPU.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE
+						,IF(PPUD.POINT_SETTLEMENT_TP IN ('POINT_SETTLEMENT_TP.SWNE', 'POINT_SETTLEMENT_TP.SWVE'), DATE_FORMAT(PPUD.EXPIRATION_DT, '%Y-%m-%d'), '') AS EXPIRATION_DATE
+						,PPUD.AMOUNT
+						,(CASE WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVPA' THEN 'POINT_PROCESS_TP.WPPA'
+							WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVFE' THEN 'POINT_PROCESS_TP.WPFE'
+							WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVEF' THEN 'POINT_PROCESS_TP.WPEF'
+							WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVPE' THEN 'POINT_PROCESS_TP.WPPE'
+							WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVEX' THEN 'POINT_PROCESS_TP.WPEX' ELSE PPUD.POINT_PROCESS_TP END) AS POINT_PROCESS_TP
+						,IF(PPUD.POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPMR','POINT_PROCESS_TP.WPFE','POINT_PROCESS_TP.WVFE'), PP.POINT_USED_MSG , '') AS CMNT
+						,PPU.CREATE_DT AS SORT_SEQ
+						,PPU.REF_NO1
+						,PPU.PAYMENT_TP
+						,PPU.PM_POINT_ID
+						,IFNULL(PP.POINT_NM,'')AS POINT_NM
+					FROM PM_POINT_USED PPU
+						INNER JOIN PM_POINT_USED_DETL PPUD ON PPU.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+						LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = PPU.PM_POINT_ID
+					WHERE PPU.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION'
+						AND PPU.CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+						AND PPU.UR_USER_ID = #{urUserId}
+				) G1
+				GROUP BY G1.PAYMENT_TYPE_NAME, G1.CREATE_DATE, G1.EXPIRATION_DATE, G1.POINT_PROCESS_TP, G1.CMNT, G1.REF_NO1, G1.PAYMENT_TP, G1.PM_POINT_ID
+		) GRESULT
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(paymentType)">
+			AND PAYMENT_TP = #{paymentType}
+		</if>
+		ORDER BY SORT_SEQ DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 소멸예정 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.03		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.CommonGetPointExpectExpireListResultVo" id="getPointExpectExpireListResultMap">
+		<result column="EXPIRATION_DT"  property="expirationDate" />
+		<result column="AMOUNT"  property="amount"  />
+	</resultMap>
+	<select id="getPointExpectExpireList" resultMap="getPointExpectExpireListResultMap">
+		/*	point.getPointExpectExpireList	*/
+		SELECT DATE(TH.EXPIRATION_DT) AS EXPIRATION_DT,
+			AMOUNT + IFNULL((SELECT SUM(AMOUNT) AS TD_AMOUNT FROM PM_POINT_USED_DETL TD WHERE TH.PM_POINT_USED_DETL_ID = TD.REF_POINT_USED_DETL_ID AND TH.PM_POINT_USED_DETL_ID != TD.PM_POINT_USED_DETL_ID GROUP BY TH.PM_POINT_USED_DETL_ID), 0) AS AMOUNT
+		FROM PM_POINT_USED_DETL TH
+		WHERE TH.UR_USER_ID = #{urUserId}
+			AND TH.CLOSE_YN = 'N'
+			AND TH.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+			AND TH.EXPIRATION_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+		ORDER BY TH.EXPIRATION_DT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 등록 검증 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.09		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.CommonGetAddPointValidationInfoVo" id="getAddPointValidationInfoResultMap">
+		<result column="POINT_MASTER_STAT"  property="pointMasterStat" />
+		<result column="ISSUE_QTY"  property="issueQty"  />
+		<result column="ISSUE_QTY_LIMIT"  property="issueQtyLimit" />
+		<result column="ISSUE_START_DT"  property="issueStartDate"  />
+		<result column="ISSUE_END_DT"  property="issueEndDate"  />
+		<result column="ISSUE_CNT"  property="issueCnt"  />
+		<result column="USER_ISSUE_CNT"  property="userIssueCnt"  />
+
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="POINT_TP"  property="pointType"  />
+		<result column="PAYMENT_TP"  property="paymentType"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="VALIDITY_TP"  property="validityType"  />
+		<result column="VALIDITY_END_DT"  property="validityEndDate"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+	</resultMap>
+	<select id="getAddPointValidationInfo" resultMap="getAddPointValidationInfoResultMap">
+		/*	point.getAddPointValidationInfo	*/
+		SELECT PP.POINT_MASTER_STAT,
+			ifnull(PP.ISSUE_QTY, 0) AS ISSUE_QTY,
+			ifnull(PP.ISSUE_QTY_LIMIT, 0) AS ISSUE_QTY_LIMIT,
+			DATE(PP.ISSUE_START_DT) AS ISSUE_START_DT,
+			DATE(PP.ISSUE_END_DT) AS ISSUE_END_DT,
+			(
+				SELECT COUNT(*)
+				FROM PM_POINT_USED PPI
+				WHERE PPI.PM_POINT_ID = PP.PM_POINT_ID
+					AND PPI.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION') AS ISSUE_CNT,
+			(
+				SELECT COUNT(*)
+				FROM PM_POINT_USED PPI
+				WHERE PPI.PM_POINT_ID = PP.PM_POINT_ID
+					AND PPI.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+					AND UR_USER_ID = #{urUserId}) AS USER_ISSUE_CNT,
+			PM_POINT_ID,
+			POINT_TP,
+			PAYMENT_TP,
+			ISSUE_VAL,
+			VALIDITY_TP,
+			VALIDITY_END_DT,
+			VALIDITY_DAY
+		FROM PM_POINT PP
+		WHERE PP.PM_POINT_ID = #{pmPointId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 발급 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.10		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPointIssue">
+		/*	point.addPointIssue  */
+		INSERT INTO PM_POINT_ISSUE (
+			PM_POINT_ID, UR_USER_ID, CREATE_DT, CREATE_ID
+		) VALUES (
+			#{pmPointId}, #{urUserId}, NOW(), #{urUserId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 적립금승인목록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.05		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointApprovalResultVo" id="getApprovalPointListResultMap">
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="POINT_TP"  property="pointType"  />
+		<result column="POINT_TYPE_NAME"  property="pointTypeName" />
+		<result column="POINT_NM"  property="pointName" />
+		<result column="ISSUE_DATE"  property="issueDate"  />
+		<result column="ERP_ORGANIZATION_NM"  property="organizationName"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="NORMAL_AMOUNT"  property="normalAmount"  />
+		<result column="PHOTO_AMOUNT"  property="photoAmount"  />
+		<result column="PREMIUM_AMOUNT"  property="premiumAmount"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+		<result column="NORMAL_VALIDITY_DAY"  property="normalValidityDay"  />
+		<result column="PHOTO_VALIDITY_DAY"  property="photoValidityDay"  />
+		<result column="PREMIUM_VALIDITY_DAY"  property="premiumValidityDay"  />
+		<result column="ISSUE_BUDGET"  property="issueBudget"  />
+		<result column="STATUS"  property="status"  />
+		<result column="STATUS_NAME"  property="statusName"  />
+		<result column="VALIDITY_TP"  property="validityType"  />
+		<result column="VALIDITY_END_DT"  property="validityEndDate"  />
+		<result column="COMMENT"  property="comment"  />
+		<result column="POINT_MASTER_STAT"  property="pointMasterStat"  />
+		<result column="POINT_MASTER_STAT_NAME"  property="pointMasterStatName"  />
+		<result column="APPR_STAT"  property="apprStat"  />
+		<result column="APPR_STAT_NAME"  property="apprStatName"  />
+		<result column="MODIFY_DT"  property="modifyDt"  />
+		<result column="MODIFY_ID"  property="modifyId"  />
+		<result column="APPR_REQ_USER_NAME"  property="approvalRequestUserName" />
+		<result column="APPR_REQ_USER_ID"  property="approvalRequestUserId" />
+		<result column="APPR_REQ_DT"  property="approvalRequestDt" />
+		<result column="APPROVAL_SUB_USER_NAME"  property="approvalSubUserName" />
+		<result column="APPR_SUB_USER_ID"  property="approvalSubUserId" />
+		<result column="APPROVAL_SUB_CHANGE_USER_NAME"  property="approvalSubChangeUserName" />
+		<result column="APPR_SUB_CHG_USER_ID"  property="approvalSubChangeUserId" />
+		<result column="APPR_SUB_CHG_DT"  property="approvalSubChangeDt" />
+		<result column="APPROVAL_USER_NAME"  property="approvalUserName" />
+		<result column="APPR_USER_ID"  property="approvalUserId" />
+		<result column="APPROVAL_CHANGE_USER_NAME"  property="approvalChangeUserName" />
+		<result column="APPR_CHG_USER_ID"  property="approvalChangeUserId" />
+		<result column="APPR_CHG_DT"  property="approvalChangeDt" />
+		<result column="APPR_SUB_GRANT_USER_ID"  property="approvalSubGrantUserId" />
+		<result column="APPROVAL_SUB_GRANT_USER_NAME"  property="approvalSubGrantUserName" />
+		<result column="APPR_GRANT_USER_ID"  property="approvalGrantUserId" />
+		<result column="APPROVAL_GRANT_USER_NAME"  property="approvalGrantUserName" />
+		<result column="APPR_STAT_CMNT"  property="apprStatCmnt" />
+		<result column="SUM_ISSUE_VAL" property="sumIssueVal" />
+		<result column="GROUP_PM_POINT_ID_LIST" property="groupPmPointIdList" />
+		<result column="GR_PM_POINT_ID" property="grPmPointId" />
+		<result column="CREATE_DT" property="createDt" />
+		<result column="CREATE_ID" property="createId" />
+		<result column="TOTAL_PAY_CNT" property="totalPayCnt" />
+		<result column="AVG_PAY_ISSUE_VAL" property="avgPayIssueVal" />
+		<result column="MAX_PAY_ISSUE_VAL" property="maxPayIssueVal" />
+	</resultMap>
+
+	<select id="getApprovalPointList" resultMap="getApprovalPointListResultMap">
+        /* point.getApprovalPointList */
+
+        SELECT A.*
+        , SUM(A.ISSUE_VAL)AS SUM_ISSUE_VAL
+        , GROUP_CONCAT(DISTINCT A.PM_POINT_ID) AS GROUP_PM_POINT_ID_LIST
+        , CASE WHEN A.POINT_TP = 'POINT_TYPE.AUTO' THEN CONCAT(FN_COMN_CODE_DIC(A.POINT_DETAIL_TP), '/ 지급예산 ' )
+              WHEN A.POINT_TP = 'POINT_TYPE.ADMIN' THEN CONCAT(FN_COMN_CODE_DIC(A.POINT_DETAIL_TP), '/',
+              FN_COMN_CODE_DIC(A.PAYMENT_TP) , '/ ',
+              (COUNT(*)),'명' , '/ ',
+              FN_COMN_CODE_DIC(A.POINT_USED_TP) , '/', IFNULL(A.POINT_USED_MSG, '없음') )
+              ELSE ''
+              END AS COMMENT
+		, COUNT(*) AS TOTAL_PAY_CNT
+		, AVG(A.ISSUE_VAL)AS AVG_PAY_ISSUE_VAL
+		, MAX(A.ISSUE_VAL)AS MAX_PAY_ISSUE_VAL
+        FROM (
+            SELECT PP.PM_POINT_ID
+                 , PP.POINT_TP
+                 , FN_COMN_CODE_DIC(PP.POINT_TP) AS POINT_TYPE_NAME
+                 , PP.POINT_NM
+                 , CONCAT(DATE_FORMAT(PP.ISSUE_START_DT,'%Y-%m-%d') ,'~', DATE_FORMAT(PP.ISSUE_END_DT,'%Y-%m-%d') ) AS ISSUE_DATE
+                 , (SELECT PO.UR_ERP_ORGANIZATION_NM
+                      FROM PM_COUPON_POINT_SHARE_ORGANIZATION PO
+                     WHERE PO.PM_POINT_ID = PP.PM_POINT_ID ) AS ERP_ORGANIZATION_NM
+                 , CASE WHEN PP.POINT_TP = 'POINT_TYPE.SERIAL_NUMBER' THEN PP.ISSUE_VAL
+                        WHEN PP.POINT_TP = 'POINT_TYPE.AUTO' THEN PP.ISSUE_BUDGET
+                        WHEN PP.POINT_TP = 'POINT_TYPE.ADMIN' THEN PP.ISSUE_VAL
+                    END AS ISSUE_VAL
+                 , CASE WHEN PP.POINT_TP = 'POINT_TYPE.SERIAL_NUMBER' THEN
+                                CASE WHEN PP.VALIDITY_DAY IS NULL THEN PP.VALIDITY_END_DT
+                                     ELSE PP.VALIDITY_DAY
+                                END
+                        WHEN PP.POINT_TP = 'POINT_TYPE.REVIEW' THEN PP.VALIDITY_DAY
+                        WHEN PP.POINT_TP = 'POINT_TYPE.AUTO' THEN PP.VALIDITY_DAY
+                        WHEN PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' THEN '-'
+                        WHEN PP.POINT_TP = 'POINT_TYPE.ADMIN' AND PP.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' THEN PP.VALIDITY_DAY
+                    END AS VALIDITY_DAY
+                  , PP.VALIDITY_END_DT
+                  , ( SELECT PPU.NOMAL_AMOUNT FROM PM_POINT_USER_GRADE PPU WHERE PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID=PP.PM_POINT_ID ) AS NORMAL_AMOUNT
+                  , ( SELECT PPU.PHOTO_AMOUNT FROM PM_POINT_USER_GRADE PPU WHERE PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID=PP.PM_POINT_ID ) AS PHOTO_AMOUNT
+                  , ( SELECT PPU.PREMIUM_AMOUNT FROM PM_POINT_USER_GRADE PPU WHERE PPU.REVIEW_DETAIL_TP IS NULL AND PPU.PM_POINT_ID= PP.PM_POINT_ID ) AS PREMIUM_AMOUNT
+                  <!-- , PP.STATUS -->
+                 , PP.POINT_MASTER_STAT   <!-- 적립금마스터상     -->
+                 , FN_COMN_CODE_DIC(PP.POINT_MASTER_STAT) AS POINT_MASTER_STAT_NAME
+                 , PP. APPR_STAT    <!-- 적립금승인상태 -->
+                 , FN_COMN_CODE_DIC(PP.APPR_STAT) AS APPR_STAT_NAME
+                 , PP.ISSUE_BUDGET
+                 , FN_COMN_CODE_DIC(PP.STATUS) AS STATUS_NAME
+                 , PP.VALIDITY_TP
+                 , PP.MODIFY_DT
+                 , REQUU.LOGIN_ID AS APPR_REQ_USER_ID
+                 , FN_DECRYPT(REQUU.USER_NM) AS APPR_REQ_USER_NAME
+                 , PP.APPR_REQ_DT
+                 , SUBUU.LOGIN_ID AS APPR_SUB_USER_ID
+                 , FN_DECRYPT(SUBUU.USER_NM) AS APPROVAL_SUB_USER_NAME
+                 , SUBGUU.LOGIN_ID AS APPR_SUB_GRANT_USER_ID
+                 , FN_DECRYPT(SUBGUU.USER_NM) AS APPROVAL_SUB_GRANT_USER_NAME
+                 , SUBCHG.LOGIN_ID AS APPR_SUB_CHG_USER_ID
+                 , FN_DECRYPT(SUBCHG.USER_NM) AS APPROVAL_SUB_CHANGE_USER_NAME
+                 , PP.APPR_SUB_CHG_DT
+                 , APPRUU.LOGIN_ID AS APPR_USER_ID
+                 , FN_DECRYPT(APPRUU.USER_NM) AS APPROVAL_USER_NAME
+                 , APPRGUU.LOGIN_ID AS APPR_GRANT_USER_ID
+                 , FN_DECRYPT(APPRGUU.USER_NM) AS APPROVAL_GRANT_USER_NAME
+                 , CHGUU.LOGIN_ID AS APPR_CHG_USER_ID
+                 , FN_DECRYPT(CHGUU.USER_NM) AS APPROVAL_CHANGE_USER_NAME
+                 , PP.APPR_CHG_DT
+                 , CASE
+                      WHEN PP.APPR_STAT = 'APPR_STAT.DENIED' THEN IFNULL((
+                           SELECT
+                                STATUS_CMNT
+                            FROM
+                                PM_POINT_STATUS_HISTORY PPSH
+                            WHERE
+                                PPSH.PM_POINT_ID = PP.PM_POINT_ID
+                            AND PPSH.APPR_STAT = 'APPR_STAT.DENIED'
+                            ORDER BY PPSH.PM_POINT_STATUS_HISTORY_ID DESC
+                            LIMIT 1
+                      ), '')
+                      ELSE ''
+                  END AS APPR_STAT_CMNT
+                  , IFNULL(PP.GR_PM_POINT_ID,PP.PM_POINT_ID) AS GR_PM_POINT_ID
+                  , PP.CREATE_DT
+                  , PP.POINT_DETAIL_TP
+                  , PP.PAYMENT_TP
+                  , PP.POINT_USED_TP
+                  , PP.POINT_USED_MSG
+        FROM PM_POINT PP
+        LEFT OUTER JOIN PM_POINT_ISSUE PPI ON PP.PM_POINT_ID = PPI.PM_POINT_ID
+        LEFT OUTER JOIN UR_USER SUBUU
+        ON PP.APPR_SUB_USER_ID = SUBUU.UR_USER_ID
+        LEFT OUTER JOIN UR_EMPLOYEE SUBUE
+        ON PP.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+        LEFT JOIN UR_EMPLOYEE SUBGUE
+        ON SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+        AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+        AND SUBUE.GRANT_AUTH_USER_ID = SUBGUE.UR_USER_ID
+        AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+        LEFT JOIN UR_USER SUBGUU
+        ON SUBGUE.UR_USER_ID = SUBGUU.UR_USER_ID
+        LEFT OUTER JOIN UR_USER SUBCHG
+        ON PP.APPR_SUB_CHG_USER_ID = SUBCHG.UR_USER_ID
+        LEFT OUTER JOIN UR_USER APPRUU
+        ON PP.APPR_USER_ID = APPRUU.UR_USER_ID
+        LEFT OUTER JOIN UR_EMPLOYEE APPRUE
+        ON PP.APPR_USER_ID = APPRUE.UR_USER_ID
+        LEFT JOIN UR_EMPLOYEE APPRGUE
+        ON APPRUE.GRANT_AUTH_USER_ID IS NOT NULL
+        AND APPRUE.GRANT_AUTH_STOP_YN = 'N'
+        AND APPRUE.GRANT_AUTH_USER_ID = APPRGUE.UR_USER_ID
+        AND CURDATE() BETWEEN APPRUE.GRANT_AUTH_START_DT AND APPRUE.GRANT_AUTH_END_DT
+        LEFT JOIN UR_USER APPRGUU
+        ON APPRGUE.UR_USER_ID = APPRGUU.UR_USER_ID
+        LEFT OUTER JOIN UR_USER CHGUU
+        ON PP.APPR_CHG_USER_ID = CHGUU.UR_USER_ID
+        LEFT OUTER JOIN UR_USER REQUU
+        ON PP.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+        WHERE PP.USE_YN = 'Y'
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointName)">
+				AND PP.POINT_NM = #{searchPointName}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointType)">
+				AND PP.POINT_TP = #{searchPointType}
+			</if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchApprovalStatus,'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprovalStatus)">
+                AND PP.APPR_STAT IN
+                <foreach item="data" index="index" collection="approvalStatusArray" open="(" separator="," close=")">
+                    #{data}
+                </foreach>
+            </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUserType)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUser)">
+                    <choose>
+                        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'ID')">
+                            AND REQUU.LOGIN_ID = #{searchApprReqUser}
+                        </when>
+                        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'NAME')">
+                            AND FN_DECRYPT(REQUU.USER_NM) = #{searchApprReqUser}
+                        </when>
+                    </choose>
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUserType)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUser)">
+                    <choose>
+                        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'ID')">
+                            AND (
+                            SUBUU.LOGIN_ID = #{searchApprChgUser}
+                            OR
+                            APPRUU.LOGIN_ID = #{searchApprChgUser}
+                            OR
+                            SUBGUU.LOGIN_ID = #{searchApprChgUser}
+                            OR
+                            APPRGUU.LOGIN_ID = #{searchApprChgUser}
+                            )
+                        </when>
+                        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'NAME')">
+                            AND (
+                            FN_DECRYPT(SUBUU.USER_NM) = #{searchApprChgUser}
+                            OR
+                            FN_DECRYPT(APPRUU.USER_NM) = #{searchApprChgUser}
+                            OR
+                            FN_DECRYPT(SUBGUU.USER_NM) = #{searchApprChgUser}
+                            OR
+                            FN_DECRYPT(APPRGUU.USER_NM) = #{searchApprChgUser}
+                            )
+                        </when>
+                    </choose>
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqStartDate)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqEndDate)">
+                    AND PP.APPR_REQ_DT BETWEEN #{approvalReqStartDate} AND #{approvalReqEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgStartDate)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgEndDate)">
+                    AND (
+                    PP.APPR_SUB_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                    OR
+                    PP.APPR_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                    )
+                </if>
+            </if>
+        ) AS A
+          GROUP BY A.GR_PM_POINT_ID
+          ORDER BY A.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 포인트승인 요청철회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.05		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putCancelRequestApprovalPoint">
+		/*	point.putCancelRequestApprovalPoint	*/
+		UPDATE PM_POINT
+		SET
+			APPR_STAT = #{apprStat}
+			, APPR_SUB_USER_ID = null
+			, APPR_SUB_CHG_USER_ID = null
+			, APPR_SUB_CHG_DT = null
+			, APPR_USER_ID = null
+			, APPR_CHG_USER_ID = null
+			, APPR_CHG_DT = null
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+		WHERE PM_POINT_ID = #{taskPk}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 포인트승인 폐기
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.06 	원종한	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putDisposalApprovalPoint">
+		/* point.putDisposalApprovalPoint */
+		UPDATE PM_POINT
+		SET
+			APPR_STAT = #{apprStat}
+			, USE_YN = 'N'
+			, MODIFY_DT = NOW()
+			, MODIFY_ID = #{userVo.userId}
+		WHERE PM_POINT_ID = #{taskPk}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 포인트승인처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.06		박승현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putApprovalProcessPoint">
+		/*	point.putApprovalProcessPoint	*/
+		UPDATE PM_POINT
+		SET
+			APPR_STAT = #{apprStat}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.SUB_APPROVED')">
+			, APPR_SUB_CHG_DT = NOW()
+			, APPR_SUB_CHG_USER_ID = #{userVo.userId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.APPROVED')">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+				, POINT_MASTER_STAT  = #{masterStat}
+				</if>
+			, APPR_CHG_DT = NOW()
+			, APPR_CHG_USER_ID = #{userVo.userId}
+			</if>
+			, MODIFY_DT		 = NOW()
+			, MODIFY_ID		 = #{userVo.userId}
+		WHERE PM_POINT_ID = #{taskPk}
+	</update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 조회 - 소멸예정 - 적립금 소멸예정 자동메일 발송용
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.29		천혜현         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointExpiredForEmailVo" id="getPointExpectExpiredForEmailResultMap">
+        <result column="UR_USER_ID"  property="urUserId" />
+        <result column="USER_NM"  property="userName"  />
+        <result column="MAIL"  property="mail"  />
+        <result column="MOBILE"  property="mobile"  />
+        <result column="SMS_YN"  property="smsYn"  />
+        <result column="MAIL_YN"  property="mailYn"  />
+        <result column="POINT_SUM"  property="pointSum"  />
+        <result column="EXPIRED_DATE"  property="expiredDate"  />
+        <result column="EXPIRED_MONTH"  property="expiredMonth"  />
+    </resultMap>
+    <select id="getPointExpectExpiredForEmail" resultMap="getPointExpectExpiredForEmailResultMap">
+        /*	point.getPointExpectExpiredForEmail	*/
+        SELECT UU.UR_USER_ID
+            , FN_DECRYPT(UU.USER_NM) AS USER_NM
+            , FN_DECRYPT(UB.MAIL) AS MAIL
+            , FN_DECRYPT(UB.MOBILE) AS MOBILE
+            , UB.SMS_YN
+            , UB.MAIL_YN
+            , G1.POINT_SUM
+            , DATE_FORMAT(NOW(), '%Y-%m-%d') AS EXPIRED_DATE
+            , DATE_FORMAT(NOW(), '%m') AS EXPIRED_MONTH
+        FROM UR_USER UU
+            INNER JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+            INNER JOIN (
+                SELECT UR_USER_ID, SUM(AMOUNT) AS POINT_SUM
+                FROM PM_POINT_USED_DETL
+                WHERE CLOSE_YN = 'N'
+                    AND DATE_FORMAT(EXPIRATION_DT,'%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+                GROUP BY UR_USER_ID
+            ) G1 ON UU.UR_USER_ID = G1.UR_USER_ID
+        WHERE UU.UR_USER_ID = #{urUserId}
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 소멸예정 목록 조회 - 적립금 소멸예정 자동메일 발송용
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.29		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointExpiredListForEmailVo" id="getPointExpectExpireListForEmailResultMap">
+        <result column="UR_USER_ID"  property="urUserId" />
+        <result column="EXPIRATION_DT"  property="expirationDate" />
+        <result column="AMOUNT"  property="amount"  />
+    </resultMap>
+    <select id="getPointExpectExpireListForEmail" resultMap="getPointExpectExpireListForEmailResultMap">
+        /*	point.getPointExpectExpireListForEmail	*/
+        SELECT G1.UR_USER_ID
+            , G1.EXPIRATION_DT
+            , SUM(G1.AMOUNT) AS AMOUNT
+        FROM (
+            SELECT TH.UR_USER_ID
+                , DATE(TH.EXPIRATION_DT) AS EXPIRATION_DT
+                , AMOUNT + IFNULL((SELECT SUM(AMOUNT) AS TD_AMOUNT FROM PM_POINT_USED_DETL TD WHERE TH.PM_POINT_USED_DETL_ID = TD.REF_POINT_USED_DETL_ID AND TH.PM_POINT_USED_DETL_ID != TD.PM_POINT_USED_DETL_ID GROUP BY TH.PM_POINT_USED_DETL_ID), 0) AS AMOUNT
+            FROM PM_POINT_USED_DETL TH
+            WHERE TH.UR_USER_ID = #{urUserId}
+                AND TH.CLOSE_YN = 'N'
+                AND TH.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+                AND DATE_FORMAT(TH.EXPIRATION_DT,'%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+            ) G1
+        GROUP BY G1.UR_USER_ID, G1.EXPIRATION_DT
+        ORDER BY G1.UR_USER_ID, G1.EXPIRATION_DT ASC
+    </select>
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이벤트 적립금 조회 처리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.05		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+   	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointSettingResultVo" id="getEventCallPointInfoResultMap">
+		<result column="POINT_NM" property="name"/>
+		<result column="PM_POINT_ID" property="code"/>
+		<result column="POINT_TP" property="pointType"/>
+		<result column="TYPE_NAME" property="pointTypeName"/>
+		<result column="ISSUE_VAL" property="issueValue"/>
+		<result column="UR_ERP_ORGANIZATION_CD" property="erpOrganizationCode"/>
+		<result column="UR_ERP_ORGANIZATION_NM" property="erpOrganizationName"/>
+	</resultMap>
+    <select id="getEventCallPointInfo" resultMap="getEventCallPointInfoResultMap">
+       	/* point.getEventCallPointInfo */
+		SELECT PP.PM_POINT_ID
+			  , CONCAT(PP.POINT_NM, ' (', DATE_FORMAT(PP.ISSUE_START_DT,'%Y-%m-%d'), '~', DATE_FORMAT(PP.ISSUE_END_DT,'%Y-%m-%d'), ')') AS POINT_NM
+			  , PP.POINT_TP
+			  , FN_COMN_CODE_DIC(PP.POINT_TP) AS TYPE_NAME
+			  , PP.ISSUE_VAL
+			  , IFNULL(OG.UR_ERP_ORGANIZATION_CD,'') AS UR_ERP_ORGANIZATION_CD
+		      , IFNULL(OG.UR_ERP_ORGANIZATION_NM,'') AS UR_ERP_ORGANIZATION_NM
+		FROM PM_POINT PP
+		LEFT JOIN (SELECT PO.UR_ERP_ORGANIZATION_CD
+						, PO.UR_ERP_ORGANIZATION_NM
+						, PO.PM_POINT_ID
+				   FROM PM_COUPON_POINT_SHARE_ORGANIZATION PO) OG ON OG.PM_POINT_ID = PP.PM_POINT_ID
+		WHERE POINT_TP        = #{pointType}
+		AND   POINT_DETAIL_TP = #{pointDetailType}
+		AND USE_YN  = #{useYn}
+		AND PP.APPR_STAT = 'APPR_STAT.APPROVED'
+		AND DATE(NOW()) BETWEEN PP.ISSUE_START_DT AND  PP.ISSUE_END_DT + INTERVAL 1 DAY - INTERVAL 1 SECOND
+		AND NOT EXISTS (SELECT 1	/* 일반이벤트 */
+						FROM EV_EVENT_NORMAL EEN
+						WHERE EEN.PM_POINT_ID =  PP.PM_POINT_ID)
+		AND NOT EXISTS (SELECT 1	/* 설문이벤트 */
+						FROM EV_EVENT_SURVEY EES
+						WHERE EES.PM_POINT_ID =  PP.PM_POINT_ID)
+		AND NOT EXISTS (SELECT 1	/* 룰렛이벤트 */
+						FROM EV_EVENT_ROULETTE A
+						INNER JOIN EV_EVENT_ROULETTE_ITEM B ON(A.EV_EVENT_ROULETTE_ID = B.EV_EVENT_ROULETTE_ID)
+						WHERE B.BENEFIT_ID = PP.PM_POINT_ID)
+		AND NOT EXISTS (SELECT 1	/* 스탬프이벤트 */
+						FROM EV_EVENT_STAMP A
+						INNER JOIN EV_EVENT_STAMP_DETL B ON(A.EV_EVENT_STAMP_ID = B.EV_EVENT_STAMP_ID)
+						WHERE B.BENEFIT_ID = PP.PM_POINT_ID)
+		ORDER BY PP.CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 적립금설정 상태
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.08		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointSettingResultVo" id="getPointSearchStatusMap">
+		<result column="CODE" property="code"/>
+		<result column="NAME" property="name"/>
+	</resultMap>
+    <select id="getPointSearchStatus" resultMap="getPointSearchStatusMap">
+       	/* point.getPointSearchStatus */
+    		SELECT
+     		CASE WHEN A.ST_COMN_CODE_ID ='APPR_STAT.APPROVED' THEN 'APPR_STAT.EXPIRED'
+	      		 WHEN A.ST_COMN_CODE_ID ='POINT_MASTER_STAT.APPROVED' THEN 'APPR_STAT.APPROVED'
+	      		 WHEN A.ST_COMN_CODE_ID ='POINT_MASTER_STAT.STOP' THEN 'APPR_STAT.STOP'
+     			 ELSE A.ST_COMN_CODE_ID
+     		END AS CODE
+     		, CASE WHEN A.ST_COMN_CODE_ID ='APPR_STAT.NONE' THEN '저장'
+     			   WHEN A.ST_COMN_CODE_ID ='APPR_STAT.SUB_APPROVED' THEN '1차 승인완료'
+     			   WHEN A.ST_COMN_CODE_ID ='APPR_STAT.APPROVED' THEN '지급기간 만료'
+     		       ELSE A.COMMENT
+     		  END AS NAME
+     		, CASE WHEN A.ST_COMN_CODE_ID ='APPR_STAT.NONE' THEN 1
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.REQUEST' THEN 2
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.CANCEL' THEN 3
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.DENIED' THEN 4
+     			 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.SUB_APPROVED' THEN 5
+     			 WHEN A.ST_COMN_CODE_ID = 'POINT_MASTER_STAT.APPROVED' THEN 6
+     			 WHEN A.ST_COMN_CODE_ID = 'POINT_PAYMENT_TP.DEDUCTION' THEN 7
+ 			 	 WHEN A.ST_COMN_CODE_ID ='POINT_MASTER_STAT.STOP' THEN 8
+ 			 	 WHEN A.ST_COMN_CODE_ID ='APPR_STAT.APPROVED' THEN 9
+     			 ELSE 0
+     	    END SORT
+     	FROM (
+     	SELECT * FROM ST_COMN_CODE
+     	WHERE ST_COMN_CODE_ID LIKE 'POINT_MASTER_STAT%'
+     	AND ST_COMN_CODE_ID <![CDATA[<>]]>  'POINT_MASTER_STAT.SAVE'
+     	UNION ALL
+     	SELECT * FROM ST_COMN_CODE
+     	WHERE ST_COMN_CODE_ID LIKE 'APPR_STAT%'
+     	AND ST_COMN_CODE_CD NOT IN ('DISPOSAL', 'APPROVED_BY_SYSTEM')
+     	UNION ALL
+     	SELECT * FROM ST_COMN_CODE
+		WHERE ST_COMN_CODE_MST_CD  = 'POINT_PAYMENT_TP'
+		AND SORT > 1
+     	) AS A
+     	WHERE SORT > 0
+     	ORDER BY SORT
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 승인관리자 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.15		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getApprUserList" resultType="kr.co.pulmuone.v1.approval.auth.dto.vo.ApprovalAuthManagerVo">
+		/*	point.getApprUserList	*/
+		SELECT
+			UAA.UR_APPR_AUTH_ID, UAA.APPR_KIND_TP AS apprKindType, UAA.APPR_MANAGER_TP AS apprManagerType
+			, UAA.APPR_USER_ID, UAA.SORT, UAA.MEMO, UAA.CREATE_DT
+			, UU.LOGIN_ID AS APPR_LOGIN_ID, FN_DECRYPT(UU.USER_NM) AS APPR_USER_NAME
+			, UC.COMP_TP AS ADMIN_TYPE, FN_COMN_CODE_DIC(UC.COMP_TP) AS ADMIN_TYPE_NAME
+			, UE.STATUS_TP AS USER_STATUS, FN_COMN_CODE_DIC(UE.STATUS_TP) AS USER_STATUS_NAME
+			, CASE
+				WHEN UC.COMP_TP = 'COMPANY_TYPE.CLIENT'
+					THEN UC.COMP_NM
+				ELSE UE.ORGANIZATION_NM
+			 END AS ORGANIZATION_NAME
+			, UE.TEAM_LEADER_YN
+			, UE.GRANT_AUTH_START_DT, UE.GRANT_AUTH_END_DT
+			, UE.GRANT_AUTH_STOP_YN
+			, GUU.LOGIN_ID AS GRANT_LOGIN_ID, FN_DECRYPT(GUU.USER_NM) AS GRANT_USER_NAME
+			, GUE.STATUS_TP AS GRANT_USER_STATUS, FN_COMN_CODE_DIC(GUE.STATUS_TP) AS GRANT_USER_STATUS_NAME
+			, CASE
+				WHEN UE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND UE.GRANT_AUTH_STOP_YN = 'N'
+					AND CURDATE() BETWEEN UE.GRANT_AUTH_START_DT AND UE.GRANT_AUTH_END_DT
+					THEN 'Y'
+				ELSE 'N'
+			 END AS grantAuthYn
+		FROM UR_APPR_AUTH UAA
+		LEFT OUTER JOIN UR_USER UU
+			ON UAA.APPR_USER_ID = UU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE UE
+		 	ON UAA.APPR_USER_ID = UE.UR_USER_ID
+		LEFT OUTER JOIN UR_COMPANY UC
+			ON UC.UR_COMPANY_ID = UE.UR_COMPANY_ID
+		LEFT OUTER JOIN UR_USER GUU
+			ON UE.GRANT_AUTH_USER_ID = GUU.UR_USER_ID
+		LEFT OUTER JOIN UR_EMPLOYEE GUE
+			ON UE.GRANT_AUTH_USER_ID = GUE.UR_USER_ID
+		WHERE UAA.APPR_KIND_TP = #{apprKindType}
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+				AND UAA.APPR_USER_ID IN (#{apprSubUserId}, #{apprUserId})
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(apprSubUserId)">
+				AND UAA.APPR_USER_ID IN ( #{apprUserId})
+			</when>
+		</choose>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 이용권 수금 상태 변경
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.02.15		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putTicketCollectStatus">
+		/*point.putTicketCollectStatus*/
+
+		UPDATE PM_POINT
+		SET TICKET_COLLECT_YN = #{ticketCollectYn},
+			TICKET_COLLECT_USER_ID = #{userVo.userId},
+			TICKET_COLLECT_DT = NOW()
+		WHERE PM_POINT_ID = #{pmPointId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 이용권 승인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putSerialNumberStatus">
+
+		/* point.putSerialNumberStatus */
+		UPDATE 	PM_SERIAL_NUMBER
+		SET 	APPROVAL_YN  = 'Y'
+		WHERE  	PM_POINT_ID  = #{pmPointId}
+
+	</update>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  이용권 단일코드 중복 조회
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.03.29      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateFixedNumber" resultType="int">
+
+		/*	point.getDuplicateFixedNumber */
+
+		SELECT COUNT(*)
+		FROM (
+			SELECT FIX_SERIAL_NUMBER, PM_POINT_ID AS PARENT_ID
+			FROM PM_POINT
+			WHERE FIX_SERIAL_NUMBER  IS NOT NULL
+			AND USE_YN = 'Y'
+			AND APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.REQUEST')
+			AND ISSUE_END_DT <![CDATA[>]]> NOW()
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pmPointId)">
+			AND PM_POINT_ID <![CDATA[<>]]> #{pmPointId}
+		</if>
+			UNION ALL
+			SELECT FIX_SERIAL_NUMBER, PM_COUPON_ID AS PARENT_ID
+			FROM PM_COUPON
+			WHERE FIX_SERIAL_NUMBER  IS NOT NULL
+			AND USE_YN = 'Y'
+			AND APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.REQUEST')
+			AND ISSUE_END_DT <![CDATA[>]]> NOW()
+		) AS A
+		WHERE FIX_SERIAL_NUMBER = trim(#{fixSerialNumber})
+
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  포인트 자동승인 시, 승인 날짜 업데이트
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.29      최윤석         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPointApprDateBySystem">
+		/*point.putPointApprDtBySystem*/
+		UPDATE PM_POINT
+		SET APPR_SUB_CHG_DT = NOW(),
+			APPR_CHG_DT = NOW(),
+		    APPR_REQ_DT = NOW(),
+		    APPR_AUTO_YN = "Y"
+		WHERE PM_POINT_ID = #{pmPointId}
+		AND APPR_STAT = "APPR_STAT.APPROVED_BY_SYSTEM"
+	</update>
+
+
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointPayInfoVo" id="getPointPayInfoResultMap">
+		<result column="PM_POINT_ID" 	property="pmPointId" 	/>
+		<result column="SUM_ISSUE_VAL"  property="sumIssueVal"  />
+		<result column="AVG_ISSUE_VAL"  property="avgIssueVal"  />
+		<result column="MAX_ISSUE_VAL"  property="maxIssueVal"  />
+		<result column="ISSUE_CNT"  	property="issueCnt" 	/>
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  포인트 적립금 설정 시, 엑샐 대량 업로드인 경우 총 적립금, 평균, 1인 최대값, 총 건수 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.25      문동현         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPointPayInfo" resultMap="getPointPayInfoResultMap">
+		/* point.getPointPayInfo */
+		SELECT
+				SUM(PP2.ISSUE_VAL)AS SUM_ISSUE_VAL
+			 ,	AVG(PP2.ISSUE_VAL)AS AVG_ISSUE_VAL
+			 ,	MAX(PP2.ISSUE_VAL)AS MAX_ISSUE_VAL
+			 ,	COUNT(1)AS ISSUE_CNT
+		FROM PM_POINT PP
+				 LEFT OUTER JOIN PM_POINT PP2
+								 ON PP.GR_PM_POINT_ID = PP2.GR_PM_POINT_ID
+				 LEFT OUTER JOIN PM_POINT_ISSUE ppi
+								 ON IFNULL(PP2.PM_POINT_ID, PP.PM_POINT_ID) = ppi.PM_POINT_ID
+		WHERE PP.PM_POINT_ID = #{pmPointId}
+	</select>
+
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointPayListVo" id="getPointPayListResultMap">
+		<result column="USER_NM" 		property="userNm"		/>
+		<result column="LOGIN_ID"		property="loginId"		/>
+		<result column="ISSUE_VAL"		property="issueVal"		/>
+	</resultMap>
+
+	<select id="getPointPayListExportExcel" resultMap="getPointPayListResultMap">
+		/* point.getPointPayListExportExcel */
+		SELECT
+		      UU.LOGIN_ID
+		  	, FN_DECRYPT(UU.USER_NM) AS USER_NM
+		    , PP.ISSUE_VAL
+		FROM PM_POINT PP
+				 LEFT JOIN PM_POINT_ISSUE PPI
+						   ON PP.PM_POINT_ID = PPI.PM_POINT_ID
+				 INNER JOIN UR_USER UU
+							ON PPI.UR_USER_ID = UU.UR_USER_ID
+		WHERE IFNULL(PP.GR_PM_POINT_ID, PP.PM_POINT_ID) = #{grPmPointId}
+		ORDER BY PP.ISSUE_VAL DESC
+	</select>
+
+</mapper>
+

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.help.NationMapper">
+    
+    <insert id="saveDictionaryMaster">
+		/*	nation.saveDictionaryMaster */
+		INSERT INTO GB_DIC_MST (
+			GB_DIC_MST_ID
+			,DIC_MST_NM
+			,DIC_MST_TP
+			,CREATE_DT
+			,CREATE_ID
+		) VALUES (
+			#{id}
+			,#{baseName}
+			,#{dictionaryType}
+			,SYSDATE()
+			,#{createId}
+		)
+	</insert>
+    
+    <insert id="saveDictionary">
+		/*	nation.saveDictionary */
+		INSERT INTO GB_DIC (
+			GB_DIC_MST_ID
+			,GB_LANG_ID
+			,DIC_NM
+			,CREATE_DT
+			,CREATE_ID
+		) VALUES (
+			#{id}
+			,'1'
+			,#{baseName}
+			,SYSDATE()
+			,#{createId}
+		)
+	</insert>
+    
+    <update id="updateDictionaryMaster">
+		/*	nation.updateDictionaryMaster	*/
+		UPDATE	GB_DIC_MST
+		SET		DIC_MST_NM = #{baseName},
+				MODIFY_DT = SYSDATE(),
+				MODIFY_ID = #{modifyId}
+		WHERE	GB_DIC_MST_ID = #{id}
+	</update>
+    
+    <update id="updateDictionary">
+		/*	nation.updateDictionary	*/
+		UPDATE	GB_DIC
+		SET		DIC_NM = #{baseName},
+				MODIFY_DT = SYSDATE(),
+				MODIFY_ID = #{modifyId}
+		WHERE 	GB_DIC_MST_ID = #{id}
+	</update>
+    
+    <resultMap id="findDictionaryMaster-ResultMap" type="kr.co.pulmuone.v1.system.help.vo.DictionaryMasterVo">
+        <result column="GB_DIC_MST_ID" property="id" />
+        <result column="DIC_MST_NM" property="baseName" />
+        <result column="DIC_MST_TP" property="dictionaryType" />
+        <result column="CREATE_DT" property="createDt" />
+        <result column="CREATE_ID" property="createId" />
+        <result column="MODIFY_DT" property="modifyDt" />
+        <result column="MODIFY_ID" property="modifyId" />
+    </resultMap>
+    
+    <select id="findDictionaryMasterById" resultMap="findDictionaryMaster-ResultMap">
+		/*	nation.findDictionaryMasterById	*/
+		SELECT	GB_DIC_MST_ID,
+				DIC_MST_NM,
+				DIC_MST_TP,
+				CREATE_DT,
+				CREATE_ID,
+				MODIFY_DT,
+				MODIFY_ID
+		FROM	GB_DIC_MST
+		WHERE	GB_DIC_MST_ID = #{id}
+	</select>
+    
+    <select id="countDictionaryMasterByTypeAndBaseName" resultType="int">
+		/*	nation.countDictionaryMasterByTypeAndBaseName */
+		SELECT	COUNT(1)
+		FROM	GB_DIC_MST
+		WHERE	DIC_MST_TP = #{dictionaryType}
+			AND DIC_MST_NM = #{baseName}
+			AND GB_DIC_MST_ID != #{id}
+	</select>
+    
+    <select id="findDictionaryMasterList" resultMap="findDictionaryMaster-ResultMap">
+        /*	nation.findDictionaryMasterList	*/
+        SELECT	GB_DIC_MST_ID,
+				DIC_MST_NM,
+				DIC_MST_TP,
+				CREATE_DT,
+				CREATE_ID,
+				MODIFY_DT,
+				MODIFY_ID
+        FROM	GB_DIC_MST
+        WHERE	1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(baseName)">
+            AND DIC_MST_NM LIKE CONCAT('%',#{baseName},'%')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dictionaryType)">
+            AND DIC_MST_TP = #{dictionaryType}
+        </if>
+        ORDER BY CREATE_DT DESC
+    </select>
+</mapper>

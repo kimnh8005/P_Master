@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.batch.eon.infra.mapper.system.BatchJobExecutionMapper">
+
+    <select id="findFirstByBatchNoOrderByJobExecutionIdDesc" resultType="BatchJobExecution">
+    select
+    JOB_EXECUTION_ID
+    , BATCH_NO
+    , END_TIME
+    , ERROR_MSG
+    , START_TIME
+    , STATUS
+    from ST_BATCH_JOB_EXECUTION
+    where BATCH_NO = #{batchNo}
+    order by JOB_EXECUTION_ID desc limit 1
+    </select>
+
+    <select id="findByJobExecutionIdAndBatchNo" resultType="BatchJobExecution">
+    select
+    JOB_EXECUTION_ID
+    , BATCH_NO
+    , END_TIME
+    , ERROR_MSG
+    , START_TIME
+    , STATUS
+    from ST_BATCH_JOB_EXECUTION
+    where JOB_EXECUTION_ID = #{jobExecutionId}
+    and BATCH_NO = #{batchNo}
+    </select>
+
+    <insert id="putBatchJobExecution" parameterType="BatchJobExecution">
+        insert into ST_BATCH_JOB_EXECUTION (
+        BATCH_NO
+        , BUILD_USER_ID
+        , START_TIME
+        , STATUS
+        , ERROR_MSG
+        )
+        values
+        (
+        #{batchNo}
+        , #{userId}
+        , CURRENT_TIMESTAMP()
+        , #{status}
+        , #{errorMsg}
+        )
+        <selectKey resultType="long" keyProperty="jobExecutionId" keyColumn="JOB_EXECUTION_ID" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <update id="setBatchJobExecution" parameterType="BatchJobExecution">
+        update ST_BATCH_JOB_EXECUTION
+        set
+        END_TIME = CURRENT_TIMESTAMP()
+        , ERROR_MSG = #{errorMsg}
+        , STATUS = #{status}
+        where JOB_EXECUTION_ID = #{jobExecutionId}
+    </update>
+</mapper>

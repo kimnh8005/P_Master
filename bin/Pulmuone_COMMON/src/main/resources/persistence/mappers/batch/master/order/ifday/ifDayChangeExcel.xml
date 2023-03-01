@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.ifday.IfDayChangeExcelOrderMapper">
+
+   	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: I/F 일자 변경 엑셀 업로드 대상 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.27		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getIfDayChangeExcelTargetList" resultType="kr.co.pulmuone.v1.order.ifday.dto.IfDayChangeDto">
+        /* ifDayChange.getIfDayChangeExcelTargetList */
+		SELECT
+			IF_IF_DAY_EXCEL_INFO_ID
+		FROM
+			IF_IF_DAY_EXCEL_INFO T1
+		WHERE
+				BATCH_STATUS_CD = #{batchStatusCd}
+			AND EXISTS
+			(
+				SELECT 'X' FROM IF_IF_DAY_EXCEL_SUCC S1
+				WHERE
+					S1.IF_IF_DAY_EXCEL_INFO_ID = T1.IF_IF_DAY_EXCEL_INFO_ID
+			)
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	* description 		: I/F 일자 변경 엑셀 업로드 성공 정보 대상 정보 조회
+	* @
+	* @ 수정일			수정자          수정내용
+	* @ ──────────────────────────────────────────────────────────────────────
+	* @ 2021.04.27		이명수          최초생성
+	* @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIfDayChangeSuccExcelTargetList" resultType="kr.co.pulmuone.v1.order.ifday.dto.vo.IfDayExcelSuccessVo">
+        /* ifDayChange.getIfDayChangeSuccExcelTargetList */
+		SELECT
+			IIDXS.IF_IF_DAY_EXCEL_INFO_ID
+			, IIDXS.IF_IF_DAY_EXCEL_SUCC_ID
+			, IIDXS.OD_ORDER_DETL_SEQ
+			, IIDXS.ODID
+			, IIDXS.IF_DAY
+			, OOD.OD_ORDER_ID
+			, OOD.OD_ORDER_DETL_ID
+			, OOD.UR_WAREHOUSE_ID
+			, OOD.IL_GOODS_ID
+			, IF(OOD.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAWN', TRUE , FALSE) AS IS_DAWN_DELIVERY
+			, OOD.ORDER_CNT
+			, OODD.GOODS_CYCLE_TP
+			, OOD.ORDER_STATUS_CD
+			, UW.ORDER_CHANGE_TP
+		FROM
+			IF_IF_DAY_EXCEL_SUCC IIDXS
+			LEFT JOIN OD_ORDER_DETL OOD ON (OOD.ODID = IIDXS.ODID AND OOD.OD_ORDER_DETL_SEQ = IIDXS.OD_ORDER_DETL_SEQ)
+			LEFT JOIN OD_ORDER_DETL_DAILY OODD ON (OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID)
+			LEFT JOIN UR_WAREHOUSE UW ON (OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID)
+		WHERE
+				IIDXS.IF_IF_DAY_EXCEL_INFO_ID = #{ifIfDayExcelInfoId}
+		ORDER BY IIDXS.ODID ASC, IIDXS.OD_ORDER_DETL_SEQ ASC
+	</select>
+
+
+
+   	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: I/F 일자 변경 엑셀 업로드 주문 처리상태 업데이트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.27		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putIfDayChangeExcelInfo">
+        /* ifDayChange.putIfDayChangeExcelInfo */
+        UPDATE
+			IF_IF_DAY_EXCEL_INFO
+        SET
+			IF_IF_DAY_EXCEL_INFO_ID = IF_IF_DAY_EXCEL_INFO_ID
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchStartDateTime)">
+        	,BATCH_START_DT = #{batchStartDateTime}
+        	</if>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchEndDateTime)">
+        	,BATCH_END_DT = #{batchEndDateTime}
+        	</if>
+        	<if test="batchExecutionTime > 0">
+        	,BATCH_EXEC_TIME = #{batchExecutionTime}
+        	</if>
+        	<if test="successCount > 0">
+        	,SUCC_CNT = #{successCount}
+        	</if>
+        	<if test="failCount > 0">
+        	,FAIL_CNT = #{failCount} + FAIL_CNT
+        	</if>
+			<if test="updateCount > 0">
+			,UPDATE_CNT = #{updateCount}
+			</if>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchStatusCd)">
+        	,BATCH_STATUS_CD = #{batchStatusCd}
+        	</if>
+        WHERE
+			IF_IF_DAY_EXCEL_INFO_ID = #{ifIfDayExcelInfoId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+  * description 		: I/F 일자 변경 엑셀 업로드 주문 처리상태 업데이트
+  * @
+  * @ 수정일			수정자          수정내용
+  * @ ──────────────────────────────────────────────────────────────────────
+  * @ 2021.04.27		이명수          최초생성
+  * @
+ ────────────────────────────────────────────────────────────────────────-->
+	<update id="putIfDayChange">
+		/* ifDayChange.putIfDayChange */
+		UPDATE OD_ORDER_DETL
+		SET
+			 ORDER_IF_DT  = #{orderIfDt}
+			,SHIPPING_DT  = #{shippingDt}
+			,DELIVERY_DT  = #{deliveryDt}
+		WHERE
+			ODID = #{odid}
+			AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq};
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: I/F 일자 변경 엑셀업로드 - 현황
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.27		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addIfDayExcelFail">
+		/* ifdayChange.addIfDayExcelFail */
+		INSERT INTO IF_IF_DAY_EXCEL_FAIL
+		(IF_IF_DAY_EXCEL_INFO_ID, OD_ORDER_DETL_SEQ, ODID, IF_DAY, FAIL_MSG, FAIL_TYPE)
+		VALUES
+			(#{ifIfDayExcelInfoId}, #{odOrderDetlSeq}, #{odid}, #{ifDay}, #{failMessage}, #{failType})
+	</insert>
+
+</mapper>
+
+

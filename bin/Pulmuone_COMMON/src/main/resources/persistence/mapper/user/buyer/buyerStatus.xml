@@ -1,0 +1,642 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.buyer.BuyerStatusMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정지회원
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.23		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerStopListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerStopListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="USER_NM" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="LAST_LOGIN_DT" property="lastLoginDate" />
+		<result column="REASON" property="reason" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="UR_BUYER_STATUS_LOG_ID" property="urBuyerStatusLogId" />
+	</resultMap>
+	<select id="getBuyerStopList" resultMap="getBuyerStopListResultMap">
+		/*	buyerStatus.getBuyerStopList  */
+		SELECT
+			@ROWNUM := @ROWNUM +1 AS RNUM
+			,TBL.*
+		FROM (
+			SELECT
+				A.*
+				,B.REASON
+				,B.CREATE_DT
+				,B.UR_BUYER_STATUS_LOG_ID
+			FROM(
+					SELECT
+						UB.UR_USER_ID
+						,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+						,FN_DECRYPT(UU.USER_NM) AS USER_NM
+						,UU.LOGIN_ID
+						,FN_DECRYPT(UB.MOBILE) AS MOBILE
+						,FN_DECRYPT(UB.MAIL) AS MAIL
+						,DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+					FROM
+						UR_BUYER UB
+						JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+						LEFT JOIN UR_ACCOUNT UA ON UB.UR_USER_ID = UA.UR_USER_ID
+						JOIN (SELECT @ROWNUM := 0) R
+					WHERE
+						UB.STATUS = 'BUYER_STATUS.STOP'
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+									AND FN_DECRYPT(UU.USER_NM) IN
+									<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+										#{condiValueArray}
+									</foreach>
+								</if>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+									AND
+									<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+										UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+									</foreach>
+								</if>
+							</when>
+							<otherwise>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+									AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+								</if>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+									AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+								</if>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+									<choose>
+										<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+											AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+										</when>
+										<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+											AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+										</when>
+									</choose>
+								</if>
+							</otherwise>
+						</choose>
+					) A
+				JOIN (
+					SELECT
+						UBSL.UR_USER_ID
+						,UBSL.UR_BUYER_STATUS_LOG_ID
+						,UBSL.REASON
+						,DATE_FORMAT(UBSL.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+					FROM
+						UR_BUYER_STATUS_LOG UBSL
+						,(SELECT MAX(UR_BUYER_STATUS_LOG_ID) AS UR_BUYER_STATUS_LOG_ID FROM UR_BUYER_STATUS_LOG GROUP BY UR_USER_ID) UBSL2
+					WHERE
+						UBSL.UR_BUYER_STATUS_LOG_ID = UBSL2.UR_BUYER_STATUS_LOG_ID
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND UBSL.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</if>
+					) B ON A.UR_USER_ID = B.UR_USER_ID
+			ORDER BY B.UR_BUYER_STATUS_LOG_ID
+		)TBL
+		ORDER BY RNUM DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정지회원
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.23		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBuyerStopListCount" resultType="int" >
+		/*	buyerStatus.getBuyerStopListCount	*/
+		SELECT
+			COUNT(*)
+		FROM
+			(
+			SELECT
+				A.*
+				,B.REASON
+				,B.CREATE_DT
+			FROM(
+					SELECT
+						UB.UR_USER_ID
+						,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+						,FN_DECRYPT(UU.USER_NM) AS USER_NM
+						,UU.LOGIN_ID
+						,FN_DECRYPT(UB.MOBILE) AS MOBILE
+						,FN_DECRYPT(UB.MAIL) AS MAIL
+						,DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+					FROM
+						UR_BUYER UB
+						JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+						LEFT JOIN UR_ACCOUNT UA ON UB.UR_USER_ID = UA.UR_USER_ID
+						JOIN (SELECT @ROWNUM := 0) R
+					WHERE
+						UB.STATUS = 'BUYER_STATUS.STOP'
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+									AND FN_DECRYPT(UU.USER_NM) IN
+									<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+										#{condiValueArray}
+									</foreach>
+								</if>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+									AND
+									<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+										UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+									</foreach>
+								</if>
+							</when>
+							<otherwise>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+									AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+								</if>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+									AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+								</if>
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+									<choose>
+										<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+											AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+										</when>
+										<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+											AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+										</when>
+									</choose>
+								</if>
+							</otherwise>
+						</choose>
+					) A
+				JOIN (
+					SELECT
+						UBSL.UR_USER_ID
+						,UBSL.UR_BUYER_STATUS_LOG_ID
+						,UBSL.REASON
+						,DATE_FORMAT(UBSL.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+					FROM
+						UR_BUYER_STATUS_LOG UBSL
+						,(SELECT MAX(UR_BUYER_STATUS_LOG_ID) AS UR_BUYER_STATUS_LOG_ID FROM UR_BUYER_STATUS_LOG GROUP BY UR_USER_ID) UBSL2
+					WHERE
+						UBSL.UR_BUYER_STATUS_LOG_ID = UBSL2.UR_BUYER_STATUS_LOG_ID
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+								<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+									AND UBSL.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+								</if>
+							</if>
+						</if>
+					) B ON A.UR_USER_ID = B.UR_USER_ID
+			ORDER BY B.UR_BUYER_STATUS_LOG_ID
+			) TBL
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정지회원 이력 상세
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.23		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerStopLogResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerStopLogResultVo">
+		<result column="UR_BUYER_STATUS_LOG_ID" property="urBuyerStatusLogId" />
+		<result column="USER_INFO_NM" property="userInfoName" />
+		<result column="USER_INFO" property="userInfo" />
+        <result column="STOP_CREATE_DATE" property="stopCreateDate" />
+        <result column="STOP_ADMIN_NM" property="stopAdminName" />
+		<result column="STOP_ADMIN_ID" property="stopAdminId" />
+        <result column="STOP_REASON" property="stopReason" />
+        <result column="NORMAL_CREATE_DATE" property="normalCreateDate" />
+        <result column="NORMAL_ADMIN_NM" property="normalAdminName" />
+		<result column="NORMAL_ADMIN_ID" property="normalAdminId" />
+        <result column="ATTC_PATH" property="attachmentPath" />
+        <result column="ATTC_ORIGIN_NM" property="attachmentOriginName" />
+        <result column="ATTC_PHYS_PATH" property="attachmentPhysicalName" />
+        <result column="NORMAL_REASON" property="normalReason" />
+	</resultMap>
+	<select id="getBuyerStopLog" resultMap="getBuyerStopLogResultMap">
+		/*	buyerStatus.getBuyerStopLog  */
+		SELECT
+			UBSL.UR_BUYER_STATUS_LOG_ID
+            ,CONCAT(FN_DECRYPT(UU.USER_NM)) AS USER_INFO_NM
+			,CONCAT(UU.LOGIN_ID) AS USER_INFO
+            ,DATE_FORMAT((IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.CREATE_DT, UBSL2.CREATE_DT)), '%Y-%m-%d') AS STOP_CREATE_DATE
+			,(SELECT CONCAT(FN_DECRYPT(USER_NM)) FROM UR_USER WHERE UR_USER_ID =  (IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.CREATE_ID, UBSL2.CREATE_ID)) ) AS STOP_ADMIN_NM
+			,(SELECT CONCAT(LOGIN_ID) FROM UR_USER WHERE UR_USER_ID =  (IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.CREATE_ID, UBSL2.CREATE_ID)) ) AS STOP_ADMIN_ID
+			,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.REASON, UBSL2.REASON ) AS STOP_REASON
+			,DATE_FORMAT((IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.CREATE_DT, UBSL.CREATE_DT)), '%Y-%m-%d') AS NORMAL_CREATE_DATE
+      		,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,CONCAT(SUBSTRING_INDEX( UBSL2.ATTC_PATH, '/' , 6),'/'), CONCAT(SUBSTRING_INDEX(UBSL.ATTC_PATH , '/' ,6),'/')) AS ATTC_PATH
+      		,IF(UBSL.STOP_STATUS_LOG_ID IS NULL, SUBSTRING_INDEX( UBSL2.ATTC_PATH, '/' , -1), SUBSTRING_INDEX(UBSL.ATTC_PATH , '/' , -1)) AS ATTC_PHYS_PATH
+      		,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.ATTC_ORIGIN_NM, UBSL.ATTC_ORIGIN_NM ) AS ATTC_ORIGIN_NM
+			,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.REASON, UBSL.REASON ) AS NORMAL_REASON
+			,(SELECT CONCAT(FN_DECRYPT(USER_NM) ) FROM UR_USER WHERE UR_USER_ID =  (IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.CREATE_ID, UBSL.CREATE_ID)) ) AS NORMAL_ADMIN_NM
+			,(SELECT CONCAT(LOGIN_ID) FROM UR_USER WHERE UR_USER_ID =  (IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.CREATE_ID, UBSL.CREATE_ID)) ) AS NORMAL_ADMIN_ID
+        FROM
+            UR_BUYER_STATUS_LOG UBSL
+            JOIN UR_USER UU ON UBSL.UR_USER_ID = UU.UR_USER_ID
+            LEFT JOIN UR_BUYER_STATUS_LOG UBSL2 ON UBSL.STOP_STATUS_LOG_ID = UBSL2.UR_BUYER_STATUS_LOG_ID
+        WHERE
+            UBSL.UR_BUYER_STATUS_LOG_ID = #{urBuyerStatusLogId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정지회원 이력관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.23		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerStopHistoryListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerStopHistoryListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="USER_NM" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="STOP_REASON" property="stopReason" />
+		<result column="STOP_CREATE_DT" property="stopCreateDate" />
+		<result column="NORMAL_REASON" property="normalReason" />
+		<result column="NORMAL_CREATE_DT" property="normalCreateDate" />
+		<result column="UR_BUYER_STATUS_LOG_ID" property="urBuyerStatusLogId" />
+	</resultMap>
+	<select id="getBuyerStopHistoryList" resultMap="getBuyerStopHistoryListResultMap">
+		/*	buyerStatus.getBuyerStopHistoryList  */
+		SELECT
+			@ROWNUM := @ROWNUM +1 AS RNUM
+			,TBL.*
+		FROM (
+			SELECT
+				UBSL.UR_BUYER_STATUS_LOG_ID
+				,UBSL.STOP_STATUS_LOG_ID
+				,UB.UR_USER_ID
+				,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+				,FN_DECRYPT(UU.USER_NM) AS USER_NM
+				,UU.LOGIN_ID
+				,FN_DECRYPT(UB.MOBILE) AS MOBILE
+				,FN_DECRYPT(UB.MAIL) AS MAIL
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.REASON, UBSL2.REASON ) AS STOP_REASON
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.CREATE_DT, UBSL2.CREATE_DT ) AS STOP_CREATE_DT
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.REASON, UBSL.REASON ) AS NORMAL_REASON
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.CREATE_DT, UBSL.CREATE_DT ) AS NORMAL_CREATE_DT
+			FROM
+				UR_BUYER_STATUS_LOG UBSL
+				JOIN UR_BUYER UB ON UB.UR_USER_ID = UBSL.UR_USER_ID
+				JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+				LEFT JOIN UR_ACCOUNT UA ON UB.UR_USER_ID = UA.UR_USER_ID
+				LEFT JOIN UR_BUYER_STATUS_LOG UBSL2 ON UBSL.STOP_STATUS_LOG_ID = UBSL2.UR_BUYER_STATUS_LOG_ID
+				JOIN (SELECT @ROWNUM := 0) R
+			WHERE
+				1 = 1
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+							AND FN_DECRYPT(UU.USER_NM) IN
+							<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+								#{condiValueArray}
+							</foreach>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+							AND
+							<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+								UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+							</foreach>
+						</if>
+					</when>
+					<otherwise>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+							AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+							AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+									AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+									AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+								</when>
+							</choose>
+						</if>
+					</otherwise>
+				</choose>
+			ORDER BY UBSL.UR_BUYER_STATUS_LOG_ID ASC
+		)TBL
+		WHERE
+			TBL.UR_BUYER_STATUS_LOG_ID NOT IN(SELECT STOP_STATUS_LOG_ID FROM UR_BUYER_STATUS_LOG WHERE STOP_STATUS_LOG_ID IS NOT NULL)
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startStopDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endStopDate)">
+					AND TBL.STOP_CREATE_DT BETWEEN DATE_FORMAT( #{startStopDate}, '%Y-%m-%d') AND DATE_FORMAT( #{endStopDate}, '%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startNormalDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endNormalDate)">
+					AND TBL.NORMAL_CREATE_DT BETWEEN DATE_FORMAT(#{startNormalDate}, '%Y-%m-%d') AND  DATE_FORMAT(#{endNormalDate}, '%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</if>
+		ORDER BY RNUM DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정지회원 이력관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.23		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBuyerStopHistoryListCount" resultType="int">
+		/*	buyerStatus.getBuyerStopHistoryListCount  */
+		SELECT
+			COUNT(*)
+		FROM (
+			SELECT
+				UBSL.UR_BUYER_STATUS_LOG_ID
+				,UBSL.STOP_STATUS_LOG_ID
+				,UB.UR_USER_ID
+				,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+				,FN_DECRYPT(UU.USER_NM) AS USER_NM
+				,UU.LOGIN_ID
+				,FN_DECRYPT(UB.MOBILE) AS MOBILE
+				,FN_DECRYPT(UB.MAIL) AS MAIL
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.REASON, UBSL2.REASON ) AS STOP_REASON
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL.CREATE_DT, UBSL2.CREATE_DT ) AS STOP_CREATE_DT
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.REASON, UBSL.REASON ) AS NORAML_REASON
+				,IF(UBSL.STOP_STATUS_LOG_ID IS NULL,UBSL2.CREATE_DT, UBSL.CREATE_DT ) AS NORMAL_CREATE_DT
+			FROM
+				UR_BUYER_STATUS_LOG UBSL
+				JOIN UR_BUYER UB ON UB.UR_USER_ID = UBSL.UR_USER_ID
+				JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+				LEFT JOIN UR_ACCOUNT UA ON UB.UR_USER_ID = UA.UR_USER_ID
+				LEFT JOIN UR_BUYER_STATUS_LOG UBSL2 ON UBSL.STOP_STATUS_LOG_ID = UBSL2.UR_BUYER_STATUS_LOG_ID
+				JOIN (SELECT @ROWNUM := 0) R
+			WHERE
+				1 = 1
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+							AND FN_DECRYPT(UU.USER_NM) IN
+							<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+								#{condiValueArray}
+							</foreach>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+							AND
+							<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+								UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+							</foreach>
+						</if>
+					</when>
+					<otherwise>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+							AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+							AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+									AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+									AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+								</when>
+							</choose>
+						</if>
+					</otherwise>
+				</choose>
+			ORDER BY UBSL.UR_BUYER_STATUS_LOG_ID ASC
+		)TBL
+		WHERE
+			TBL.UR_BUYER_STATUS_LOG_ID NOT IN(SELECT STOP_STATUS_LOG_ID FROM UR_BUYER_STATUS_LOG WHERE STOP_STATUS_LOG_ID IS NOT NULL)
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startStopDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endStopDate)">
+					AND TBL.STOP_CREATE_DT BETWEEN DATE_FORMAT( #{startStopDate}, '%Y-%m-%d') AND DATE_FORMAT( #{endStopDate}, '%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startNormalDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endNormalDate)">
+					AND TBL.NORMAL_CREATE_DT BETWEEN DATE_FORMAT(#{startNormalDate}, '%Y-%m-%d') AND  DATE_FORMAT(#{endNormalDate}, '%Y-%m-%d') + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</if>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 상태변경 이력 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.30		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerStatusHistoryListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetBuyerStatusHistoryListResultVo">
+		<result column="STATUS" property="status" />
+		<result column="REASON" property="reason" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="CREATE_LOGIN_NM" property="createLoginName" />
+		<result column="CREATE_LOGIN_ID" property="createLoginId" />
+	</resultMap>
+	<select id="getBuyerStatusHistoryList" resultMap="getBuyerStatusHistoryListResultMap">
+		/*	buyerStatus.getBuyerStatusHistoryList  */
+		SELECT
+			FN_COMN_CODE_DIC(UBSL.STATUS) AS STATUS
+			,UBSL.REASON
+			,DATE_FORMAT(UBSL.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+			,CONCAT(FN_DECRYPT(UU.USER_NM)) AS CREATE_LOGIN_NM
+			,CONCAT(UU.LOGIN_ID) AS CREATE_LOGIN_ID
+		FROM
+			UR_BUYER_STATUS_LOG UBSL
+			JOIN UR_USER UU ON UBSL.CREATE_ID = UU.UR_USER_ID
+		WHERE
+			UBSL.UR_USER_ID = #{urUserId}
+		ORDER BY UBSL.UR_BUYER_STATUS_LOG_ID DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원상태 정지설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.30		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putBuyerStop">
+		/*	buyerStatus.putBuyerStop  */
+		UPDATE UR_USER
+		SET
+			USER_STATUS = '0'
+		WHERE
+			UR_USER_ID = #{urUserId}
+		;
+
+		UPDATE UR_BUYER
+		SET
+			STATUS = 'BUYER_STATUS.STOP'
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원상태 변경 로그 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.30		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addBuyerStatusLog">
+		/*	buyerStatus.addBuyerStatusLog  */
+		INSERT INTO UR_BUYER_STATUS_LOG(
+			UR_USER_ID
+			,STATUS
+			,REASON
+			,CREATE_ID
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(attachmentPath)">
+				,ATTC_PATH
+				,ATTC_ORIGIN_NM
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBuyerStatusLogId)">
+				,STOP_STATUS_LOG_ID
+			</if>
+		) VALUES(
+			#{urUserId}
+			,#{status}
+			,#{reason}
+			,#{userVo.userId}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(attachmentPath)">
+				,#{attachmentPath}
+				,#{attachmentOriginName}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBuyerStatusLogId)">
+				,#{urBuyerStatusLogId}
+			</if>
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원상태 정상설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putBuyerNormal">
+		/*	buyerStatus.putBuyerNormal  */
+		UPDATE UR_USER
+		SET
+			USER_STATUS = '1'
+		WHERE
+			UR_USER_ID = #{urUserId}
+		;
+
+		UPDATE UR_BUYER
+		SET
+			STATUS = 'BUYER_STATUS.NORMAL'
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원상태 결과 조회 (정상 <-> 정지)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.15		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerStatusConvertInfoResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.BuyerStatusResultVo">
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="CALLDATE" property="callDate" />
+		<result column="REASON" property="reason" />
+		<result column="MAIL" property="mail" />
+		<result column="MOBILE" property="mobile" />
+	</resultMap>
+	<select id="getBuyerStatusConvertInfo" resultMap="getBuyerStatusConvertInfoResultMap">
+	/*	buyerStatus.getBuyerStatusConvertInfo  */
+	SELECT
+		   UBS.UR_USER_ID
+		  ,DATE_FORMAT(UBS.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		  ,DATE_FORMAT(DATE_ADD(CREATE_DT, INTERVAL+1 MONTH), '%Y-%m-%d') AS CALLDATE
+		  ,UBS.REASON
+		  ,FN_DECRYPT(UB.MAIL) AS MAIL
+		  ,FN_DECRYPT(UB.MOBILE) AS MOBILE
+      FROM UR_BUYER_STATUS_LOG UBS
+      JOIN UR_BUYER UB ON UBS.UR_USER_ID = UB.UR_USER_ID
+	 WHERE UBS.UR_USER_ID = #{urUserId}
+ 	 ORDER BY CREATE_DT DESC
+	LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 마케팅 정보 수신동의 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.28		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getMarketingInfoResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.MarketingInfoDto">
+        <result column="UR_USER_ID" 	property="urUserId" />
+        <result column="USER_NAME" 		property="userName" />
+     	<result column="MAIL" 			property="mail" />
+        <result column="MOBILE" 		property="mobile" />
+        <result column="MAIL_YN" 		property="mailYn" />
+        <result column="SMS_YN" 		property="smsYn" />
+     	<result column="MAIL_YN_DT" 	property="mailYnDate" />
+        <result column="SMS_YN_DT" 		property="smsYnDate" />
+        <result column="MAIL_INFO" 		property="mailInfo" />
+        <result column="SMS_INFO" 		property="smsInfo" />
+    </resultMap>
+	<select id="getMarketingInfo" resultMap="getMarketingInfoResultMap">
+		/*	buyerStatus.getMarketingInfo  */
+		SELECT
+			UB.UR_USER_ID
+			,FN_DECRYPT(UU.USER_NM) AS USER_NAME
+			,FN_DECRYPT(UB.MAIL) AS MAIL
+			,FN_DECRYPT(UB.MOBILE) AS MOBILE
+			,IF(UB.MAIL_YN = 'Y','이메일','') AS MAIL_YN
+			,IF(UB.SMS_YN = 'Y','SMS','') AS SMS_YN
+			,DATE_FORMAT(UB.MAIL_YN_DT,'%Y-%m-%d') AS MAIL_YN_DT
+			,DATE_FORMAT(UB.SMS_YN_DT,'%Y-%m-%d') AS SMS_YN_DT
+			,CASE WHEN UB.MAIL_YN = 'Y' THEN CONCAT('예 (',DATE_FORMAT(UB.MAIL_YN_DT,'%Y-%m-%d'),')')
+				  ELSE '아니오'
+				  END AS MAIL_INFO
+			,CASE WHEN UB.SMS_YN = 'Y' THEN CONCAT('예 (',DATE_FORMAT(UB.SMS_YN_DT,'%Y-%m-%d'),')')
+				  ELSE '아니오'
+				  END AS SMS_INFO
+		FROM
+			UR_BUYER UB
+			JOIN UR_USER UU ON UU.UR_USER_ID = UB.UR_USER_ID
+		WHERE
+			UB.UR_USER_ID = #{urUserId}
+	</select>
+
+</mapper>
+

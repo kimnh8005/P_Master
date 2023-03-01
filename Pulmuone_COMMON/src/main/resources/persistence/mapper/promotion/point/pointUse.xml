@@ -1,0 +1,667 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.point.PointUseMapper">
+
+	<sql id="pmPoint">
+		PP.PM_POINT_ID,
+		PP.POINT_TP,
+		PP.POINT_NM,
+		DATE(PP.ISSUE_START_DT) ISSUE_START_DT,
+		DATE(PP.ISSUE_END_DT) ISSUE_END_DT,
+		PP.ISSUE_QTY,
+		PP.ISSUE_BUDGET,
+		PP.ISSUE_DEPT_CD,
+		DATE(PP.VALIDITY_END_DT) VALIDITY_END_DT,
+		PP.VALIDITY_DAY,
+		PP.ISSUE_QTY_LIMIT,
+		PP.ISSUE_VAL,
+		PP.POINT_DETAIL_TP,
+		PP.SERIAL_NUMBER_TP,
+		PP.FIX_SERIAL_NUMBER,
+		PP.PAYMENT_TP,
+	    PP.POINT_SETTLEMENT_TP,
+		PP.POINT_PROCESS_TP,
+		PP.POINT_USED_TP,
+		PP.POINT_USED_MSG,
+		PP.VALIDITY_TP,
+		PP.PAYMENT_STANDARD_TP,
+		PP.PAYMENT_STANDARD_DETL_TP,
+		PP.PAYMENT_STANDARD_DETL_VAL,
+		PP.ISSUE_TP,
+		PP.ISSUE_VAL,
+		PP.ISSUE_DEPT_CD,
+		<!-- PP.STATUS, -->
+		PP.POINT_MASTER_STAT,
+		PP.POINT_APPR_STAT AS STATUS,
+		PP.POINT_ADMIN_YN,
+		PP.CREATE_DT,
+		PP.CREATE_ID,
+		PP.MODIFY_ID,
+		PP.MODIFY_DT
+	</sql>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 설정 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.17		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointSettingResultVo" id="getPointSettingListResultMap">
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="POINT_TP"  property="pointType"  />
+		<result column="POINT_TYPE_NAME"  property="pointTypeName" />
+		<result column="POINT_NM"  property="pointName" />
+		<result column="ISSUE_DATE"  property="issueDate"  />
+		<result column="ERP_ORGANIZATION_NM"  property="organizationName"  />
+		<result column="ISSUE_VAL"  property="issueValue"  />
+		<result column="NORMAL_AMOUNT"  property="normalAmount"  />
+		<result column="PHOTO_AMOUNT"  property="photoAmount"  />
+		<result column="PREMIUM_AMOUNT"  property="premiumAmount"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+		<result column="NORMAL_VALIDITY_DAY"  property="normalValidityDay"  />
+		<result column="PHOTO_VALIDITY_DAY"  property="photoValidityDay"  />
+		<result column="PREMIUM_VALIDITY_DAY"  property="premiumValidityDay"  />
+		<result column="ISSUE_BUDGET"  property="issueBudget"  />
+		<result column="STATUS"  property="status"  />
+		<result column="STATUS_NAME"  property="statusName"  />
+		<result column="COMMENT"  property="comment"  />
+		<result column="BUTTON_STATUS"  property="buttonStatus"  />
+		<result column="FIX_SERIAL_NUMBER"  property="fixSerialNumber"  />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 특정 적립금 설정(마스터) 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPmPoint" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PointVo">
+		/* pointUse.getPmPoint */
+		SELECT
+			<include refid="pmPoint" />
+		FROM PM_POINT PP
+		WHERE PM_POINT_ID = #{pmPointId}
+		<!-- AND STATUS = 'POINT_APPROVAL_STAT.ACCEPT_APPROVAL' -->
+		AND POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED'
+		AND USE_YN = 'Y'
+		AND NOW() BETWEEN ISSUE_START_DT AND ISSUE_END_DT
+	</select>
+
+	<select id="getPmOrganization" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PmOrganizationVo">
+		/* pointUse.getPmOrganization */
+		SELECT
+			ERP_REGAL_CD,
+			UR_ERP_ORGANIZATION_CD,
+			PERCENTAGE,
+			PM_COUPON_ID,
+			PM_POINT_ID
+		FROM PM_COUPON_POINT_SHARE_ORGANIZATION
+		WHERE PM_POINT_ID = #{pmPointId}
+		LIMIT 1
+	</select>
+
+	<select id="getGoodsFeedbackPointRewardSettingList" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.GoodsFeedbackPointRewardSettingVo">
+		/* pointUse.getGoodsFeedbackPointRewardSettingList */
+		SELECT UG.PM_POINT_USER_GRADE_ID,
+			PP.PM_POINT_ID,
+			PP.POINT_PROCESS_TP,
+			PP.POINT_SETTLEMENT_TP,
+			PP.APPR_CHG_DT,
+			PP.ISSUE_DEPT_CD,
+			IFNULL(PP.PAYMENT_STANDARD_DETL_VAL,0) PAYMENT_STANDARD_DETL_VAL,
+			IFNULL(PPU.PM_POINT_USER_GRADE_ID, UG.PM_POINT_USER_GRADE_ID) PM_POINT_USER_GRADE_ID,
+			IFNULL(PPU.NOMAL_AMOUNT,UG.NOMAL_AMOUNT) NOMAL_AMOUNT,
+			IFNULL(PPU.PHOTO_AMOUNT,UG.PHOTO_AMOUNT) PHOTO_AMOUNT,
+			IFNULL(PPU.PREMIUM_AMOUNT,UG.PREMIUM_AMOUNT) PREMIUM_AMOUNT,
+			IFNULL(UG.NOMAL_VALIDITY_DAY,PP.VALIDITY_DAY) NOMAL_VALIDITY_DAY,
+			IFNULL(UG.PHOTO_VALIDITY_DAY,PP.VALIDITY_DAY) PHOTO_VALIDITY_DAY,
+			IFNULL(UG.PREMIUM_VALIDITY_DAY,PP.VALIDITY_DAY) PREMIUM_VALIDITY_DAY
+		FROM PM_POINT PP
+			INNER JOIN PM_POINT_USER_GRADE UG ON PP.PM_POINT_ID = UG.PM_POINT_ID
+				AND UG.REVIEW_TP = 'POINT_USERGRADE_TYPE.NORMAL'
+			LEFT OUTER JOIN PM_POINT_USER_GRADE PPU ON UG.PM_POINT_ID = PPU.PM_POINT_ID
+				AND PPU.REVIEW_TP = 'POINT_USERGRADE_TYPE.USER_GRADE'
+				AND PPU.UR_GROUP_ID = #{urGroupId}
+		WHERE PP.PM_POINT_ID = UG.PM_POINT_ID
+			AND PP.POINT_TP = 'POINT_TYPE.FEEDBACK'
+			<!-- AND PP.STATUS = 'POINT_APPROVAL_STAT.ACCEPT_APPROVAL' -->
+			AND PP.POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED'
+			AND PP.USE_YN = 'Y'
+			AND DATE(NOW()) BETWEEN PP.ISSUE_START_DT AND PP.ISSUE_END_DT
+		GROUP BY PP.PM_POINT_ID
+		ORDER BY PP.APPR_CHG_DT DESC
+	</select>
+
+	<insert id="addPointDepositReservation">
+		/* pointUse.addPointDepositReservation */
+		INSERT INTO PM_POINT_DEPOSIT_RESERVATION (
+			PM_POINT_ID, PM_POINT_USER_GRADE_ID, UR_USER_ID, AMOUNT, DEPOSIT_DT,
+			EXPIRATION_DT
+		) VALUES (
+			#{pmPointId}, #{pmPointUserGradeId}, #{urUserId}, #{amount}, #{depositDt},
+			#{expirationDt}
+		)
+	</insert>
+
+	<select id="getPointDepositReservationList" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PointDepositReservationVo">
+		/* pointUse.getPointDepositReservationList */
+		SELECT DR.DEPOSIT_RESERVATION_ID,
+			DR.PM_POINT_USER_GRADE_ID,
+			DR.UR_USER_ID,
+			DR.AMOUNT,
+			DATE(DR.DEPOSIT_DT) DEPOSIT_DT,
+			DATE(DR.EXPIRATION_DT) EXPIRATION_DT,
+			PP.PM_POINT_ID,
+			PP.POINT_PROCESS_TP,
+			PP.POINT_SETTLEMENT_TP,
+			PP.ISSUE_DEPT_CD,
+			PP.USE_YN
+		FROM PM_POINT_DEPOSIT_RESERVATION DR
+			INNER JOIN PM_POINT PP ON DR.PM_POINT_ID = PP.PM_POINT_ID
+				AND DR.DEPOSIT_PROCESS_YN = 'N'
+		WHERE DR.DEPOSIT_DT <![CDATA[<=]]> DATE(#{depositDate})
+	</select>
+
+	<update id="putReservationGoodsFeedbackPointStatus">
+		/* pointUse.putReservationGoodsFeedbackPointStatus */
+		UPDATE PM_POINT_DEPOSIT_RESERVATION
+			SET DEPOSIT_PROCESS_YN = 'Y',
+				POINT_USE_MESSAGE = #{pointUseMessage}
+		WHERE DEPOSIT_RESERVATION_ID = #{depositReservationId}
+	</update>
+
+	<select id="getManagerReflectionPointInfo" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PointVo">
+		/* pointUse.getManagerReflectionPointInfo */
+		SELECT PM_POINT_ID,
+			PAYMENT_TP,
+			POINT_PROCESS_TP,
+			POINT_SETTLEMENT_TP,
+			ISSUE_DEPT_CD,
+			IFNULL(ISSUE_VAL,0) ISSUE_VAL,
+			VALIDITY_DAY,
+			VALIDITY_TP
+		FROM PM_POINT
+		WHERE PM_POINT_ID = #{pmPointId}
+			AND POINT_TP = 'POINT_TYPE.ADMIN'
+			AND USE_YN = 'Y'
+	</select>
+
+	<select id="getPointIssueList" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PointIssueVo">
+		/* pointUse.getPointIssueList */
+		SELECT PM_POINT_ISSUE_ID,
+			PM_POINT_ID,
+			UR_USER_ID
+		FROM PM_POINT_ISSUE
+		WHERE PM_POINT_ID = #{pmPointId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 적립금 적립 시 내역 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addDepositPointsPmPointUsed" useGeneratedKeys="true" keyProperty="pmPointUsedId">
+		/* pointUse.addDepositPointsPmPointUsed */
+		INSERT INTO PM_POINT_USED (
+			PAYMENT_TP, UR_USER_ID, AMOUNT, REF_NO1, REF_NO2,
+			CMNT, CREATE_DT, PM_POINT_ID
+		) VALUES (
+			#{paymentTp}, #{urUserId}, #{amount}, #{refNo1}, #{refNo2},
+			#{cmnt}, NOW(), #{pmPointId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 적립금 적립 시 상세 내역 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addDepositPointsPmPointUsedDetl">
+		<selectKey resultType="Long" keyProperty="pmPointUsedDetlId" order="BEFORE">
+			SELECT FN_GET_EVENT_SEQ('PM_POINT_USED_DETL_SEQ')
+		</selectKey>
+
+		/* pointUse.addDepositPointsPmPointUsedDetl */
+		INSERT INTO PM_POINT_USED_DETL (
+		PM_POINT_USED_DETL_ID, UR_USER_ID, AMOUNT, REF_POINT_USED_DETL_ID, REF_DPRO_POINT_USED_DETL_ID, PM_POINT_USED_ID,
+		AVAILABLE_DT, EXPIRATION_DT, PAYMENT_TP, REF_NO1, REF_NO2,
+		DEPT_CD, POINT_PROCESS_TP, POINT_SETTLEMENT_TP, CLOSE_YN, PM_POINT_ID
+		) VALUES (
+			#{pmPointUsedDetlId}
+			, #{urUserId}
+			, #{amount}
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(refPointUsedDetlId)">
+				,#{pmPointUsedDetlId}
+			</when>
+			<otherwise>
+				,#{refPointUsedDetlId}
+			</otherwise>
+		</choose>
+		,#{refDproPointUsedDetlId}, #{pmPointUsedId},
+		NOW(), DATE_FORMAT(#{expirationDt},'%Y-%m-%d 23:59:59'), #{paymentTp}, #{refNo1}, #{refNo2},
+		#{deptCd}, #{pointProcessTp}, #{pointSettlementTp}, #{closeYn}, #{pmPointId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 특정 회원 가용 적립금 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserAvailablePoints" resultType="int">
+		/* pointUse.getAfterDepositPoints */
+		SELECT IFNULL(SUM(AMOUNT),0) AS SUM_AMOUNT
+		FROM PM_POINT_USED_DETL
+		WHERE UR_USER_ID = #{urUserId}
+			AND CLOSE_YN = 'N'
+	</select>
+
+	<resultMap type="kr.co.pulmuone.v1.promotion.point.dto.vo.PointUsedDetailVo" id="pointDetailListResultMap">
+		<result column="UR_USER_ID"  property="urUserId" />
+		<result column="REF_POINT_USED_DETL_ID"  property="refPointUsedDetlId" />
+		<result column="AMOUNT"  property="amount"  />
+		<result column="AVAILABLE_DT"  property="availableDt" />
+		<result column="EXPIRATION_DT"  property="expirationDt" />
+		<result column="POINT_PROCESS_TP"  property="pointProcessTp"  />
+		<result column="POINT_SETTLEMENT_TP"  property="pointSettlementTp"  />
+		<result column="PAYMENT_TP"  property="paymentTp"  />
+		<result column="PM_POINT_USED_ID"  property="pmPointUsedId"  />
+		<result column="PM_POINT_USED_DETL_ID"  property="pmPointUsedDetlId"  />
+		<result column="DEPT_CD"  property="deptCd"  />
+		<result column="CREATE_DT"  property="createDt"  />
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="CMNT"  property="cmnt"  />
+	</resultMap>
+
+	<select id="selectUsablePointListOrderByExpiryDate" resultMap="pointDetailListResultMap">
+		/* pointUse.selectUsablePointListOrderByExpiryDate */
+		SELECT
+		    UR_USER_ID,
+		    REF_POINT_USED_DETL_ID,
+			SUM(AMOUNT) AMOUNT,
+			IFNULL(AVAILABLE_DT,NOW()) AVAILABLE_DT,
+			DATE_FORMAT(EXPIRATION_DT, '%Y-%m-%d') EXPIRATION_DT,
+			POINT_PROCESS_TP,
+			POINT_SETTLEMENT_TP,
+			PM_POINT_USED_ID,
+			DEPT_CD,
+			PAYMENT_TP,
+			PM_POINT_ID
+		FROM PM_POINT_USED_DETL
+		WHERE UR_USER_ID = #{urUserId}
+			AND CLOSE_YN = 'N'
+		GROUP BY REF_POINT_USED_DETL_ID
+		ORDER BY EXPIRATION_DT, PM_POINT_USED_DETL_ID
+	</select>
+
+	<insert id="insertPointUsed" useGeneratedKeys="true" keyProperty="pmPointUsedId">
+		/*	pointUse.insertPointUsed  */
+		INSERT INTO PM_POINT_USED (
+			 PAYMENT_TP
+			, UR_USER_ID
+			, AMOUNT
+			, REF_NO1
+			, REF_NO2
+			, CMNT
+			, CREATE_DT
+			, PM_POINT_ID
+		) VALUES (
+			 #{pointPaymentType}
+			, #{urUserId}
+			, #{amount}
+			, #{refNo1}
+			, #{refNo2}
+			, #{cmnt}
+			, NOW()
+			, #{pmPointId}
+		)
+	</insert>
+
+	<insert id="insertPointUsedDetail" >
+		/*	pointUse.insertPointUsedDetail  */
+		<selectKey resultType="long" keyProperty="pmPointUsedDetlId" order="BEFORE">
+			SELECT FN_GET_EVENT_SEQ('PM_POINT_USED_DETL_SEQ')
+		</selectKey>
+
+		INSERT INTO PM_POINT_USED_DETL (
+			 PM_POINT_USED_DETL_ID
+			, UR_USER_ID
+			, AMOUNT
+			, PM_POINT_USED_ID
+			, REF_POINT_USED_DETL_ID
+			, REF_DPRO_POINT_USED_DETL_ID
+			, AVAILABLE_DT
+			, EXPIRATION_DT
+			, PAYMENT_TP
+			, REF_NO1
+			, REF_NO2
+			, DEPT_CD
+			, POINT_PROCESS_TP
+			, POINT_SETTLEMENT_TP
+			, CLOSE_YN
+			, PM_POINT_ID
+		) VALUES
+		(
+			 #{pmPointUsedDetlId}
+			, #{urUserId}
+			, #{amount}
+			, #{pmPointUsedId}
+			<choose>
+				<when test="refPointUsedDetailId != null and !refPointUsedDetailId.equals('')">
+					,#{refPointUsedDetailId}
+				</when>
+				<otherwise>
+					,#{pmPointUsedDetlId}
+				</otherwise>
+			</choose>
+			, #{refDproPointUsedDetlId}
+			, #{availableDate}
+			, DATE_FORMAT(#{expirationDate},'%Y-%m-%d 23:59:59')
+			, #{pointPaymentType}
+			, #{refNo1}
+			, #{refNo2}
+			, #{deptCd}
+			, #{pointProcessType}
+			, #{pointSettlementType}
+			, #{closeYn}
+			, #{pmPointId}
+		)
+
+	</insert>
+
+	<select id="isValidationOverUsedPoint" resultType="boolean">
+		/* pointUse.isValidationOverUsedPoint */
+		SELECT
+		    IF(M.AMOUNT + SUM(IFNULL(D.AMOUNT, 0)) <![CDATA[>=]]> 0, TRUE, FALSE) AS RES
+		FROM PM_POINT_USED_DETL M
+		LEFT JOIN PM_POINT_USED_DETL D ON (D.REF_POINT_USED_DETL_ID = M.PM_POINT_USED_DETL_ID AND D.AMOUNT <![CDATA[<]]> 0)
+		WHERE M.PM_POINT_USED_DETL_ID = #{refPointUsedDetlId}
+	</select>
+
+	<update id="closeUsedPoint">
+		/* pointUse.closeUsedPoint */
+		UPDATE PM_POINT_USED_DETL
+		SET CLOSE_YN  = 'Y'
+		WHERE UR_USER_ID = #{urUserId}
+		and REF_POINT_USED_DETL_ID IN
+		<foreach collection="closePointRefList" item="item" index="index" separator="," open="(" close=")">
+			#{item}
+		</foreach>
+	</update>
+
+	<select id="selectPointDetailListUsedOrder" resultMap="pointDetailListResultMap" >
+		/* pointUse.selectPointDetailListUsedOrder */
+		SELECT
+			   DTL.PM_POINT_USED_DETL_ID
+			 , DTL.PM_POINT_USED_ID
+			 , DTL.REF_POINT_USED_DETL_ID
+			 , ifnull(DTL.REF_DPRO_POINT_USED_DETL_ID, DTL.PM_POINT_USED_DETL_ID) REF_DPRO_POINT_USED_DETL_ID
+			 , DTL.PAYMENT_TP
+			 , DTL.POINT_PROCESS_TP
+			 , DTL.POINT_SETTLEMENT_TP
+			 , IFNULL(DTL.AVAILABLE_DT,NOW()) AVAILABLE_DT
+			 , DTL.EXPIRATION_DT
+			 , P.CREATE_DT
+			 , DTL.CLOSE_YN
+			 , DTL.DEPT_CD
+			 , SUM(DTL.AMOUNT) AMOUNT
+			 , DTL.UR_USER_ID
+			 , DTL.PM_POINT_ID
+		FROM PM_POINT_USED_DETL DTL JOIN PM_POINT_USED P ON DTL.PM_POINT_USED_ID  = P.PM_POINT_USED_ID
+		WHERE DTL.UR_USER_ID = #{urUserId}
+			AND DTL.REF_NO1 = #{orderNo}
+			AND DTL.POINT_PROCESS_TP != 'POINT_PROCESS_TP.DPCR'
+			AND DTL.POINT_SETTLEMENT_TP != 'POINT_SETTLEMENT_TP.SWNE'
+			AND DTL.POINT_SETTLEMENT_TP != 'POINT_SETTLEMENT_TP.SWVE'
+		GROUP BY ifnull(DTL.REF_DPRO_POINT_USED_DETL_ID, DTL.PM_POINT_USED_DETL_ID)
+		ORDER BY DTL.EXPIRATION_DT DESC
+	</select>
+
+	<select id="selectExpiredPointList" resultMap="pointDetailListResultMap">
+		/* pointUse.selectExpiredPointList */
+		SELECT UR_USER_ID,
+			REF_POINT_USED_DETL_ID,
+			SUM(AMOUNT) AMOUNT,
+			DATE(IFNULL(AVAILABLE_DT,NOW())) AVAILABLE_DT,
+			DATE(EXPIRATION_DT) EXPIRATION_DT,
+			DEPT_CD,
+			REF_NO1,
+			REF_NO2,
+			POINT_SETTLEMENT_TP
+		FROM PM_POINT_USED_DETL ppud
+		WHERE CLOSE_YN = 'N'
+			AND EXPIRATION_DT <![CDATA[<]]> DATE(#{expireDate})
+		GROUP BY UR_USER_ID,
+			REF_POINT_USED_DETL_ID,
+			DATE(EXPIRATION_DT)
+			HAVING SUM(AMOUNT) > 0
+		ORDER BY DATE(EXPIRATION_DT), PM_POINT_USED_DETL_ID
+	</select>
+
+	<select id="selectWithdrawalMemberPointList" resultMap="pointDetailListResultMap">
+		/* pointUse.selectWithdrawalMemberPointList */
+		SELECT
+		    UR_USER_ID,
+			REF_POINT_USED_DETL_ID,
+			SUM(AMOUNT) AMOUNT,
+			DATE(IFNULL(AVAILABLE_DT,NOW())) AVAILABLE_DT,
+			DATE(EXPIRATION_DT) EXPIRATION_DT,
+			DEPT_CD,
+			REF_NO1,
+			REF_NO2,
+			POINT_SETTLEMENT_TP
+		FROM PM_POINT_USED_DETL ppud
+		WHERE UR_USER_ID = #{urUserId}
+		AND CLOSE_YN = 'N'
+		GROUP BY REF_POINT_USED_DETL_ID, EXPIRATION_DT
+		HAVING SUM(AMOUNT) > 0
+		ORDER BY EXPIRATION_DT, PM_POINT_USED_DETL_ID
+	</select>
+
+
+	<select id="selectPointInfoBySerialNumber" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PointVo">
+		/* pointUse.selectPointInfoBySerialNumber */
+		SELECT
+			<include refid="pmPoint" />
+		FROM PM_POINT PP LEFT OUTER JOIN PM_SERIAL_NUMBER PSN ON (PP.PM_POINT_ID = PSN.PM_POINT_ID AND PP.SERIAL_NUMBER_TP != 'SERIAL_NUMBER_TYPE.FIXED_VALUE' AND PSN.SERIAL_NUMBER = (SELECT FN_ENCRYPT(#{pointSerialNumber})))
+		WHERE PP.POINT_TP = 'POINT_TYPE.SERIAL_NUMBER'
+			AND NOW() BETWEEN PP.ISSUE_START_DT AND PP.ISSUE_END_DT
+			AND IF(PP.SERIAL_NUMBER_TP = 'SERIAL_NUMBER_TYPE.FIXED_VALUE', PP.FIX_SERIAL_NUMBER = #{pointSerialNumber}, PSN.PM_SERIAL_NUMBER_ID IS NOT NULL)
+			AND 'SERIAL_NUMBER_STATUS.ISSUED' = IFNULL(PSN.status, 'SERIAL_NUMBER_STATUS.ISSUED')
+			AND 'Y' = IFNULL(PSN.APPROVAL_YN, 'Y')
+			AND PSN.USE_DT IS NULL
+	</select>
+
+	<select id="selectCountSerialNumberIssuedPerAccount" resultType="int" >
+		/* pointUse.selectCountSerialNumberIssuedPerAccount */
+		SELECT count(PM_POINT_USED_DETL_ID)
+		FROM PM_POINT_USED_DETL
+		WHERE UR_USER_ID = #{urUserId}
+			AND PAYMENT_TP  = 'POINT_PAYMENT_TP.PROVISION'
+			AND PM_POINT_ID = #{pmPointId}
+	</select>
+
+	<select id="selectCountFixedSerialNumberIssuedPerAccount" resultType="int" >
+		/* pointUse.selectCountFixedSerialNumberIssuedPerAccount */
+		SELECT count(PM_POINT_USED_DETL_ID)
+		FROM PM_POINT_USED_DETL
+		WHERE PAYMENT_TP  = 'POINT_PAYMENT_TP.PROVISION'
+			AND REF_NO2 = #{serialNumber}
+	</select>
+
+	<select id="selectOrderRefundPointThatCanExpireImmediate" resultMap="pointDetailListResultMap">
+		/* pointUse.selectOrderRefundPointThatCanExpireImmediate */
+		SELECT UR_USER_ID,
+			REF_POINT_USED_DETL_ID,
+			SUM(AMOUNT) AMOUNT,
+			DATE(IFNULL(AVAILABLE_DT,NOW())) AVAILABLE_DT,
+			DATE(EXPIRATION_DT) EXPIRATION_DT,
+			POINT_PROCESS_TP,
+			POINT_SETTLEMENT_TP,
+			PM_POINT_USED_ID,
+			DEPT_CD,
+			REF_NO1,
+			REF_NO2,
+			PAYMENT_TP,
+			PM_POINT_ID
+		FROM PM_POINT_USED_DETL ppud
+		WHERE UR_USER_ID = #{urUserId}
+			AND REF_NO1 = #{orderNo}
+			AND CLOSE_YN = 'N'
+			AND EXPIRATION_DT <![CDATA[<]]> DATE_FORMAT(NOW(), '%Y%m%d')
+			AND REF_DPRO_POINT_USED_DETL_ID IS NOT NULL
+		GROUP BY UR_USER_ID,
+			REF_POINT_USED_DETL_ID,
+			EXPIRATION_DT
+			HAVING SUM(AMOUNT) > 0
+		ORDER BY EXPIRATION_DT, PM_POINT_USED_DETL_ID
+	</select>
+
+	<insert id="insertPointNotIssue">
+		/* pointUse.insertPointNotIssue */
+		INSERT INTO PM_POINT_NOT_ISSUE (
+			PM_POINT_ID
+			, UR_USER_ID
+			, POINT_PROCESS_TP
+			, POINT_SETTLEMENT_TP
+			, ISSUE_VAL
+			, PART_POINT_VAL
+			, REDEPOSIT_POINT_VAL
+			, EXPIRATION_DT
+			, DEPT_CD
+			, REF_NO1
+			, REF_NO2
+			, REF_DPRO_POINT_USED_DETL_ID
+			, AVAILABLE_DT
+			, CMNT
+			, REASON_ATTRIBUTABLE_TP
+		) VALUES (
+			#{pmPointId}
+			, #{urUserId}
+			, #{pointProcessType}
+			, #{pointSettlementType}
+			, #{requestAmount}
+			, #{maximumAccrualAmount}
+			, #{redepositPointVal}
+			, DATE_FORMAT(#{expirationDate},'%Y-%m-%d 23:59:59')
+			, #{issueDeptCd}
+			, #{refNo1}
+			, #{refNo2}
+			, #{refDproPointUsedDetlId}
+			, #{availableDate}
+			, #{cmnt}
+			, #{reasonAttributableType}
+		)
+	</insert>
+
+	<select id="selectUnpaidRefundList" resultType="kr.co.pulmuone.v1.promotion.point.dto.vo.PointUnpaidIssueVo">
+		/* pointUse.selectUnpaidRefundList */
+		SELECT REF_DPRO_POINT_USED_DETL_ID,
+			   IFNULL(ISSUE_VAL,0) ISSUE_VAL
+		FROM PM_POINT_NOT_ISSUE
+		WHERE UR_USER_ID = #{urUserId}
+			AND REF_NO1 = #{orderNo}
+			AND POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPRO', 'POINT_PROCESS_TP.DVRO')
+	</select>
+
+	<select id="getNotIssuePointDetail" resultMap="pointDetailListResultMap">
+		/* pointUse.sgetNotIssuePointDetail */
+		SELECT
+			PM_POINT_NOT_ISSUE_ID,
+			PM_POINT_ID,
+			UR_USER_ID,
+			POINT_PROCESS_TP,
+			POINT_SETTLEMENT_TP,
+			ISSUE_VAL,
+			PART_POINT_VAL,
+			REDEPOSIT_POINT_VAL,
+			DEPOSIT_DT,
+			EXPIRATION_DT,
+			DEPT_CD,
+			REF_NO1,
+			REF_NO2,
+			REF_DPRO_POINT_USED_DETL_ID,
+			AVAILABLE_DT,
+			CREATE_DT,
+			MODIFY_DT,
+			MODIFY_ID,
+			CMNT
+		FROM PM_POINT_NOT_ISSUE
+		WHERE PM_POINT_NOT_ISSUE_ID = #{pmPointNotIssueId}
+	</select>
+
+
+	<update id="updatePointNotIssue">
+		/* pointUse.updatePointNotIssue */
+		UPDATE PM_POINT_NOT_ISSUE
+			SET
+			 PART_POINT_VAL				= #{maximumAccrualAmount}
+			, REDEPOSIT_POINT_VAL			= #{redepositPointVal}
+			, MODIFY_DT 					= NOW()
+			, MODIFY_ID 					= #{modifyId}
+		WHERE PM_POINT_NOT_ISSUE_ID 		= #{pmPointNotIssueId}
+	</update>
+
+
+	<select id="getRefundNotIssuedList" resultMap="pointDetailListResultMap">
+		/* pointUse.getRefundNotIssuedList */
+		SELECT UR_USER_ID, REF_NO1 , REF_NO2
+		FROM PM_POINT_NOT_ISSUE
+		WHERE POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPRO', 'POINT_PROCESS_TP.DVRO')
+			AND DATE_FORMAT(EXPIRATION_DT,'%Y-%m-%d') <![CDATA[>=]]> CURDATE()
+			AND REASON_ATTRIBUTABLE_TP != 'COMPANY'
+			AND REDEPOSIT_POINT_VAL > 0
+		GROUP BY UR_USER_ID, REF_NO1 , REF_NO2
+		UNION ALL
+        SELECT UR_USER_ID, REF_NO1 , REF_NO2
+		FROM PM_POINT_NOT_ISSUE
+		WHERE POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPRO', 'POINT_PROCESS_TP.DVRO')
+		    AND REASON_ATTRIBUTABLE_TP = 'COMPANY'
+            AND REDEPOSIT_POINT_VAL > 0
+		GROUP BY UR_USER_ID, REF_NO1 , REF_NO2
+	</select>
+
+
+
+	<select id="getAddNotIssuedList" resultMap="pointDetailListResultMap">
+		/* pointUse.getAddNotIssuedList */
+		SELECT
+			PM_POINT_NOT_ISSUE_ID,
+			PM_POINT_ID,
+			UR_USER_ID,
+			POINT_PROCESS_TP,
+			POINT_SETTLEMENT_TP,
+			ISSUE_VAL,
+			PART_POINT_VAL,
+			REDEPOSIT_POINT_VAL,
+			DEPOSIT_DT,
+			EXPIRATION_DT,
+			DEPT_CD,
+			REF_NO1,
+			REF_NO2,
+			REF_DPRO_POINT_USED_DETL_ID,
+			AVAILABLE_DT,
+			CREATE_DT,
+			MODIFY_DT,
+			MODIFY_ID
+		FROM PM_POINT_NOT_ISSUE
+		WHERE UR_USER_ID = #{urUserId}
+		AND REF_NO1 = #{refNo1}
+		AND REF_NO2 = #{refNo2}
+	</select>
+</mapper>
+

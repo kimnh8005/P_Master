@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.payment.PolicyPaymentGatewayMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG사 설정 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.19		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.payment.dto.vo.PolicyPaymentGatewayVo" id="getPolicyPaymentGatewayMap">
+		<result column="PS_PG_PAY_ID"  property="psPgPayId"  />
+		<result column="PS_PG_CD"  property="psPgCd" />
+		<result column="PG_NAME"  property="pgName" />
+		<result column="DEPOSIT_SCHEDULED"  property="depositScheduled"  />
+		<result column="AUTOMATIC_DEPOSIT_URL"  property="automaticDepositUrl"  />
+		<result column="PS_PAY_CD"  property="psPayCd" />
+		<result column="PS_PAY_CD_NAME"  property="psPayCdName" />
+		<result column="USE_RATIO_KCP"  property="useRatioKcp" />
+		<result column="USE_RATIO_INICIS"  property="useRatioInicis" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.payment.dto.vo.PolicyPaymentGatewayMethodVo" id="getPolicyPaymentGatewayMethodMap">
+		<result column="USE_YN_KCP"  property="useYnKcp"  />
+		<result column="USE_YN_INICIS"  property="useYnInicis" />
+		<result column="PS_PAYMENT_METHOD_ID_KCP"  property="psPaymentMethodIdKcp" />
+		<result column="PS_PAYMENT_METHOD_ID_INICIS"  property="psPaymentMethodIdInicis"  />
+		<result column="BANK_NM_CD"  property="bankNmCd"  />
+		<result column="BANK_NM_CD_NM"  property="bankNmCdNm" />
+		<result column="PS_PAYMENT_METHOD_ID"  property="psPaymentMethodId" />
+		<result column="PS_PG_PAY_ID"  property="psPgPayId" />
+		<result column="PG_BANK_CD"  property="pgBankCd" />
+		<result column="USE_YN"  property="useYn" />
+	</resultMap>
+
+	<select id="getPolicyPaymentGatewayList" resultMap="getPolicyPaymentGatewayMap">
+		/*	PolicyPaymentGateway.getPolicyPaymentGatewayList	*/
+		SELECT
+			PS_PG_CD
+			, FN_COMN_CODE_DIC(PS_PG_CD) AS PG_NAME
+			, DEPOSIT_SCHEDULED, AUTOMATIC_DEPOSIT_URL, USE_YN
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM PS_PG
+	</select>
+	<select id="getPolicyPaymentGatewayRatioList" resultMap="getPolicyPaymentGatewayMap">
+		/*	PolicyPaymentGateway.getPolicyPaymentGatewayRatioList	*/
+		SELECT
+			X.PS_PAY_CD
+			, FN_COMN_CODE_DIC(X.PS_PAY_CD) AS PS_PAY_CD_NAME
+			, SUM(X.USE_RATIO_KCP) AS USE_RATIO_KCP
+			, SUM(X.USE_RATIO_INICIS) AS USE_RATIO_INICIS
+		FROM
+			(SELECT
+				PS_PAY_CD
+				, CASE WHEN PS_PG_CD = 'PG_SERVICE.KCP' THEN USE_RATIO END AS USE_RATIO_KCP
+				, CASE WHEN PS_PG_CD = 'PG_SERVICE.INICIS' THEN USE_RATIO END AS USE_RATIO_INICIS
+			FROM PS_PG_PAY
+		) AS X
+		GROUP BY X.PS_PAY_CD
+	</select>
+
+	<update id="putPolicyPaymentGateway">
+		/* PolicyPaymentGateway.putPolicyPaymentGateway */
+        <foreach item="policyPaymentGateway" index="index" collection="policyPaymentGatewayList"  separator="; ">
+            UPDATE PS_PG
+			SET
+				DEPOSIT_SCHEDULED = #{policyPaymentGateway.depositScheduled}
+				, AUTOMATIC_DEPOSIT_URL = #{policyPaymentGateway.automaticDepositUrl}
+				, MODIFY_ID = #{policyPaymentGateway.userVo.userId}
+				, MODIFY_DT = NOW()
+			WHERE PS_PG_CD = #{policyPaymentGateway.psPgCd}
+        </foreach>
+	</update>
+	<update id="putPolicyPaymentGatewayRatio">
+		/*	PolicyPaymentCardBenefit.putPolicyPaymentGatewayRatio	*/
+		<foreach item="policyPaymentGatewayRatio" index="index" collection="rows"  separator="; ">
+			UPDATE PS_PG_PAY
+			SET
+				USE_RATIO = #{policyPaymentGatewayRatio.useRatio}
+				, MODIFY_ID = #{policyPaymentGatewayRatio.userVo.userId}
+				, MODIFY_DT = NOW()
+			WHERE PS_PG_CD = #{policyPaymentGatewayRatio.psPgCd}
+			AND PS_PAY_CD = #{policyPaymentGatewayRatio.psPayCd}
+		</foreach>
+	</update>
+	<select id="getPolicyPaymentGatewayMethodList" resultMap="getPolicyPaymentGatewayMethodMap">
+		/*	PolicyPaymentGateway.getPolicyPaymentGatewayMethodList	*/
+		SELECT
+			MAX(X.USE_YN_KCP) AS USE_YN_KCP
+			, MAX(X.USE_YN_INICIS) AS USE_YN_INICIS
+			, MAX(X.PS_PAYMENT_METHOD_ID_KCP) AS PS_PAYMENT_METHOD_ID_KCP
+			, MAX(X.PS_PAYMENT_METHOD_ID_INICIS) AS PS_PAYMENT_METHOD_ID_INICIS
+			, X.BANK_NM_CD
+			, X.BANK_NM_CD_NM
+		FROM (
+			SELECT
+				CASE WHEN PPP.PS_PG_CD  = 'PG_SERVICE.KCP' THEN PPM.USE_YN END AS USE_YN_KCP
+				, CASE WHEN PPP.PS_PG_CD  = 'PG_SERVICE.INICIS' THEN PPM.USE_YN END AS USE_YN_INICIS
+				, CASE WHEN PPP.PS_PG_CD  = 'PG_SERVICE.KCP' THEN PPM.PS_PAYMENT_METHOD_ID END AS PS_PAYMENT_METHOD_ID_KCP
+				, CASE WHEN PPP.PS_PG_CD  = 'PG_SERVICE.INICIS' THEN PPM.PS_PAYMENT_METHOD_ID END AS PS_PAYMENT_METHOD_ID_INICIS
+				, PPM.BANK_NM_CD
+				, FN_COMN_CODE_DIC(PPM.BANK_NM_CD ) AS BANK_NM_CD_NM
+			FROM PS_PAYMENT_METHOD PPM
+			JOIN PS_PG_PAY PPP
+				ON PPM.PS_PG_PAY_ID = PPP.PS_PG_PAY_ID
+			WHERE PPP.PS_PAY_CD = #{psPayCd}
+		) AS X
+		GROUP BY X.BANK_NM_CD
+		ORDER BY X.BANK_NM_CD
+	</select>
+	<update id="putPolicyPaymentGatewayMethod">
+		/* PolicyPaymentGateway.putPolicyPaymentGatewayMethod */
+        <foreach item="policyPaymentGatewayMethod" index="index" collection="policyPaymentGatewayMethodList"  separator="; ">
+			UPDATE PS_PAYMENT_METHOD
+			SET
+				USE_YN = #{policyPaymentGatewayMethod.useYn}
+				, MODIFY_ID = #{policyPaymentGatewayMethod.userVo.userId}
+				, MODIFY_DT = NOW()
+			WHERE PS_PAYMENT_METHOD_ID = #{policyPaymentGatewayMethod.psPaymentMethodId}
+        </foreach>
+	</update>
+
+	<resultMap id="getPgBankCodeListResultMap" type="kr.co.pulmuone.v1.policy.payment.dto.vo.PolicyPaymentGatewayVo" >
+		<result column="BANK_NM_CD"    		property="bankNmCd"  />
+		<result column="BANK_NM_CD_NM"		property="bankNmCdNm"  />
+	</resultMap>
+	<select id="getPgBankCodeList" resultMap="getPgBankCodeListResultMap">
+		/*	PolicyPaymentGateway.getPgBankCodeList [PG 가상계좌 결제은행 목록 조회]  */
+		SELECT
+            ppm.BANK_NM_CD
+            , T1.DIC_MST_NM AS BANK_NM_CD_NM
+        FROM PS_PAYMENT_METHOD ppm
+            INNER JOIN PS_PG_PAY ppp ON (ppm.PS_PG_PAY_ID = ppp.PS_PG_PAY_ID)
+            INNER JOIN (SELECT A.ST_COMN_CODE_ID, B.DIC_MST_NM
+                               FROM ST_COMN_CODE A
+                                        INNER JOIN GB_DIC_MST B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                               WHERE A.USE_YN = 'Y' AND A.ST_COMN_CODE_MST_CD = 'BANK_CODE' AND ATTR2 = 'VIRTUAL_BANK') T1 ON (T1.ST_COMN_CODE_ID = ppm.BANK_NM_CD)
+        WHERE ppm.USE_YN = 'Y'
+			AND ppp.PS_PG_CD = #{psCode}
+			AND ppp.PS_PAY_CD = #{psPgCode}
+		ORDER BY ppm.PG_BANK_CD
+	</select>
+</mapper>

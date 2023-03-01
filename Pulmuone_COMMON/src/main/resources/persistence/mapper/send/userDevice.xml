@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.send.device.SendDeviceMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: APP 설치 단말기 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.26		jg          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getDeviceListResultMap" type="kr.co.pulmuone.v1.send.device.dto.vo.GetDeviceListResultVo">
+		<result column="USER_NAME" property="userName" />
+		<result column="USER_ID" property="userId" />
+		<result column="DEVICE_TYPE_NAME" property="deviceTypeName" />
+		<result column="PUSH_KEY" property="pushKey" />
+		<result column="CREATE_DATE" property="createDate" />
+	</resultMap>
+
+	<!-- APP 설치 단말기 목록 조회 -->
+	<select id="getDeviceList" resultMap="getDeviceListResultMap">
+	    /* userDevice.getDeviceList */
+	    SELECT IF(SDI.UR_USER_ID IS NOT NULL,FN_DECRYPT(UU.USER_NM),'-') AS USER_NAME /* 회원명 */
+	    	 , IF(SDI.UR_USER_ID IS NOT NULL,UU.LOGIN_ID,'-') AS USER_ID /* 회원ID */
+	         , FN_COMN_CODE_DIC(SDI.OS_TP) AS DEVICE_TYPE_NAME /* 기기타입 */
+             , SDI.PUSH_KEY AS PUSH_KEY /* 푸시키 */
+             , DATE_FORMAT(SDI.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE /* 등록일 */
+             , UU.CREATE_DT
+          FROM UR_BUYER UB
+          JOIN UR_USER UU
+            ON UB.UR_USER_ID = UU.UR_USER_ID
+           AND UU.USER_STATUS = 1
+          JOIN SN_DEVICE_INFO SDI
+            ON UB.UR_USER_ID = SDI.UR_USER_ID
+         WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(terminalRegistrationDateStart)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(terminalRegistrationDateEnd)">
+                AND SDI.CREATE_DT BETWEEN #{terminalRegistrationDateStart} AND (#{terminalRegistrationDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            </if>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceType)">
+            AND SDI.OS_TP = #{deviceType}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiTypeValue)">
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+				AND FN_DECRYPT(UU.USER_NM) LIKE CONCAT('%',#{condiTypeValue},'%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+				AND UU.LOGIN_ID LIKE CONCAT('%',#{condiTypeValue},'%')
+			</if>
+		</if>
+         ORDER BY CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 푸시 가능 회원 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.30		jg          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerDeviceListResultMap" type="kr.co.pulmuone.v1.send.device.dto.vo.GetBuyerDeviceListResultVo">
+		<result column="NO" property="no" />
+		<result column="DEVICE_INFO_ID" property="deviceInfoId" />
+		<result column="USER_TYPE_NAME" property="userTypeName" />
+		<result column="USER_LEVEL_NAME" property="userLevelName" />
+		<result column="USER_NAME" property="userName" />
+		<result column="USER_STATUS" property="userStatus" />
+		<result column="USER_ID" property="userId" />
+		<result column="MOBILE" property="mobile" />
+		<result column="EMAIL" property="email" />
+		<result column="JOIN_DATE" property="joinDate" />
+		<result column="LAST_VISIT_DATE" property="lastVisitDate" />
+		<result column="DEVICE_TYPE" property="deviceType" />
+		<result column="DEVICE_TYPE_NAME" property="deviceTypeName" />
+		<result column="RECEPTION" property="reception" />
+		<result column="NIGHT_RECEPTION" property="nightReception" />
+	</resultMap>
+
+	<!-- 푸시 가능 회원 조회 -->
+	<select id="getBuyerDeviceList" resultMap="getBuyerDeviceListResultMap">
+	    /* userDevice.getBuyerDeviceList */
+        SELECT SDI.SN_DEVICE_INFO_ID AS DEVICE_INFO_ID /* 모바일디바이스정보 ID */
+             , FN_COMN_CODE_DIC(IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','USER_TYPE.BUYER','USER_TYPE.EMPLOYEE')) AS USER_TYPE_NAME /* 회원유형 */
+             , UG.GROUP_NM AS USER_LEVEL_NAME /* 회원등급 */
+             , FN_DECRYPT(UU.USER_NM) AS USER_NAME /* 회원명 */
+             ,FN_COMN_CODE_DIC(UB.STATUS) AS USER_STATUS /* 회원상태 */
+             , UU.LOGIN_ID AS USER_ID /* 회원ID */
+             , FN_DECRYPT(UB.MOBILE) AS MOBILE /* 휴대폰 */
+             , FN_DECRYPT(UB.MAIL) AS EMAIL /* EMAIL */
+             , DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d') AS JOIN_DATE /* 가입일자 */
+             , DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_VISIT_DATE /* 최근 방문일자 */
+             , SDI.OS_TP AS DEVICE_TYPE /* 기기타입 */
+             , FN_COMN_CODE_DIC(SDI.OS_TP) AS DEVICE_TYPE_NAME /* 기기타입명 */
+             , SDI.PUSH_YN AS RECEPTION /* 수신여부 */
+             , SDI.NIGHT_YN AS NIGHT_RECEPTION /* 야간 수신여부 */
+             , UU.CREATE_DT
+          FROM SN_DEVICE_INFO SDI
+          JOIN UR_USER UU
+            ON UU.UR_USER_ID = SDI.UR_USER_ID
+          JOIN UR_BUYER UB
+            ON UB.UR_USER_ID = UU.UR_USER_ID
+          LEFT JOIN UR_GROUP UG
+            ON UG.UR_GROUP_ID = UB.UR_GROUP_ID
+          JOIN UR_ACCOUNT UA
+            ON UA.UR_USER_ID = UU.UR_USER_ID
+         WHERE UU.USER_STATUS = '1'
+	           		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+							AND FN_DECRYPT(UU.USER_NM) IN
+							<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+								#{condiValueArray}
+							</foreach>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+							AND UU.LOGIN_ID IN
+							<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+								#{condiValueArray}
+							</foreach>
+						</if>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+						AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+						AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+					</if>
+           			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)"> <!-- 회원유형  -->
+	                    <choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+								AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+								AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+							</when>
+						</choose>
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userLevel)"> <!-- 회원등급  -->
+	                    AND UG.UR_GROUP_ID = #{userLevel}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userStatus)"> <!-- 회원상태  -->
+	                    AND UB.STATUS = #{userStatus}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(joinDateStart)"> <!-- 가입일  -->
+	                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(joinDateEnd)">
+	                        AND UU.CREATE_DT BETWEEN #{joinDateStart} AND (#{joinDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+	                    </if>
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(lastVisitDateStart)"> <!-- 최근방문일자  -->
+	                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(lastVisitDateEnd)">
+	                        AND UA.LAST_LOGIN_DT BETWEEN #{lastVisitDateStart} AND (#{lastVisitDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+	                    </if>
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceType)"> <!-- 기기타입  -->
+	                    AND SDI.OS_TP = #{deviceType}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pushReception)"> <!-- PUSH 수신여부  -->
+	                    AND SDI.PUSH_YN = #{pushReception}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(nightPushReception)"> <!-- 야간 수신여부  -->
+	                    AND SDI.NIGHT_YN = #{nightPushReception}
+	                </if>
+         ORDER BY CREATE_DT DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: APP 설치 단말기 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09		chiyoul.An          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getDeviceEvnetImageMap" type="kr.co.pulmuone.v1.send.device.dto.vo.GetDeviceListResultVo">
+		<result column="USE_YN" property="useYn" />
+		<result column="DEVICE_TYPE_NAME" property="deviceTypeName" />
+		<result column="envVal" property="imageUrl" />
+		<result column="IMAGE_URL" property="imageUrl" />
+	</resultMap>
+
+	<!-- APP 플랫폼 유형 조회 -->
+	<select id="getDeviceEvnetImage" resultMap="getDeviceEvnetImageMap">
+	    /* userDevice.getDeviceEvnetImage */
+	    SELECT
+			CASE WHEN A.ENV_KEY = 'APP_IOS_EVENT_IMG_YN' THEN 'iOS'
+			     ELSE 'Android'
+			END AS DEVICE_TYPE_NAME
+			, CASE WHEN A.ENV_VAL = 'Y' THEN '사용'
+				   ELSE '사용안함'
+			  END AS USE_YN
+			, ENV_VAL
+			, CASE WHEN A.ENV_KEY = 'APP_IOS_EVENT_IMG_YN' THEN (SELECT ENV_VAL FROM ST_ENV WHERE ENV_KEY = 'APP_IOS_EVENT_IMG_URL')
+			       ELSE (SELECT ENV_VAL FROM ST_ENV WHERE ENV_KEY = 'APP_ANDROID_EVENT_IMG_URL')
+ 			  END AS IMAGE_URL
+		FROM ST_ENV A
+		WHERE A.ENV_KEY IN ('APP_IOS_EVENT_IMG_YN', 'APP_ANDROID_EVENT_IMG_YN')
+		ORDER BY A.ENV_KEY DESC
+	</select>
+
+
+
+    <update id="setDeviceEventImage">
+        /* userDevice.setDeviceEventImage */
+        UPDATE ST_ENV
+           SET ENV_VAL       = #{envVal},
+               MODIFY_DT     = NOW(),
+               MODIFY_ID     = #{userVo.userId}
+         WHERE ENV_KEY 		 = #{envKey}
+
+    </update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 푸시 가능 회원 검색 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.12.15		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBuyerDeviceSearchAllList" resultType="kr.co.pulmuone.v1.send.push.dto.PushSendListRequestDto">
+	    /* userDevice.getBuyerDeviceSearchAllList */
+        SELECT SDI.SN_DEVICE_INFO_ID AS DEVICE_INFO_ID /* 모바일디바이스정보 ID */
+             , UU.LOGIN_ID AS USER_ID /* 회원ID */
+             , SDI.OS_TP AS DEVICE_TYPE /* 기기타입 */
+          FROM SN_DEVICE_INFO SDI
+          JOIN UR_USER UU
+            ON UU.UR_USER_ID = SDI.UR_USER_ID
+          JOIN UR_BUYER UB
+            ON UB.UR_USER_ID = UU.UR_USER_ID
+          LEFT JOIN UR_GROUP UG
+            ON UG.UR_GROUP_ID = UB.UR_GROUP_ID
+          JOIN UR_ACCOUNT UA
+            ON UA.UR_USER_ID = UU.UR_USER_ID
+         WHERE UU.USER_STATUS = '1'
+	           		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+							AND FN_DECRYPT(UU.USER_NM) IN
+							<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+								#{condiValueArray}
+							</foreach>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+							AND UU.LOGIN_ID IN
+							<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+								#{condiValueArray}
+							</foreach>
+						</if>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+						AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+						AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+					</if>
+           			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)"> <!-- 회원유형  -->
+	                    <choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+								AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+								AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+							</when>
+						</choose>
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userLevel)"> <!-- 회원등급  -->
+	                    AND UG.UR_GROUP_ID = #{userLevel}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userStatus)"> <!-- 회원상태  -->
+	                    AND UB.STATUS = #{userStatus}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(joinDateStart)"> <!-- 가입일  -->
+	                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(joinDateEnd)">
+	                        AND UU.CREATE_DT BETWEEN #{joinDateStart} AND (#{joinDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+	                    </if>
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(lastVisitDateStart)"> <!-- 최근방문일자  -->
+	                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(lastVisitDateEnd)">
+	                        AND UA.LAST_LOGIN_DT BETWEEN #{lastVisitDateStart} AND (#{lastVisitDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+	                    </if>
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceType)"> <!-- 기기타입  -->
+	                    AND SDI.OS_TP = #{deviceType}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pushReception)"> <!-- PUSH 수신여부  -->
+	                    AND SDI.PUSH_YN = #{pushReception}
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(nightPushReception)"> <!-- 야간 수신여부  -->
+	                    AND SDI.NIGHT_YN = #{nightPushReception}
+	                </if>
+--          ORDER BY UU.CREATE_DT DESC
+	</select>
+
+</mapper>

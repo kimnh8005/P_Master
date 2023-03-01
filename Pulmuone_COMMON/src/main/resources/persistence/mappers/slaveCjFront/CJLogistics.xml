@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.slaveCjFront.CJLogisticsMapper">
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: CJ 택배 주문접수
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.04		강상국          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+    <insert id="addCJLogisticsOrderAccept" parameterType="kr.co.pulmuone.v1.api.cjlogistics.dto.CJLogisticsOrderAcceptDto">
+        /* CJ 택배 주문 접수 CJLogistics.addCJLogisticsOrderAccept */
+        INSERT INTO V_RCPT_PULMUONE010
+        (
+			CUST_ID 			/** 고객ID */
+			, RCPT_YMD			/** 접수일자 YYYMMDD */
+			, CUST_USE_NO		/** 고객사용번호	기업고객이 관리하는 주문번호/ 영수번호 등 내부 관리번호 */
+			, RCPT_DV			/** 접수구분 	01: 일반, 02: 반품 */
+			, WORK_DV_CD		/** 작업구분코드	01: 일반, 02 : 교환, 03 : A/S */
+			, REQ_DV_CD			/** 요청구분코드	01: 요청, 02: 취소 */
+			, MPCK_KEY			/** 합포장키	다수데이터를 한 송장에 출력할 경우 처리 (합포 없는 경우 YYYYMMDD_고객ID_고객사용번호 or YYYYMMDD_고객ID_운송장번호) */
+			, MPCK_SEQ			/** 합포장순번	합포장 처리건수가 다수일 경우 SEQ처리를 수행한다.(합포 없는 경우 무조건 1 ) */
+			, CAL_DV_CD			/** 정산구분코드	01: 계약 운임,  02: 자료 운임 (계약운임인지 업체에서 넣어주는 운임으로할지) */
+			, FRT_DV_CD			/** 운임구분코드	01: 선불,  02: 착불 ,  03: 신용 */
+			, CNTR_ITEM_CD		/** 계약품목코드 01: 일반 품목 */
+			, BOX_TYPE_CD		/** 박스타입코드	01: 극소,  02: 소,  03: 중,  04: 대,  05: 특대 */
+			, BOX_QTY			/** 택배 박스 수량	 */
+			, FRT				/** 운임적용구분이 자료 운임일 경우 등록 처리 */
+			, CUST_MGMT_DLCM_CD	/** 고객관리거래처코드 주관사 관리 협력업체 코드 혹은 택배사 관리 업체코드 */
+			, SENDR_NM			/** 송화인명			*/
+			, SENDR_TEL_NO1		/** 송화인전화번호1       */
+			, SENDR_TEL_NO2		/** 송화인전화번호2       */
+			, SENDR_TEL_NO3		/** 송화인전화번호3       */
+			, SENDR_CELL_NO1	/** 송화인휴대폰번호1      */
+			, SENDR_CELL_NO2	/** 송화인휴대폰번호2      */
+			, SENDR_CELL_NO3	/** 송화인휴대폰번호3      */
+			, SENDR_SAFE_NO1	/** 송화인안심번호1       */
+			, SENDR_SAFE_NO2	/** 송화인안심번호2       */
+			, SENDR_SAFE_NO3	/** 송화인안심번호3       */
+			, SENDR_ZIP_NO		/** 송화인우편번호        */
+			, SENDR_ADDR		/** 송화인주소          */
+			, SENDR_DETAIL_ADDR	/** 송화인상세주소        */
+			, RCVR_NM			/** 수화인명           */
+			, RCVR_TEL_NO1		/** 수화인전화번호1       */
+			, RCVR_TEL_NO2		/** 수화인전화번호2       */
+			, RCVR_TEL_NO3		/** 수화인전화번호3       */
+			, RCVR_CELL_NO1		/** 수화인휴대폰번호1      */
+			, RCVR_CELL_NO2		/** 수화인휴대폰번호2      */
+			, RCVR_CELL_NO3		/** 수화인휴대폰번호3      */
+			, RCVR_SAFE_NO1		/** 수화인안심번호1       */
+			, RCVR_SAFE_NO2		/** 수화인안심번호2       */
+			, RCVR_SAFE_NO3		/** 수화인안심번호3       */
+			, RCVR_ZIP_NO		/** 수화인우편번호        */
+			, RCVR_ADDR			/** 수화인주소          */
+			, RCVR_DETAIL_ADDR	/** 수화인상세주소        */
+			, ORDRR_NM			/** 주문자명           */
+			, ORDRR_TEL_NO1		/** 주문자전화번호1       */
+			, ORDRR_TEL_NO2		/** 주문자전화번호2       */
+			, ORDRR_TEL_NO3		/** 주문자전화번호3       */
+			, ORDRR_CELL_NO1	/** 주문자휴대폰번호1      */
+			, ORDRR_CELL_NO2	/** 주문자휴대폰번호2      */
+			, ORDRR_CELL_NO3	/** 주문자휴대폰번호3      */
+			, ORDRR_SAFE_NO1	/** 주문자안심번호1       */
+			, ORDRR_SAFE_NO2	/** 주문자안심번호2       */
+			, ORDRR_SAFE_NO3	/** 주문자안심번호3       */
+			, ORDRR_ZIP_NO		/** 주문자우편번호        */
+			, ORDRR_ADDR		/** 주문자주소          */
+			, ORDRR_DETAIL_ADDR	/** 주문자상세주소        */
+			, INVC_NO			/** 운송장번호 (12자리)   */
+			, ORI_INVC_NO		/** 원운송장번호         */
+			, ORI_ORD_NO		/** 원주문번호          */
+			, COLCT_EXPCT_YMD	/** 집화예정일자         */
+			, COLCT_EXPCT_HOUR	/** 집화예정시간         */
+			, SHIP_EXPCT_YMD	/** 배송예정일자         */
+			, SHIP_EXPCT_HOUR	/** 배송예정시간         */
+			, PRT_ST			/** 출력상태	01: 미출력,  02: 선출력,  03: 선발번 (반품은 선발번이 없음) */
+			, ARTICLE_AMT		/** 물품가액			*/
+			, REMARK_1			/** 배송메세지1(비고)     */
+			, REMARK_2			/** 배송메세지2(송화인비고) */
+			, REMARK_3			/** 배송메세지3(수화인비고) */
+			, COD_YN			/** COD여부 대면결제 서비스 업체의 경우 대면결제 발생시 Y로 셋팅 */
+			, GDS_CD			/** 상품코드	*/
+			, GDS_NM			/** 상품명    */
+			, GDS_QTY			/** 상품수량   */
+			, UNIT_CD			/** 단품코드   */
+			, UNIT_NM			/** 단품명    */
+			, GDS_AMT			/** 상품가액   */
+			, ETC_1				/** 기타1     */
+			, ETC_2				/** 기타2     */
+			, ETC_3				/** 기타3     */
+			, ETC_4				/** 기타4     */
+			, ETC_5				/** 기타5     */
+			, DLV_DV			/** 택배구분	택배 : '01', 중량물(설치물류) : '02', 중량물(비설치물류) : '03' */
+			, RCPT_ERR_YN		/** 접수에러여부	DEFAULT : 'N'	*/
+			, RCPT_ERR_MSG		/** 접수에러메세지					*/
+			, EAI_PRGS_ST		/** EAI전송상태		DEFAULT : '01'  */
+			, EAI_ERR_MSG		/** 에러메세지                      */
+			, REG_EMP_ID		/** 등록사원ID                     */
+			, REG_DTIME			/** 등록일시                       */
+			, MODI_EMP_ID		/** 수정사원ID                     */
+			, MODI_DTIME		/** 수정일시                       */
+        )
+        VALUES
+        (
+			#{custId}				 /**고객ID*/
+			, #{rcptYmd}             /**접수일자YYYMMDD*/
+			, #{custUseNo}           /**고객사용번호	기업고객이관리하는주문번호/영수번호등내부관리번호*/
+			, #{rcptDv}              /**접수구분	01:일반,02:반품*/
+			, #{workDvCd}            /**작업구분코드	01:일반,02:교환,03:A/S*/
+			, #{reqDvCd}             /**요청구분코드	01:요청,02:취소*/
+			, #{mpckKey}             /**합포장키	다수데이터를한송장에출력할경우처리(합포없는경우YYYYMMDD_고객ID_고객사용번호orYYYYMMDD_고객ID_운송장번호)*/
+			, #{mpckSeq}             /**합포장순번	합포장처리건수가다수일경우SEQ처리를수행한다.(합포없는경우무조건1)*/
+			, #{calDvCd}             /**정산구분코드	01:계약운임,02:자료운임(계약운임인지업체에서넣어주는운임으로할지)*/
+			, #{frtDvCd}             /**운임구분코드	01:선불,02:착불,03:신용*/
+			, #{cntrItemCd}          /**계약품목코드01:일반품목*/
+			, #{boxTypeCd}           /**박스타입코드	01:극소,02:소,03:중,04:대,05:특대*/
+			, #{boxQty}              /**택배박스수량	*/
+			, #{frt}                 /**운임적용구분이자료운임일경우등록처리*/
+			, #{custMgmtDlcmCd}      /**고객관리거래처코드주관사관리협력업체코드혹은택배사관리업체코드*/
+			, #{sendrNm}             /**송화인명			*/
+			, #{sendrTelNo1}         /**송화인전화번호1*/
+			, #{sendrTelNo2}         /**송화인전화번호2*/
+			, #{sendrTelNo3}         /**송화인전화번호3*/
+			, #{sendrCellNo1}        /**송화인휴대폰번호1*/
+			, #{sendrCellNo2}        /**송화인휴대폰번호2*/
+			, #{sendrCellNo3}        /**송화인휴대폰번호3*/
+			, #{sendrSafeNo1}        /**송화인안심번호1*/
+			, #{sendrSafeNo2}        /**송화인안심번호2*/
+			, #{sendrSafeNo3}        /**송화인안심번호3*/
+			, #{sendrZipNo}          /**송화인우편번호*/
+			, #{sendrAddr}           /**송화인주소*/
+			, #{sendrDetailAddr}     /**송화인상세주소*/
+			, #{rcvrNm}              /**수화인명*/
+			, #{rcvrTelNo1}          /**수화인전화번호1*/
+			, #{rcvrTelNo2}          /**수화인전화번호2*/
+			, #{rcvrTelNo3}          /**수화인전화번호3*/
+			, #{rcvrCellNo1}         /**수화인휴대폰번호1*/
+			, #{rcvrCellNo2}         /**수화인휴대폰번호2*/
+			, #{rcvrCellNo3}         /**수화인휴대폰번호3*/
+			, #{rcvrSafeNo1}         /**수화인안심번호1*/
+			, #{rcvrSafeNo2}         /**수화인안심번호2*/
+			, #{rcvrSafeNo3}         /**수화인안심번호3*/
+			, #{rcvrZipNo}           /**수화인우편번호*/
+			, #{rcvrAddr}            /**수화인주소*/
+			, #{rcvrDetailAddr}      /**수화인상세주소*/
+			, #{ordrrNm}             /**주문자명*/
+			, #{ordrrTelNo1}         /**주문자전화번호1*/
+			, #{ordrrTelNo2}         /**주문자전화번호2*/
+			, #{ordrrTelNo3}         /**주문자전화번호3*/
+			, #{ordrrCellNo1}        /**주문자휴대폰번호1*/
+			, #{ordrrCellNo2}        /**주문자휴대폰번호2*/
+			, #{ordrrCellNo3}        /**주문자휴대폰번호3*/
+			, #{ordrrSafeNo1}        /**주문자안심번호1*/
+			, #{ordrrSafeNo2}        /**주문자안심번호2*/
+			, #{ordrrSafeNo3}        /**주문자안심번호3*/
+			, #{ordrrZipNo}          /**주문자우편번호*/
+			, #{ordrrAddr}           /**주문자주소*/
+			, #{ordrrDetailAddr}     /**주문자상세주소*/
+			, #{invcNo}              /**운송장번호(12자리)*/
+			, #{oriInvcNo}           /**원운송장번호*/
+			, #{oriOrdNo}            /**원주문번호*/
+			, #{colctExpctYmd}       /**집화예정일자*/
+			, #{colctExpctHour}      /**집화예정시간*/
+			, #{shipExpctYmd}        /**배송예정일자*/
+			, #{shipExpctHour}       /**배송예정시간*/
+			, #{prtSt}               /**출력상태	01:미출력,02:선출력,03:선발번(반품은선발번이없음)*/
+			, #{articleAmt}          /**물품가액			*/
+			, #{remark1}             /**배송메세지1(비고)*/
+			, #{remark2}             /**배송메세지2(송화인비고)*/
+			, #{remark3}             /**배송메세지3(수화인비고)*/
+			, #{codYn}               /**COD여부대면결제서비스업체의경우대면결제발생시Y로셋팅*/
+			, #{gdsCd}               /**상품코드	*/
+			, #{gdsNm}               /**상품명*/
+			, #{gdsQty}              /**상품수량*/
+			, #{unitCd}              /**단품코드*/
+			, #{unitNm}              /**단품명*/
+			, #{gdsAmt}              /**상품가액*/
+			, #{etc1}                /**기타1*/
+			, #{etc2}                /**기타2*/
+			, #{etc3}                /**기타3*/
+			, #{etc4}                /**기타4*/
+			, #{etc5}                /**기타5*/
+			, #{dlvDv}               /**택배구분	택배:'01',중량물(설치물류):'02',중량물(비설치물류):'03'*/
+			, #{rcptErrYn}           /**접수에러여부	DEFAULT:'N'	*/
+			, #{rcptErrMsg}          /**접수에러메세지					*/
+			, #{eaiPrgsSt}           /**EAI전송상태		DEFAULT:'01'*/
+			, #{eaiErrMsg}           /**에러메세지*/
+			, #{regEmpId}            /**등록사원ID*/
+			, SYSDATE	             /**등록일시*/
+			, #{modiEmpId}           /**수정사원ID*/
+			, SYSDATE           	 /**수정일시*/
+        )
+    </insert>
+
+
+</mapper>
+
+

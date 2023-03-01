@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.legacysync.LegacySyncBatchMapper">
+
+    <resultMap type="kr.co.pulmuone.v1.batch.legacysync.stock.dto.vo.OrderDetailStockGroupByVo" id="getOrderDetailStockGroupByResultMap">
+        <result column="SHIPPING_DT"        property="shippingDt" />
+        <result column="SUPPLIER_CD"        property="supplierCd"  />
+        <result column="WAREHOUSE_ID"       property="warehouseId" />
+        <result column="IL_ITEM_CD"         property="ilItemCd"  />
+        <result column="ORDER_CNT"          property="orderCnt" />
+        <result column="CANCEL_CNT"         property="cancelCnt" />
+        <result column="CLAIM_CNT"          property="craimCnt" />
+        <result column="IL_GOODS_ID"        property="ilGoodsId"  />
+        <result column="ITEM_BARCODE"       property="itemBarcode"  />
+        <result column="DELIVERY_DT"        property="deliveryDt"  />
+    </resultMap>
+    <select id="getOrderDetailStockGroupByList" resultMap="getOrderDetailStockGroupByResultMap">
+        /* legacySyncStockBatch.getOrderDetailStockGroupByList */
+        SELECT
+               OOD.SHIPPING_DT,
+               CASE
+                   WHEN SUPPLIER_CD = 'PF' THEN '234'
+                   WHEN SUPPLIER_CD = 'OG' THEN 'YT'
+               END AS SUPPLIER_CD,
+               CASE
+                   WHEN PS_KEY = 'WAREHOUSE_YONGIN_ID' THEN IF(SUPPLIER_CD = 'PF', 61, 802)
+                   WHEN PS_KEY = 'WAREHOUSE_BAEKAM_ID' THEN IF(SUPPLIER_CD = 'PF', 201, 803)
+               END AS WAREHOUSE_ID,
+               OOD.IL_ITEM_CD,
+               SUM(OOD.ORDER_CNT) AS ORDER_CNT,
+               SUM(OOD.CANCEL_CNT) AS CANCEL_CNT,
+               SUM(IFNULL(OC.CLAIM_CNT, 0)) AS CLAIM_CNT,
+               OOD.IL_GOODS_ID,
+               OOD.ITEM_BARCODE,
+               OOD.DELIVERY_DT
+        FROM OD_ORDER_DETL OOD
+            INNER JOIN OD_ORDER OO on OOD.OD_ORDER_ID = OO.OD_ORDER_ID
+            INNER JOIN UR_SUPPLIER US on US.UR_SUPPLIER_ID = OOD.UR_SUPPLIER_ID
+            INNER JOIN
+                    (
+                    SELECT PS_KEY, PS_VAL
+                    FROM PS_CONFIG
+                    WHERE ST_SHOP_ID = 1
+                    AND USE_YN = 'Y'
+                    AND PS_KEY IN ('WAREHOUSE_BAEKAM_ID', 'WAREHOUSE_YONGIN_ID')
+                    ) PC ON OOD.UR_WAREHOUSE_ID = PC.PS_VAL
+            LEFT OUTER JOIN
+                    (
+                         SELECT
+                               OC.OD_ORDER_ID
+                             , OCD.OD_ORDER_DETL_ID
+                             , SUM(OCD.CLAIM_CNT) AS CLAIM_CNT
+                         FROM OD_CLAIM OC
+                            INNER JOIN OD_CLAIM_DETL OCD
+                            ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+                         WHERE OCD.CLAIM_STATUS_CD = 'CC' -- 클레임 상태가 취소완료인 경우
+                         AND OCD.ORDER_STATUS_CD IN ('IB', 'IC') -- 원 주문 상태가 입금전취소, 결제완료 인 경우 취소 재고 원복 수량 계산
+                         AND OC.CLAIM_YN = 'Y'
+                         GROUP BY OC.OD_ORDER_ID, OCD.OD_ORDER_DETL_ID
+                    ) OC ON OC.OD_ORDER_ID = OOD.OD_ORDER_ID AND OC.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+        WHERE SHIPPING_DT <![CDATA[>=]]> DATE_FORMAT(NOW(), '%Y-%m-%d') -- 출고일 기준으로 조회
+        AND ORDER_YN = 'Y' -- PG 결제 완료 주문
+        AND SUPPLIER_CD IN ('PF', 'OG') -- 공급업체 코드
+        AND PS_KEY IN ('WAREHOUSE_BAEKAM_ID', 'WAREHOUSE_YONGIN_ID') -- 출고처 코드
+        AND DELIVERY_DT IS NOT NULL
+        GROUP BY SHIPPING_DT, SUPPLIER_CD, WAREHOUSE_ID, IL_ITEM_CD
+        ORDER BY SHIPPING_DT, SUPPLIER_CD, WAREHOUSE_ID, IL_ITEM_CD
+    </select>
+
+
+    <resultMap type="kr.co.pulmuone.v1.batch.legacysync.stock.dto.vo.OrderStockIfGroupByVo" id="getOrderStockGroupByResultMap">
+        <result column="IF_SEND_SCHD_DT"    property="ifSendSchdDt" />
+        <result column="CHNN_NO"            property="chnnNo" />
+        <result column="PD_SEQ"             property="pdSeq"  />
+        <result column="CHNN_GOODS_NO"      property="chnnGoodsNo" />
+        <result column="ORDER_TYPE"         property="orderType"  />
+        <result column="ORDER_CNT"          property="orderCnt" />
+        <result column="ITEM_BARCODE"       property="itemBarcode"  />
+        <result column="DELIVERY_DT"        property="deliveryDt"  />
+    </resultMap>
+    <select id="getOrderStockIfGroupByInfo" parameterType="kr.co.pulmuone.v1.batch.legacysync.stock.dto.SearchOrderStockIfDto" resultMap="getOrderStockGroupByResultMap">
+        /* legacySyncStockBatch.getOrderStockIfGroupByInfo */
+        SELECT
+            IF_SEND_SCHD_DT
+            , CHNN_NO
+            , PD_SEQ
+            , CHNN_GOODS_NO
+            , ORDER_TYPE
+            , SUM(ORDER_CNT) AS ORDER_CNT
+            , ITEM_BARCODE
+            , DELIV_SCHD_DT
+        FROM ORDER_STOCK_IF
+        WHERE IF_SEND_SCHD_DT  = #{ifSendSchdDt}
+        AND CHNN_NO         = #{chnnNo}
+        AND PD_SEQ          = #{pdSeq}
+        AND CHNN_GOODS_NO   = #{chnnGoodsNo}
+        AND ORDER_TYPE      = #{orderType}
+        <if test="orderType eq 'CANCEL'">
+        AND CRAIM_CANCEL_YN = 'Y'    -- 클레임에 의한 취소 재고만 조회
+        </if>
+        GROUP BY IF_SEND_SCHD_DT, CHNN_NO, PD_SEQ, CHNN_GOODS_NO, ORDER_TYPE
+    </select>
+
+    <insert id="insertOrderStockIf">
+        /* legacySyncStockBatch.insertOrderStockIf */
+        INSERT INTO ORDER_STOCK_IF
+        (
+            CHNN_NO
+            , PD_SEQ
+            , CHNN_GOODS_NO
+            , ITEM_BARCODE
+            , DELIV_SCHD_DT
+            , ORDER_TYPE
+            , ORDER_CNT
+            , IF_SEND_SCHD_DT
+            , CRAIM_CANCEL_YN
+        )
+        VALUES
+        (
+            #{chnnNo}
+            , #{pdSeq}
+            , #{chnnGoodsNo}
+            , #{itemBarcode}
+            , #{delivSchdDt}
+            , #{orderType}
+            , #{orderCnt}
+            , #{ifSendSchdDt}
+            , #{craimCancelYn}
+        )
+    </insert>
+
+    <resultMap type="kr.co.pulmuone.v1.batch.legacysync.stock.dto.vo.LegacyOrderStockIfVo" id="getLegacyOrderStockIfResultMap">
+        <result column="SEQ"                property="seq" />
+        <result column="UR_SUPPLIER_ID"     property="urSupplierId" />
+        <result column="SUPPLIER_CD"        property="supplierCd" />
+        <result column="UR_WAREHOUSE_ID"    property="urWarehouseId" />
+        <result column="IF_SEND_SCHD_DT"    property="ifSendSchdDt" />
+        <result column="CHNN_GOODS_NO"      property="chnnGoodsNo" />
+        <result column="ORDER_TYPE"         property="orderType"  />
+        <result column="ORD_CNT"            property="ordCnt"  />
+        <result column="ITEM_BARCODE"       property="itemBarcode"  />
+        <result column="DELIV_SCHD_DT"      property="delivSchdDt"  />
+    </resultMap>
+    <select id="getLegacyOrderStockIfList" resultMap="getLegacyOrderStockIfResultMap">
+        /* legacySyncStockBatch.getLegacyOrderStockIfList */
+        SELECT
+              R.SEQ
+            , USP.UR_SUPPLIER_ID
+            , R.SUPPLIER_CD
+            , (
+                SELECT PS_VAL
+                FROM PS_CONFIG
+                WHERE ST_SHOP_ID = 1
+                AND USE_YN = 'Y'
+                AND PS_KEY = R.WAREHOUSE_ID
+            ) AS UR_WAREHOUSE_ID
+            , R.IF_SEND_SCHD_DT
+            , R.CHNN_GOODS_NO
+            , R.ORDER_TYPE
+            , R.ORD_CNT
+            , R.ITEM_BARCODE
+            , R.DELIV_SCHD_DT
+        FROM (
+                 SELECT SEQ
+                      , CASE
+                            WHEN SHOP_CD = 'PULSHOP' THEN 'PF'
+                            WHEN SHOP_CD = 'ORGASHOP' THEN 'OG'
+                     END AS SUPPLIER_CD
+                      , CASE
+                            WHEN PD_SEQ = 61 THEN 'WAREHOUSE_YONGIN_ID'
+                            WHEN PD_SEQ = 802 THEN 'WAREHOUSE_YONGIN_ID'
+                            WHEN PD_SEQ = 201 THEN 'WAREHOUSE_BAEKAM_ID'
+                     END AS WAREHOUSE_ID
+                      , CHNN_GOODS_NO   -- 품목코드, 올가의 경우 바코드로 검색된 품목코드
+                      , DELIV_SCHD_DT   -- 배송예정일
+                      , IF_SEND_SCHD_DT -- 출고일
+                      , ORDER_TYPE      -- ORDER, CANCEL -- ERP_STOCK_TP.ORDER 으로 저장
+                      , ORD_CNT         --  주문수량, 취소수량인 경우 음수로 변환해서 치리
+                      , ITEM_BARCODE    -- 올가의 경우 바코드를 통해서 품목코드 구함
+                 FROM LEGACY_ORDER_STOCK_IF
+                 WHERE IF_SEND_SCHD_DT <![CDATA[>=]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+                   AND IF_FL = 'N'
+                 ORDER BY IF_SEND_SCHD_DT, CHNN_GOODS_NO
+             ) R INNER JOIN UR_SUPPLIER USP ON R.SUPPLIER_CD = USP.SUPPLIER_CD
+    </select>
+
+    <update id="updateLegacyOrderStockFlag" parameterType="HashMap">
+        /* legacySyncStockBatch.updateLegacyOrderStockFlag */
+        UPDATE LEGACY_ORDER_STOCK_IF
+        SET IF_FL = #{updateFlag}
+        WHERE SEQ = #{seq}
+    </update>
+
+    <insert id="insertLegacyOrderStockIlItemErpStock">
+        /* legacySyncStockBatch.insertLegacyOrderStockIlItemErpStock */
+        INSERT INTO IL_ITEM_ERP_STOCK
+         (
+              IL_ITEM_WAREHOUSE_ID
+            , BASE_DT
+            , STOCK_TP
+            , STOCK_QTY
+            , SCHEDULE_DT
+            , CREATE_ID
+            , CREATE_DT
+         )
+         VALUES
+		(
+		    #{ilItemWarehouseId}
+            , #{baseDt}
+            , #{stockTp}
+            , #{stockQty}
+            , #{scheduleDt}
+            , 1
+            , NOW()
+		)
+        <selectKey resultType="long" keyProperty="ilItemErpStockId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <insert id="insertLegacyOrderStockIlItemErpStockHistory">
+        /* legacySyncStockBatch.insertLegacyOrderStockIlItemErpStockHistory */
+        INSERT INTO IL_ITEM_ERP_STOCK_HISTORY
+           (
+              IL_ITEM_ERP_STOCK_ID
+            , IL_ITEM_WAREHOUSE_ID
+            , BASE_DT
+            , STOCK_TP
+            , STOCK_QTY
+            , SCHEDULE_DT
+            , CREATE_ID
+            , CREATE_DT
+            )
+         SELECT IL_ITEM_ERP_STOCK_ID
+              , IL_ITEM_WAREHOUSE_ID
+              , BASE_DT
+              , STOCK_TP
+              , STOCK_QTY
+              , SCHEDULE_DT
+              , CREATE_ID
+              , CREATE_DT
+          FROM IL_ITEM_ERP_STOCK
+         WHERE IL_ITEM_ERP_STOCK_ID = #{ilItemErpStockId}
+    </insert>
+
+    <resultMap type="kr.co.pulmuone.v1.batch.legacysync.stock.dto.vo.LegacyOrderStockIfItemWarehouseVo" id="getLegacyOrderStockIfItemWarehouseResultMap">
+        <result column="IL_ITEM_WAREHOUSE_ID"           property="itemWarehouseId" />
+        <result column="IL_ITEM_CD"                     property="itemCd" />
+        <result column="UR_SUPPLIER_WAREHOUSE_ID"       property="supplierWarehouseId" />
+    </resultMap>
+    <select id="getLegacyOrderStockIfItemWarehouse" resultMap="getLegacyOrderStockIfItemWarehouseResultMap">
+        /* legacySyncStockBatch.getLegacyOrderStockIfItemWarehouseId */
+        SELECT
+            IL_ITEM_WAREHOUSE_ID
+            , IL_ITEM_CD
+            , UR_SUPPLIER_WAREHOUSE_ID
+        FROM IL_ITEM_WAREHOUSE
+        WHERE IL_ITEM_CD = #{itemCd}
+        AND UR_SUPPLIER_WAREHOUSE_ID = (
+                                            SELECT USW.UR_SUPPLIER_WAREHOUSE_ID
+                                            FROM UR_SUPPLIER_WAREHOUSE USW
+                                            WHERE UR_SUPPLIER_ID = #{supplierId}
+                                            AND UR_WAREHOUSE_ID = #{warehouseId}
+                                        )
+    </select>
+
+    <update id="spItemStockCalculatedPrepareByLegacyOrderStock" statementType="CALLABLE">
+		/* LegacySyncBatch.spItemStockCalculatedPrepareByLegacyOrderStock */
+		CALL SP_ITEM_STOCK_CACULATED_PREPARE()
+	</update>
+
+    <resultMap type="kr.co.pulmuone.v1.batch.legacysync.purchase.dto.vo.PurchaseOrderVo" id="getPurchaseOrderListResultMap">
+        <result column="BASE_DT"                    property="baseDt" />
+        <result column="REQ_DT"                     property="reqDt" />
+        <result column="STOCK_SCHEDULED_DT"         property="stockScheduledDt" />
+        <result column="UR_SUPPLIER_ID"             property="supplierId" />
+        <result column="WAREHOUSE_CD"               property="warehouseCd" />
+        <result column="PO_IF_QTY"                  property="poIfQty" />
+        <result column="IL_ITEM_CD"                 property="itemCd" />
+        <result column="ITEM_NM"                    property="itemName" />
+        <result column="ERP_PO_TP"                  property="erpPoType" />
+        <result column="PO_TP"                      property="poType" />
+        <result column="PO_TP_NM"                   property="poTypeName" />
+        <result column="PO_ITME"                    property="poTime" />
+        <result column="FOODMERCE_RESPONSE_DATE"    property="foodmerceResponseDate" />
+    </resultMap>
+    <select id="getPurchaseOrderList" resultMap="getPurchaseOrderListResultMap">
+        /* legacySyncStockBatch.getPurchaseOrderList */
+        SELECT
+                R.*
+                , DATE_ADD(R.BASE_DT, INTERVAL ADD_DT DAY) AS REQ_DT -- 발주일 + 2
+        FROM (
+                SELECT
+                    BASE_DT,
+                    STOCK_SCHEDULED_DT,
+                    IP.UR_SUPPLIER_ID,
+                    (
+                    SELECT PS_KEY
+                    FROM PS_CONFIG
+                    WHERE ST_SHOP_ID = 1
+                    AND USE_YN = 'Y'
+                    AND PS_VAL = IP.UR_WAREHOUSE_ID
+                    ) AS WAREHOUSE_CD,
+                    PO_IF_QTY,
+                    IP.IL_ITEM_CD,
+                    IP.ITEM_NM,
+                    IPT.ERP_PO_TP,
+                    IPT.PO_TP,
+                    IPT.PO_TP_NM,
+                    CASE
+                        WHEN IPT.ERP_PO_TP = 'ERP_PO_TP.PF' THEN '19'
+                        ELSE '15'
+                    END AS PO_ITME,
+                    CASE
+                        WHEN IPT.ERP_PO_TP = 'ERP_PO_TP.PD1' THEN 'PD1'
+                        WHEN IPT.ERP_PO_TP = 'ERP_PO_TP.PD2' THEN 'PD2'
+                        ELSE ''
+                    END AS FOODMERCE_RESPONSE_DATE,
+                    CASE
+                        WHEN IPT.ERP_PO_TP != 'ERP_PO_TP.PF' AND DAYOFWEEK(BASE_DT) = 6  THEN 4
+                        WHEN IPT.ERP_PO_TP = 'ERP_PO_TP.PD2' AND DAYOFWEEK(BASE_DT) != 6 THEN 3
+                        ELSE 2
+                    END AS ADD_DT
+                FROM IL_PO IP
+                INNER JOIN IL_PO_TP IPT ON IP.IL_PO_TP_ID = IPT.IL_PO_TP_ID
+                WHERE BASE_DT <![CDATA[>=]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+                AND PO_IF_YN = 'Y' -- ERP I/F 완료된 발주 데이터
+                AND PO_IF_QTY <![CDATA[>]]> 0  -- ERP I/F 발주 수량이 0개 이상인
+                AND ERP_PO_TP IN
+                <foreach collection="erpPoTypeList" item="erpPoType" index="index" separator="," open="(" close=")">
+                    #{erpPoType}
+                </foreach>
+                ORDER BY BASE_DT, IL_ITEM_CD
+            ) R
+    </select>
+
+    <insert id="insertLegacyPurchaseOrder">
+        /* legacySyncStockBatch.insertLegacyPurchaseOrder */
+        INSERT INTO PURCHASE_ORDER_IF
+        (
+              PO_DT
+            , PD_SEQ
+            , ITEM_CD
+            , GOODS_NM
+            , ORDER_DT
+            , ADD_ORDER_DT
+            , REQUEST_DATE
+            , REG_DT
+            , PO_TIME
+            , FOODMERCE_RESPONSE_DATE
+        )
+        VALUES
+        (
+              #{poDt}
+            , #{pdSeq}
+            , #{itemCd}
+            , #{goodsNm}
+            , #{orderDt}
+            , #{addOrderDt}
+            , #{requestDate}
+            , NOW()
+            , #{poTime}
+            , #{foodmerceResponseDate}
+        )
+    </insert>
+
+    <resultMap type="kr.co.pulmuone.v1.batch.legacysync.stock.dto.vo.OrderStockIfGroupByVo" id="getCancelStockGroupByResultMap">
+        <result column="IF_SEND_SCHD_DT"    property="ifSendSchdDt" />
+        <result column="CHNN_NO"            property="chnnNo" />
+        <result column="PD_SEQ"             property="pdSeq"  />
+        <result column="CHNN_GOODS_NO"      property="chnnGoodsNo" />
+        <result column="ORDER_TYPE"         property="orderType"  />
+        <result column="ORDER_CNT"          property="orderCnt" />
+        <result column="ITEM_BARCODE"       property="itemBarcode"  />
+        <result column="DELIVERY_DT"        property="deliveryDt"  />
+    </resultMap>
+    <select id="getCancelStockIfGroupByInfo" parameterType="kr.co.pulmuone.v1.batch.legacysync.stock.dto.SearchOrderStockIfDto" resultMap="getCancelStockGroupByResultMap">
+        /* legacySyncStockBatch.getCancelStockIfGroupByInfo */
+        SELECT
+        IF_SEND_SCHD_DT
+        , CHNN_NO
+        , PD_SEQ
+        , CHNN_GOODS_NO
+        , ORDER_TYPE
+        , SUM(ORDER_CNT) AS ORDER_CNT
+        , ITEM_BARCODE
+        , DELIV_SCHD_DT
+        FROM ORDER_STOCK_IF
+        WHERE IF_SEND_SCHD_DT  = #{ifSendSchdDt}
+        AND CHNN_NO         = #{chnnNo}
+        AND PD_SEQ          = #{pdSeq}
+        AND CHNN_GOODS_NO   = #{chnnGoodsNo}
+        AND ORDER_TYPE      = #{orderType}
+        <if test="orderType eq 'CANCEL'">
+            AND CRAIM_CANCEL_YN = 'N'    -- 배송일 변경에 의한 취소 재고만 조회
+        </if>
+        GROUP BY IF_SEND_SCHD_DT, CHNN_NO, PD_SEQ, CHNN_GOODS_NO, ORDER_TYPE
+    </select>
+</mapper>

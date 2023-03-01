@@ -1,0 +1,1191 @@
+<section class="dashboard">
+	<!-- 대시보드 헤더 -->
+	<div class="wrap-location">
+		<h1 class="title" msg-key="5846">통합 대시보드</h1>
+		<span class="location"></span>
+	</div>
+
+	<section class="dashboard__header">
+		<h2 class="dashboard__title">모듈 기본 구성</h2>
+		<div class="dashboard__controls">
+			<!-- 업데이트 날짜 -->
+			<div class="dashboard__time-stamp">
+				업데이트: <span class="timeStamp"></span>
+			</div>
+			<!-- 되돌리기 버튼 -->
+			<div class="dashboard__roll-back">
+				<button type="button" id="rollBack" class="roll-back-btn">되돌리기</button>
+			</div>
+			<!-- 모듈 설정 버튼 -->
+			<div class="dashboard__edit">
+				<button type="button" id="edit" class="edit-btn btn-white">모듈 설정</button>
+			</div>
+			<!-- 모듈 설정 전체 초기화 버튼 -->
+			<div class="dashboard__init">
+				<button type="button" id="init" class="init-btn btn-white">전체 초기화</button>
+			</div>
+		</div>
+	</section>
+
+	<!-- 대시보드 그리드 영역 -->
+	<section class="dashboard__grid-layout">
+		<div id="gridLayout" class="grid-layout">
+			<div class="grid-sizer"></div>
+  			<div class="gutter-sizer"></div>
+		</div>
+	</section>
+</section>
+
+
+<div id="kendoPopup" style="display: none">
+	<div id="contents" class="pop-contents">
+		<form id="inputForm" name="inputForm" >
+			<table class="datatable v-type">
+			<colgroup>
+	             <col style="width:140px;">
+	             <col style="">
+	         	</colgroup>
+	         	<label for="loginName">홍길동</label> 님의 최근 접속 정보 입니다.
+			<tbody>
+			<tr>
+				<th scope="row">
+	                    <label for="loginDate">최근 접속일</label>
+	                </th>
+	                <td>
+	                    <div class="complex-condition" style="width:100%">
+	                        <input id="loginDate" name="loginDate" type="text" style="border:none; background-color:#FFFFFF; width: 200px;" readonly disabled>
+	                    </div>
+	                </td>
+			</tr>
+			<tr>
+                <th scope="row">
+                    <label for="ip">최근 접속 IP</label>
+                </th>
+                <td>
+                    <div class="complex-condition" style="width:100%">
+                        <input id="addressIp" name="addressIp" type="text" style="width: 100%; border:none; background-color:#FFFFFF" readonly disabled>
+                    </div>
+                </td>
+            </tr>
+         	</tbody>
+    		</table>
+    		<br>
+    		<p style="text-align: center; color:red;">최근에 접속 정보가 본인이 아닐 경우 관리자에게 문의해 주세요.</p>
+     	<br>
+  		</form>
+	</div>
+	<div id="firstConnect" style="text-align: center; ">
+		<br>
+		<br>
+		첫 번째 접속입니다.
+		<br>
+		<br>
+	</div>
+	<span class="btn-area">
+	    <button type="button" id="fnOk" class="set-btn-type2 full-btn" style="text-align: center;" onclick="$scope.fnOk()">확인</button>
+	</span>
+</div>
+
+
+<!-- 주문/매출 템플릿 -->
+<script id="order_delivery_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module order-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+					<a href="${linkUrl}" target="_blank" class="js__module__link module__link-btn btn-white btn-s">more</a>
+				</div>
+
+				<div class="module__timestamp">
+					<p class="timeStamp"></p>
+					&nbsp;&nbsp;기준
+					<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+				</div>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<div class="module__controls">
+					<ul id="${dashboardCardCd}__tabs" class="module__tabs js__module__tabs">
+						<li class="module__tab">
+							<label>
+								<input type="radio" name="${dashboardCardCd}_types" value="" checked>
+								<span>전체</span>
+							</label>
+						</li>
+						<li class="module__tab">
+							<label>
+								<input type="radio" name="${dashboardCardCd}_types" value="">
+								<span>통합몰</span>
+							</label>
+						</li>
+						<li class="module__tab">
+							<label>
+								<input type="radio" name="${dashboardCardCd}_types" value="">
+								<span>외부몰</span>
+							</label>
+						</li>
+					</ul>
+					<div class="module__options">
+						<div class="fb__custom__select">
+							<input id="${dashboardCardCd}_select" type="text" name="${dashboardCardCd}_searchPeriodSe" class="fb__custom__select js__params search-periodse" data-param-key="searchPeriodSe">
+						</div>
+					</div>
+				</div>
+
+				<!-- 모듈 테이블 -->
+				<div id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+					주문/매출 현황 컨텐츠 템플릿 영역
+				</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 클레임 템플릿 -->
+<script id="order_claim_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+				</div>
+				<div class="module__timestamp">
+					<p class="timeStamp"></p>
+					&nbsp;&nbsp;기준
+					<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+				</div>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<div class="module__controls">
+					<ul id="${dashboardCardCd}__tabs" class="module__tabs js__module__tabs">
+						<li class="module__tab">
+							<label>
+								<input type="radio" name="${dashboardCardCd}_types" value="''" data-param-key="mallTp" checked>
+								<span>전체</span>
+							</label>
+						</li>
+					</ul>
+					<div class="module__options">
+						<div class="fb__custom__select">
+							<input id="${dashboardCardCd}_select" type="text" name="${dashboardCardCd}_searchPeriodSe" class="fb__custom__select js__params search-periodse" data-param-key="searchPeriodSe">
+						</div>
+					</div>
+				</div>
+
+				<!-- 모듈 테이블 -->
+				<div id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+					클레임 현황 컨텐츠 템플릿 영역
+				</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- BOS 공지사항 템플릿 -->
+<script id="bos_notice_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+					<a href="${linkUrl}" target="_blank" class="js__module__link module__link-btn btn-white btn-s">more</a>
+				</div>
+				<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<ul id="${dashboardCardCd}_content" class="module__list"></ul>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 회원가입 현황 템플릿 -->
+<script id="sign_up_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+					<a href="${linkUrl}" target="_blank" class="js__module__link module__link-btn btn-white btn-s">more</a>
+				</div>
+				<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<div class="module__controls">
+					<div class="module__options">
+						<div class="fb__custom__select">
+							<input id="${dashboardCardCd}_select" type="text" name="${dashboardCardCd}_searchPeriodSe" class="fb__custom__select js__params search-periodse" data-param-key="searchPeriodSe">
+						</div>
+					</div>
+				</div>
+
+				<!-- 모듈 테이블 -->
+				<div id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+					회원가입 현황 컨텐츠 템플릿 영역
+				</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 고객 문의 처리현황 템플릿 -->
+<script id="customer_qna_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+					<a href="${linkUrl}" target="_blank" class="js__module__link module__link-btn btn-white btn-s">more</a>
+				</div>
+				<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<div class="module__controls">
+					<div class="module__options">
+						<div class="fb__custom__select">
+							<input id="${dashboardCardCd}_select" type="text" name="${dashboardCardCd}_searchPeriodSe" class="fb__custom__select js__params search-periodse" data-param-key="searchPeriodSe">
+						</div>
+					</div>
+				</div>
+
+				<!-- 모듈 테이블 -->
+				<div id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+					회원가입 현황 컨텐츠 템플릿 영역
+				</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 보상제 처리현황 템플릿 -->
+<script id="reward_apply_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+					<a href="${linkUrl}" target="_blank" class="js__module__link module__link-btn btn-white btn-s">more</a>
+				</div>
+				<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<div class="module__controls">
+					<div class="module__options">
+						<div class="fb__custom__select">
+							<input id="${dashboardCardCd}_select" type="text" name="${dashboardCardCd}_searchPeriodSe" class="fb__custom__select js__params search-periodse" data-param-key="searchPeriodSe">
+						</div>
+					</div>
+				</div>
+
+				<!-- 모듈 테이블 -->
+				<div id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+					회원가입 현황 컨텐츠 템플릿 영역
+				</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 부정거래 탐지 템플릿 -->
+<script id="illegal_detect_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+					<a href="${linkUrl}" target="_blank" class="js__module__link module__link-btn btn-white btn-s">more</a>
+				</div>
+				<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<div class="module__controls">
+					<div class="module__options">
+						<div class="fb__custom__select">
+							<input id="${dashboardCardCd}_select" type="text" name="${dashboardCardCd}_searchPeriodSe" class="fb__custom__select js__params search-periodse" data-param-key="searchPeriodSe">
+						</div>
+					</div>
+				</div>
+
+				<!-- 모듈 테이블 -->
+				<div id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+					회원가입 현황 컨텐츠 템플릿 영역
+				</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 내 승인요청 현황 템플릿 -->
+<script id="my_approval_request_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+				</div>
+
+				<div class="module__timestamp">
+					<p class="timeStamp"></p>
+					&nbsp;&nbsp;기준
+					<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+				</div>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<!-- 모듈 테이블 -->
+				<!-- 담당자별 승인처리 현황 컨텐츠 템플릿 영역 -->
+				<table class="datatable v-type">
+					<colgroup>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+					</colgroup>
+					<thead>
+						<tr>
+							<th></th>
+							<th>승인처리 <br>잔여 현황</th>
+							<th>품목등록</th>
+							<th>품목가격</th>
+							<th>상품등록</th>
+							<th>상품할인</th>
+							<th>균일가</th>
+							<th>증정행사</th>
+							<th>쿠폰</th>
+							<th>적립금</th>
+							<th>CS환불</th>
+							<th>거래처품목</th>
+							<th>거래처상품</th>
+						</tr>
+					</thead>
+					<tbody id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 내 승인처리 템플릿 -->
+<script id="my_approval_accept_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+				</div>
+
+				<div class="module__timestamp">
+					<p class="timeStamp"></p>
+					&nbsp;&nbsp;기준
+					<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+				</div>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<!-- 모듈 테이블 -->
+				<div id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+					내 승인처리 목록 컨텐츠 템플릿 영역
+				</div>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 담당자별 승인 처리 현황 템플릿 -->
+<script id="tot_approval_accept_template" type="text/x-jquery-tmpl">
+	<div id="${dashboardCardCd}_module" class="module claim-module">
+		<div class="module__body">
+			<!-- 모듈 헤더 -->
+			<div class="module__header">
+				<div class="module__title">
+					<h3 class="title">${dashboardCardNm}</h3>
+					<div class="module__tooltip"></div>
+				</div>
+
+				<div class="module__timestamp">
+					<p class="timeStamp"></p>
+					&nbsp;&nbsp;기준
+					<button type="button" id="${urUserDashboardId}__module" data-urUserDashboardId= "${urUserDashboardId}" data-module-Nm="${dashboardCardNm}" class="hideBtn module__link-btn btn-s btn-white" >숨기기</button>
+				</div>
+			</div>
+
+			<!-- 모듈 컨텐츠 -->
+			<div class="module__contents">
+				<!-- 모듈 테이블 -->
+				<!-- 담당자별 승인처리 현황 컨텐츠 템플릿 영역 -->
+				<table class="datatable v-type">
+					<colgroup>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+						<col>
+					</colgroup>
+					<thead>
+						<tr>
+							<th>이름 / ID</th>
+							<th>승인처리 </br>잔여 현황</th>
+							<th>품목등록</th>
+							<th>품목가격</th>
+							<th>상품등록</th>
+							<th>상품할인</th>
+							<th>균일가</th>
+							<th>증정행사</th>
+							<th>쿠폰</th>
+							<th>적립금</th>
+							<th>CS환불</th>
+							<th>거래처품목</th>
+							<th>거래처상품</th>
+						</tr>
+					</thead>
+					<tbody id="${dashboardCardCd}_content" class="${dashboardCardCd}_content">
+
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</script>
+
+<!-- 관리자 공지사항 컨텐츠 템플릿 -->
+<script id="bos_notice_contents_template" type="text/x-jquery-tmpl">
+	<li class="module__list__item">
+		<a href="layout.html#/noticePopupView?csCompanyBbsId=${csCompanyBbsId}&conditionType=${createName}" target="_blank" class="module__list__title">${title}</a>
+		<span class="module__list__timestamp">${$scope.subStringDate(createDate)}</span>
+	</li>
+</script>
+
+<!-- 주문/매출 현황 컨텐츠 템플릿 -->
+<script id="order_delivery_contents_template" type="text/x-jquery-tmpl">
+	<div class="module__table align-right">
+		<table class="datatable v-type">
+			<colgroup>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+			</colgroup>
+			<thead>
+				<tr>
+					<th></th>
+					<th>주문 건 수</th>
+					<th>주문 총액</th>
+					<th>결제완료 건 수</th>
+					<th>결제완료 총액</th>
+				</tr>
+			</thead>
+			<tbody>
+				<!-- 합계 -->
+				<tr data-mall-tp="MALL_TP.MALL">
+					<th>합계</th>
+					<td>
+						<span>
+							${$scope.commafy(orderSumCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(orderSumPrice)}
+					</td>
+					<td>
+						<span>
+							${$scope.commafy(icSumCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(icSumPrice)}
+					</td>
+				</tr>
+				<!-- PC -->
+				<tr data-mall-tp="MALL_TP.MALL">
+					<th>
+						PC
+					</th>
+					<td>
+						<span>
+							${$scope.commafy(orderPcCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(orderPcPrice)}
+					</td>
+					<td>
+						<span>
+							${$scope.commafy(icPcCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(icPcPrice)}
+					</td>
+				</tr>
+				<!-- Mobile Web -->
+				<tr data-mall-tp="MALL_TP.MALL">
+					<th>
+						Mobile Web
+					</th>
+					<td>
+						<span>
+							${$scope.commafy(orderMobileCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(orderMobilePrice)}
+					</td>
+					<td>
+						<span>
+							${$scope.commafy(icMobileCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(icMobilePrice)}
+					</td>
+				</tr>
+				<!-- Mobile App -->
+				<tr data-mall-tp="MALL_TP.MALL">
+					<th>
+						Mobile App
+					</th>
+					<td>
+						<span>
+							${$scope.commafy(orderMobileAppCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(orderMobileAppPrice)}
+					</td>
+					<td>
+						<span>
+							${$scope.commafy(icMobileAppCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(icMobileAppPrice)}
+					</td>
+				</tr>
+				<!-- 관리자 주문 -->
+				<tr data-mall-tp="MALL_TP.MALL">
+					<th>
+						관리자 주문
+					</th>
+					<td>
+						<span>
+							${$scope.commafy(orderAdminCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(orderAdminPrice)}
+					</td>
+					<td>
+						<span>
+							${$scope.commafy(icAdminCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(icAdminPrice)}
+					</td>
+				</tr>
+				<!-- 외부몰 -->
+				<tr data-mall-tp="MALL_TP.OUTSOURCE">
+					<th>
+						외부몰
+					</th>
+					<td>
+						<span>
+							${$scope.commafy(orderOutCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(orderOutPrice)}
+					</td>
+					<td>
+						<span>
+							${$scope.commafy(icOutCount)}
+						</span>
+						건
+					</td>
+					<td>
+						${$scope.commafy(icOutPrice)}
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- 클레임 현황 컨텐츠 템플릿 -->
+<script id="order_claim_contents_template" type="text/x-jquery-tmpl">
+	<div class="module__table align-right">
+		<table class="datatable v-type">
+			<colgroup>
+				<col>
+				<col>
+				<col>
+				<col>
+			</colgroup>
+			<thead>
+				<tr>
+					<th>클레임 현황(누적)</th>
+					<th></th>
+					<th>클레임 처리현황</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				<!-- 취소 요청 -->
+				<tr>
+					<th>취소 요청</th>
+					<td>
+						<a href="layout.html#/cancelReqOrderDetailList" target="_blank" class="item-link">
+							${$scope.commafy(caCount)}
+						</a>
+						건
+					</td>
+					<th>
+						반품(회수) 완료
+					</th>
+					<td>
+						<a href="layout.html#/returnOrderDetailList" target="_blank" class="item-link">
+							${$scope.commafy(rcReturnCount)}
+						</a>
+						건
+					</td>
+				</tr>
+				<tr>
+					<th>반품 요청</th>
+					<td>
+						<a href="layout.html#/returnOrderDetailList" target="_blank" class="item-link">
+							${$scope.commafy(raCount)}
+						</a>
+						건
+					</td>
+					<th>
+						반품(즉시) 완료
+					</th>
+					<td>
+						<a href="layout.html#/returnOrderDetailList" target="_blank" class="item-link">
+							${$scope.commafy(rcDirectCount)}
+						</a>
+						건
+					</td>
+				</tr>
+				<tr>
+					<th>환불 대기</th>
+					<td>
+						<a href="layout.html#/returnOrderDetailList" target="_blank" class="item-link">
+							${$scope.commafy(faCount)}
+						</a>
+						건
+					</td>
+					<th></th>
+					<td></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- 회원가입 현황 컨텐츠템플릿 -->
+<script id="sign_up_contents_template" type="text/x-jquery-tmpl">
+	<div class="module__table align-right">
+		<table class="datatable v-type">
+			<colgroup>
+				<col>
+				<col>
+				<col>
+			</colgroup>
+			<thead>
+				<tr>
+					<th></th>
+					<th>총 회원</th>
+					<th>신규가입</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<th>전체</th>
+					<td>
+						<a href="layout.html#/buyer" target="_blank" class="item-link">
+							${$scope.commafy(total)}
+						</a> 명
+					</td>
+					<td>${$scope.commafy(todayTotal)} 명</td>
+				</tr>
+				<tr>
+					<th>일반</th>
+					<td>
+						<a href="layout.html#/buyer" target="_blank" class="item-link">
+							${$scope.commafy(normal)}
+						</a> 명
+					</td>
+					<td>${$scope.commafy(todayNormal)} 명</td>
+				</tr>
+				<tr>
+					<th>임직원</th>
+					<td>
+						<a href="layout.html#/buyer" target="_blank" class="item-link">
+							${$scope.commafy(employee)}
+						</a> 명
+					</td>
+					<td>${$scope.commafy(todayEmployee)} 명</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- 고객 문의 처리현황 컨텐츠템플릿 -->
+<script id="customer_qna_contents_template" type="text/x-jquery-tmpl">
+	<div class="module__table align-right">
+		<table class="datatable v-type">
+			<colgroup>
+				<col>
+				<col>
+			</colgroup>
+			<tbody>
+				<tr>
+					<th>상품문의 접수</th>
+					<td>
+						<a href="layout.html#/customerQna" target="_blank" class="item-link">
+							${$scope.commafy(product)}
+						</a>
+						건
+					</td>
+				</tr>
+				<tr>
+					<th>상품문의 답변 지연</th>
+					<td>
+						<a href="layout.html#/customerQna" target="_blank" class="item-link">
+							${$scope.commafy(productDelay)}
+						</a>
+						건
+					</td>
+				</tr>
+				<tr>
+					<th>1:1 접수</th>
+					<td>
+						<a href="layout.html#/customerQna" target="_blank" class="item-link">
+							${$scope.commafy(onetoone)}
+						</a>
+						건
+					</td>
+				</tr>
+				<tr>
+					<th>1:1 답변 지연</th>
+					<td>
+						<a href="layout.html#/customerQna" target="_blank" class="item-link">
+							${$scope.commafy(onetooneDelay)}
+						</a>
+						건
+					</td>
+				</tr>
+				<tr>
+					<th>외부몰 접수</th>
+					<td>
+						<a href="layout.html#/outMallQna" target="_blank" class="item-link">
+							${$scope.commafy(outmall)}
+						</a>
+						건
+					</td>
+				</tr>
+				<tr>
+					<th>외부몰 답변 지연</th>
+					<td>
+					<a href="layout.html#/outMallQna" target="_blank" class="item-link">
+							${$scope.commafy(outmallDelay)}
+						</a>
+						건
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- 보상제 처리현황 컨텐츠템플릿 -->
+<script id="reward_apply_contents_template" type="text/x-jquery-tmpl">
+	<div class="module__table align-right">
+		<table class="datatable v-type">
+			<colgroup>
+				<col>
+				<col>
+			</colgroup>
+			<tbody>
+				<tr>
+					<th>신청내역</th>
+					<td>
+						<a href="layout.html#/rewardApply" target="_blank" class="item-link">
+							${$scope.commafy(reward)}
+						</a> 건
+					</td>
+				</tr>
+				<tr>
+					<th>보상내역</th>
+					<td>
+						<a href="layout.html#/rewardApply" target="_blank" class="item-link">
+							${$scope.commafy(completedReward)}
+						</a> 건
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- 부정거래 탐지 컨텐츠템플릿 -->
+<script id="illegal_detect_contents_template" type="text/x-jquery-tmpl">
+	<div class="module__table align-right">
+		<table class="datatable v-type">
+			<colgroup>
+				<col>
+				<col>
+			</colgroup>
+			<tbody>
+				<tr>
+					<th>비정상 로그인</th>
+					<td>
+						<a href="layout.html#/illegalDetectLog" target="_blank" class="item-link">
+							${$scope.commafy(loginFail)}
+						</a> 건
+					</td>
+				</tr>
+				<tr>
+					<th>비정상 회원가입</th>
+					<td>
+						<a href="layout.html#/illegalDetectLog" target="_blank" class="item-link">
+							${$scope.commafy(userJoin)}
+						</a> 건
+					</td>
+				</tr>
+				<tr>
+					<th>비정상주문(결제 횟수)</th>
+					<td>
+						<a href="layout.html#/illegalDetectLog" target="_blank" class="item-link">
+							${$scope.commafy(orderCount)}
+						</a> 건
+					</td>
+				</tr>
+				<tr>
+					<th>비정상주문(결제 금액)</th>
+					<td>
+						<a href="layout.html#/illegalDetectLog" target="_blank" class="item-link">
+							${$scope.commafy(orderPrice)}
+						</a> 건
+					</td>
+				</tr>
+				<tr>
+					<th>도난분실카드</th>
+					<td>
+						<a href="layout.html#/illegalDetectLog" target="_blank" class="item-link">
+							${$scope.commafy(stolenLostCard)}
+						</a> 건
+					</td>
+				</tr>
+				<tr>
+					<th>거래불가카드</th>
+					<td>
+						<a href="layout.html#/illegalDetectLog" target="_blank" class="item-link">
+							${$scope.commafy(transactionNotVCard)}
+						</a> 건
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- 내 승인요청 현황 컨텐츠템플릿 -->
+<script id="my_approval_request_contents_template" type="text/x-jquery-tmpl">
+	<tr class = "list__item__link ">
+		<th>${apprStat}</th>
+		<td style="text-align: right;">${$scope.commafy(totalCnt)} 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalItemRegistRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(itemRegistCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalItemPriceRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(itemPriceCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalGoodsRegistRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(goodsRegistCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalGoodsDiscountRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(goodsDiscountCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalExhibitSelectRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(exhibitSelectCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalExhibitGiftRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(exhibitGiftCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalCouponRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(couponCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalPointRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(pointCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalCsRefundRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(csRefundCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalItemClientRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(itemClientCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalGoodsClientRequest" target="_blank" class="list-item-link">
+				${$scope.commafy(goodsClientCnt)}
+			</a> 건
+		</td>
+	</tr>
+	</tr>
+</script>
+
+<!-- 내 승인처리 목록 컨텐츠템플릿 -->
+<script id="my_approval_accept_contents_template" type="text/x-jquery-tmpl">
+	<div class="module__table align-right">
+		<table class="datatable v-type">
+			<colgroup>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+				<col>
+			</colgroup>
+			<thead>
+				<tr>
+					<th></th>
+					<th>승인처리 </br>잔여 현황</th>
+					<th>품목등록</th>
+					<th>품목가격</th>
+					<th>상품등록</th>
+					<th>상품할인</th>
+					<th>균일가</th>
+					<th>증정행사</th>
+					<th>쿠폰</th>
+					<th>적립금</th>
+					<th>CS환불</th>
+					<th>거래처품목</th>
+					<th>거래처상품</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<th>${apprStat}</th>
+					<td>${$scope.commafy(totalCnt)} 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalItemRegistAccept" target="_blank" class="item-link">
+							${$scope.commafy(itemRegistCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalItemPriceAccept" target="_blank" class="item-link">
+							${$scope.commafy(itemPriceCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalGoodsRegistAccept" target="_blank" class="item-link">
+							${$scope.commafy(goodsRegistCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalGoodsDiscountAccept" target="_blank" class="item-link">
+							${$scope.commafy(goodsDiscountCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalExhibitSelectAccept" target="_blank" class="item-link">
+							${$scope.commafy(exhibitSelectCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalExhibitGiftAccept" target="_blank" class="item-link">
+							${$scope.commafy(exhibitGiftCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalCouponAccept" target="_blank" class="item-link">
+							${$scope.commafy(couponCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalPointAccept" target="_blank" class="item-link">
+							${$scope.commafy(pointCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalCsRefundAccept" target="_blank" class="item-link">
+							${$scope.commafy(csRefundCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalItemClientAccept" target="_blank" class="item-link">
+							${$scope.commafy(itemClientCnt)}
+						</a> 건
+					</td>
+					<td>
+						<a href="layout.html#/approvalGoodsClientAccept" target="_blank" class="item-link">
+							${$scope.commafy(goodsClientCnt)}
+						</a> 건
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- 담당자별 승인 처리 현황 컨텐츠템플릿 -->
+<script id="tot_approval_accept_contents_template" type="text/x-jquery-tmpl">
+	<tr class = "list__item__link ">
+		<td style="text-align: center; word-break:break-word;">${apprUser}
+		</td>
+		<td style="text-align: right;">${$scope.commafy(totalCnt)} 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalItemRegistAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(itemRegistCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalItemPriceAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(itemPriceCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalGoodsRegistAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(goodsRegistCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalGoodsDiscountAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(goodsDiscountCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalExhibitSelectAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(exhibitSelectCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalExhibitGiftAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(exhibitGiftCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalCouponAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(couponCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalPointAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(pointCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalCsRefundAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(csRefundCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalItemClientAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(itemClientCnt)}
+			</a> 건
+		</td>
+		<td style="text-align: right;">
+			<a href="layout.html#/approvalGoodsClientAccept" target="_blank" class="list-item-link">
+				${$scope.commafy(goodsClientCnt)}
+			</a> 건
+		</td>
+	</tr>
+	</tr>
+</script>

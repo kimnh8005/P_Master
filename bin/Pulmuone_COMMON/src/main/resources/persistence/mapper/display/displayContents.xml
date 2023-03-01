@@ -1,0 +1,543 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.display.DisplayContentsMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시 인벤토리 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.05		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.display.contents.dto.vo.InventoryInfoVo" id="inventoryInfoVoResultMap">
+        <result column="DP_INVENTORY_ID" property="dpInventoryId"/>
+        <result column="INVENTORY_CD" property="inventoryCode"/>
+        <result column="INVENTORY_NM" property="inventoryName"/>
+        <result column="GRP_CTGRY_ID" property="groupCategoryId"/>
+        <result column="CONTS_LEVEL_1_TP" property="contentsLevel1Type"/>
+        <result column="CONTS_LEVEL_2_TP" property="contentsLevel2Type"/>
+        <result column="CONTS_LEVEL_3_TP" property="contentsLevel3Type"/>
+    </resultMap>
+
+    <select id="getInventoryInfoList" resultMap="inventoryInfoVoResultMap">
+        /* displayContents.getInventoryInfoList */
+        SELECT DI.DP_INVENTORY_ID,
+            DI.INVENTORY_CD,
+            DI.INVENTORY_NM,
+            DI.GRP_CTGRY_ID,
+            DI.CONTS_LEVEL_1_TP,
+            DI.CONTS_LEVEL_2_TP,
+            DI.CONTS_LEVEL_3_TP
+        FROM DP_INVENTORY DI
+            INNER JOIN DP_PAGE DP ON DI.DP_PAGE_ID = DP.DP_PAGE_ID
+        WHERE DP.PAGE_CD = #{pageCd}
+            AND DI.USE_YN = 'Y'
+            AND DP.USE_YN = 'Y'
+            AND DI.DEL_YN = 'N'
+            AND DP.DEL_YN = 'N'
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.PC')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.MOBILE')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.APP')
+                </when>
+            </choose>
+        ORDER BY DI.SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시 카테고리 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.09		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getInventoryInfo" resultMap="inventoryInfoVoResultMap">
+        /* displayContents.getInventoryInfo */
+        SELECT DI.DP_INVENTORY_ID,
+            DI.INVENTORY_CD,
+            DI.INVENTORY_NM,
+            DI.GRP_CTGRY_ID,
+            DI.CONTS_LEVEL_1_TP,
+            DI.CONTS_LEVEL_2_TP,
+            DI.CONTS_LEVEL_3_TP
+        FROM DP_INVENTORY DI
+            INNER JOIN IL_CTGRY IC ON DI.GRP_CTGRY_ID = IC.IL_CTGRY_ID
+        WHERE DI.INVENTORY_CD = #{inventoryCd}
+            AND DI.USE_YN = 'Y'
+            AND IC.USE_YN = 'Y'
+            AND DI.DEL_YN = 'N'
+            AND IC.DEL_YN = 'N'
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.PC')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.MOBILE')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.APP')
+                </when>
+            </choose>
+        ORDER BY DI.SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 인벤토리 PK 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.10		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getInventoryId" resultType="long">
+        /* displayContents.getInventoryId */
+        SELECT DI.DP_INVENTORY_ID
+        FROM DP_INVENTORY DI
+        WHERE DI.INVENTORY_CD = #{inventoryCd}
+            AND DI.USE_YN = 'Y'
+            AND DI.DEL_YN = 'N'
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.PC')
+            </when>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.MOBILE')
+            </when>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                AND DI.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.APP')
+            </when>
+        </choose>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시 컨텐츠 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.28		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.display.contents.dto.vo.ContentsDetailVo" id="contentsDetailVoResultMap">
+        <result column="DP_CONTS_ID" property="dpContsId"/>
+        <result column="DP_START_DT" property="dpStartDate"/>
+        <result column="DP_END_DT" property="dpEndDate"/>
+        <result column="DP_RANGE_TP_NM" property="dpRangeTypeName"/>
+        <result column="TITLE_NM" property="titleName"/>
+        <result column="SORT" property="sort"/>
+        <result column="TEXT_1" property="text1"/>
+        <result column="TEXT_1_COLOR" property="text1Color"/>
+        <result column="TEXT_2" property="text2"/>
+        <result column="TEXT_2_COLOR" property="text2Color"/>
+        <result column="TEXT_3" property="text3"/>
+        <result column="TEXT_3_COLOR" property="text3Color"/>
+        <result column="LINK_URL_PC" property="linkUrlPc"/>
+        <result column="LINK_URL_MOBILE" property="linkUrlMobile"/>
+        <result column="HTML_PC" property="htmlPc"/>
+        <result column="HTML_MOBILE" property="htmlMobile"/>
+        <result column="IMG_PATH_PC" property="imagePathPc"/>
+        <result column="GIF_IMG_PATH_PC" property="gifImagePathPc"/>
+        <result column="IMG_PATH_MOBILE" property="imagePathMobile"/>
+        <result column="GIF_IMG_PATH_MOBILE" property="gifImagePathMobile"/>
+        <result column="DP_CTGRY_ID" property="dpCtgryId"/>
+        <result column="CTGRY_NM" property="categoryName"/>
+        <result column="DP_BRAND_NM" property="brandName"/>
+        <result column="CONTS_ID" property="contentsId"/>
+        <result column="CONTS_TP" property="contentsType"/>
+        <result column="BRAND_IMG_MAIN" property="brandImageMain"/>
+        <result column="BRAND_IMG_MAIN_OVER" property="brandImageMainOver"/>
+        <result column="BRAND_IMG_TITLE_BANNER" property="brandImageTitleBanner"/>
+        <result column="IL_CTGRY_ID" property="ilCtgryId"/>
+        <result column="INVENTORY_CD" property="inventoryCode"/>
+        <result column="DP_INVENTORY_ID" property="dpInventoryId"/>
+        <result column="CONTS_LEVEL" property="contentsLevel"/>
+        <result column="LEVEL_1_CONTS_ID" property="level1ContentsId"/>
+        <result column="LEVEL_2_CONTS_ID" property="level2ContentsId"/>
+        <result column="DP_BRAND_USE_YN" property="dpBrandUseYn"/>
+    </resultMap>
+    <select id="getContentsDetail" resultMap="contentsDetailVoResultMap">
+        /* displayContents.getContentsDetail */
+        SELECT DC.DP_CONTS_ID,
+            DC.DP_START_DT,
+            DC.DP_END_DT,
+            FN_COMN_CODE_DIC(DC.DP_RANGE_TP) AS DP_RANGE_TP_NM,
+            DC.TITLE_NM,
+            DC.SORT,
+            DC.TEXT_1,
+            DC.TEXT_1_COLOR,
+            DC.TEXT_2,
+            DC.TEXT_2_COLOR,
+            DC.TEXT_3,
+            DC.TEXT_3_COLOR,
+            DC.LINK_URL_PC,
+            DC.LINK_URL_MOBILE,
+            DC.HTML_PC,
+            DC.HTML_MOBILE,
+            DC.IMG_PATH_PC,
+            DC.GIF_IMG_PATH_PC,
+            DC.IMG_PATH_MOBILE,
+            DC.GIF_IMG_PATH_MOBILE,
+            DC.DP_CTGRY_ID,
+            IC.CTGRY_NM,
+            UB.DP_BRAND_NM,
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_PC' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_MOBILE' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_MOBILE' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+            </choose>
+            DC.CONTS_ID,
+            DC.CONTS_TP,
+            DC.IL_CTGRY_ID,
+            DI.INVENTORY_CD,
+            (CASE WHEN UB.USE_YN = 'Y' AND UB.BRAND_PAVILION_YN = 'Y' THEN 'Y' ELSE 'N' END ) AS DP_BRAND_USE_YN
+        FROM DP_CONTS DC
+            LEFT OUTER JOIN IL_CTGRY IC ON DC.DP_CTGRY_ID = IC.IL_CTGRY_ID
+            LEFT OUTER JOIN DP_BRAND UB ON DC.CONTS_ID = UB.DP_BRAND_ID
+            LEFT OUTER JOIN DP_INVENTORY DI ON DI.DP_INVENTORY_ID  = DC.DP_INVENTORY_ID
+        WHERE DC.USE_YN = 'Y'
+            AND DC.DEL_YN = 'N'
+            AND NOW() BETWEEN DC.DP_START_DT AND DC.DP_END_DT
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(contentsLevel, '1')">
+                    AND DC.DP_INVENTORY_ID = #{dpContsId}
+                    AND DC.CONTS_LEVEL = 1
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(contentsLevel, '2')">
+                    AND DC.LEVEL_1_CONTS_ID = #{dpContsId}
+                    AND DC.CONTS_LEVEL = 2
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(contentsLevel, '3')">
+                    AND DC.LEVEL_2_CONTS_ID = #{dpContsId}
+                    AND DC.CONTS_LEVEL = 3
+                </when>
+            </choose>
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.PC')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.MOBILE')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.APP')
+                </when>
+            </choose>
+        ORDER BY DC.SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시 컨텐츠 정보 조회 by pageCd
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.05		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getContentsDetailByPageCd" resultMap="contentsDetailVoResultMap">
+        /* displayContents.getContentsDetailByPageCd */
+        SELECT DC.DP_CONTS_ID,
+            DC.DP_START_DT,
+            DC.DP_END_DT,
+            FN_COMN_CODE_DIC(DC.DP_RANGE_TP) AS DP_RANGE_TP_NM,
+            DC.TITLE_NM,
+            DC.SORT,
+            DC.TEXT_1,
+            DC.TEXT_1_COLOR,
+            DC.TEXT_2,
+            DC.TEXT_2_COLOR,
+            DC.TEXT_3,
+            DC.TEXT_3_COLOR,
+            DC.LINK_URL_PC,
+            DC.LINK_URL_MOBILE,
+            DC.HTML_PC,
+            DC.HTML_MOBILE,
+            DC.IMG_PATH_PC,
+            DC.GIF_IMG_PATH_PC,
+            DC.IMG_PATH_MOBILE,
+            DC.GIF_IMG_PATH_MOBILE,
+            DC.DP_CTGRY_ID,
+            IC.CTGRY_NM,
+            UB.DP_BRAND_NM,
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_PC' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_MOBILE' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_MOBILE' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+            </choose>
+            DC.CONTS_ID,
+            DC.CONTS_TP,
+            DC.IL_CTGRY_ID,
+            DI.INVENTORY_CD,
+            DC.DP_INVENTORY_ID,
+            DC.CONTS_LEVEL,
+            DC.LEVEL_1_CONTS_ID,
+            DC.LEVEL_2_CONTS_ID,
+            (CASE WHEN UB.USE_YN = 'Y' AND UB.BRAND_PAVILION_YN = 'Y' THEN 'Y' ELSE 'N' END ) AS DP_BRAND_USE_YN
+        FROM DP_PAGE DP
+            INNER JOIN DP_INVENTORY DI ON DP.DP_PAGE_ID = DI.DP_PAGE_ID
+            INNER JOIN DP_CONTS DC ON DI.DP_INVENTORY_ID  = DC.DP_INVENTORY_ID
+            LEFT OUTER JOIN IL_CTGRY IC ON DC.DP_CTGRY_ID = IC.IL_CTGRY_ID
+            LEFT OUTER JOIN DP_BRAND UB ON DC.CONTS_ID = UB.DP_BRAND_ID
+        WHERE DC.USE_YN = 'Y'
+            AND DC.DEL_YN = 'N'
+            AND DI.USE_YN = 'Y'
+            AND DI.DEL_YN = 'N'
+            AND DP.USE_YN = 'Y'
+            AND DP.DEL_YN = 'N'
+            AND (
+                    NOW() BETWEEN DC.DP_START_DT AND DC.DP_END_DT
+                    OR  (
+                            DI.FUTURE_YN = 'Y'
+                            AND DATE_ADD(NOW(), INTERVAL 60 MINUTE) BETWEEN DC.DP_START_DT AND DC.DP_END_DT
+                        )
+                )
+            AND DP.PAGE_CD = #{pageCd}
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.PC')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.MOBILE')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.APP')
+                </when>
+            </choose>
+        ORDER BY DC.SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시 컨텐츠 정보 조회 by inventoryCd
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.21		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getContentsDetailByInventoryCd" resultMap="contentsDetailVoResultMap">
+        /* displayContents.getContentsDetailByInventoryCd */
+        SELECT DC.DP_CONTS_ID,
+            DC.DP_START_DT,
+            DC.DP_END_DT,
+            FN_COMN_CODE_DIC(DC.DP_RANGE_TP) AS DP_RANGE_TP_NM,
+            DC.TITLE_NM,
+            DC.SORT,
+            DC.TEXT_1,
+            DC.TEXT_1_COLOR,
+            DC.TEXT_2,
+            DC.TEXT_2_COLOR,
+            DC.TEXT_3,
+            DC.TEXT_3_COLOR,
+            DC.LINK_URL_PC,
+            DC.LINK_URL_MOBILE,
+            DC.HTML_PC,
+            DC.HTML_MOBILE,
+            DC.IMG_PATH_PC,
+            DC.GIF_IMG_PATH_PC,
+            DC.IMG_PATH_MOBILE,
+            DC.GIF_IMG_PATH_MOBILE,
+            DC.DP_CTGRY_ID,
+            IC.CTGRY_NM,
+            UB.DP_BRAND_NM,
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.PC_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_PC' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_MOBILE' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.MOBILE_MAIN_OVER' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_MAIN_OVER,
+                    (SELECT CONCAT(uba.PATH, uba.NM) AS PATH_NM FROM DP_BRAND_ATTC uba WHERE BRAND_LOGO_TYPE = 'BRAND_LOGO_TYPE.TITLE_BANNER_MOBILE' AND uba.DP_BRAND_ID = UB.DP_BRAND_ID LIMIT 1) AS BRAND_IMG_TITLE_BANNER,
+                </when>
+            </choose>
+            DC.CONTS_ID,
+            DC.CONTS_TP,
+            DC.IL_CTGRY_ID,
+            DI.INVENTORY_CD,
+            DC.DP_INVENTORY_ID,
+            DC.CONTS_LEVEL,
+            DC.LEVEL_1_CONTS_ID,
+            DC.LEVEL_2_CONTS_ID,
+            (CASE WHEN UB.USE_YN = 'Y' AND UB.BRAND_PAVILION_YN = 'Y' THEN 'Y' ELSE 'N' END ) AS DP_BRAND_USE_YN
+        FROM DP_INVENTORY DI
+            INNER JOIN DP_CONTS DC ON DI.DP_INVENTORY_ID  = DC.DP_INVENTORY_ID
+            LEFT OUTER JOIN IL_CTGRY IC ON DC.DP_CTGRY_ID = IC.IL_CTGRY_ID
+            LEFT OUTER JOIN DP_BRAND UB ON DC.CONTS_ID = UB.DP_BRAND_ID
+        WHERE DC.USE_YN = 'Y'
+            AND DC.DEL_YN = 'N'
+            AND DI.USE_YN = 'Y'
+            AND DI.DEL_YN = 'N'
+            AND NOW() BETWEEN DC.DP_START_DT AND DC.DP_END_DT
+            AND DI.INVENTORY_CD = #{inventoryCd}
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.PC')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.MOBILE')
+                </when>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                    AND DC.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.APP')
+                </when>
+            </choose>
+        ORDER BY DC.SORT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 로하스 배너 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getLohasBanner" resultMap="contentsDetailVoResultMap">
+        /* displayContents.getLohasBanner */
+        SELECT *
+        FROM (
+            SELECT DC.DP_CONTS_ID,
+                DC.DP_START_DT,
+                DC.DP_END_DT,
+                DC.DP_RANGE_TP,
+                FN_COMN_CODE_DIC(DC.DP_RANGE_TP) AS DP_RANGE_TP_NM,
+                DC.TITLE_NM,
+                DC.SORT,
+                DC.TEXT_1,
+                DC.TEXT_1_COLOR,
+                DC.TEXT_2,
+                DC.TEXT_2_COLOR,
+                DC.TEXT_3,
+                DC.TEXT_3_COLOR,
+                DC.LINK_URL_PC,
+                DC.LINK_URL_MOBILE,
+                DC.HTML_PC,
+                DC.HTML_MOBILE,
+                DC.IMG_PATH_PC,
+                DC.GIF_IMG_PATH_PC,
+                DC.IMG_PATH_MOBILE,
+                DC.GIF_IMG_PATH_MOBILE,
+                DC.DP_CTGRY_ID,
+                DC.CONTS_ID,
+                DC.CONTS_TP,
+                DC.IL_CTGRY_ID,
+                1 AS DP_SORT
+            FROM DP_INVENTORY DI
+                INNER JOIN DP_CONTS DC ON DI.DP_INVENTORY_ID  = DC.DP_INVENTORY_ID
+            WHERE DI.INVENTORY_CD = #{inventoryCd}
+                AND DC.USE_YN = 'Y'
+                AND DC.DEL_YN = 'N'
+                AND DC.CONTS_LEVEL = 1
+                AND NOW() BETWEEN DP_START_DT AND DP_END_DT
+            UNION ALL
+            SELECT DC.DP_CONTS_ID,
+                DC.DP_START_DT,
+                DC.DP_END_DT,
+                DC.DP_RANGE_TP,
+                FN_COMN_CODE_DIC(DC.DP_RANGE_TP) AS DP_RANGE_TP_NM,
+                DC.TITLE_NM,
+                DC.SORT,
+                DC.TEXT_1,
+                DC.TEXT_1_COLOR,
+                DC.TEXT_2,
+                DC.TEXT_2_COLOR,
+                DC.TEXT_3,
+                DC.TEXT_3_COLOR,
+                DC.LINK_URL_PC,
+                DC.LINK_URL_MOBILE,
+                DC.HTML_PC,
+                DC.HTML_MOBILE,
+                DC.IMG_PATH_PC,
+                DC.GIF_IMG_PATH_PC,
+                DC.IMG_PATH_MOBILE,
+                DC.GIF_IMG_PATH_MOBILE,
+                DC.DP_CTGRY_ID,
+                DC.CONTS_ID,
+                DC.CONTS_TP,
+                DC.IL_CTGRY_ID,
+                2 AS DP_SORT
+            FROM DP_INVENTORY DI
+                INNER JOIN DP_CONTS DC ON DI.DP_INVENTORY_ID  = DC.DP_INVENTORY_ID
+            WHERE DI.INVENTORY_CD = #{inventoryCd}
+                AND DC.USE_YN = 'Y'
+                AND DC.DEL_YN = 'N'
+                AND DC.CONTS_LEVEL = 1
+                AND NOW() <![CDATA[>]]> DP_END_DT
+            ) G1
+        WHERE 1=1
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'PC')">
+                AND G1.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.PC')
+            </when>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'MOBILE')">
+                AND G1.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.MOBILE')
+            </when>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceType, 'APP')">
+                AND G1.DP_RANGE_TP IN ('DP_RANGE_TP.ALL', 'DP_RANGE_TP.APP')
+            </when>
+        </choose>
+        ORDER BY G1.DP_SORT, G1.DP_START_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 딜상품 여부
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="isDealGoods" resultType="boolean">
+		/*	displayContents.isDealGoods	*/
+		SELECT (CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END) AS IS_DEAL_GOODS
+		FROM DP_INVENTORY DI
+		JOIN DP_CONTS DCB ON (DCB.DP_INVENTORY_ID = DI.DP_INVENTORY_ID)
+		JOIN DP_CONTS DCG ON (DCG.DP_INVENTORY_ID = DI.DP_INVENTORY_ID AND DCG.PRNTS_CONTS_ID = DCB.DP_CONTS_ID)
+		WHERE DI.INVENTORY_CD = #{inventoryCd}
+		AND DCG.CONTS_ID = #{ilGoodsId}
+		AND DI.USE_YN = 'Y'
+		AND DI.DEL_YN = 'N'
+		AND DCB.USE_YN = 'Y'
+		AND DCB.DEL_YN = 'N'
+		AND NOW() BETWEEN DCB.DP_START_DT AND DCB.DP_END_DT
+		AND DCB.CONTS_TP ='DP_CONTENTS_TP.BANNER'
+		AND NOW() BETWEEN DCG.DP_START_DT AND DCG.DP_END_DT
+		AND DCG.CONTS_TP ='DP_CONTENTS_TP.GOODS'
+	</select>
+
+</mapper>
+

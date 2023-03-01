@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.customer.CustomerFeedbackBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 후기 점수 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getFeedbackScore" resultType="double">
+        /* customerFeedbackBatch.getFeedbackScore */
+        SELECT ROUND(AVG(FF.SATISFACTION_SCORE),1) AS SATISFACTION_SCORE
+        FROM  FB_FEEDBACK FF
+        WHERE FF.DISP_YN = 'Y'
+        AND FF.IL_ITEM_CD IN
+            <foreach collection="list" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 후기 집계 정보 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delFeedbackTotal">
+        /* customerFeedbackBatch.delFeedbackTotal */
+        DELETE FROM FB_FEEDBACK_TOTAL
+        WHERE IL_GOODS_ID = #{ilGoodsId}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 후기 집계 정보 추가
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.03		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="addFeedbackTotal">
+        /* customerFeedbackBatch.addFeedbackTotal */
+        INSERT INTO FB_FEEDBACK_TOTAL (
+            IL_GOODS_ID, SATISFACTION_SCORE
+        ) VALUES (
+            #{ilGoodsId}
+            , #{satisfactionScore}
+        )
+    </select>
+
+</mapper>
+
+

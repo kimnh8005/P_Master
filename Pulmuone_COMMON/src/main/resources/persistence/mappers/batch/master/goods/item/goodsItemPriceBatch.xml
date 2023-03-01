@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.item.BatchGoodsItemPriceMapper">
+
+	<resultMap type="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceListVo" id="itemPriceResult">
+		<result column="IL_ITEM_CD" 			property="ilItemCode" />
+    	<result column="IL_ITEM_PRICE_ID" 			property="ilItemPriceId" />
+		<result column="STANDARD_PRICE" 			property="standardPrice" />
+    	<result column="RECOMMENDED_PRICE" 		property="recommendedPrice" />
+	</resultMap>
+
+	<resultMap type="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceOrigVo" id="itemPriceOrigResult">
+		<result column="IL_ITEM_PRICE_ORIG_ID" 			property="ilItemPriceOriginalId" />
+		<result column="IL_ITEM_CD" 					property="ilItemCode" />
+    	<result column="START_DT" 						property="startDate" />
+		<result column="STANDARD_PRICE" 				property="standardPrice" />
+    	<result column="RECOMMENDED_PRICE" 				property="recommendedPrice" />
+    	<result column="SYSTEM_UPDATE_YN" 				property="systemUpdateYn" />
+    	<result column="MANAGER_UPDATE_YN" 				property="managerUpdateYn" />
+	</resultMap>
+
+	<resultMap id="getMasterItemMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.MasterItemVo">
+        <result column="IL_ITEM_CODE"                 property="ilItemCode" />
+    </resultMap>
+
+	<resultMap id="getItemPriceIfTempMap" type="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceIfTempVo">
+        <result column="IL_ITEM_PRICE_IF_TEMP_ID"                 property="ilItemPriceIfTempId" />
+        <result column="IL_ITEM_CD"                 property="ilItemCd" />
+        <result column="START_DT"                 property="startDt" />
+        <result column="STANDARD_PRICE"                 property="standardPrice" />
+        <result column="RECOMMENDED_PRICE"                 property="recommendedPrice" />
+        <result column="PRICE_MANAGE_TP"                 property="priceManageTp" />
+    </resultMap>
+
+ 	<select id="getItemPriceInfo" resultMap="itemPriceResult">
+		/* goodsItemPriceBatch.getItemPriceInfo */
+		SELECT
+			ITEM.IL_ITEM_CD,
+			IIP.IL_ITEM_PRICE_ID,
+			IIP.STANDARD_PRICE,
+			IIP.RECOMMENDED_PRICE
+
+		FROM IL_ITEM ITEM
+		INNER JOIN  IL_ITEM_PRICE IIP
+		ON ITEM.IL_ITEM_CD = IIP.IL_ITEM_CD
+		WHERE NOW() BETWEEN IIP.START_DT AND IIP.END_DT
+		AND ITEM.IL_ITEM_CD = #{ilItemCd}
+  	</select>
+
+
+	<select id="getItemPriceOrigInfo" resultMap="itemPriceOrigResult">
+		/* goodsItemPriceBatch.getItemPriceOrigInfo */
+		SELECT
+			IL_ITEM_PRICE_ORIG_ID,
+			IL_ITEM_CD,
+			START_DT,
+			STANDARD_PRICE,
+			RECOMMENDED_PRICE
+			, MANAGER_UPDATE_YN
+		FROM IL_ITEM_PRICE_ORIG
+		WHERE IL_ITEM_CD = #{ilItemCode}
+			AND START_DT = IFNULL(#{startDate}, CURRENT_DATE())
+		ORDER BY CREATE_DT DESC
+		LIMIT  1
+	</select>
+
+	<select id="getItemPriceIfTempList" resultMap="getItemPriceIfTempMap">
+		/* goodsItemPriceBatch.getItemPriceTempList */
+		SELECT
+			IIPIT.IL_ITEM_PRICE_IF_TEMP_ID
+			, IIPIT.IL_ITEM_CD
+			, IIPIT.START_DT
+			, IIPIT.STANDARD_PRICE
+			, CASE
+				WHEN SUPPLIER.SUPPLIER_CD IN ('PF', 'OG') THEN IIPIT.RECOMMENDED_PRICE
+				ELSE PRICE.RECOMMENDED_PRICE
+			END AS RECOMMENDED_PRICE
+			, CASE
+				WHEN SUPPLIER.SUPPLIER_CD IN ('PF', 'OG') THEN 'N'
+				ELSE 'R'
+			END AS PRICE_MANAGE_TP
+		FROM IL_ITEM_PRICE_IF_TEMP IIPIT
+			INNER JOIN IL_ITEM ITEM
+			 	ON IIPIT.IL_ITEM_CD = ITEM.IL_ITEM_CD
+				AND ITEM.ERP_IF_YN = 'Y'
+			INNER JOIN IL_ITEM_PRICE PRICE
+			 	ON PRICE.IL_ITEM_CD = ITEM.IL_ITEM_CD
+				AND IIPIT.START_DT BETWEEN PRICE.START_DT AND PRICE.END_DT
+			INNER JOIN UR_SUPPLIER SUPPLIER
+				ON SUPPLIER.UR_SUPPLIER_ID = ITEM.UR_SUPPLIER_ID
+		WHERE
+			IIPIT.START_DT <![CDATA[ >= ]]> CURRENT_DATE()
+			AND (
+				SUPPLIER.SUPPLIER_CD IN ('PF', 'OG', 'FM')
+				OR (
+					ITEM.ERP_REGAL_CD = 'PGS'
+					AND ITEM.ERP_PRODUCT_TP = '상품'
+					AND SUPPLIER.SUPPLIER_CD IN ('FD', 'DM', 'PG', 'CA')
+				)
+				OR (
+					ITEM.ERP_REGAL_CD = 'PGS'
+					AND ITEM.ERP_PRODUCT_TP = '제품'
+					AND SUPPLIER.SUPPLIER_CD = 'FD'
+				)
+			)
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최신 품목가격원본 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		ykk          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemPriceOrigLastly" resultMap="itemPriceOrigResult">
+	/* goodsItemPriceBatch.getItemPriceOrigLastly */
+		SELECT
+			STANDARD_PRICE /* 원가 */
+			, RECOMMENDED_PRICE 				/*정상가*/
+		FROM IL_ITEM_PRICE
+		WHERE
+			IL_ITEM_CD = #{ilItemCode}
+			AND NOW() BETWEEN START_DT AND END_DT
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  품목 ERP 제품/상품 구분(상품판매유형) 최신 품목가격원본 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		ykk          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemPriceOrigLastlyByErpProductType" resultMap="itemPriceOrigResult">
+			/* goodsItemPriceBatch.getItemPriceOrigLastlyByErpProductType */
+			SELECT
+				RECOMMENDED_PRICE
+			FROM IL_ITEM II
+			INNER JOIN
+			(
+				SELECT
+					 RECOMMENDED_PRICE 				/*정상가*/
+					,IL_ITEM_CD
+				FROM IL_ITEM_PRICE_ORIG
+				WHERE
+					IL_ITEM_CD = #{ilItemCode}
+					AND CURRENT_DATE() <![CDATA[ >= ]]> START_DT
+				ORDER BY START_DT DESC
+				LIMIT  1
+			) ORIG
+			ON II.IL_ITEM_CD = ORIG.IL_ITEM_CD
+			WHERE ERP_PRODUCT_TP = #{erpProductType}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 해당 마스터 품목 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.31        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getItemInfo" resultMap="getMasterItemMap">
+    	/* goodsItemPriceBatch.getMasterItem */
+    	SELECT
+       	 	A.IL_ITEM_CD                                                     AS IL_ITEM_CODE
+     	FROM  IL_ITEM  A
+    	WHERE  A.IL_ITEM_CD = #{ilItemCode}
+    </select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 품목별 가격정보 원본 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.01        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addItemPriceOrig">
+    	/* goodsItemPriceBatch.addItemPriceOrig */
+	    INSERT INTO IL_ITEM_PRICE_ORIG (
+	          IL_ITEM_CD
+	        , START_DT
+	        , STANDARD_PRICE
+	        , RECOMMENDED_PRICE
+	        , CREATE_ID
+	        , CREATE_DT
+	        , PRICE_MANAGE_TP
+	        , SYSTEM_UPDATE_YN
+	        , MANAGER_UPDATE_YN
+	    ) VALUES (
+	          #{ilItemCode}
+	        , IFNULL(#{startDate}, NOW())
+	        , #{standardPrice}
+	        , #{recommendedPrice}
+	        , #{createId}
+	        , NOW()
+	        , #{priceManageTp}
+	        , #{systemUpdateYn}
+	        , #{managerUpdateYn}
+	    )
+    </insert>
+
+	<insert id="addItemPriceIfTemp">
+    	/* goodsItemPriceBatch.addItemPriceIfTemp */
+	    INSERT INTO IL_ITEM_PRICE_IF_TEMP (
+	          IF_SEQ
+	        , IL_ITEM_CD
+	        , START_DT
+	        , STANDARD_PRICE
+	        , RECOMMENDED_PRICE
+	        , SALE_TYPE
+	    ) VALUES (
+	          #{ifSeq}
+	        , #{ilItemCd}
+            , IFNULL(#{startDt}, NOW())
+	        , #{standardPrice}
+	        , #{recommendedPrice}
+	        , #{saleType}
+	    )
+    </insert>
+
+    <update id="putItemPriceOrig">
+    	/* goodsItemPriceBatch.putItemPriceOrig */
+    	UPDATE
+    		IL_ITEM_PRICE_ORIG
+    	SET
+    		STANDARD_PRICE = #{standardPrice}
+    		, RECOMMENDED_PRICE = #{recommendedPrice}
+    		, SYSTEM_UPDATE_YN = #{systemUpdateYn}
+    		, MODIFY_ID = #{modifyId}
+    		, MODIFY_DT = NOW()
+    	WHERE IL_ITEM_PRICE_ORIG_ID = #{ilItemPriceOriginalId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일반상품 > 품목 가격정보 Update(프로시져 호출)
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.07		임상건		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="spGoodsPriceUpdateWhenItemPriceChanges" statementType="CALLABLE" >
+		/* goodsItemPriceBatch.spGoodsPriceUpdateWhenItemPriceChanges */
+		CALL SP_GOODS_PRICE_UPDATE_WHEN_ITEM_PRICE_CHANGES(
+			#{ilItemCode}
+		,	#{inDebugFlag}
+		)
+	</update>
+
+	<update id="spPackageGoodsPriceUpdateWhenItemPriceChanges" statementType="CALLABLE" >
+		/* goodsItemPriceBatch.spPackageGoodsPriceUpdateWhenItemPriceChanges */
+		CALL SP_PACKAGE_GOODS_PRICE_UPDATE_WHEN_ITEM_PRICE_CHANGES(
+			#{inDebugFlag}
+		)
+	</update>
+
+	<select id="getGoodsCountByItemCode" resultType="int" >
+		/* goodsItemPriceBatch.getGoodsCountByItemCode */
+		SELECT
+			COUNT(1) AS GOODS_CNT
+		FROM
+			IL_GOODS
+		WHERE
+			IL_ITEM_CD = #{ilItemCode}
+	</select>
+
+	<delete id="delItemPriceIfTemp">
+		DELETE FROM IL_ITEM_PRICE_IF_TEMP
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 품목가격 원본 보정대상 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.20        이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceOrigApproveVo" id="itemPriceOrigApproveResult">
+		<result column="IL_ITEM_PRICE_ORIG_ID" property="ilItemPriceOrigId" />
+		<result column="STANDARD_PRICE" property="standardPrice" />
+		<result column="STANDARD_PRICE_NOW" property="standardPriceNow" />
+	</resultMap>
+	<select id="getItemPriceOrigApprove" resultMap="itemPriceOrigApproveResult">
+		/* goodsItemPriceBatch.getItemPriceOrigApprove */
+		SELECT IL_ITEM_PRICE_ORIG_ID
+			, STANDARD_PRICE
+			, (SELECT IFNULL((SELECT IIP.STANDARD_PRICE FROM IL_ITEM_PRICE IIP WHERE IIP.IL_ITEM_CD = T1.IL_ITEM_CD AND NOW() BETWEEN IIP.START_DT AND IIP.END_DT), 0) AS PRICE FROM dual) AS STANDARD_PRICE_NOW
+		FROM IL_ITEM_PRICE_ORIG T1
+		WHERE START_DT = #{startDate}
+			AND UPDATE_TP = 'M'
+			AND PRICE_MANAGE_TP = 'R'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 품목가격 원본 보정대상 반영
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.05.20        이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putItemPriceOrigApprove">
+		/* goodsItemPriceBatch.putItemPriceOrigApprove */
+		<foreach collection="list" item="item" separator=";">
+			UPDATE IL_ITEM_PRICE_ORIG
+			SET STANDARD_PRICE = #{item.standardPriceNow},
+				MODIFY_ID = #{item.modifyId}
+			WHERE IL_ITEM_PRICE_ORIG_ID = #{item.ilItemPriceOrigId}
+		</foreach>
+		;
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description : 품목가격 시스템 승인
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.28        신선미          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="setItemPriceAppr" parameterType="kr.co.pulmuone.v1.goods.item.dto.ItemPriceApprovalRequestDto" useGeneratedKeys="true" keyProperty="ilItemPriceApprId">
+		/* goodsItemPriceBatch.setItemPriceAppr */
+		INSERT INTO IL_ITEM_PRICE_APPR (
+			IL_ITEM_CD, START_DT, STANDARD_PRICE, STANDARD_PRICE_CHG, RECOMMENDED_PRICE,
+			RECOMMENDED_PRICE_CHG, PRICE_MANAGE_TP, APPR_STAT, APPR_REQ_DT, APPR_REQ_USER_ID,
+			APPR_USER_ID, APPR_CHG_USER_ID, APPR_CHG_DT, CREATE_DT, CREATE_ID, MODIFY_DT, MODIFY_ID)
+		VALUES(
+				  #{ilItemCode}, #{priceApplyStartDate}, #{standardPrice}, #{standardPriceChange}, #{recommendedPrice},
+				  #{recommendedPriceChange}, #{priceManageTp}, #{approvalStatus}, CURRENT_TIMESTAMP, 0,
+				  0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, 0
+			  )
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description		:	품목가격 시스템 승인 이력
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.04		원종한	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="setItemPriceApprStatusHistory">
+		/*	goodsItemPriceBatch."setItemPriceApprStatusHistory" */
+		INSERT INTO IL_ITEM_PRICE_APPR_STATUS_HISTORY
+		(
+			IL_ITEM_PRICE_APPR_ID
+			<!-- , STATUS -->
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+			, STATUS_CMNT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+			, PREV_APPR_STAT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+			, APPR_STAT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			, APPR_SUB_USER_ID
+			</if>
+			, APPR_USER_ID
+			, CREATE_DT
+			, CREATE_ID
+		)
+		VALUES
+		(
+			#{taskPk}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+			, #{statusComment}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+			, #{prevApprStat}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+			, #{apprStat}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+			, #{apprSubUserId}
+			</if>
+			, 0
+			, NOW()
+			, 0
+		)
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: ERP 연동건에 대한 품목 미래 원가 현행화 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.30		원종한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="updateItemPriceOrigOfFutureByErp" >
+        /* goodsItem.updateItemPriceOrigOfFutureByErp */
+		UPDATE IL_ITEM_PRICE_ORIG IIPO
+		SET
+			IIPO.STANDARD_PRICE = #{standardPrice}
+			, IIPO.MODIFY_ID = 0
+			, IIPO.MODIFY_DT = NOW()
+		WHERE
+			IIPO.IL_ITEM_PRICE_ORIG_ID IN (
+				SELECT
+					TEMP.IL_ITEM_PRICE_ORIG_ID
+				FROM (
+					SELECT
+						IL_ITEM_PRICE_ORIG_ID
+					FROM IL_ITEM_PRICE_ORIG
+					WHERE
+						IL_ITEM_CD = #{ilItemCode}
+						AND STANDARD_PRICE != #{standardPrice}
+						AND START_DT <![CDATA[ >= ]]> CURRENT_DATE()
+						AND START_DT <![CDATA[ > ]]> IFNULL(#{startDate}, CURRENT_DATE())
+						AND START_DT <![CDATA[ < ]]> IFNULL((
+							SELECT
+								MIN(START_DT) AS START_DT
+							FROM IL_ITEM_PRICE_ORIG
+							WHERE
+								IL_ITEM_CD = #{ilItemCode}
+								AND SYSTEM_UPDATE_YN = 'Y'
+								AND START_DT <![CDATA[ > ]]> IFNULL(#{startDate}, CURRENT_DATE())
+						), '2999-12-31')
+				) TEMP
+			)
+	</update>
+</mapper>

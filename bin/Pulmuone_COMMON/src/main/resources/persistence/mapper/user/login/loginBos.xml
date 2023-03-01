@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.login.UserLoginBosMapper">
+
+	<select id="loginInfo" resultType="int">
+	/*loginBos.loginInfo*/
+		SELECT
+			count(*)
+		FROM UR_CERTIFICATION
+		WHERE LOGIN_ID =#{LOGIN_ID}
+	</select>
+
+	<select id="loginUrUserId" resultType="String">
+	/*loginBos.loginUrUserId*/
+		SELECT
+			UR_USER_ID
+		FROM UR_CERTIFICATION
+		WHERE LOGIN_ID =#{LOGIN_ID}
+	</select>
+
+	<!-- 로그인 결과 VO -->
+	<resultMap id="LoginResultMap" type="kr.co.pulmuone.v1.user.login.dto.vo.LoginResultVo" >
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="USER_NM" property="loginName" />
+		<result column="USER_TP" property="userType" />
+		<result column="STATUS_TP" property="statusType" />
+		<result column="COMP_NM" property="companyName" />
+		<result column="LAST_LOGIN_DT" property="lastLoginDate" />
+		<result column="PASSWORD" property="password" />
+		<result column="PWD_CHANGE_DT" property="passwordChangeDate" />
+		<result column="PWD_CHANGE_YN"  property="passwordChangeYn" />
+		<result column="LAST_LOGIN_ELAPSED_DAY"  property="lastLoginElapsedDay" />
+		<result column="PWD_CHANGE_ELAPSED_DAY"  property="passwordChangeElapsedDay" />
+		<result column="FAIL_CNT"  property="failCount" />
+	</resultMap>
+
+	<!-- 세션 VO -->
+	<resultMap id="UserVOResultMap" type="kr.co.pulmuone.v1.comm.base.vo.UserVo">
+		<result column="UR_USER_ID" property="userId" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="USER_NM" property="loginName" />
+		<result column="USER_TP" property="userType" />
+		<result column="COMP_NM" property="companyName" />
+		<result column="STATUS_TP" property="statusType" />
+		<result column="PWD_CHANGE_YN"  property="passwordChangeYn" />
+		<result column="LAST_LOGIN_ELAPSED_DAY"  property="lastLoginElapsedDay" />
+		<result column="TMPRR_YN"  property="temporaryYn" />
+		<result column="PERSONAL_INFO_ACCESS_YN"  property="personalInformationAccessYn" />
+		<result column="TMPRR_EXPIRATION"  property="temporaryExpiration" />
+		<result column="AUTH_SUPPLIER_ID"  property="authSupplierId" />
+		<result column="AUTH_WAREHOUSE_ID"  property="authWarehouseId" />
+		<result column="AUTH_SELLERS_ID"  property="authSellersId" />
+		<result column="AUTH_STORE_ID"  property="authStoreId" />
+		<result column="COMP_TP"  property="companyType" />
+		<result column="CLIENT_TP"  property="clientType" />
+		<result column="GB_LANG_ID"  property="langCode" />
+		<result column="OU_ID"  property="ouId" />
+		<result column="SECTOR_ALL_VIEW_YN"  property="sectorAllViewYn" />
+	</resultMap>
+
+
+	<!-- 최근 접속 정보 VO -->
+	<resultMap id="LoginRecnetlyVOResultMap" type="kr.co.pulmuone.v1.user.login.dto.vo.RecentlyLoginResultVo">
+		<result column="USER_NAME" property="loginName" />
+		<result column="IP" property="addressIp" />
+		<result column="LOGIN_DT" property="loginDate" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 로그인 직원 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getEmpInfo" resultMap="UserVOResultMap">
+		/*loginBos.getEmpInfo*/
+		SELECT
+			 A.UR_USER_ID
+      		,C.USER_TP
+      		,C.LOGIN_ID
+      		,CAST(FN_DECRYPT(UNHEX(C.USER_NM)) AS CHAR) USER_NM
+			,FN_GET_ST_ROLE_ID(A.UR_USER_ID) AS ROLE_ID
+      		,1 AS GB_LANG_ID
+      		,NULL AS REMOTE_IP
+      		,A.UR_COMPANY_ID
+      		,B.COMP_NM
+      		,3 AS ACTIVE_TYPE
+      		,'N' AS CE_CNCL_YN
+      		/*,B.ACTIVE_TYPE
+      		,      CASE WHEN B.ACTIVE_TYPE = 3 THEN 'P'
+		            WHEN B.CE_CNCL_YN IS NULL THEN 'N'
+		       		ELSE B.CE_CNCL_YN
+		       		END CE_CNCL_YN*/
+		    /*,D.ID AS UR_DEPT_ID*/
+		FROM UR_EMPLOYEE	A	 INNER JOIN UR_COMPANY B ON  A.UR_COMPANY_ID = B.UR_COMPANY_ID
+								 INNER JOIN UR_USER C ON A.UR_USER_ID = C.UR_USER_ID
+								 /*LEFT OUTER JOIN UR_DEPT D ON A.UR_DEPT_ID = D.ID AND D.USE_YN = 'Y'*/
+		WHERE A.UR_USER_ID = #{urUserId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 로그인 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="hasBosLoginData" resultMap="UserVOResultMap">
+		/*loginBos.hasBosLoginData*/
+ 		SELECT
+             UU.UR_USER_ID                /* 회원 고유번호 */
+            ,UU.LOGIN_ID                 /* 로그인ID */
+            ,CAST(FN_DECRYPT(USER_NM) AS CHAR) USER_NM /* 이름 (암호화) */
+            ,UE.STATUS_TP                /* 회원상태(EMPLOYEE_STATUS.NORMAL:정상, STOP:정지, TEMPORARY_STOP:일시정지, ADMINISTRATIVE_LEAVE:휴직) */
+            ,UCP.COMP_NM                 /* 회사명 */
+			,FN_GET_ST_ROLE_ID(UU.UR_USER_ID) AS ROLE_ID
+			,3 AS ACTIVE_TYPE 				/*임시*/
+            ,CASE WHEN DATEDIFF(NOW(), UC.PWD_CHANGE_DT) > 90 THEN 'Y' ELSE 'N' END PWD_CHANGE_YN
+            ,DATEDIFF(NOW(), UA.LAST_LOGIN_DT) LAST_LOGIN_ELAPSED_DAY
+            ,UC.TMPRR_YN				/* 임시비밀번호 여부 */
+            ,PERSONAL_INFO_ACCESS_YN 	/* 개인정보 열람권한 유무(Y:보유, N:미보유) */
+			,IFNULL(DATEDIFF(NOW(), UC.TMPRR_EXPIRATION_DT), -100) TMPRR_EXPIRATION /* 임시비밀번호 유효시간 비교 */
+			, CASE
+				WHEN UCP.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+					THEN IFNULL((
+						SELECT
+							GROUP_CONCAT(AUTH_ID)
+						FROM
+							UR_EMPLOYEE_AUTH
+						WHERE
+							UR_EMPLOYEE_CD = UE.UR_EMPLOYEE_CD
+							AND AUTH_ID_TP = 'S'
+						GROUP BY UR_EMPLOYEE_CD
+					), '')
+				WHEN UCP.COMP_TP = 'COMPANY_TYPE.CLIENT' AND (UCL.CLIENT_TP = 'CLIENT_TYPE.CLIENT' OR UCL.CLIENT_TP = 'CLIENT_TYPE.STORE')
+					THEN IFNULL(UCL.UR_SUPPLIER_ID, 0)
+				ELSE ''
+			END AS AUTH_SUPPLIER_ID
+			, CASE
+				WHEN UCP.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+					THEN IFNULL((
+						SELECT
+							GROUP_CONCAT(AUTH_ID)
+						FROM
+							UR_EMPLOYEE_AUTH
+						WHERE
+							UR_EMPLOYEE_CD = UE.UR_EMPLOYEE_CD
+							AND AUTH_ID_TP = 'W'
+						GROUP BY UR_EMPLOYEE_CD
+					), '')
+				WHEN UCP.COMP_TP = 'COMPANY_TYPE.CLIENT' AND UCL.CLIENT_TP = 'CLIENT_TYPE.CLIENT'
+					THEN IFNULL((
+						SELECT
+							GROUP_CONCAT(USW.UR_WAREHOUSE_ID)
+						FROM
+							UR_CLIENT_SUPPLIER_WAREHOUSE UCSW
+							INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+								ON USW.UR_SUPPLIER_WAREHOUSE_ID = UCSW.UR_SUPPLIER_WAREHOUSE_ID
+						WHERE
+							UCSW.UR_CLIENT_ID = UCL.UR_CLIENT_ID
+							AND USW.UR_SUPPLIER_ID = UCL.UR_SUPPLIER_ID
+							AND UCL.CLIENT_TP = 'CLIENT_TYPE.CLIENT'
+						GROUP BY
+							UCL.UR_COMPANY_ID
+					), 0)
+				ELSE ''
+			END AS AUTH_WAREHOUSE_ID
+			, CASE
+				WHEN UCP.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS' THEN ''
+				WHEN UCP.COMP_TP = 'COMPANY_TYPE.CLIENT' AND UCL.CLIENT_TP = 'CLIENT_TYPE.VENDOR'
+					THEN IFNULL(UCL.OM_SELLERS_ID, 99999999)
+				ELSE ''
+			END AS AUTH_SELLERS_ID
+			, IFNULL(UCL.UR_STORE_ID, '') AS AUTH_STORE_ID
+			, UCP.COMP_TP AS COMP_TP
+			, IFNULL(UCL.CLIENT_TP, '') AS CLIENT_TP
+      		, 1 AS GB_LANG_ID
+			/* 필요한가 체크 필요
+      		,NULL AS REMOTE_IP
+      		,A.UR_COMPANY_ID
+      		,B.COMP_NM
+      		,3 AS ACTIVE_TYPE
+      		,'N' AS CE_CNCL_YN
+			*/
+			,EE.OU_ID
+			,SRT.SECTOR_ALL_VIEW_YN
+		FROM
+			UR_USER UU						/* 회원기본정보 */
+		INNER JOIN  UR_CERTIFICATION UC 	/* 로그인 인증 정보 */
+			ON UU.LOGIN_ID = UC.LOGIN_ID
+		INNER JOIN  UR_EMPLOYEE UE  		/* 회원상세정보 */
+			ON UE.UR_USER_ID = UU.UR_USER_ID
+		LEFT JOIN UR_ERP_EMPLOYEE EE
+			ON UE.UR_EMPLOYEE_CD = EE.UR_ERP_EMPLOYEE_CD
+		INNER JOIN UR_COMPANY UCP			/* 회사정보 */
+			ON UE.UR_COMPANY_ID  = UCP.UR_COMPANY_ID
+		LEFT JOIN (
+			SELECT
+				UR_CLIENT_ID
+				, UR_COMPANY_ID
+				, CLIENT_TP
+				, UR_SUPPLIER_ID
+				, UR_STORE_ID
+				, GROUP_CONCAT(ERP_CD) AS OM_SELLERS_ID
+			FROM
+				UR_CLIENT
+			GROUP BY
+				UR_COMPANY_ID
+		) UCL /* 거래처정보 */
+			ON UCL.UR_COMPANY_ID  = UCP.UR_COMPANY_ID
+		LEFT OUTER JOIN	UR_ACCOUNT UA	/* 회원정보활동정보 */
+			ON UA.UR_USER_ID = UU.UR_USER_ID
+		INNER JOIN ST_ROLE_TYPE SRT
+		ON SRT.ST_ROLE_TP_ID = FN_GET_ST_ROLE_ID(UU.UR_USER_ID)
+		WHERE
+				UC.LOGIN_ID  = #{loginId}
+			AND UC.PASSWORD  = #{password}
+			AND UU.USER_TP = 'USER_TYPE.EMPLOYEE'
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 로그인 발급회원코드, 실패카운트 받기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getLoginInfoById" resultMap="LoginResultMap">
+	    /* loginBos.getLoginInfoById */
+		SELECT
+			 UC.UR_USER_ID
+			,UC.FAIL_CNT
+		FROM
+			UR_USER UU/* 회원기본정보 */
+		INNER JOIN  UR_CERTIFICATION UC /* 로그인 인증 정보 */
+			ON UU.LOGIN_ID = UC.LOGIN_ID
+		WHERE
+				UU.LOGIN_ID = #{loginId}
+			AND UU.USER_TP = 'USER_TYPE.EMPLOYEE'
+
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호 실패 카운트 증가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putFailCountIncr">
+		/* loginBos.putFailCountIncr */
+		UPDATE
+			UR_CERTIFICATION
+		SET
+			  FAIL_CNT = FAIL_CNT + 1
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 상태  수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserStatusTp">
+		/* loginBos.putUserStatusTp */
+		UPDATE
+			UR_EMPLOYEE
+		SET
+			STATUS_TP = #{statusType}
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</update>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 마지막로그인 날짜 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUrAccountLastLogin">
+		/* loginBos.putUrAccountLastLogin */
+		UPDATE
+			UR_ACCOUNT
+		SET
+			  LAST_LOGIN_DT = NOW()
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호 실패 카운트 초기화 (로그인 성공시)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.25		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putFailCountReset">
+		/* loginBos.putFailCountReset */
+		UPDATE
+			UR_CERTIFICATION
+		SET
+			  FAIL_CNT = 0
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 이력저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.25		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addConnectionLog">
+		/* loginBos.addConnectionLog */
+		INSERT INTO
+		UR_CONNECT_LOG
+		(
+			UR_USER_ID
+			,SERVICE
+			,UR_PCID_CD
+			,IP
+			,LOGIN_DT
+			,SUCCESS_YN
+		)VALUES(
+			#{urUserId}
+			,#{service}
+			,#{userPcidCd}
+			,#{addressIp}
+			,NOW()
+			,#{successYn}
+		)
+		<selectKey resultType="int" keyProperty="urConnectLogId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호 찾기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.25		강윤경          최초생성
+	 * @ 2021.01.20		최윤지			MOBILE 추가
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPasswordByData" resultMap="LoginResultMap">
+		/* loginBos.getPasswordByData */
+		SELECT TBL.*
+		FROM (
+				 SELECT UU.LOGIN_ID
+					  , UU.UR_USER_ID
+					  , STATUS_TP
+					  , UC.PASSWORD
+					  , UC.PWD_CHANGE_DT
+					  , CAST(FN_DECRYPT(USER_NM) AS CHAR) USER_NM
+					  , FN_DECRYPT(UE.MOBILE) AS          MOBILE
+					  , CASE WHEN UC2.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+							 THEN UEE.ERP_EMAIL
+							 ELSE UE.EMAIL
+					 		 END EMAIL /* 이메일 */
+				 FROM UR_USER UU
+						  INNER JOIN UR_EMPLOYEE UE
+									 ON UE.UR_USER_ID = UU.UR_USER_ID
+						  INNER JOIN UR_CERTIFICATION UC
+									 ON UU.LOGIN_ID = UC.LOGIN_ID
+						  INNER JOIN UR_COMPANY UC2
+									 ON UC2.UR_COMPANY_ID = UE.UR_COMPANY_ID
+						  LEFT JOIN UR_ERP_EMPLOYEE UEE
+									ON UE.UR_EMPLOYEE_CD = UEE.UR_ERP_EMPLOYEE_CD
+				 WHERE UU.LOGIN_ID = #{loginId}
+				   AND UU.USER_NM = (SELECT FN_ENCRYPT(#{userName}))
+				   AND UU.USER_TP = 'USER_TYPE.EMPLOYEE'
+			 )TBL
+		WHERE
+			TBL.EMAIL = (SELECT FN_ENCRYPT(#{email}))
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호 초기화/변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.25		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPasswordChange">
+		/* loginBos.putPasswordChange */
+		UPDATE
+			UR_CERTIFICATION
+		SET
+			 PASSWORD = #{newPassword}
+			,FAIL_CNT = 0
+			,TMPRR_YN = #{temporaryYn}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(temporaryYn,'Y')">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(statusType,'EMPLOYEE_STATUS.TEMPORARY_STOP')">
+					,TMPRR_EXPIRATION_DT = CONCAT(DATE_FORMAT(NOW(),'%Y-%m-%d'), ' 23:59:59.0')
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(temporaryYn,'N')">
+			,TMPRR_EXPIRATION_DT = NULL
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(modifyId)">
+				,PWD_CHANGE_DT = NOW()
+				,MODIFY_DT = NOW()
+				,MODIFY_ID = #{urUserId}
+			</if>
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 로그인 정보 받기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.27		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPasswordByPassword" resultMap="LoginResultMap">
+	    /* loginBos.getPasswordByPassword */
+		SELECT
+			 UC.UR_USER_ID
+			,UC.PASSWORD
+			,UC.PWD_CHANGE_DT
+			,CAST(FN_DECRYPT(USER_NM) AS CHAR) USER_NM
+			,UU.LOGIN_ID
+		FROM
+			UR_USER UU					/* 회원기본정보 */
+		INNER JOIN  UR_CERTIFICATION UC /* 로그인 인증 정보 */
+			ON UU.LOGIN_ID = UC.LOGIN_ID
+		WHERE
+				UC.PASSWORD = #{password}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(loginId)">
+			     	AND UC.LOGIN_ID = #{loginId}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+                    AND UU.UR_USER_ID = #{urUserId}
+                </if>
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 로그아웃 정보 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.27		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putConnectionLogBylogOut">
+		/* loginBos.putConnectionLogBylogOut */
+		UPDATE UR_CONNECT_LOG
+		SET
+			LOGOUT_DT = NOW()
+		WHERE UR_CONNECT_LOG_ID = #{urConnectLogId}
+	</update>
+
+
+		<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호 변경 이력저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.11		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUrPwdChgHist">
+		/* loginBos.addUrPwdChgHist */
+		INSERT INTO
+		UR_PWD_CHG_HIST
+		(
+			 UR_USER_ID
+			,PREV_PWD
+			,PREV_PWD_CHANGE_DT
+			,CREATE_ID
+			,CREATE_DT
+		)VALUES(
+			 #{urUserId}
+			,#{password}
+			,#{passwordChangeDate}
+			,#{urUserId}
+			,NOW()
+		)
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호 변경 이력 조회 By 신규 비밀번호
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.27		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUrPwdChgHistByNewPwd" resultType="int" >
+	    /* loginBos.getUrPwdChgHistByNewPwd */
+		SELECT
+			COUNT(UR_USER_ID)
+		FROM
+			UR_PWD_CHG_HIST
+		WHERE
+				UR_USER_ID = #{urUserId}
+			AND PREV_PWD = #{newPassword}
+			AND CREATE_DT BETWEEN DATE_SUB(NOW(), INTERVAL 3 MONTH ) AND NOW()
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 접속 정보 (접속자명, 접속IP, 최근 접속일)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.06		최윤지         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRecentlyLoginData"  resultMap="LoginRecnetlyVOResultMap">
+	    /* loginBos.getRecentlyLoginData */
+		SELECT
+			FN_DECRYPT(UU.USER_NM) AS USER_NAME
+		  , UCL.IP
+		  , DATE_FORMAT(UCL.LOGIN_DT, '%Y년 %m월 %d일 %H시 %i분 %s초') AS LOGIN_DT
+		FROM
+			UR_CONNECT_LOG UCL
+			INNER JOIN UR_USER UU
+				ON UCL.UR_USER_ID = UU.UR_USER_ID
+			AND UU.UR_USER_ID = #{userId}
+		WHERE UCL.SUCCESS_YN = 'Y'
+		ORDER BY LOGIN_DT DESC
+		LIMIT 1,1
+	</select>
+
+	<select id="getEmployeeContactInfo" resultType="kr.co.pulmuone.v1.user.login.dto.EmployeeResponseDto">
+		SELECT
+			UR_USER_ID AS urUserId
+			, STATUS_TP AS statusType
+			, FN_DECRYPT(EMAIL) AS email
+			, FN_DECRYPT(MOBILE) AS mobile
+		FROM
+			 UR_EMPLOYEE
+		WHERE
+			UR_USER_ID = #{userId}
+	</select>
+
+</mapper>
+
+

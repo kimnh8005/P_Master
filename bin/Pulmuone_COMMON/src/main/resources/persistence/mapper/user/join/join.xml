@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.join.UserJoinMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 아이디중복확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIsCheckLoginId" resultType="int">
+		/*	join.getIsCheckLoginId	*/
+		SELECT  COUNT(*)  AS COUNT
+		FROM UR_USER
+		WHERE LOWER( LOGIN_ID )  = LOWER (#{loginId})
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 추천인 ID 체크
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getIsCheckRecommendLoginIdMap" type="kr.co.pulmuone.v1.user.join.dto.vo.GetIsCheckRecommendLoginIdResultVo" >
+		<result column="RECOMM_USER_ID"    property="recommUserId"  />
+	</resultMap>
+	<select id="getIsCheckRecommendLoginId" resultMap="getIsCheckRecommendLoginIdMap">
+		/*	join.getIsCheckRecommendLoginId	*/
+		SELECT UR_USER_ID AS RECOMM_USER_ID
+		FROM UR_USER
+		WHERE LOWER(LOGIN_ID)  =LOWER ( #{recommendLoginId})
+		AND USER_STATUS = 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원가입
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<insert id="addUrUser">
+	/*	join.addUrUser	*/
+	INSERT INTO UR_USER (
+	    /* pk UR_USER_ID   */
+		LOGIN_ID, USER_NM, USER_TP, USER_STATUS, CREATE_DT
+	)
+	VALUES(
+		 #{loginId}
+		, FN_ENCRYPT( #{userName})
+		, #{userType}
+		, #{userStatus}
+		, SYSDATE()
+	)
+		<selectKey resultType="String" keyProperty="urUserId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<insert id="addUrBuyer">
+	/*	join.addUrBuyer	*/
+	INSERT INTO UR_BUYER (
+	     /* pk UR_BUYER_ID   */
+		  UR_USER_ID
+		, GENDER
+		, BDAY
+		, MAIL
+		, LOWER_MAIL
+		, MOBILE
+		, SMS_YN
+		, MAIL_YN
+		, MARKETING_YN
+		, SMS_YN_DT
+		, MAIL_YN_DT
+		, MARKETING_YN_DT
+		, LEVELUP_DT
+		, STATUS
+		, UR_GROUP_ID
+		, CI_CD
+		, RECOMM_USER_ID
+		, EVENT_JOIN_YN
+		, UR_ERP_EMPLOYEE_CD
+		, FOREIGNER_YN
+	)
+	VALUES(
+		  #{urUserId}                       /* UR_USER_ID     urUserId      */
+		, #{gender}                         /* GENDER         gender        */
+		, #{birthday}                       /* BDAY           birthday      */
+		, FN_ENCRYPT( #{mail})              /* MAIL           mail         */
+		, FN_ENCRYPT(LOWER( #{mail}))       /* LOWER_MAIL     mail         */
+		, FN_ENCRYPT( #{mobile})            /* MOBILE         mobile        */
+		, #{smsYn}                          /* SMS_YN         smsYn         */
+		, #{mailYn}                         /* MAIL_YN        mailYn        */
+		, #{marketingYn}                    /* MARKETING_YN   marketingYn   */
+		, SYSDATE()                         /* SMS_YN_DT      smsYnDate     */
+		, SYSDATE()                         /* MAIL_YN_DT     mailYnDate    */
+		, SYSDATE()                         /* MARKETING_YN_DT  marketingYnDate */
+		, DATE_FORMAT(SYSDATE()  , '%Y%m%d')  /* LEVELUP_DT     levelupDate   */
+		, #{status}                         /* STATUS         status        */
+		, #{urGroupId}   					/* UR_GROUP_ID    urGroupId     */
+		, #{ciCd}           				/* CI_CD          ciCd          */
+		, #{recommUserId}             		/* RECOMM_USER_ID recommUserId  */
+		, #{eventJoinYn}             		/* EVENT_JOIN_YN  eventJoinYn   */
+		, #{urErpEmployeeCd}             	/* UR_ERP_EMPLOYEE_CD    urErpEmployeeCd    */
+		, #{foreignerYn}   					/* FOREIGNER_YN   foreignerYn   */
+		)
+	</insert>
+
+	<insert id="addUrCertification">
+	/*	join.addUrCertification	*/
+	INSERT INTO UR_CERTIFICATION (
+		/* pk UR_CERTIFICATION_ID   */
+		    UR_USER_ID
+		  , LOGIN_ID
+		  , PASSWORD
+		  , PWD_CHANGE_CD
+		  , AUTO_LOGIN_KEY
+		  , FAIL_CNT
+		  , PWD_CHANGE_DT
+		  , TMPRR_YN
+		  , CREATE_DT
+	)
+	VALUES(
+	           #{urUserId}        /* UR_USER_ID           */
+		 	 , #{loginId}         /* LOGIN_ID            */
+		 	 , #{password}        /* PASSWORD            */
+		 	 , #{pwdChangeCd}      /* PWD_CHANGE_CD       */
+		 	 , #{autoLoginKey}     /* AUTO_LOGIN_KEY      */
+		 	 , #{failCnt}          /* FAIL_CNT            */
+		 	 , NOW()               /* PWD_CHANGE_DT       */
+		 	 , 'N'                 /* TMPRR_YN            */
+		 	 , NOW()               /* CREATE_DT           */
+		)
+	</insert>
+
+	<insert id="addUrClauseAgreeLog">
+	/*	join.addUrClauseAgreeLog	*/
+	INSERT INTO UR_CLAUSE_AGREE_LOG
+	(PS_CLAUSE_GRP_CD, EXECUTE_DT, UR_USER_ID, CREATE_DT)
+	VALUES(
+		 #{psClauseGrpCd}
+		,#{executeDate}
+		,#{urUserId}
+		, NOW()
+		)
+	</insert>
+
+	<insert id="addUrShippingAddr">
+	/*	join.addUrShippingAddr	*/
+	INSERT INTO UR_SHIPPING_ADDR (
+		 UR_USER_ID
+		,DEFAULT_YN
+		,SHIPPING_NM
+		,RECEIVER_NM
+		,RECEIVER_MO
+		,RECEIVER_TEL
+		,RECEIVER_ZIP_CD
+		,RECEIVER_ADDR1
+		,RECEIVER_ADDR2
+		,BUILDING_CD
+		,SHIPPING_CMNT
+		,CREATE_DT
+		)
+	VALUES (
+		  #{urUserId}                       /*  UR_USER_ID          */
+		, #{defaultYn}                      /*  DEFAULT_YN          */
+		, #{shippingName}                   /*  SHIPPING_NM         */
+		, FN_ENCRYPT( #{receiverName})      /*  RECEIVER_NM         */
+		, FN_ENCRYPT( #{receiverMobile})    /*  RECEIVER_MO         */
+		, FN_ENCRYPT( #{receiverTel})       /*  RECEIVER_TEL        */
+		, FN_ENCRYPT( #{receiverZipCd})     /*  RECEIVER_ZIP_CD     */
+		, FN_ENCRYPT( #{receiverAddr1})     /*  RECEIVER_ADDR1      */
+		, FN_ENCRYPT( #{receiverAddr2})     /*  RECEIVER_ADDR2      */
+		, FN_ENCRYPT( #{buildingCode})      /*  BUILDING_CD         */
+		, #{shippingComment}                /*  SHIPPING_CMNT       */
+		, NOW()                             /*  CREATE_DT           */
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 로그인시 시간 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.24		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUrAccount" parameterType="String">
+		/*	join.PutUrAccount	*/
+		UPDATE UR_ACCOUNT
+		SET   LAST_LOGIN_DT= NOW()
+		     ,MODIFY_DT= NOW()
+		WHERE UR_USER_ID=#{urUserId}
+	</update>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 로그인시 시간 인써트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.24		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUrAccount" parameterType="String">
+		/*	join.AddUrAccount	*/
+		INSERT INTO UR_ACCOUNT
+		( UR_USER_ID, MILEAGE, POINT, DEPOSIT, LAST_LOGIN_DT )
+		VALUES(#{urUserId}, 0, 0, 0, NOW() )
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원기본정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getUserInfoResultMap" type="kr.co.pulmuone.v1.user.join.dto.vo.UserVo">
+        <result column="USER_ID" property="userId" />
+        <result column="LOGIN_ID" property="loginId" />
+        <result column="USER_NAME" property="userName" />
+        <result column="USER_TYPE" property="userType" />
+        <result column="USER_STATUS" property="userStatus" />
+    </resultMap>
+
+    <select id="getUserInfo" resultMap="getUserInfoResultMap">
+        /* join.getUserInfo */
+        SELECT U.UR_USER_ID AS USER_ID /* 회원 ID */
+             , U.LOGIN_ID /* 로그인 ID */
+             , FN_DECRYPT(U.USER_NM) AS USER_NAME /* 이름 */
+             , U.USER_TP AS USER_TYPE /* 회원타입 */
+             , U.USER_STATUS /* 회원상태 */
+          FROM UR_USER U
+         WHERE U.LOGIN_ID = #{loginId}
+         LIMIT 1
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원기본정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.25     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addUser" useGeneratedKeys="true" keyProperty="userId">
+        /* join.addUser */
+        INSERT INTO UR_USER
+        (
+          LOGIN_ID
+        , USER_NM
+        , USER_TP
+        , USER_STATUS
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{loginId}
+        , FN_ENCRYPT(#{userName})
+        , #{userType}
+        , #{userStatus}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원정보활동정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addAccount" useGeneratedKeys="true" keyProperty="accountId">
+        /* join.addAccount */
+        INSERT INTO UR_ACCOUNT
+        (
+          UR_USER_ID
+        , MILEAGE
+        , POINT
+        , DEPOSIT
+        , LAST_LOGIN_DT
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{userId}
+        , #{mileage}
+        , #{point}
+        , #{deposit}
+        , NOW()
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원기본정보 수정
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putUser">
+        /* join.putUser */
+        UPDATE UR_USER
+           SET MODIFY_DT = NOW()
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userName)">
+             , USER_NM = FN_ENCRYPT(#{userName})
+         </if>
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userStatus)">
+             , USER_STATUS = #{userStatus}
+         </if>
+         WHERE UR_USER_ID = #{userId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원가입 완료 정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.04     최윤지          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+     <resultMap id="getJoinCompletedInfoResultMap" type="kr.co.pulmuone.v1.user.join.dto.vo.JoinResultVo">
+        <result column="CREATE_DT" property="createDate" />
+        <result column="LOGIN_ID" property="loginId" />
+        <result column="UR_USER_ID" property="urUserId" />
+        <result column="MAIL" property="mail" />
+        <result column="MOBILE" property="mobile" />
+        <result column="MAIL_YN" property="mailYn" />
+        <result column="SMS_YN" property="smsYn" />
+        <result column="STATUS" property="status" />
+    </resultMap>
+
+    <select id="getJoinCompletedInfo" resultMap="getJoinCompletedInfoResultMap">
+    	/* join.getJoinCompletedInfo */
+    	SELECT
+    	     UB.UR_USER_ID
+    	    ,FN_DECRYPT(UB.MAIL) AS MAIL
+    	    ,FN_DECRYPT(UB.MOBILE) AS MOBILE
+		    ,DATE_FORMAT(UU.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DT
+		    ,UU.LOGIN_ID
+		    ,IF(UB.MAIL_YN = 'Y', '수신동의', '수신거부') AS MAIL_YN
+		    ,IF(UB.SMS_YN = 'Y', '수신동의', '수신거부') AS SMS_YN
+		    ,UB.STATUS
+		FROM UR_BUYER UB
+		INNER JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+		WHERE UB.UR_USER_ID = #{urUserId}
+    </select>
+</mapper>

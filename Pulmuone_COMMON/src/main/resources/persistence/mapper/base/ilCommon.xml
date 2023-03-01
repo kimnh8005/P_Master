@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.base.IlCommonMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 카테고리 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ─────────────────────────────`─────────────────────────────────────────
+	 * @ 2020.08.19		손진구          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCategoryResultMap" type="kr.co.pulmuone.v1.base.dto.vo.CategoryVo">
+		<result column="CATEGORY_ID" property="categoryId" />
+		<result column="MALL_DIV" property="mallDiv" />
+		<result column="CATEGORY_NAME" property="categoryName" />
+		<result column="DEPTH" property="depth" />
+		<result column="PARENTS_CATEGORY_ID" property="parentsCategoryId" />
+		<result column="DISPLAY_YN" property="displayYn" />
+		<result column="ADULT_YN" property="adultYn" />
+		<result column="FEEDBACK_YN" property="feedbackYn" />
+	</resultMap>
+
+    <!-- 전시 카테고리 조회 -->
+	<select id="getDropDownCategoryList" resultMap="getCategoryResultMap">
+	    /* ilCommon.getDropDownCategoryList */
+        SELECT C.IL_CTGRY_ID AS CATEGORY_ID /* 카테고리 ID */
+             , C.MALL_DIV /* 몰구분 */
+             , C.CTGRY_NM AS CATEGORY_NAME /* 카테고리명 */
+             , C.DEPTH /* 카테고리레벨 */
+             , C.PRNTS_CTGRY_ID AS PARENTS_CATEGORY_ID /* 상위 카테고리 ID */
+             , C.DISP_YN AS DISPLAY_YN /* 전시여부 */
+             , C.ADULT_YN /* 성인여부 */
+             , C.FEEDBACK_YN /* 후기 작성여부 */
+          FROM IL_CTGRY C
+             , IL_CTGRY C2
+         WHERE C.USE_YN = 'Y'
+           AND C.DEL_YN = 'N'
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+            AND C.MALL_DIV = #{mallDiv}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryId)">
+            AND C.PRNTS_CTGRY_ID = #{categoryId}
+        </if>
+      <choose>
+        <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(depth) and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(depth, '0')">
+            AND C.DEPTH = #{depth}
+            AND C2.IL_CTGRY_ID = C.IL_CTGRY_ID
+        </when>
+        <otherwise>
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(depth)">
+            AND C.DEPTH = #{depth}
+          </if>
+            AND C2.IL_CTGRY_ID = C.PRNTS_CTGRY_ID
+        </otherwise>
+      </choose>
+            AND C2.USE_YN = 'Y'
+            AND C2.DEL_YN = 'N'
+        ORDER BY C.SORT
+	</select>
+
+    <!-- 표준 카테고리 조회 -->
+	<select id="getDropDownCategoryStandardList" resultMap="getCategoryResultMap">
+	    /* ilCommon.getDropDownCategoryStandardList */
+        SELECT CS.IL_CTGRY_STD_ID AS CATEGORY_ID /* 카테고리 ID */
+             , CS.CTGRY_STD_NM AS CATEGORY_NAME /* 카테고리명 */
+             , CS.DEPTH /* 카테고리레벨 */
+             , CS.PRNTS_CTGRY_ID AS PARENTS_CATEGORY_ID /* 상위 카테고리 ID */
+          FROM IL_CTGRY_STD CS
+         WHERE CS.USE_YN = 'Y'
+           AND CS.DEL_YN = 'N'
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(depth)">
+            AND CS.DEPTH = #{depth}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryId)">
+            AND CS.PRNTS_CTGRY_ID = #{categoryId}
+        </if>
+        ORDER BY CS.SORT
+	</select>
+
+</mapper>

@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.status.OrderStatusMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상태 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.28 	이명수          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetailStatus" parameterType="kr.co.pulmuone.v1.order.status.dto.OrderStatusUpdateDto">
+		/*	orderStatus.putOrderDetailStatus  */
+		UPDATE OD_ORDER_DETL
+			SET
+				ORDER_STATUS_CD = #{orderStatusCd}
+				<choose>
+					<when test="drId != null and drId > 0 and diId != null and diId > 0">
+						, DR_ID        = #{drId}
+						, DR_DT        = NOW()
+						, BATCH_EXEC_FL = 'Y'
+						, BATCH_EXEC_DT = now()
+						, DI_ID = #{diId}
+						, DI_DT = NOW()
+					</when>
+					<when test="drId != null and drId > 0">
+						, DR_ID        = #{drId}
+						, DR_DT        = NOW()
+						, BATCH_EXEC_FL = 'Y'
+						, BATCH_EXEC_DT = now()
+					</when>
+					<when test="diId != null and diId > 0">, DI_ID = #{diId}, DI_DT = NOW() </when>
+					<when test="dcId != null and dcId > 0">, DC_ID = #{dcId}, DC_DT = NOW() </when>
+					<when test="bfId != null and bfId > 0">, BF_ID = #{bfId}, BF_DT = NOW() </when>
+				</choose>
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상태 변경 이력 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.11     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="putOrderDetailStatusHist" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlHistVo">
+		/*	orderStatus.putOrderDetailStatusHist  */
+		INSERT INTO OD_ORDER_DETL_HIST (
+			  OD_ORDER_ID
+			, OD_ORDER_DETL_ID
+			, OD_ORDER_DETL_SEQ
+			, PREV_STATUS_CD
+			, STATUS_CD
+			, HIST_MSG
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT  OD_ORDER_ID
+			  , OD_ORDER_DETL_ID
+			  , OD_ORDER_DETL_SEQ
+			  , ORDER_STATUS_CD
+			  , #{statusCd}
+			  , #{histMsg}
+			  , #{createId}
+			  , NOW()
+		FROM	OD_ORDER_DETL
+		WHERE	1 = 1
+		<choose>
+			<when test="odOrderDetlId != 0"> AND OD_ORDER_DETL_ID = #{odOrderDetlId} </when>
+			<otherwise> AND	OD_ORDER_ID = #{odOrderId} </otherwise>
+		</choose>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 상세 상태 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.11     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putClaimDetailStatus" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimDetlVo">
+		/*	orderStatus.putClaimDetailStatus  */
+		UPDATE OD_CLAIM_DETL
+			SET
+				CLAIM_STATUS_CD = #{claimStatusCd}
+				<choose>
+					<when test="caId       != null and caId       > 0">, CA_ID        = #{caId      }, CA_DT        = NOW() </when>
+					<when test="cwId       != null and cwId       > 0">, CW_ID        = #{cwId      }, CW_DT        = NOW() </when>
+					<when test="ccId       != null and ccId       > 0">, CC_ID        = #{ccId      }, CC_DT        = NOW() </when>
+					<when test="raId       != null and raId       > 0">, RA_ID        = #{raId      }, RA_DT        = NOW() </when>
+					<when test="rwId       != null and rwId       > 0">, RW_ID        = #{rwId      }, RW_DT        = NOW() </when>
+					<when test="riId       != null and riId       > 0">, RI_ID        = #{riId      }, RI_DT        = NOW() </when>
+					<when test="rfId       != null and rfId       > 0">, RF_ID        = #{rfId      }, RF_DT        = NOW() </when>
+					<when test="rcId       != null and rcId       > 0">, RC_ID        = #{rcId      }, RC_DT        = NOW() </when>
+					<when test="ecId       != null and ecId       > 0">, EC_ID        = #{ecId      }, EC_DT        = NOW() </when>
+					<when test="csId       != null and csId       > 0">, CS_ID        = #{csId      }, CS_DT        = NOW() </when>
+					<when test="faId       != null and faId       > 0">, FA_ID        = #{faId      }, FA_DT        = NOW() </when>
+					<when test="fcId       != null and fcId       > 0">, FC_ID        = #{fcId      }, FC_DT        = NOW() </when>
+					<when test="crId       != null and crId       > 0">, CR_ID        = #{crId      }, CR_DT        = NOW() </when>
+					<when test="ceId       != null and ceId       > 0">, CE_ID        = #{ceId      }, CE_DT        = NOW() </when>
+				</choose>
+		WHERE
+			OD_CLAIM_DETL_ID = #{odClaimDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 상세 상태 변경 이력 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.11     김명진          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putClaimDetailStatusHist" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimDetlHistVo">
+		/*	orderStatus.putClaimDetailStatusHist  */
+		INSERT INTO OD_CLAIM_DETL_HIST (
+			  OD_ORDER_ID
+			, OD_ORDER_DETL_ID
+			, OD_ORDER_DETL_SEQ
+			, OD_CLAIM_ID
+			, OD_CLAIM_DETL_ID
+			, PREV_STATUS_CD
+			, STATUS_CD
+			, HIST_MSG
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT	OOD.OD_ORDER_ID
+			  , OOD.OD_ORDER_DETL_ID
+			  , OOD.OD_ORDER_DETL_SEQ
+			  , OCD.OD_CLAIM_ID
+			  , OCD.OD_CLAIM_DETL_ID
+			  , OCD.CLAIM_STATUS_CD
+			  , #{statusCd}
+			  , #{histMsg}
+			  , #{createId}
+			  , NOW()
+		FROM	OD_CLAIM_DETL OCD INNER JOIN OD_ORDER_DETL OOD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE
+				OCD.OD_CLAIM_DETL_ID = #{odClaimDetlId}
+	</update>
+
+	<update id="putDenyDefeClaimDetailStatusHist" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimDetlHistVo">
+		/*	orderStatus.putDenyDefeClaimDetailStatusHist  */
+		INSERT INTO OD_CLAIM_DETL_HIST (
+			  OD_ORDER_ID
+			, OD_ORDER_DETL_ID
+			, OD_ORDER_DETL_SEQ
+			, OD_CLAIM_ID
+			, OD_CLAIM_DETL_ID
+			, PREV_STATUS_CD
+			, STATUS_CD
+			, HIST_MSG
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT	OOD.OD_ORDER_ID
+			  , OOD.OD_ORDER_DETL_ID
+			  , OOD.OD_ORDER_DETL_SEQ
+			  , OCD.OD_CLAIM_ID
+			  , OCD.OD_CLAIM_DETL_ID
+			  , OCD.CLAIM_STATUS_CD
+			  , #{statusCd}
+			  , #{histMsg}
+			  , #{createId}
+			  , NOW()
+		FROM	OD_CLAIM_DETL OCD INNER JOIN OD_ORDER_DETL OOD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE
+				OCD.OD_CLAIM_ID IN (SELECT
+										oc.OD_CLAIM_ID
+									  FROM OD_CLAIM oc
+									  INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID
+									  WHERE oc.OD_ORDER_ID = (SELECT OD_ORDER_ID FROM OD_CLAIM WHERE OD_CLAIM_ID = #{odClaimId})
+									  AND ocd.CLAIM_STATUS_CD = #{prevStatusCd})
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 상태 값 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.23     이명수           최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="selectTargetOverlapOrderStatusList" resultType="String">
+		/*	orderStatus.selectTargetOverlapOrderStatusList  */
+		SELECT
+			OD_ORDER_DETL_ID
+		FROM
+			OD_ORDER_DETL
+		WHERE
+				ORDER_STATUS_CD = #{orderStatusCd}
+			AND OD_ORDER_DETL_ID IN
+			<foreach collection="orderDetlIdList" item="odOrderDetlId" open="(" separator="," close=")">
+				#{odOrderDetlId}
+			</foreach>
+	</select>
+
+	<!-- 주문IF대상 체크 -->
+	<select id="selectOrderInterfaceTargetCheck" resultType="int">
+		/*	orderStatus.selectOrderInterfaceTargetCheck  */
+		SELECT
+			COUNT(ood.OD_ORDER_DETL_ID) AS CNT
+		FROM OD_ORDER_DETL ood
+		INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseIds)">
+			INNER JOIN PS_CONFIG pc ON uw.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_GRP_TP = '7.WAREHOUSE' AND pc.PS_KEY NOT IN <foreach collection="urWarehouseIds" item="urWarehouseId" open="(" separator="," close=")"> #{urWarehouseId} </foreach>
+		</if>
+		WHERE ood.OD_ORDER_DETL_ID IN
+		<foreach collection="orderDetlIdList" item="odOrderDetlId" open="(" separator="," close=")">
+			#{odOrderDetlId}
+		</foreach>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 상세 상태 값 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.23     이명수           최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="selectTargetOverlapClaimStatusList" resultType="String">
+		/*	orderStatus.selectTargetOverlapClaimStatusList  */
+		SELECT
+			OD_CLAIM_DETL_ID
+		FROM
+			OD_CLAIM_DETL
+		WHERE
+			ORDER_STATUS_CD = #{claimStatusCd}
+		AND OD_CLAIM_DETL_ID IN
+		<foreach collection="orderDetlIdList" item="odOrderDetlId" open="(" separator="," close=")">
+			#{odOrderDetlId}
+		</foreach>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 상세 상태 값 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.23     이명수           최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDetailStatusInfo" resultType="kr.co.pulmuone.v1.order.status.dto.OrderStatusSelectResponseDto">
+		/*	orderStatus.getOrderDetailStatusInfo  */
+		SELECT
+			ORDER_STATUS_CD
+		FROM
+			OD_ORDER_DETL
+		WHERE
+			OD_ORDER_DETL_ID IN
+		<foreach collection="detlIdList" item="odOrderDetlId" open="(" separator="," close=")">
+			#{odOrderDetlId}
+		</foreach>
+	</select>
+
+
+</mapper>

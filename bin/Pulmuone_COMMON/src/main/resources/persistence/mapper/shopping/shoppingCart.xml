@@ -1,0 +1,1040 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.shopping.cart.ShoppingCartMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송비 절약 상품 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSaveShippingCostGoodsList" resultType="Long">
+		/*	shoppingCart.getSaveShippingCostGoodsList	*/
+		SELECT
+		IG.IL_GOODS_ID
+		FROM
+		IL_GOODS IG
+		JOIN IL_ITEM II ON II.IL_ITEM_CD = IG.IL_ITEM_CD
+		JOIN IL_GOODS_PRICE IGP ON IGP.IL_GOODS_ID = IG.IL_GOODS_ID AND IGP.USE_YN = 'Y'
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(saleType,'SALE_TYPE.SHOP')">
+				JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_STORE_ID' ) WAREHOUSE_STORE_ID
+				JOIN UR_WAREHOUSE UW ON WAREHOUSE_STORE_ID.PS_VAL = UW.UR_WAREHOUSE_ID
+				JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND WAREHOUSE_STORE_ID.PS_VAL = GST.UR_WAREHOUSE_ID)
+			</when>
+			<otherwise>
+				JOIN UR_WAREHOUSE UW ON IG.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+				JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+			</otherwise>
+		</choose>
+		JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+		LEFT JOIN IL_GOODS_RANKING IGR ON IGR.IL_GOODS_ID = IG.IL_GOODS_ID AND IGR.MALL_DIV = 'MALL_DIV.PULMUONE' AND IGR.IL_CTGRY_ID = '0'
+		WHERE
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(saleType,'SALE_TYPE.SHOP')">
+				WAREHOUSE_STORE_ID.PS_VAL = #{urWarehouseId}
+				AND IG.SALE_SHOP_YN = 'Y'
+			</when>
+			<otherwise>
+				IG.UR_WAREHOUSE_ID = #{urWarehouseId}
+				AND IG.SALE_TP = #{saleType}
+			</otherwise>
+		</choose>
+		AND IG.DISP_YN = 'Y'
+		AND IG.SALE_STATUS = 'SALE_STATUS.ON_SALE'
+		AND SYSDATE() BETWEEN IGP.PRICE_START_DT AND IGP.PRICE_END_DT
+		AND ST.BUNDLE_YN = 'Y'
+		AND IG.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.GIFT_FOOD_MARKETING','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.RENTAL')
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceInfo)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'pc')">
+					AND IG.DISP_WEB_PC_YN = 'Y'
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'mobile')">
+					AND IG.DISP_WEB_MOBILE_YN = 'Y'
+				</when>
+			</choose>
+		</if>
+		<if test="isApp">
+			AND IG.DISP_APP_YN = 'Y'
+		</if>
+		<choose>
+			<when test="isEmployee">
+				AND (IG.PURCHASE_EMPLOYEE_YN = 'Y' OR IG.PURCHASE_MEMBER_YN = 'Y')
+			</when>
+			<when test="isMember">
+				AND IG.PURCHASE_MEMBER_YN = 'Y'
+			</when>
+			<otherwise>
+				AND IG.PURCHASE_NONMEMBER_YN = 'Y'
+			</otherwise>
+		</choose>
+		ORDER BY (((100000 - IFNULL(IGR.RANKING, 100000)) / 100000 ) * 100) DESC
+		LIMIT 100
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.15		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putCart">
+		/*	shoppingCart.putCart	*/
+		UPDATE
+		SP_CART
+		SET
+		QTY = #{qty}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsReserveOptionId)">
+			,IL_GOODS_RESERVE_OPTN_ID = #{ilGoodsReserveOptionId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDailyCycleType)">
+			,GOODS_DAILY_CYCLE_TP = #{goodsDailyCycleType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDailyCycleTermType)">
+			,GOODS_DAILY_CYCLE_TERM_TP = #{goodsDailyCycleTermType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDailyCycleGreenJuiceWeekType)">
+			,GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP = #{goodsDailyCycleGreenJuiceWeekType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDailyAllergyYn)">
+			,GOODS_DAILY_ALLERGY_YN = #{goodsDailyAllergyYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDailyBulkYn)">
+			,GOODS_DAILY_BULK_YN = #{goodsDailyBulkYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsBulkType)">
+			,GOODS_BULK_TYPE = #{goodsBulkType}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryType)">
+			,DELIVERY_TP = #{deliveryType}
+		</if>
+		WHERE
+		SP_CART_ID = #{spCartId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delCart"  parameterType="Long" >
+		/*	shoppingCart.delCart	*/
+		DELETE FROM SP_CART
+		WHERE
+		SP_CART_ID =#{spCartId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니PK로 장바구니 추가 구성상품 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delCartAddGoodsBySpCartId"  parameterType="Long" >
+		/*	shoppingCart.delCartAddGoodsBySpCartId	*/
+		DELETE FROM	  SP_CART_ADD_GOODS
+		WHERE
+		SP_CART_ID =	#{spCartId}
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 PK로 장바구니 기획전 구성상품 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.16		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delCartPickGoodsBySpCartId"  parameterType="Long" >
+		/*	shoppingCart.delCartPickGoodsBySpCartId	*/
+		DELETE FROM	  SP_CART_PICK_GOODS
+		WHERE
+		SP_CART_ID =	#{spCartId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 추가 구성상품 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delCartAddGoods"  parameterType="Long" >
+		/*	shoppingCart.delCartAddGoods	*/
+		DELETE FROM	  SP_CART_ADD_GOODS
+		WHERE
+		SP_CART_ADD_GOODS_ID =#{spCartAddGoodsId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 타입별 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.07		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCartTypeSummary" resultType="int">
+		/*	shoppingCart.getCartTypeSummary	*/
+		SELECT
+		COUNT(*) AS TOTAL
+		FROM
+		SP_CART
+		WHERE
+		SP_CART_ID IN
+		<foreach collection="spCartIds" item="spCartId" separator="," open="(" close=")">
+			#{spCartId}
+		</foreach>
+		AND DELIVERY_TP IN
+		<foreach collection="deliveryTypeList" item="deliveryType" separator="," open="(" close=")">
+			#{deliveryType}
+		</foreach>
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: insert 장바구니
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCart">
+		/*	shoppingCart.addCart	*/
+		INSERT INTO SP_CART
+		(
+		UR_PCID_CD
+		,UR_USER_ID
+		,DELIVERY_TP
+		,IL_GOODS_ID
+		,QTY
+		,BUY_NOW_YN
+		,IL_GOODS_RESERVE_OPTN_ID
+		,GOODS_DAILY_CYCLE_TP
+		,GOODS_DAILY_CYCLE_TERM_TP
+		,GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP
+		,GOODS_DAILY_ALLERGY_YN
+		,GOODS_DAILY_BULK_YN
+		,GOODS_BULK_TYPE
+		,CART_PROMOTION_TP
+		,EV_EXHIBIT_ID
+		,PM_AD_EXTERNAL_CD
+		,PM_AD_INTERNAL_PAGE_CD
+		,PM_AD_INTERNAL_CONTENT_CD
+		)
+		VALUES
+		(
+		#{urPcidCd}
+		,#{urUserId}
+		,#{deliveryType}
+		,#{ilGoodsId}
+		,#{qty}
+		,#{buyNowYn}
+		,#{ilGoodsReserveOptionId}
+		,#{goodsDailyCycleType}
+		,#{goodsDailyCycleTermType}
+		,#{goodsDailyCycleGreenJuiceWeekType}
+		,#{goodsDailyAllergyYn}
+		,#{goodsDailyBulkYn}
+		,#{goodsBulkType}
+		,#{cartPromotionType}
+		,#{evExhibitId}
+		,#{pmAdExternalCd}
+		,#{pmAdInternalPageCd}
+		,#{pmAdInternalContentCd}
+		)
+		<selectKey resultType="Long" keyProperty="spCartId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: insert 장바구니 추가 구성 상품
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCartAddGoods">
+		/*	shoppingCart.addCartAddGoods	*/
+		INSERT INTO SP_CART_ADD_GOODS
+		(
+		SP_CART_ID
+		,IL_GOODS_ID
+		,QTY
+		)
+		VALUES
+		(
+		#{spCartId}
+		,#{ilGoodsId}
+		,#{qty}
+		)
+		<selectKey resultType="Long" keyProperty="spCartAddGoodsId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: insert 장바구니 기획전 유형 골라담기
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.27		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addCartPickGoods">
+		/*	shoppingCart.addCartPickGoods	*/
+		INSERT INTO SP_CART_PICK_GOODS
+		(
+		SP_CART_ID
+		,GOODS_DAILY_CYCLE_WEEK_TP
+		,IL_GOODS_ID
+		,QTY
+		)
+		VALUES
+		(
+		#{spCartId}
+		,#{goodsDailyCycleWeekType}
+		,#{ilGoodsId}
+		,#{qty}
+		)
+		<selectKey resultType="Long" keyProperty="spCartPickGoodsId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 머지 가능여부
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="ifCheckAddCartMerge" resultType="Boolean">
+		/*	shoppingCart.ifCheckAddCartMerge	*/
+		SELECT
+		IF(COUNT(*) > 0, TRUE, FALSE) AS result
+		FROM
+		IL_GOODS
+		WHERE
+		IL_GOODS_ID = #{ilGoodsId}
+		AND SALE_TP != 'SALE_TYPE.DAILY'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 같은 상품의 spCartId 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCartIdByIlGoodsId" resultType="Long">
+		/*	shoppingCart.getCartIdByIlGoodsId	*/
+		SELECT
+		SP_CART_ID
+		FROM
+		SP_CART
+		WHERE
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				UR_USER_ID = #{urUserId}
+			</when>
+			<otherwise>
+				UR_PCID_CD = #{urPcidCd}
+				AND IFNULL(UR_USER_ID, 0) = 0
+			</otherwise>
+		</choose>
+		AND IL_GOODS_ID = #{ilGoodsId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsReserveOptionId)">
+			AND IL_GOODS_RESERVE_OPTN_ID = #{ilGoodsReserveOptionId}
+		</if>
+		AND BUY_NOW_YN = 'N'
+		AND DELIVERY_TP = #{deliveryType}
+		AND IFNULL(CART_PROMOTION_TP,'') = ''
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 수량 plus update
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putCartPlusQty">
+		/*	shoppingCart.putCartPlusQty	*/
+		UPDATE
+		SP_CART
+		SET
+		QTY = QTY + #{qty}
+		WHERE
+		SP_CART_ID = #{spCartId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 추가 구성상품 같은 상품의 spCartAddGoodsId 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCartAddGoodsIdByIlGoodsId" resultType="Long">
+		/*	shoppingCart.getCartAddGoodsIdByIlGoodsId	*/
+		SELECT
+		SP_CART_ADD_GOODS_ID
+		FROM
+		SP_CART_ADD_GOODS
+		WHERE
+		SP_CART_ID = #{spCartId}
+		AND IL_GOODS_ID = #{ilGoodsId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 추가 구성 수량 plus update
+
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putCartAddGoodsPlusQty">
+		/*	shoppingCart.putCartAddGoodsPlusQty	*/
+		UPDATE
+		SP_CART_ADD_GOODS
+		SET
+		QTY = QTY + #{qty}
+		WHERE
+		SP_CART_ADD_GOODS_ID = #{spCartAddGoodsId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: get 장바구니
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCartMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.SpCartVo" >
+		<result column="SP_CART_ID"    property="spCartId"  />
+		<result column="UR_PCID_CD"     property="urPcidCd"  />
+		<result column="UR_USER_ID"        property="urUserId"  />
+		<result column="DELIVERY_TP"        property="deliveryType"  />
+		<result column="DELIVERY_TP_NM"        property="deliveryTypeName"  />
+		<result column="IL_GOODS_ID"        property="ilGoodsId" />
+		<result column="QTY"      property="qty" />
+		<result column="BUY_NOW_YN"  property="buyNowYn" />
+		<result column="IL_GOODS_RESERVE_OPTN_ID"  property="ilGoodsReserveOptionId" />
+		<result column="GOODS_DAILY_CYCLE_TP"  property="goodsDailyCycleType" />
+		<result column="GOODS_DAILY_CYCLE_TERM_TP"  property="goodsDailyCycleTermType" />
+		<result column="GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP"  property="goodsDailyCycleGreenJuiceWeekType" />
+		<result column="GOODS_DAILY_ALLERGY_YN"  property="goodsDailyAllergyYn" />
+		<result column="GOODS_DAILY_BULK_YN"  property="goodsDailyBulkYn" />
+		<result column="GOODS_BULK_TYPE"  property="goodsBulkType" />
+	</resultMap>
+	<select id="getCart" resultMap="getCartMap">
+		/*	shoppingCart.getCart	*/
+		SELECT
+		SP_CART_ID
+		,UR_PCID_CD
+		,UR_USER_ID
+		,DELIVERY_TP
+		,FN_COMN_CODE_DIC(DELIVERY_TP) AS DELIVERY_TP_NM
+		,IL_GOODS_ID
+		,QTY
+		,BUY_NOW_YN
+		,IL_GOODS_RESERVE_OPTN_ID
+		,GOODS_DAILY_CYCLE_TP
+		,GOODS_DAILY_CYCLE_TERM_TP
+		,GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP
+		,GOODS_DAILY_ALLERGY_YN
+		,GOODS_DAILY_BULK_YN
+		,GOODS_BULK_TYPE
+		FROM
+		SP_CART
+		WHERE
+		SP_CART_ID = #{spCartId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: get 나의 장바구니 spCartIdList
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCartIdList" resultType="Long">
+		/*	shoppingCart.getCartIdList	*/
+		SELECT
+		SC.SP_CART_ID
+		FROM
+		SP_CART SC
+		JOIN IL_GOODS IG ON (SC.IL_GOODS_ID = IG.IL_GOODS_ID)
+		JOIN IL_ITEM II ON IG.IL_ITEM_CD = II.IL_ITEM_CD
+		JOIN IL_GOODS_PRICE IGP ON IGP.IL_GOODS_ID = IG.IL_GOODS_ID AND IGP.USE_YN = 'Y' AND SYSDATE() BETWEEN IGP.PRICE_START_DT AND IGP.PRICE_END_DT
+		WHERE
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				SC.UR_USER_ID = #{urUserId}
+			</when>
+			<otherwise>
+				SC.UR_PCID_CD = #{urPcidCd}
+				AND IFNULL(SC.UR_USER_ID, 0) = 0
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="spCartId != null and spCartId.size() > 0">
+				AND SC.SP_CART_ID IN
+				<foreach collection="spCartId" item="spCartId" separator="," open="(" close=")">
+					#{spCartId}
+				</foreach>
+			</when>
+			<otherwise>
+				AND SC.BUY_NOW_YN = 'N'
+			</otherwise>
+		</choose>
+		AND IG.DEL_YN = 'N'
+		<choose>
+			<when test="isBosCreateOrder">
+				AND IG.SALE_STATUS IN ('SALE_STATUS.ON_SALE', 'SALE_STATUS.STOP_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM', 'SALE_STATUS.STOP_PERMANENT_SALE', 'SALE_STATUS.WAIT', 'SALE_STATUS.SAVE')
+			</when>
+			<otherwise>
+				AND IG.SALE_STATUS IN ('SALE_STATUS.ON_SALE', 'SALE_STATUS.STOP_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM', 'SALE_STATUS.STOP_PERMANENT_SALE')
+			</otherwise>
+		</choose>
+
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceInfo)">
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'pc')">
+					AND IG.DISP_WEB_PC_YN = 'Y'
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'mobile')">
+					AND IG.DISP_WEB_MOBILE_YN = 'Y'
+				</when>
+			</choose>
+		</if>
+		<if test="app">
+			AND IG.DISP_APP_YN = 'Y'
+		</if>
+		<choose>
+			<when test="member and employee">
+				AND (IG.PURCHASE_EMPLOYEE_YN = 'Y' OR IG.PURCHASE_MEMBER_YN = 'Y')
+			</when>
+			<when test="member">
+				AND IG.PURCHASE_MEMBER_YN = 'Y'
+			</when>
+			<otherwise>
+				AND IG.PURCHASE_NONMEMBER_YN = 'Y'
+			</otherwise>
+		</choose>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: get 나의 장바구니 spCartIdList
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCartDeliveryTypeGroupByListMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.CartDeliveryTypeGroupByVo" >
+		<result column="DELIVERY_TP"    property="deliveryType"  />
+		<result column="DELIVERY_TP_NM"     property="deliveryTypeName"  />
+		<result column="DELIVERY_TY_TOTAL"        property="deliveryTypeTotal"  />
+	</resultMap>
+	<select id="getCartDeliveryTypeGroupByList" resultMap="getCartDeliveryTypeGroupByListMap">
+		/*	shoppingCart.getCartDeliveryTypeGroupByList	*/
+		SELECT
+		c.DELIVERY_TP
+		,c.DELIVERY_TY_TOTAL
+		,FN_COMN_CODE_DIC(c.DELIVERY_TP) AS DELIVERY_TP_NM
+		FROM
+		(
+		SELECT
+		TBL.DELIVERY_TP
+		,SUM(TBL.DELIVERY_TY_TOTAL) AS DELIVERY_TY_TOTAL
+		FROM(
+		<if test="gift != null and gift.size > 0">
+			SELECT
+			'DELIVERY_TYPE.NORMAL' AS DELIVERY_TP
+			, #{giftSize} AS DELIVERY_TY_TOTAL
+			UNION
+		</if>
+		SELECT
+		DELIVERY_TP
+		,COUNT(*) AS DELIVERY_TY_TOTAL
+		FROM
+		SP_CART
+		WHERE
+		SP_CART_ID IN
+		<foreach collection="spCartIds" item="spCartId" separator="," open="(" close=")">
+			#{spCartId}
+		</foreach>
+		<if test="deliveryTypeList.size > 0">
+			AND DELIVERY_TP IN
+			<foreach collection="deliveryTypeList" item="deliveryType" separator="," open="(" close=")">
+				#{deliveryType}
+			</foreach>
+		</if>
+		GROUP BY DELIVERY_TP
+		)TBL
+		GROUP BY TBL.DELIVERY_TP
+		ORDER BY CASE WHEN TBL.DELIVERY_TP = 'DELIVERY_TYPE.NORMAL' THEN 1
+		WHEN TBL.DELIVERY_TP = 'DELIVERY_TYPE.RESERVATION' THEN 2
+		WHEN TBL.DELIVERY_TP = 'DELIVERY_TYPE.DAILY' THEN 3
+		ELSE 4
+		END
+		) c
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 배송타입 으로 출고처별 배송정책 group by 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getShippingTemplateGroupByListByDeliveryTypeMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.ShippingTemplateGroupByVo" >
+		<result column="UR_WAREHOUSE_ID"    property="urWarehouseId"  />
+		<result column="WAREHOUSE_NM"    property="warehouseNm"  />
+		<result column="BUNDLE_YN"        property="bundleYn"  />
+		<result column="IL_SHIPPING_TMPL_ID"     property="ilShippingTmplId"  />
+		<result column="SP_CART_ID"        property="spCartId"  />
+		<result column="RESERVE_ARRIVE_DATE"        property="reserveArriveDate"  />
+		<result column="DAWN_DLVRY_YN"        property="dawnDeliveryYn"  />
+		<result column="GOODS_TYPE"        property="goodsType"  />
+	</resultMap>
+	<select id="getShippingTemplateGroupByListByDeliveryType" resultMap="getShippingTemplateGroupByListByDeliveryTypeMap">
+		/*	shoppingCart.getShippingTemplateGroupByListByDeliveryType	*/
+		SELECT
+		TBL.UR_WAREHOUSE_ID
+		, TBL.WAREHOUSE_NM
+		, TBL.BUNDLE_YN
+		, TBL.IL_SHIPPING_TMPL_ID
+		, TBL.SP_CART_ID
+		, TBL.RESERVE_ARRIVE_DATE
+		, TBL.DAWN_DLVRY_YN
+		, TBL.LATELY_CREATE_DT
+		, TBL.GOODS_TYPE
+		FROM(
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(bridgeYn,'Y') and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deliveryType,'DELIVERY_TYPE.REGULAR')">
+			SELECT
+			IG.UR_WAREHOUSE_ID
+			,ST.BUNDLE_YN
+			,IF (ST.BUNDLE_YN = 'N', ST.IL_SHIPPING_TMPL_ID, 0) AS IL_SHIPPING_TMPL_ID
+			,IF (ST.BUNDLE_YN = 'N', CAST(ORROD.OD_REGULAR_REQ_ID AS SIGNED) * -1, 0) AS SP_CART_ID
+			,NULL AS RESERVE_ARRIVE_DATE
+			,UW.DAWN_DLVRY_YN
+			,UW.WAREHOUSE_NM
+			,ORR.CREATE_DT AS LATELY_CREATE_DT
+			,IG.GOODS_TP AS GOODS_TYPE
+			FROM
+			OD_REGULAR_REQ ORR
+			JOIN OD_REGULAR_REQ_ORDER_DETL ORROD ON (ORROD.OD_REGULAR_REQ_ID = ORR.OD_REGULAR_REQ_ID)
+			JOIN IL_GOODS IG ON (ORROD.IL_GOODS_ID = IG.IL_GOODS_ID)
+			JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+			JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+			JOIN UR_WAREHOUSE UW ON (UW.UR_WAREHOUSE_ID = IG.UR_WAREHOUSE_ID)
+			WHERE
+			ORR.UR_USER_ID = IFNULL((
+			SELECT UR_USER_ID FROM SP_CART
+			WHERE SP_CART_ID IN
+			<foreach collection="spCartIds" item="spCartId" separator="," open="(" close=")">
+				#{spCartId}
+			</foreach>
+			AND IFNULL(UR_USER_ID, 0) != 0
+			LIMIT 1
+			),0)
+			AND ORR.REGULAR_STATUS_CD IN ('REGULAR_STATUS_CD.APPLY','REGULAR_STATUS_CD.ING')
+			AND ORROD.REQ_DETAIL_STATUS_CD IN ('REGULAR_DETL_STATUS_CD.APPLY','REGULAR_DETL_STATUS_CD.SKIP')
+			UNION
+		</if>
+		SELECT
+		IF(SC.DELIVERY_TP='DELIVERY_TYPE.SHOP_DELIVERY', WAREHOUSE_STORE_ID.PS_VAL, IG.UR_WAREHOUSE_ID) AS UR_WAREHOUSE_ID
+		, ST.BUNDLE_YN
+		, IF (ST.BUNDLE_YN = 'N', ST.IL_SHIPPING_TMPL_ID, 0) AS IL_SHIPPING_TMPL_ID
+		, IF (ST.BUNDLE_YN = 'N', SC.SP_CART_ID, 0) AS SP_CART_ID
+		, IGRO.ARRIVE_DATE AS RESERVE_ARRIVE_DATE
+		, UW.DAWN_DLVRY_YN
+		,UW.WAREHOUSE_NM
+		, SC.CREATE_DT AS LATELY_CREATE_DT
+		,IG.GOODS_TP AS GOODS_TYPE
+		FROM
+		SP_CART SC
+		JOIN IL_GOODS IG ON (SC.IL_GOODS_ID = IG.IL_GOODS_ID)
+		JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_STORE_ID' ) WAREHOUSE_STORE_ID
+		JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IF(SC.DELIVERY_TP='DELIVERY_TYPE.SHOP_DELIVERY', WAREHOUSE_STORE_ID.PS_VAL, IG.UR_WAREHOUSE_ID) = GST.UR_WAREHOUSE_ID)
+		JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+		JOIN UR_WAREHOUSE UW ON (UW.UR_WAREHOUSE_ID = IF(SC.DELIVERY_TP='DELIVERY_TYPE.SHOP_DELIVERY', WAREHOUSE_STORE_ID.PS_VAL, IG.UR_WAREHOUSE_ID))
+		LEFT JOIN IL_GOODS_RESERVE_OPTN IGRO ON (IGRO.IL_GOODS_RESERVE_OPTN_ID = SC.IL_GOODS_RESERVE_OPTN_ID)
+		WHERE
+		SC.SP_CART_ID IN
+		<foreach collection="spCartIds" item="spCartId" separator="," open="(" close=")">
+			#{spCartId}
+		</foreach>
+		AND SC.DELIVERY_TP = #{deliveryType}
+		<if test="gift != null and gift.size() > 0 and @kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deliveryType,'DELIVERY_TYPE.NORMAL')">
+			UNION
+			SELECT
+			IG.UR_WAREHOUSE_ID
+			, ST.BUNDLE_YN
+			, IF (ST.BUNDLE_YN = 'N', ST.IL_SHIPPING_TMPL_ID, 0) AS IL_SHIPPING_TMPL_ID
+			, IF (ST.BUNDLE_YN = 'N', CAST(IG.IL_GOODS_ID AS SIGNED) * -1, 0) AS SP_CART_ID
+			, NULL AS RESERVE_ARRIVE_DATE
+			, UW.DAWN_DLVRY_YN
+			, UW.WAREHOUSE_NM
+			, NULL AS LATELY_CREATE_DT
+			, IG.GOODS_TP AS GOODS_TYPE
+			FROM
+			IL_GOODS IG
+			JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+			JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+			JOIN UR_WAREHOUSE UW ON (UW.UR_WAREHOUSE_ID = IG.UR_WAREHOUSE_ID)
+			WHERE
+			IG.IL_GOODS_ID IN
+			<foreach collection="gift" item="ilGoodsId" separator="," open="(" close=")">
+				#{ilGoodsId}
+			</foreach>
+		</if>
+		ORDER BY LATELY_CREATE_DT DESC
+		Limit 999999999999999999
+		)TBL
+		GROUP BY
+		TBL.UR_WAREHOUSE_ID, TBL.IL_SHIPPING_TMPL_ID, TBL.BUNDLE_YN, TBL.SP_CART_ID, TBL.RESERVE_ARRIVE_DATE
+		ORDER BY TBL.LATELY_CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: get 출고처별 배송 정책 정보로 상품리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.03		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getGoodsListByShippingPolicyMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.SpCartVo" >
+		<result column="ING_REGULAR_GOODS_YN"    property="ingRegularGoodsYn"  />
+		<result column="SP_CART_ID"    property="spCartId"  />
+		<result column="IL_GOODS_ID"        property="ilGoodsId" />
+		<result column="QTY"      property="qty" />
+		<result column="IL_GOODS_RESERVE_OPTN_ID"  property="ilGoodsReserveOptionId" />
+		<result column="GOODS_DAILY_CYCLE_TP"  property="goodsDailyCycleType" />
+		<result column="GOODS_DAILY_CYCLE_TP_NM"  property="goodsDailyCycleTypeName" />
+		<result column="GOODS_DAILY_CYCLE_TERM_TP"  property="goodsDailyCycleTermType" />
+		<result column="GOODS_DAILY_CYCLE_TERM_TP_NM"  property="goodsDailyCycleTermTypeName" />
+		<result column="GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP"  property="goodsDailyCycleGreenJuiceWeekType" />
+		<result column="GOODS_DAILY_ALLERGY_YN"  property="goodsDailyAllergyYn" />
+		<result column="GOODS_DAILY_BULK_YN"  property="goodsDailyBulkYn" />
+		<result column="GOODS_BULK_TYPE"  property="goodsBulkType" />
+		<result column="GOODS_BULK_TYPE_NM"  property="goodsBulkTypeName" />
+		<result column="IL_SHIPPING_TMPL_ID"  property="ilShippingTmplId" />
+		<result column="CART_PROMOTION_TP"  property="cartPromotionType" />
+		<result column="EV_EXHIBIT_ID"  property="evExhibitId" />
+		<result column="PM_AD_EXTERNAL_CD"  property="pmAdExternalCd" />
+		<result column="PM_AD_INTERNAL_PAGE_CD"  property="pmAdInternalPageCd" />
+		<result column="PM_AD_INTERNAL_CONTENT_CD"  property="pmAdInternalContentCd" />
+		<result column="IS_APPLY_RESTOCK_NOTICE"  property="isApplyRestockNotice" />
+	</resultMap>
+	<select id="getGoodsListByShippingPolicy" resultMap="getGoodsListByShippingPolicyMap">
+		/*	shoppingCart.getCartByShippingTemplate	*/
+		SELECT
+		'N' AS ING_REGULAR_GOODS_YN
+		,SC.SP_CART_ID
+		,SC.IL_GOODS_ID
+		,SC.QTY
+		,SC.IL_GOODS_RESERVE_OPTN_ID
+		,SC.GOODS_DAILY_CYCLE_TP
+		,FN_COMN_CODE_DIC(SC.GOODS_DAILY_CYCLE_TP) AS GOODS_DAILY_CYCLE_TP_NM
+		,SC.GOODS_DAILY_CYCLE_TERM_TP
+		,FN_COMN_CODE_DIC(SC.GOODS_DAILY_CYCLE_TERM_TP) AS GOODS_DAILY_CYCLE_TERM_TP_NM
+		,SC.GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP
+		,FN_COMN_CODE_DIC(SC.GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP) AS GOODS_DAILY_CYCLE_GREEN_JUICE_WEEK_TP_NM
+		,SC.GOODS_DAILY_ALLERGY_YN
+		,SC.GOODS_DAILY_BULK_YN
+		,SC.GOODS_BULK_TYPE
+		,FN_COMN_CODE_DIC(SC.GOODS_BULK_TYPE) AS GOODS_BULK_TYPE_NM
+		,ST.IL_SHIPPING_TMPL_ID
+		,SC.CART_PROMOTION_TP
+		,SC.EV_EXHIBIT_ID
+		,SC.PM_AD_EXTERNAL_CD
+		,SC.PM_AD_INTERNAL_PAGE_CD
+		,SC.PM_AD_INTERNAL_CONTENT_CD
+		,IF((SELECT COUNT(*) FROM SP_RESTOCK_INFO SRI WHERE SRI.UR_USER_ID = SC.UR_USER_ID AND SRI.IL_GOODS_ID = SC.IL_GOODS_ID AND SRI.SEND_YN = 'N' LIMIT 1) > 0, TRUE, FALSE) AS IS_APPLY_RESTOCK_NOTICE
+		FROM
+		SP_CART SC
+		JOIN IL_GOODS IG ON (SC.IL_GOODS_ID = IG.IL_GOODS_ID)
+		JOIN ( SELECT PS_VAL FROM PS_CONFIG WHERE PS_KEY = 'WAREHOUSE_STORE_ID' ) WAREHOUSE_STORE_ID
+		JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IF(SC.DELIVERY_TP='DELIVERY_TYPE.SHOP_DELIVERY', WAREHOUSE_STORE_ID.PS_VAL, IG.UR_WAREHOUSE_ID) = GST.UR_WAREHOUSE_ID)
+		JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+		LEFT JOIN IL_GOODS_RESERVE_OPTN IGRO ON (IGRO.IL_GOODS_RESERVE_OPTN_ID = SC.IL_GOODS_RESERVE_OPTN_ID)
+		WHERE
+		SC.SP_CART_ID IN
+		<foreach collection="spCartIds" item="spCartId" separator="," open="(" close=")">
+			#{spCartId}
+		</foreach>
+		AND IF(SC.DELIVERY_TP='DELIVERY_TYPE.SHOP_DELIVERY', WAREHOUSE_STORE_ID.PS_VAL, IG.UR_WAREHOUSE_ID) = #{shippingTemplateData.urWarehouseId}
+		AND ST.BUNDLE_YN = #{shippingTemplateData.bundleYn}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(shippingTemplateData.bundleYn,'N')">
+			AND ST.IL_SHIPPING_TMPL_ID = #{shippingTemplateData.ilShippingTmplId}
+			AND SC.SP_CART_ID = #{shippingTemplateData.spCartId}
+		</if>
+		AND IFNULL(IGRO.ARRIVE_DATE,'') = IFNULL(#{shippingTemplateData.reserveArriveDate},'')
+		AND SC.DELIVERY_TP = #{deliveryType}
+		ORDER BY SC.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 추가 구성 상품 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.07		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCartAddGoodsIdListMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.SpCartAddGoodsVo" >
+		<result column="SP_CART_ADD_GOODS_ID"    property="spCartAddGoodsId"  />
+		<result column="SP_CART_ID"        property="spCartId" />
+		<result column="IL_GOODS_ID"  property="ilGoodsId" />
+		<result column="QTY"      property="qty" />
+		<result column="SALE_PRICE"      property="salePrice" />
+	</resultMap>
+	<select id="getCartAddGoodsIdList" resultMap="getCartAddGoodsIdListMap">
+		/*	shoppingCart.getCartAddGoodsIdList	*/
+		SELECT
+		SCAG.SP_CART_ADD_GOODS_ID
+		, SCAG.SP_CART_ID
+		, SCAG.IL_GOODS_ID
+		, SCAG.QTY
+		, IGAGM.SALE_PRICE
+		FROM
+		SP_CART_ADD_GOODS SCAG
+		JOIN SP_CART SC ON (SCAG.SP_CART_ID = SC.SP_CART_ID)
+		JOIN IL_GOODS_ADDITIONAL_GOODS_MAPPING IGAGM ON (IGAGM.IL_GOODS_ID = SC.IL_GOODS_ID AND IGAGM.TARGET_GOODS_ID = SCAG.IL_GOODS_ID)
+		WHERE
+		SCAG.SP_CART_ID = #{spCartId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 추가 구성 상품 리스트 (기획전 골라담기)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.15		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCartAddGoodsIdListByExhibit" resultMap="getCartAddGoodsIdListMap">
+		/*	shoppingCart.getCartAddGoodsIdListByExhibit	*/
+		SELECT
+		SCAG.SP_CART_ADD_GOODS_ID
+		, SCAG.SP_CART_ID
+		, SCAG.IL_GOODS_ID
+		, SCAG.QTY
+		, EESAG.SALE_PRICE
+		FROM
+		SP_CART_ADD_GOODS SCAG
+		JOIN SP_CART SC ON (SCAG.SP_CART_ID = SC.SP_CART_ID)
+		JOIN EV_EXHIBIT_SELECT_ADD_GOODS EESAG ON (EESAG.EV_EXHIBIT_ID = SC.EV_EXHIBIT_ID AND EESAG.IL_GOODS_ID = SCAG.IL_GOODS_ID)
+		WHERE
+		SCAG.SP_CART_ID = #{spCartId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니 골라담기 상품 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.08		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCartPickGoodsListMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.SpCartPickGoodsVo" >
+		<result column="SP_CART_PICK_GOODS_ID"    property="spCartPickGoodsId"  />
+		<result column="SP_CART_ID"        property="spCartId" />
+		<result column="GOODS_DAILY_CYCLE_WEEK_TP"  property="goodsDailyCycleWeekType" />
+		<result column="IL_GOODS_ID"  property="ilGoodsId" />
+		<result column="QTY"      property="qty" />
+		<result column="IL_SHIPPING_TMPL_ID"      property="ilShippingTmplId" />
+		<result column="PICKABLE_YN"      property="pickableYn" />
+	</resultMap>
+	<select id="getCartPickGoodsList" resultMap="getCartPickGoodsListMap">
+		/*	shoppingCart.getCartPickGoodsList	*/
+		SELECT
+		CPG.SP_CART_PICK_GOODS_ID
+		, CPG.SP_CART_ID
+		, CPG.GOODS_DAILY_CYCLE_WEEK_TP
+		, CPG.IL_GOODS_ID
+		, CPG.QTY
+		, ST.IL_SHIPPING_TMPL_ID
+		, IF(C.CART_PROMOTION_TP = 'CART_PROMOTION_TP.GREENJUICE_SELECT', IG.PICKABLE_YN, 'Y') AS PICKABLE_YN
+		FROM
+		SP_CART_PICK_GOODS CPG
+		JOIN SP_CART C ON (C.SP_CART_ID = CPG.SP_CART_ID)
+		JOIN IL_GOODS IG ON (CPG.IL_GOODS_ID = IG.IL_GOODS_ID)
+		JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND IG.UR_WAREHOUSE_ID = GST.UR_WAREHOUSE_ID)
+		JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+		WHERE
+		CPG.SP_CART_ID = #{spCartId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: get 출고처별 배송 정책 정보로 증정품 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.23		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getGiftGoodsListByShippingPolicyMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.SpCartVo" >
+		<result column="ING_REGULAR_GOODS_YN"	property="ingRegularGoodsYn"  />
+		<result column="SP_CART_ID"  			property="spCartId"  />
+		<result column="IL_GOODS_ID"        	property="ilGoodsId" />
+		<result column="QTY"      				property="qty" />
+		<result column="IL_SHIPPING_TMPL_ID"  	property="ilShippingTmplId" />
+		<result column="EV_EXHIBIT_ID"  		property="evExhibitId" />
+	</resultMap>
+	<select id="getGiftGoodsListByShippingPolicy" resultMap="getGiftGoodsListByShippingPolicyMap">
+		/*	shoppingCart.getGiftGoodsListByShippingPolicy	*/
+		SELECT
+		'N' AS ING_REGULAR_GOODS_YN
+		,(CAST(IG.IL_GOODS_ID AS SIGNED) * -1) AS SP_CART_ID
+		,IG.IL_GOODS_ID
+		,IG.QTY
+		,ST.IL_SHIPPING_TMPL_ID
+		,IG.EV_EXHIBIT_ID
+		FROM
+		<foreach collection="gift" item="dto" separator=" UNION ALL " open="(" close=")">
+			SELECT EEGG.EV_EXHIBIT_ID, IG.IL_GOODS_ID, EEGG.GIFT_CNT AS QTY
+			FROM IL_GOODS IG
+			LEFT JOIN EV_EXHIBIT_GIFT_GOODS EEGG ON EEGG.IL_GOODS_ID = IG.IL_GOODS_ID
+			WHERE IG.IL_GOODS_ID = #{dto.ilGoodsId}
+			AND IG.UR_WAREHOUSE_ID = #{shippingTemplateData.urWarehouseId}
+			AND EEGG.EV_EXHIBIT_ID = #{dto.evExhibitId}
+		</foreach> IG
+		JOIN IL_GOODS_SHIPPING_TEMPLATE GST ON (IG.IL_GOODS_ID = GST.IL_GOODS_ID AND GST.UR_WAREHOUSE_ID = #{shippingTemplateData.urWarehouseId})
+		JOIN IL_SHIPPING_TEMPLATE ST ON (ST.ORIG_IL_SHIPPING_TMPL_ID = GST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N')
+		WHERE
+		ST.BUNDLE_YN = #{shippingTemplateData.bundleYn}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(shippingTemplateData.bundleYn,'N')">
+			AND ST.IL_SHIPPING_TMPL_ID = #{shippingTemplateData.ilShippingTmplId}
+			AND IG.IL_GOODS_ID = (#{shippingTemplateData.spCartId} * -1)
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 머지 대상 아닌 cart urUserId 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.26		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putCartUrUserId">
+		/*	shoppingCart.putCartUrUserId	*/
+		UPDATE
+		SP_CART
+		SET
+		UR_USER_ID = #{urUserId}
+		WHERE
+		UR_PCID_CD = #{urPcidCd}
+		AND IFNULL(UR_USER_ID, 0) = 0
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: get 장바구니 By urPcidCd
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.26		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getMergeCartListByUrUserIdMap" type="kr.co.pulmuone.v1.shopping.cart.dto.vo.SpCartVo" >
+		<result column="SP_CART_ID"    property="spCartId"  />
+		<result column="UR_PCID_CD"     property="urPcidCd"  />
+		<result column="UR_USER_ID"        property="urUserId"  />
+		<result column="DELIVERY_TP"        property="deliveryType"  />
+		<result column="IL_GOODS_ID"        property="ilGoodsId" />
+		<result column="QTY"      property="qty" />
+		<result column="BUY_NOW_YN"  property="buyNowYn" />
+		<result column="IL_GOODS_RESERVE_OPTN_ID"  property="ilGoodsReserveOptionId" />
+		<result column="PM_AD_EXTERNAL_CD"  property="pmAdExternalCd" />
+		<result column="PM_AD_INTERNAL_PAGE_CD"  property="pmAdInternalPageCd" />
+		<result column="PM_AD_INTERNAL_CONTENT_CD"  property="pmAdInternalContentCd" />
+	</resultMap>
+	<select id="getMergeCartListByUrUserId" resultMap="getMergeCartListByUrUserIdMap">
+		/*	shoppingCart.getMergeCartListByUrUserId	*/
+		SELECT
+		SP_CART_ID
+		,UR_PCID_CD
+		,UR_USER_ID
+		,DELIVERY_TP
+		,IL_GOODS_ID
+		,QTY
+		,BUY_NOW_YN
+		,IL_GOODS_RESERVE_OPTN_ID
+		,PM_AD_EXTERNAL_CD
+		,PM_AD_INTERNAL_PAGE_CD
+		,PM_AD_INTERNAL_CONTENT_CD
+		FROM
+		SP_CART
+		WHERE
+		UR_USER_ID = #{urUserId}
+		AND DELIVERY_TP IN ('DELIVERY_TYPE.NORMAL','DELIVERY_TYPE.RESERVATION')
+		AND IFNULL(CART_PROMOTION_TP, '') = ''
+		AND IFNULL(GOODS_BULK_TYPE, '') = ''
+		AND BUY_NOW_YN = 'N'
+		ORDER BY CREATE_DT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 장바구니안에 같은 상품PK있는지 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSpCardIdsByIlGoodsId" resultType="Long">
+		/*	shoppingCart.getSpCardIdsByIlGoodsId	*/
+		SELECT
+		SP_CART_ID
+		FROM
+		SP_CART
+		WHERE
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				UR_USER_ID = #{urUserId}
+			</when>
+			<otherwise>
+				UR_PCID_CD = #{urPcidCd}
+				AND IFNULL(UR_USER_ID, 0) = 0
+			</otherwise>
+		</choose>
+		AND IL_GOODS_ID = #{ilGoodsId}
+		AND BUY_NOW_YN = 'N'
+	</select>
+</mapper>

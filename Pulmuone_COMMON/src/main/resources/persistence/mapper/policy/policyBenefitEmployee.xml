@@ -1,0 +1,519 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.benefit.PolicyBenefitEmployeeMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쇼핑몰 혜택관리 - 임직원 혜택관리, 할인율 브랜드 그룹 관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.30		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeVo" id="getPolicyBenefitEmployeeMasterMap">
+		<result column="PS_EMPL_DISC_MASTER_ID"	property="psEmplDiscMasterId"/>
+		<result column="MASTER_NM"  property="masterName"  />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeGroupVo" id="getPolicyBenefitEmployeeGroupMap">
+		<result column="PS_EMPL_DISC_GRP_ID"	property="psEmplDiscGrpId"/>
+		<result column="PS_EMPL_DISC_MASTER_ID"  property="psEmplDiscMasterId"  />
+		<result column="LIMIT_AMT"  property="limitAmt"  />
+		<result column="EMPL_DISC_LIMIT_CYCLE_TP"  property="emplDiscLimitCycleTp"  />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeGroupBrandGroupVo" id="getPolicyBenefitEmployeeGroupBrandGroupMap">
+		<result column="PS_EMPL_DISC_GRP_BRAND_GRP_ID"	property="psEmplDiscGrpBrandGrpId"/>
+		<result column="PS_EMPL_DISC_GRP_ID"  property="psEmplDiscGrpId"  />
+		<result column="PS_EMPL_DISC_BRAND_GRP_ID"  property="psEmplDiscBrandGrpId"  />
+		<result column="GROUP_NM"  property="groupName"  />
+		<result column="DISCOUNT_RATIO"  property="discountRatio" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeLegalVo" id="getPolicyBenefitEmployeeLegalMap">
+		<result column="PS_EMPL_DISC_MASTER_LEGAL_ID"	property="psEmplDiscMasterLegalId"/>
+		<result column="PS_EMPL_DISC_MASTER_ID"  property="psEmplDiscMasterId"  />
+		<result column="ERP_REGAL_CD"  property="erpRegalCode"  />
+		<result column="ERP_REGAL_NM"  property="erpRegalName"  />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeBrandGroupVo" id="getPolicyBenefitEmployeeBrandGroupMap">
+		<result column="PS_EMPL_DISC_BRAND_GRP_ID"	property="psEmplDiscBrandGrpId"/>
+		<result column="GROUP_NM"  property="groupName"  />
+		<result column="DISCOUNT_RATIO"  property="discountRatio" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeBrandGroupBrandVo" id="getPolicyBenefitEmployeeBrandGroupBrandMap">
+		<result column="PS_EMPL_DISC_BRAND_GRP_BRAND_ID"	property="psEmplDiscBrandGrpBrandId"/>
+		<result column="PS_EMPL_DISC_BRAND_GRP_ID"  property="psEmplDiscBrandGrpId"  />
+		<result column="UR_BRAND_ID"  property="urBrandId" />
+		<result column="BRAND_NAME"  property="brandName" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeBrandGroupBrandVo" id="getPolicyBenefitEmployeeDiscountRatioMap">
+		<result column="PS_EMPL_DISC_BRAND_GRP_BRAND_ID"	property="psEmplDiscBrandGrpBrandId"/>
+		<result column="PS_EMPL_DISC_BRAND_GRP_ID"  property="psEmplDiscBrandGrpId"  />
+		<result column="DISCOUNT_RATIO"  property="discountRatio" />
+	</resultMap>
+
+	<select id="getPolicyBenefitEmployeeMasterList" resultMap="getPolicyBenefitEmployeeMasterMap">
+		/*	PolicyBenefitEmployee.getPolicyBenefitEmployeeMasterList	*/
+		SELECT
+			PS_EMPL_DISC_MASTER_ID, MASTER_NM
+			, CREATE_ID, CREATE_DT, MODIFY_ID, IFNULL(MODIFY_DT,CREATE_DT) MODIFY_DT
+		FROM PS_EMPL_DISC_MASTER
+		ORDER BY CREATE_DT ASC
+	</select>
+	<select id="getPolicyBenefitEmployeeGroupList" resultMap="getPolicyBenefitEmployeeGroupMap">
+		/*	PolicyBenefitEmployee.getPolicyBenefitEmployeeGroupList	*/
+		SELECT
+			PS_EMPL_DISC_GRP_ID, PS_EMPL_DISC_MASTER_ID, LIMIT_AMT, EMPL_DISC_LIMIT_CYCLE_TP
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM PS_EMPL_DISC_GRP
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psEmplDiscMasterId)">
+		WHERE PS_EMPL_DISC_MASTER_ID = #{psEmplDiscMasterId}
+		</if>
+	</select>
+	<select id="getPolicyBenefitEmployeeGroupBrandGroupList" resultMap="getPolicyBenefitEmployeeGroupBrandGroupMap">
+		/*	PolicyBenefitEmployee.getPolicyBenefitEmployeeGroupBrandGroupList	*/
+		SELECT
+			PS_EMPL_DISC_GRP_BRAND_GRP_ID, PS_EMPL_DISC_GRP_ID, GBG.PS_EMPL_DISC_BRAND_GRP_ID
+			, BG.GROUP_NM, BG.DISCOUNT_RATIO
+		FROM PS_EMPL_DISC_GRP_BRAND_GRP GBG
+		JOIN PS_EMPL_DISC_BRAND_GRP BG
+			ON BG.PS_EMPL_DISC_BRAND_GRP_ID = GBG.PS_EMPL_DISC_BRAND_GRP_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psEmplDiscGrpId)">
+		WHERE PS_EMPL_DISC_GRP_ID = #{psEmplDiscGrpId}
+		</if>
+	</select>
+	<select id="getPolicyBenefitEmployeeLegalList" resultMap="getPolicyBenefitEmployeeLegalMap">
+		/*	PolicyBenefitEmployee.getPolicyBenefitEmployeeLegalList	*/
+		SELECT
+			PS_EMPL_DISC_MASTER_LEGAL_ID, PS_EMPL_DISC_MASTER_ID, ML.ERP_REGAL_CD, ER.ERP_REGAL_NM
+		FROM PS_EMPL_DISC_MASTER_LEGAL ML
+		JOIN UR_ERP_REGAL ER
+			ON ER.ERP_REGAL_CD = ML.ERP_REGAL_CD
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psEmplDiscMasterId)">
+		WHERE PS_EMPL_DISC_MASTER_ID = #{psEmplDiscMasterId}
+		</if>
+	</select>
+	<select id="getLatestUpdatePolicyBenefitEmployee" resultMap="getPolicyBenefitEmployeeMasterMap">
+		/*	PolicyBenefitEmployee.getLatestUpdatePolicyBenefitEmployee	*/
+		SELECT
+			PS_EMPL_DISC_MASTER_ID, MASTER_NM
+			, CREATE_ID, CREATE_DT, MODIFY_ID, IFNULL(MODIFY_DT,CREATE_DT) MODIFY_DT
+		FROM PS_EMPL_DISC_MASTER
+		ORDER BY MODIFY_DT DESC
+		LIMIT 1
+	</select>
+	<select id="getRegistDiscMasterPolicyBenefitEmployeeBrandGroup" resultMap="getPolicyBenefitEmployeeBrandGroupMap">
+		/*	PolicyBenefitEmployee.getRegistDiscMasterPolicyBenefitEmployeeBrandGroup	*/
+		SELECT
+			BG.PS_EMPL_DISC_BRAND_GRP_ID, GROUP_NM, DISCOUNT_RATIO
+		FROM PS_EMPL_DISC_BRAND_GRP BG
+		JOIN PS_EMPL_DISC_GRP_BRAND_GRP GBG
+			ON BG.PS_EMPL_DISC_BRAND_GRP_ID = GBG.PS_EMPL_DISC_BRAND_GRP_ID
+		WHERE BG.PS_EMPL_DISC_BRAND_GRP_ID = #{psEmplDiscBrandGrpId}
+		ORDER BY BG.MODIFY_DT DESC
+		LIMIT 1
+	</select>
+	<select id="getPolicyBenefitEmployeeBrandGroupList" resultMap="getPolicyBenefitEmployeeBrandGroupMap">
+		/*	PolicyBenefitEmployee.getPolicyBenefitEmployeeBrandGroupList	*/
+		SELECT
+			PS_EMPL_DISC_BRAND_GRP_ID, GROUP_NM, DISCOUNT_RATIO
+			, CREATE_ID, CREATE_DT, MODIFY_ID, IFNULL(MODIFY_DT,CREATE_DT) MODIFY_DT
+		FROM PS_EMPL_DISC_BRAND_GRP
+		ORDER BY CREATE_DT ASC
+	</select>
+	<select id="getLatestUpdatePolicyBenefitEmployeeBrandGroup" resultMap="getPolicyBenefitEmployeeBrandGroupMap">
+		/*	PolicyBenefitEmployee.getLatestUpdatePolicyBenefitEmployeeBrandGroup	*/
+		SELECT
+			PS_EMPL_DISC_BRAND_GRP_ID, GROUP_NM, DISCOUNT_RATIO
+			, CREATE_ID, CREATE_DT, MODIFY_ID, IFNULL(MODIFY_DT,CREATE_DT) MODIFY_DT
+		FROM PS_EMPL_DISC_BRAND_GRP
+		ORDER BY MODIFY_DT DESC
+		LIMIT 1
+	</select>
+	<select id="getNonePolicyBenefitEmployeeBrandGroupBrandList" resultMap="getPolicyBenefitEmployeeBrandGroupBrandMap">
+		/*	PolicyBenefitEmployee.getNonePolicyBenefitEmployeeBrandGroupBrandList	*/
+		SELECT
+			UR_BRAND_ID, BRAND_NAME
+		FROM
+			(SELECT
+						PS_EMPL_DISC_BRAND_GRP_BRAND_ID, UB.UR_BRAND_ID, UB.BRAND_NM AS BRAND_NAME
+					FROM PS_EMPL_DISC_BRAND_GRP_BRAND GB
+					RIGHT OUTER JOIN UR_BRAND UB
+						ON UB.UR_BRAND_ID = GB.UR_BRAND_ID
+						WHERE UB.USE_YN = 'Y'
+			) X
+		WHERE X.PS_EMPL_DISC_BRAND_GRP_BRAND_ID IS NULL
+	</select>
+	<select id="getPolicyBenefitEmployeeBrandGroupBrandList" resultMap="getPolicyBenefitEmployeeBrandGroupBrandMap">
+		/*	PolicyBenefitEmployee.getPolicyBenefitEmployeeBrandGroupBrandList	*/
+		SELECT
+			PS_EMPL_DISC_BRAND_GRP_BRAND_ID, PS_EMPL_DISC_BRAND_GRP_ID, GB.UR_BRAND_ID, UB.BRAND_NM AS BRAND_NAME
+			, GB.CREATE_ID, GB.CREATE_DT, GB.MODIFY_ID, GB.MODIFY_DT
+		FROM PS_EMPL_DISC_BRAND_GRP_BRAND GB
+		JOIN UR_BRAND UB
+			ON UB.UR_BRAND_ID = GB.UR_BRAND_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psEmplDiscBrandGrpId)">
+		WHERE PS_EMPL_DISC_BRAND_GRP_ID = #{psEmplDiscBrandGrpId}
+		</if>
+	</select>
+	<insert id="addPolicyBenefitEmployeeMaster">
+		/* PolicyBenefitEmployee.addPolicyBenefitEmployeeMaster */
+		INSERT INTO PS_EMPL_DISC_MASTER
+			(	MASTER_NM, CREATE_ID, CREATE_DT	)
+		VALUES
+			(
+				#{masterName}, #{userVo.userId}, NOW()
+			)
+        <selectKey resultType="String" keyProperty="psEmplDiscMasterId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+	<update id="putPolicyBenefitEmployeeMaster">
+		/* PolicyBenefitEmployee.putPolicyBenefitEmployeeMaster */
+        <foreach item="updateData" index="index" collection="list"  separator="; ">
+            UPDATE PS_EMPL_DISC_MASTER
+			SET
+				MASTER_NM = #{updateData.masterName}
+				, MODIFY_ID = #{updateData.userVo.userId}
+				, MODIFY_DT = NOW()
+			WHERE PS_EMPL_DISC_MASTER_ID = #{updateData.psEmplDiscMasterId}
+        </foreach>
+	</update>
+	<delete id="delPolicyBenefitEmployeeMaster">
+		/*	PolicyBenefitEmployee.delPolicyBenefitEmployeeMaster	*/
+		DELETE
+		FROM PS_EMPL_DISC_MASTER
+		WHERE PS_EMPL_DISC_MASTER_ID = #{psEmplDiscMasterId}
+	</delete>
+    <insert id="addPolicyBenefitEmployeeGroup" >
+		/* PolicyBenefitEmployee.addPolicyBenefitEmployeeGroup */
+		INSERT INTO PS_EMPL_DISC_GRP
+			(	PS_EMPL_DISC_MASTER_ID, LIMIT_AMT, EMPL_DISC_LIMIT_CYCLE_TP, CREATE_ID, CREATE_DT	)
+		VALUES
+			(
+				#{psEmplDiscMasterId}
+				,#{limitAmt}
+				,#{emplDiscLimitCycleTp}
+				, #{userVo.userId}
+				, NOW()
+			)
+		<selectKey resultType="String" keyProperty="psEmplDiscGrpId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+	</insert>
+	<update id="putPolicyBenefitEmployeeGroup">
+		/* PolicyBenefitEmployee.putPolicyBenefitEmployeeGroup */
+            UPDATE PS_EMPL_DISC_GRP
+			SET
+				PS_EMPL_DISC_MASTER_ID = #{psEmplDiscMasterId}
+				, LIMIT_AMT = #{limitAmt}
+				, EMPL_DISC_LIMIT_CYCLE_TP = #{emplDiscLimitCycleTp}
+				, MODIFY_ID = #{userVo.userId}
+			WHERE PS_EMPL_DISC_GRP_ID = #{psEmplDiscGrpId}
+	</update>
+	<delete id="delPolicyBenefitEmployeeGroup">
+		/*	PolicyBenefitEmployee.delPolicyBenefitEmployeeGroup	*/
+		DELETE
+		FROM PS_EMPL_DISC_GRP
+		WHERE PS_EMPL_DISC_MASTER_ID = #{psEmplDiscMasterId}
+	</delete>
+	<delete id="delPolicyBenefitEmployeeGroupByPsEmplDiscGrpId">
+		/*	PolicyBenefitEmployee.delPolicyBenefitEmployeeGroupByPsEmplDiscGrpId	*/
+		DELETE
+		FROM PS_EMPL_DISC_GRP
+		WHERE PS_EMPL_DISC_GRP_ID IN
+		<foreach item="psEmplDiscGrpId" index="index" collection="psEmplDiscGrpIds" open="(" separator="," close=")">
+            #{psEmplDiscGrpId}
+        </foreach>
+	</delete>
+    <insert id="addPolicyBenefitEmployeeGroupBrandGroup" >
+		/* PolicyBenefitEmployee.addPolicyBenefitEmployeeGroupBrandGroup */
+		INSERT INTO PS_EMPL_DISC_GRP_BRAND_GRP
+			(	PS_EMPL_DISC_GRP_ID, PS_EMPL_DISC_BRAND_GRP_ID, CREATE_ID, CREATE_DT	)
+		VALUES
+		<foreach item="insertData" index="index" collection="brandGroupList" open="" separator="," close="">
+			(
+				#{psEmplDiscGrpId}
+				,#{insertData.psEmplDiscBrandGrpId}
+				, #{userVo.userId}
+				, NOW()
+			)
+		</foreach>
+	</insert>
+	<delete id="delPolicyBenefitEmployeeGroupBrandGroup">
+		/*	PolicyBenefitEmployee.delPolicyBenefitEmployeeGroupBrandGroup	*/
+		DELETE
+		FROM PS_EMPL_DISC_GRP_BRAND_GRP
+		WHERE PS_EMPL_DISC_GRP_ID IN (
+        <foreach item="deleteData" index="index" collection="list" open="" separator="," close="">
+            #{deleteData.psEmplDiscGrpId}
+        </foreach>
+		)
+	</delete>
+    <insert id="addPolicyBenefitEmployeeLegal" >
+		/* PolicyBenefitEmployee.addPolicyBenefitEmployeeLegal */
+		INSERT INTO PS_EMPL_DISC_MASTER_LEGAL
+			(	PS_EMPL_DISC_MASTER_ID, ERP_REGAL_CD, CREATE_ID, CREATE_DT	)
+		VALUES
+		<foreach item="insertData" index="index" collection="companyList" open="" separator="," close="">
+			(
+				#{psEmplDiscMasterId}
+				,#{insertData.erpRegalCode}
+				, #{userVo.userId}
+				, NOW()
+			)
+		</foreach>
+	</insert>
+	<delete id="delPolicyBenefitEmployeeLegal">
+		/*	PolicyBenefitEmployee.delPolicyBenefitEmployeeLegal	*/
+		DELETE
+		FROM PS_EMPL_DISC_MASTER_LEGAL
+		WHERE PS_EMPL_DISC_MASTER_ID = #{psEmplDiscMasterId}
+	</delete>
+	<insert id="addPolicyBenefitEmployeeBrandGroup">
+		/* PolicyBenefitEmployee.addPolicyBenefitEmployeeBrandGroup */
+		INSERT INTO PS_EMPL_DISC_BRAND_GRP
+			(
+				GROUP_NM, DISCOUNT_RATIO, CREATE_ID, CREATE_DT
+			)
+		VALUES
+			(
+				#{groupName}, #{discountRatio}, #{userVo.userId}, NOW()
+			)
+        <selectKey resultType="String" keyProperty="psEmplDiscBrandGrpId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+    <update id="putPolicyBenefitEmployeeBrandGroup">
+		/* PolicyBenefitEmployee.putPolicyBenefitEmployeeBrandGroup */
+        <foreach item="updateData" index="index" collection="list"  separator="; ">
+            UPDATE PS_EMPL_DISC_BRAND_GRP
+			SET
+				GROUP_NM = #{updateData.groupName}
+				, DISCOUNT_RATIO = #{updateData.discountRatio}
+				, MODIFY_ID = #{updateData.userVo.userId}
+				, MODIFY_DT = NOW()
+			WHERE PS_EMPL_DISC_BRAND_GRP_ID = #{updateData.psEmplDiscBrandGrpId}
+        </foreach>
+	</update>
+	<delete id="delPolicyBenefitEmployeeBrandGroup">
+		/*	PolicyBenefitEmployee.delPolicyBenefitEmployeeBrandGroup	*/
+		DELETE
+		FROM PS_EMPL_DISC_BRAND_GRP
+		WHERE PS_EMPL_DISC_BRAND_GRP_ID = #{psEmplDiscBrandGrpId}
+	</delete>
+	<insert id="addPolicyBenefitEmployeeBrandGroupBrand" >
+		/* PolicyBenefitEmployee.addPolicyBenefitEmployeeBrandGroupBrand */
+		INSERT INTO PS_EMPL_DISC_BRAND_GRP_BRAND
+			(
+				PS_EMPL_DISC_BRAND_GRP_ID, UR_BRAND_ID, CREATE_ID, CREATE_DT
+			)
+		VALUES
+		<foreach item="insertData" index="index" collection="brandList" open="" separator="," close="">
+			(
+				#{psEmplDiscBrandGrpId}
+				,#{insertData.urBrandId}
+				, #{userVo.userId}
+				, NOW()
+			)
+		</foreach>
+	</insert>
+	<delete id="delPolicyBenefitEmployeeBrandGroupBrand">
+		/*	PolicyBenefitEmployee.delPolicyBenefitEmployeeBrandGroupBrand	*/
+		DELETE
+		FROM PS_EMPL_DISC_BRAND_GRP_BRAND
+		WHERE PS_EMPL_DISC_BRAND_GRP_ID = #{psEmplDiscBrandGrpId}
+	</delete>
+	<select id="getPolicyBenefitEmployeeDiscountRatio" resultMap="getPolicyBenefitEmployeeDiscountRatioMap">
+		/*	PolicyBenefitEmployee."getPolicyBenefitEmployeeDiscountRatio"	*/
+		SELECT
+			PEDBG.PS_EMPL_DISC_BRAND_GRP_ID
+		,	PEDBGB.PS_EMPL_DISC_BRAND_GRP_BRAND_ID
+		,	PEDBG.DISCOUNT_RATIO
+		FROM
+			PS_EMPL_DISC_BRAND_GRP PEDBG
+		INNER JOIN PS_EMPL_DISC_BRAND_GRP_BRAND PEDBGB ON PEDBG.PS_EMPL_DISC_BRAND_GRP_ID = PEDBGB.PS_EMPL_DISC_BRAND_GRP_ID
+		INNER JOIN UR_BRAND UB ON UB.UR_BRAND_ID = PEDBGB.UR_BRAND_ID
+		WHERE
+			UB.UR_BRAND_ID = #{urBrandId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 임직원 할인정보 조회 by user
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.21		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeByUserVo" id="employeeByUserResultMap">
+		<result column="PS_EMPL_DISC_MASTER_ID" property="psEmplDiscMasterId"/>
+		<result column="MASTER_NM" property="masterName"/>
+		<result column="PS_EMPL_DISC_GRP_ID" property="psEmplDiscGrpId"/>
+		<result column="LIMIT_AMT" property="limitAmount"/>
+		<result column="EMPL_DISC_LIMIT_CYCLE_TP_NM" property="employeeDiscountLimitCycleTypeName"/>
+		<result column="START_DATE" property="startDate"/>
+		<result column="END_DATE" property="endDate"/>
+	</resultMap>
+
+	<select id="getEmployeeDiscountByUser" resultMap="employeeByUserResultMap">
+		/* PolicyBenefitEmployee.getEmployeeDiscountByUser */
+		SELECT G1.PS_EMPL_DISC_MASTER_ID ,
+			G1.MASTER_NM ,
+			G1.PS_EMPL_DISC_GRP_ID ,
+			G1.LIMIT_AMT ,
+			G1.EMPL_DISC_LIMIT_CYCLE_TP_NM,
+			G1.START_DATE,
+			G1.END_DATE
+		FROM (
+			SELECT UEE.UR_ERP_EMPLOYEE_CD ,
+				M.PS_EMPL_DISC_MASTER_ID ,
+				M.MASTER_NM ,
+				G.PS_EMPL_DISC_GRP_ID ,
+				G.LIMIT_AMT ,
+				FN_COMN_CODE_DIC(G.EMPL_DISC_LIMIT_CYCLE_TP) AS EMPL_DISC_LIMIT_CYCLE_TP_NM,
+				(CASE WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.YEAR' THEN date_format(NOW(), '%Y-01-01')
+					WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.HALF' THEN if(QUARTER(NOW()) IN (1,2), DATE_FORMAT(NOW(),'%Y-01-01'), DATE_FORMAT(NOW(),'%Y-07-01'))
+					WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.QUATER' THEN (CASE WHEN QUARTER(NOW()) = 1 THEN DATE_FORMAT(NOW(),'%Y-01-01')
+					WHEN QUARTER(NOW()) = 2 THEN DATE_FORMAT(NOW(),'%Y-04-01')
+					WHEN QUARTER(NOW()) = 3 THEN DATE_FORMAT(NOW(),'%Y-07-01')
+					WHEN QUARTER(NOW()) = 4 THEN DATE_FORMAT(NOW(),'%Y-10-01') END)
+					WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.MONTH' THEN date_format(NOW(), '%Y-%m-01') END) AS START_DATE,
+				(CASE WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.YEAR' THEN date_format(NOW(), '%Y-12-31')
+					WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.HALF' THEN if(QUARTER(NOW()) IN (1,2), DATE_FORMAT(NOW(),'%Y-06-30'), DATE_FORMAT(NOW(),'%Y-12-31'))
+					WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.QUATER' THEN (CASE WHEN QUARTER(NOW()) = 1 THEN DATE_FORMAT(NOW(),'%Y-03-31')
+					WHEN QUARTER(NOW()) = 2 THEN DATE_FORMAT(NOW(),'%Y-06-30')
+					WHEN QUARTER(NOW()) = 3 THEN DATE_FORMAT(NOW(),'%Y-09-30')
+					WHEN QUARTER(NOW()) = 4 THEN DATE_FORMAT(NOW(),'%Y-12-31') END)
+					WHEN G.EMPL_DISC_LIMIT_CYCLE_TP = 'EMPL_DISC_LIMIT_CYCLE_TP.MONTH' THEN LAST_DAY(NOW()) END) AS END_DATE
+			FROM UR_ERP_EMPLOYEE UEE
+				INNER JOIN PS_EMPL_DISC_MASTER_LEGAL ML ON UEE.ERP_REGAL_CD = ML.ERP_REGAL_CD
+				INNER JOIN PS_EMPL_DISC_MASTER M ON ML.PS_EMPL_DISC_MASTER_ID = M.PS_EMPL_DISC_MASTER_ID
+				INNER JOIN PS_EMPL_DISC_GRP G ON M.PS_EMPL_DISC_MASTER_ID = G.PS_EMPL_DISC_MASTER_ID
+			WHERE UEE.UR_ERP_EMPLOYEE_CD = #{urErpEmployeeCd}
+				AND UEE.USE_YN = 'Y'
+				AND UEE.ERP_USER_STATUS IN ('EMPLOYEE_STATUS.NORMAL','EMPLOYEE_STATUS.ADMINISTRATIVE_LEAVE')	/* 재직상태 - 정상, 휴직 */
+		) G1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 임직원 할인 브랜드 그룹 정보 조회 by user
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.21		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeBrandGroupByUserVo" id="employeeBrandGroupByUserResultMap">
+		<result column="PS_EMPL_DISC_BRAND_GRP_ID" property="psEmplDiscBrandGrpId"/>
+		<result column="GROUP_NM" property="groupName"/>
+		<result column="DISCOUNT_RATIO" property="discountRatio"/>
+	</resultMap>
+
+	<select id="getEmployeeDiscountBrandGroupByUser" resultMap="employeeBrandGroupByUserResultMap">
+		/* PolicyBenefitEmployee.getEmployeeDiscountBrandGroupByUser */
+		SELECT T1.PS_EMPL_DISC_BRAND_GRP_ID
+			, T1.GROUP_NM
+			, T1.DISCOUNT_RATIO
+		FROM PS_EMPL_DISC_BRAND_GRP T1
+		INNER JOIN PS_EMPL_DISC_GRP_BRAND_GRP T2 ON T1.PS_EMPL_DISC_BRAND_GRP_ID = T2.PS_EMPL_DISC_BRAND_GRP_ID
+		WHERE T2.PS_EMPL_DISC_GRP_ID = #{psEmplDiscGrpId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 임직원 할인 브랜드 정보 조회 by user
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.18		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeeBrandByUserVo" id="employeeBrandByUserResultMap">
+		<result column="UR_BRAND_ID" property="urBrandId"/>
+		<result column="BRAND_NM" property="brandName"/>
+	</resultMap>
+
+	<select id="getEmployeeDiscountBrandByUser" resultMap="employeeBrandByUserResultMap">
+		/* PolicyBenefitEmployee.getEmployeeDiscountBrandByUser */
+		SELECT T1.UR_BRAND_ID
+			, T2.BRAND_NM
+		FROM PS_EMPL_DISC_BRAND_GRP_BRAND T1
+			INNER JOIN UR_BRAND T2 ON T1.UR_BRAND_ID = T2.UR_BRAND_ID
+		WHERE T1.PS_EMPL_DISC_BRAND_GRP_ID = #{psEmplDiscBrandGrpId}
+			AND T2.USE_YN = 'Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 임직원 할인 과거내역 조회 by user
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.21		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.benefit.dto.vo.PolicyBenefitEmployeePastInfoByUserVo" id="employeePastByUserResultMap">
+		<result column="UR_BRAND_ID" property="urBrandId"/>
+		<result column="BRAND_NM" property="brandName"/>
+		<result column="USE_AMOUNT" property="useAmount"/>
+	</resultMap>
+
+	<select id="getEmployeeDiscountPastByUser" resultMap="employeePastByUserResultMap">
+		/* PolicyBenefitEmployee.getEmployeeDiscountPastByUser */
+		SELECT G1.UR_BRAND_ID,
+			UB.BRAND_NM,
+			SUM(G1.DISCOUNT_PRICE) AS USE_AMOUNT
+		FROM (
+				SELECT OODD.UR_BRAND_ID,
+					OODD.DISCOUNT_PRICE
+				FROM OD_ORDER OO
+					INNER JOIN OD_ORDER_DETL OD ON OD.OD_ORDER_ID = OO.OD_ORDER_ID
+					INNER JOIN OD_ORDER_DT OOD ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+					INNER JOIN OD_ORDER_DETL_DISCOUNT OODD ON OD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID AND OODD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+				WHERE OO.UR_EMPLOYEE_CD = #{urErpEmployeeCd}
+					AND OOD.CREATE_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND) /* 주문등록일자 */
+					AND OO.ORDER_YN = 'Y'
+					AND OD.OD_ORDER_DETL_DEPTH_ID <![CDATA[<]]> 3 /* 재배송건은 포함 안되도록 */
+				UNION ALL
+				SELECT OCDD.UR_BRAND_ID,
+					(CAST(OCDD.DISCOUNT_PRICE as SIGNED)) * (-1) AS PAID_PRICE
+				FROM OD_ORDER OO
+					INNER JOIN OD_CLAIM OC ON OO.OD_ORDER_ID = OC.OD_ORDER_ID
+					INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+					INNER JOIN OD_CLAIM_DETL_DISCOUNT OCDD ON OCD.OD_CLAIM_DETL_ID = OCDD.OD_CLAIM_DETL_ID AND OCDD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+				WHERE OO.UR_EMPLOYEE_CD = #{urErpEmployeeCd}
+					AND (
+						OCD.CC_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND) /* 취소완료일자 */
+						OR
+						OCD.RC_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND) /* 반품완료일자 */
+						OR
+						(OCD.CLAIM_STATUS_CD IN ('IB') AND OCD.CR_DT BETWEEN #{startDate} AND (#{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)) /* 입금전취소 */
+					)
+					AND OO.ORDER_YN = 'Y'
+					AND OC.CLAIM_YN = 'Y'
+			) G1
+			INNER JOIN UR_BRAND UB ON G1.UR_BRAND_ID = UB.UR_BRAND_ID
+		GROUP BY G1.UR_BRAND_ID, UB.BRAND_NM
+	</select>
+</mapper>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.insidesub.OrderInterfaceExceptDeliveryMapper">
+
+    <!-- I/F 외 주문 조회 -->
+    <select id="selectInterfaceExceptOrder" resultType="kr.co.pulmuone.v1.batch.order.insidesub.dto.vo.InterfaceExceptOrderVo">
+        /* OrderInterfaceExceptDeliveryMapper.selectInterfaceExceptOrder */
+        SELECT
+            oo.OD_ORDER_ID AS odOrderId
+            , oo.ODID AS odid
+            , ood.OD_ORDER_DETL_ID AS odOrderDetlId
+            , ood.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+            , DATE_FORMAT(uw.CUTOFF_TIME, '%H%i') AS cutoffTime
+        FROM OD_ORDER oo
+        INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+        INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP IN (<foreach collection="orderChangeTp" item="orderChangeTp" separator=",">#{orderChangeTp}</foreach>)
+        WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+        AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+        AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+        AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        AND CURTIME() BETWEEN uw.CUTOFF_TIME AND DATE_ADD(uw.CUTOFF_TIME, INTERVAL 30 MINUTE) /* 마감시간 30분텀 */
+    </select>
+
+</mapper>

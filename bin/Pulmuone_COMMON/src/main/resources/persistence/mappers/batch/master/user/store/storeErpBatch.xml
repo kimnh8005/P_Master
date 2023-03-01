@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.user.store.StoreErpBatchMapper">
+
+ 	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송권역 정보 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.02		안치열          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+
+	<insert id="addStoreInfo">
+		/*	storeDeliveryZoneBatch.addStoreInfo  */
+		INSERT INTO UR_STORE (
+			UR_STORE_ID
+			, UR_STORE_DM_ID
+			, UR_SUPPLIER_ID
+			, STORE_TP
+			, STORE_CATEGORY1
+			, STORE_CATEGORY2
+			, STATUS
+			, ONLINE_DIV_YN
+			, NM
+			, TEL
+			, ZIP_CD
+			, ADDRESS1
+			, ADDRESS2
+			, LOCATE
+			, OPEN_TIME
+			, CLOSE_TIME
+			, INTRO_TEXT
+			, STORE_ORDER_SET
+			, INTRO_IMAGE
+			, USE_YN
+			, CREATE_DT
+			, CREATE_ID
+		)VALUES(
+			#{shpCd}
+			, #{shpCdDm}
+			, #{urSupplierId}
+			, #{shpTyp}
+			, #{shpCtg}
+			, #{shyCtg}
+			, #{shpSta}
+			, #{o2oTyp}
+			, #{shpNam}
+			, #{tel}
+			, #{shpZip}
+			, #{shpAdr}
+			, #{shpAdr}
+			, #{shpLoc}
+			, #{shpOprStDat}
+			, #{shpOprEndDat}
+			, #{shpDes}
+			, #{shpSalSet}
+			, #{shpImg}
+			, #{useYn}
+			, now()
+			, #{createId}
+		)
+		ON DUPLICATE KEY UPDATE
+			UR_STORE_ID = #{shpCd}
+	</insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장정보 수정
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.04.10      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putStoreInfo">
+		/* storeDeliveryZoneBatch.putStoreInfo */
+		UPDATE 	UR_STORE
+		SET 	UR_STORE_DM_ID 		=  #{shpCdDm}
+			  , UR_SUPPLIER_ID		=  #{urSupplierId}
+			  , STORE_TP			=  #{shpTyp}
+			  , STORE_CATEGORY1		=  #{shpCtg}
+			  , STORE_CATEGORY2		=  #{shyCtg}
+			  , STATUS				=  #{shpSta}
+			  , ONLINE_DIV_YN		=  #{o2oTyp}
+			  , NM					=  #{shpNam}
+			  , TEL					=  #{tel}
+			  , ZIP_CD				=  #{shpZip}
+		      , ADDRESS1			=  #{shpAdr}
+			  , ADDRESS2			=  #{shpAdr}
+			  , LOCATE				=  #{shpLoc}
+			  , OPEN_TIME			=  #{shpOprStDat}
+			  , CLOSE_TIME			=  #{shpOprEndDat}
+			  , INTRO_TEXT			=  #{shpDes}
+			  , STORE_ORDER_SET		=  #{shpSalSet}
+			  , INTRO_IMAGE			=  #{shpImg}
+			  , USE_YN				=  #{useYn}
+			  , MODIFY_DT			=  now()
+			  , MODIFY_ID			=  #{createId}
+		WHERE  	UR_STORE_ID 	    = #{shpCd}
+		AND     STORE_TP		    = #{shpTyp}
+	</update>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장정보 사용상태 변경
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.03.17      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putStoreNotUse">
+		/* storeDeliveryZoneBatch.putStoreNotUse */
+		UPDATE 	UR_STORE
+		SET 	USE_YN    = #{useYn}
+		WHERE  	UR_STORE_ID  = #{shpCd}
+		AND     STORE_TP = #{shpTyp}
+	</update>
+
+
+	<insert id="addStoreDeliveryArea">
+		/*	storeDeliveryZoneBatch.addStoreDeliveryArea  */
+		INSERT INTO UR_STORE_DELIVERY_AREA (
+			 UR_STORE_ID
+			, STORE_DELIVERY_TP
+			, UR_DELIVERY_AREA_ID
+			, STORE_DELIVERY_INTERVAL_TP
+			, STORE_DELIVERABLE_ITEM_TP
+			, DELIVERY_AREA_NM
+			, USE_YN
+			, CREATE_DT
+			, CREATE_ID
+		)VALUES(
+			 #{shpCd}
+			, #{dlvTypCd}
+			, #{dlvAreCd}
+			, #{dlvMthTyp}
+			, #{dlvItmTyp}
+			, #{dlvAreNm}
+			, #{useYn}
+			, NOW()
+			, #{createId}
+		)
+		ON DUPLICATE KEY UPDATE
+		USE_YN = #{useYn}
+	</insert>
+
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장배송관리정보 수정
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.04.10      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putStoreDeliveryArea">
+		/* storeDeliveryZoneBatch.putStoreDeliveryArea */
+		UPDATE 	UR_STORE_DELIVERY_AREA
+		SET   STORE_DELIVERY_TP				= #{dlvTypCd}
+			, STORE_DELIVERY_INTERVAL_TP	= #{dlvMthTyp}
+			, STORE_DELIVERABLE_ITEM_TP		= #{dlvItmTyp}
+			, DELIVERY_AREA_NM				= #{dlvAreNm}
+			, USE_YN						= #{useYn}
+			, MODIFY_DT						= NOW()
+			, MODIFY_ID						= #{createId}
+		WHERE  	UR_STORE_ID  				= #{shpCd}
+		AND     UR_DELIVERY_AREA_ID		    = #{dlvAreCd}
+	</update>
+
+
+
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장배송관리정보 사용상태 변경
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.03.17      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putStoreDeliveryAreaNotUse">
+		/* storeDeliveryZoneBatch.putStoreDeliveryAreaNotUse */
+		UPDATE 	UR_STORE_DELIVERY_AREA
+		SET 	USE_YN    = #{useYn}
+		WHERE  	UR_STORE_ID  = #{shpCd}
+		AND     UR_DELIVERY_AREA_ID = #{dlvAreCd}
+	</update>
+
+
+	<insert id="addStoreOrdtime">
+		/*	storeDeliveryZoneBatch.addStoreOrdtime  */
+		INSERT INTO UR_STORE_SCHEDULE (
+			 UR_STORE_ID
+			, UR_DELIVERY_AREA_ID
+			, SCHEDULE_NO
+			, CUTOFF_TIME
+			, START_TIME
+			, END_TIME
+			, LIMIT_CNT
+			, USE_YN
+		)VALUES(
+			 #{shpCd}
+			, #{dlvAreCd}
+			, #{dlvSte}
+			, CONCAT(SUBSTRING(#{ordDeaTim}, 1,2), ':', SUBSTRING(#{ordDeaTim}, 3,2))
+			, CONCAT(SUBSTRING(#{dlvStTim}, 1,2), ':', SUBSTRING(#{dlvStTim}, 3,2))
+			, CONCAT(SUBSTRING(#{dlvEndTim}, 1,2), ':', SUBSTRING(#{dlvEndTim}, 3,2))
+			, #{dlvMaxCnt}
+			, #{useYn}
+		)
+		ON DUPLICATE KEY UPDATE
+		USE_YN = #{useYn}
+	</insert>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장배송관리정보 수정
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.04.10      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putStoreOrdtime">
+		/* storeDeliveryZoneBatch.putStoreOrdtime */
+		UPDATE UR_STORE_SCHEDULE
+		SET		  CUTOFF_TIME	= CONCAT(SUBSTRING(#{ordDeaTim}, 1,2), ':', SUBSTRING(#{ordDeaTim}, 3,2))
+				, START_TIME	= CONCAT(SUBSTRING(#{dlvStTim}, 1,2), ':', SUBSTRING(#{dlvStTim}, 3,2))
+				, END_TIME		= CONCAT(SUBSTRING(#{dlvEndTim}, 1,2), ':', SUBSTRING(#{dlvEndTim}, 3,2))
+				, LIMIT_CNT		= #{dlvMaxCnt}
+				, USE_YN		= #{useYn}
+		WHERE  	UR_STORE_ID 	= #{shpCd}
+		AND     UR_DELIVERY_AREA_ID = #{dlvAreCd}
+		AND     SCHEDULE_NO  		= #{dlvSte}
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장배송관리정보 사용상태 변경
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.03.17      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putStoreOrdtimeNotUse">
+		/* storeDeliveryZoneBatch.putStoreOrdtimeNotUse */
+		UPDATE 	UR_STORE_SCHEDULE
+		SET 	USE_YN    	 = #{useYn}
+		WHERE  	UR_STORE_ID  = #{shpCd}
+		AND     UR_DELIVERY_AREA_ID = #{dlvAreCd}
+		AND     SCHEDULE_NO  = #{dlvSte}
+	</update>
+
+
+	<insert id="addDeliveryArea">
+		/*	storeDeliveryZoneBatch.addDeliveryArea  */
+		INSERT INTO UR_DELIVERY_AREA (
+			UR_DELIVERY_AREA_ID
+			, UR_STORE_ID
+			, ZIP_CD
+			, BUILDING_NO
+			, USE_YN
+			, CREATE_DT
+		)VALUES(
+			#{dlvAreCd}
+			, #{shpCd}
+			, #{zip}
+			, #{bldNum}
+			, #{useYn}
+			, now()
+		)
+		ON DUPLICATE KEY UPDATE
+		USE_YN = #{useYn}
+
+	</insert>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  배송권역 정보 수정
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.04.10      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putDeliveryArea">
+		/* storeDeliveryZoneBatch.putDeliveryArea */
+		UPDATE 	UR_DELIVERY_AREA
+		SET     USE_YN				 = #{useYn}
+			  , MODIFY_DT			 = now()
+		WHERE  	UR_STORE_ID  		 = #{shpCd}
+		AND     UR_DELIVERY_AREA_ID  = #{dlvAreCd}
+		AND		ZIP_CD	    		 = #{zip}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(srcSvr,'ORGAOMS')">
+		AND	    BUILDING_NO 		 = #{bldNum}
+		</if>
+	</update>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  배송권역 정보 사용상태 변경
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.03.17      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putDeliveryAreaNotUse">
+		/* storeDeliveryZoneBatch.putDeliveryAreaNotUse */
+		UPDATE 	UR_DELIVERY_AREA
+		SET 	USE_YN    	 		= #{useYn}
+		WHERE  	UR_STORE_ID 		= #{shpCd}
+		AND     UR_DELIVERY_AREA_ID = #{dlvAreCd}
+		AND		ZIP_CD	     		= #{zip}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(srcSvr,'ORGAOMS')">
+		AND	    BUILDING_NO 		= #{bldNum}
+		</if>
+	</update>
+
+	<insert id="addUnDeliveryDate">
+		/*	storeDeliveryZoneBatch.addUnDeliveryDate  */
+		INSERT INTO UR_STORE_UNDELIVERYDATE (
+			UR_STORE_ID
+			, UNDELIVER_DT
+			, USE_YN
+			, CREATE_DT
+			, CREATE_ID
+		)VALUES(
+			#{shpCd}
+			, #{schShiDat}
+			, #{useYn}
+			, now()
+			, #{createId}
+		)
+		ON DUPLICATE KEY UPDATE
+		USE_YN = #{useYn}
+	</insert>
+
+
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  매장휴무일 정보 사용상태 변경
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.03.17      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<update id="putUnDeliveryDateNotUse">
+		/* storeDeliveryZoneBatch.putUnDeliveryDateNotUse */
+		UPDATE 	UR_STORE_UNDELIVERYDATE
+		SET 	USE_YN    	 = #{useYn}
+		WHERE  	UR_STORE_ID  = #{shpCd}
+		AND     UNDELIVER_DT = #{schShiDat}
+	</update>
+
+
+</mapper>
+

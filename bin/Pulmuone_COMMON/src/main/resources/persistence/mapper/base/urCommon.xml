@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.base.UrCommonMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ─────────────────────────────`─────────────────────────────────────────
+	 * @ 2020.06.29		손진구          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserGroupListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetUserGroupListResultVo">
+        <result column="UR_GROUP_ID"            property="groupId"          />
+        <result column="UR_GROUP_MASTER_ID"     property="urGroupMasterId"          />
+        <result column="GROUP_NM"          		property="groupName"       />
+        <result column="PURCHASE_AMOUNT_FROM"   property="purchaseAmountFrom"    />
+        <result column="PURCHASE_CNT_FROM"      property="purchaseCountFrom"    />
+        <result column="CALCULATE_PERIOD"       property="calculatePeriod"      />
+        <result column="DEFAULT_YN"             property="defaultYn"             />
+	</resultMap>
+
+    <!-- 회원그룹 조회 -->
+	<select id="getUserGroupList" resultMap="getUserGroupListResultMap">
+	    /* urCommon.getUserGroupList */
+        SELECT UG.UR_GROUP_ID
+            ,UG.UR_GROUP_MASTER_ID
+            ,UG.GROUP_NM
+            ,UG.PURCHASE_AMOUNT_FROM
+            ,UG.PURCHASE_CNT_FROM
+            ,UGM.CALCULATE_PERIOD
+            ,UG.DEFAULT_YN
+        FROM UR_GROUP UG
+            INNER JOIN UR_GROUP_MASTER UGM ON UG.UR_GROUP_MASTER_ID = UGM.UR_GROUP_MASTER_ID
+            INNER JOIN ST_COMN_CODE CC ON UG.GROUP_LEVEL_TP = CC.ST_COMN_CODE_ID
+        WHERE ((NOW() <![CDATA[>=]]> UGM.START_DT AND UGM.END_DT IS NULL) OR (NOW() BETWEEN UGM.START_DT AND UGM.END_DT))
+        ORDER BY UGM.START_DT DESC, CC.SORT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원정보 변경로그
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.03		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addBuyerChangeHististory" parameterType="HashMap">
+		/* urCommon.addBuyerChangeHististory */
+			INSERT INTO UR_CHANGE_LOG  (
+				UR_USER_ID
+				,BEFORE_DATA
+				,AFTER_DATA
+				,COLUMN_NM
+				,COLUMN_LABEL
+				,CREATE_ID
+			)
+			VALUES
+			<foreach item="insertData" index="index" collection="insertData" open="" separator="," close="">
+				(
+					#{urUserId}
+					,FN_ENCRYPT(#{insertData.BEFORE_DATA})
+					,FN_ENCRYPT(#{insertData.AFTER_DATA})
+					,#{insertData.COLUMN_NM}
+					,FN_COMN_CODE_DIC(CONCAT('USER_CHANGE_LOG.',#{insertData.COLUMN_NM_UPPER_CASE}))
+					,#{adminId}
+				)
+			</foreach>
+	</insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 공급처 검색 DropDown
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.19     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getDropDownSupplierListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.SupplierVo">
+        <result column="SUPPLIER_ID" property="supplierId" />
+        <result column="SUPPLIER_NAME" property="supplierName" />
+        <result column="COMPANY_TYPE" property="companyType" />
+        <result column="SUPPLIER_CODE" property="supplierCode" />
+        <result column="ERP_SEND_YN" property="erpSendYn" />
+    </resultMap>
+
+    <select id="getDropDownSupplierList" resultMap="getDropDownSupplierListResultMap">
+        /* urCommon.getDropDownSupplierList */
+        SELECT
+            S.UR_SUPPLIER_ID AS SUPPLIER_ID /* 공급처 ID */
+            , C.COMP_NM AS SUPPLIER_NAME /* 공급처명 */
+            , C.COMP_TP AS COMPANY_TYPE /* 회사구분코드 */
+            , S.SUPPLIER_CD AS SUPPLIER_CODE  /* 공급처 코드 */
+            , IFNULL(S.ERP_SEND_YN, 'N') AS ERP_SEND_YN /* ERP 연동여부 */
+        FROM UR_SUPPLIER S
+            JOIN UR_COMPANY C ON C.UR_COMPANY_ID = S.UR_COMPANY_ID AND C.USE_YN = 'Y' AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(claimReasonYn)">
+                AND S.CLAIM_REASON_YN = #{claimReasonYn}
+            </if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+				AND S.UR_SUPPLIER_ID IN
+				<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+					#{data}
+				</foreach>
+			</if>
+        </where>
+        ORDER BY C.CREATE_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 공급처에 해당되는 출고처 검색 DropDown
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.19     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getDropDownSupplierByWarehouseListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.WarehouseVo">
+        <result column="WAREHOUSE_ID" property="warehouseId" />
+        <result column="WAREHOUSE_NAME" property="warehouseName" />
+        <result column="SUPPLIER_WAREHOUSE_ID" property="supplierWarehouseId" />
+        <result column="SUPPLIER_ID" property="supplierId" />
+        <result column="SUPPLIER_NAME" property="supplierName" />
+    </resultMap>
+
+    <select id="getDropDownSupplierByWarehouseList" resultMap="getDropDownSupplierByWarehouseListResultMap">
+        /* urCommon.getDropDownSupplierByWarehouseList */
+        SELECT W.UR_WAREHOUSE_ID AS WAREHOUSE_ID /* 출고처 ID */
+             , W.WAREHOUSE_NM AS WAREHOUSE_NAME /* 출고처명 */
+             , SW.UR_SUPPLIER_WAREHOUSE_ID AS SUPPLIER_WAREHOUSE_ID /* 공급처_출고처 ID */
+             , S.UR_SUPPLIER_ID AS SUPPLIER_ID /* 공급처 ID */
+             , C.COMP_NM AS SUPPLIER_NAME /* 공급처명 */
+          FROM UR_SUPPLIER_WAREHOUSE SW
+          JOIN UR_SUPPLIER S
+            ON S.UR_SUPPLIER_ID = SW.UR_SUPPLIER_ID
+          JOIN UR_COMPANY C
+            ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+           AND C.USE_YN = 'Y'
+          JOIN UR_WAREHOUSE W
+            ON W.UR_WAREHOUSE_ID = SW.UR_WAREHOUSE_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId)">
+                AND SW.UR_SUPPLIER_ID = #{supplierId}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+                AND SW.UR_WAREHOUSE_ID = #{warehouseId}
+            </if>
+
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthSupplierId) and listAuthSupplierId.size != 0">
+				AND SW.UR_SUPPLIER_ID IN
+				<foreach item="data" index="index" collection="listAuthSupplierId" open="(" separator="," close=")">
+					#{data}
+				</foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+				AND SW.UR_WAREHOUSE_ID IN
+				<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+					#{data}
+				</foreach>
+			</if>
+
+        </where>
+         ORDER BY W.WAREHOUSE_NM
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 출고처그룹에 해당되는 출고처 검색 DropDown
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.18     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getDropDownWarehouseGroupByWarehouseList" resultMap="getDropDownSupplierByWarehouseListResultMap">
+        /* urCommon.getDropDownWarehouseGroupByWarehouseList */
+        SELECT W.UR_WAREHOUSE_ID AS WAREHOUSE_ID /* 출고처 ID */
+             , W.WAREHOUSE_NM AS WAREHOUSE_NAME /* 출고처명 */
+          FROM UR_WAREHOUSE W
+         WHERE 1=1
+         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroupCode)">
+         	AND W.WAREHOUSE_GRP_CD = #{warehouseGroupCode}
+         </if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stockOrderYn)">
+				AND W.STOCK_ORDER_YN  = #{stockOrderYn}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+				AND W.UR_WAREHOUSE_ID IN
+				<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+					#{data}
+				</foreach>
+			</if>
+         ORDER BY W.CREATE_DT DESC
+    </select>
+
+
+   <!--───────────────────────────────────────────────────────────────────────
+     * description      : 출고처 전체 DropDown
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.13     강윤경          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getDropDownWarehouseList" resultMap="getDropDownSupplierByWarehouseListResultMap">
+        /* urCommon.getDropDownWarehouseList */
+        SELECT W.UR_WAREHOUSE_ID AS WAREHOUSE_ID /* 출고처 ID */
+             , W.WAREHOUSE_NM AS WAREHOUSE_NAME /* 출고처명 */
+          FROM UR_WAREHOUSE W
+         <where>
+         	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stockOrderYn)">
+				AND W.STOCK_ORDER_YN = #{stockOrderYn}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listAuthWarehouseId) and listAuthWarehouseId.size != 0">
+				AND W.UR_WAREHOUSE_ID IN
+				<foreach item="data" index="index" collection="listAuthWarehouseId" open="(" separator="," close=")">
+					#{data}
+				</foreach>
+			</if>
+         </where>
+         ORDER BY W.UR_WAREHOUSE_ID ASC
+    </select>
+
+    <resultMap id="getDropDownSellersBySellersListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.SellersVo">
+        <result column="OM_SELLERS_ID" property="omSellersId" />
+        <result column="SELLERS_GROUP_CD" property="sellersGroupCd" />
+        <result column="SELLERS_CD" property="sellersCd" />
+        <result column="SELLERS_NM" property="sellersNm" />
+    </resultMap>
+
+    <!-- 외부몰그룹에 해당되는 외부몰 조회 -->
+    <select id="getDropDownSellersGroupBySellersList" resultMap="getDropDownSellersBySellersListResultMap">
+        /* urCommon.getDropDownSellersGroupBySellersList */
+        SELECT OM_SELLERS_ID
+               , SELLERS_GROUP_CD
+               , SELLERS_CD
+               , SELLERS_NM
+        FROM OM_SELLERS
+        WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd)">
+            AND SELLERS_GROUP_CD = #{sellersGroupCd}
+        </if>
+        ORDER BY OM_SELLERS_ID
+    </select>
+
+    <select id="getDropDownWarehouseStlmnList" resultMap="getDropDownSupplierByWarehouseListResultMap">
+        /* urCommon.getDropDownWarehouseStlmnList */
+        SELECT
+            UR_WAREHOUSE_ID AS WAREHOUSE_ID
+            , WAREHOUSE_NM AS WAREHOUSE_NAME
+        FROM UR_WAREHOUSE
+        WHERE STLMN_YN = 'Y' /* 물류비 정산 여부 */
+        ORDER BY WAREHOUSE_NM
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 출고처PK기준 공급업체 조회
+     * @
+     * @ 수정일                  수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.19     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getDropDownSupplierListByWarehouseId" resultMap="getDropDownSupplierListResultMap">
+        /* urCommon.getDropDownSupplierListByWarehouseId */
+        SELECT
+             S.UR_SUPPLIER_ID AS SUPPLIER_ID    /* 공급처 ID */
+            , C.COMP_NM AS SUPPLIER_NAME        /* 공급처명 */
+            , C.COMP_TP AS COMPANY_TYPE         /* 회사구분코드 */
+            , S.SUPPLIER_CD AS SUPPLIER_CODE    /* 공급처 코드 */
+        FROM
+            UR_SUPPLIER_WAREHOUSE SW
+            JOIN UR_SUPPLIER S ON S.UR_SUPPLIER_ID = SW.UR_SUPPLIER_ID
+            JOIN UR_COMPANY C ON C.UR_COMPANY_ID = S.UR_COMPANY_ID AND C.USE_YN = 'Y' AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+            JOIN UR_WAREHOUSE W ON W.UR_WAREHOUSE_ID = SW.UR_WAREHOUSE_ID
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)">
+                SW.UR_WAREHOUSE_ID = #{warehouseId}
+            </if>
+         </where>
+         ORDER BY S.UR_SUPPLIER_ID
+    </select>
+
+</mapper>

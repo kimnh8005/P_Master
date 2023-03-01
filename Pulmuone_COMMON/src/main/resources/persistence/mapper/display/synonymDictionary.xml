@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.display.SynonymDictionaryMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전시관리 동의어사전관리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.02		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getSynonymDictionaryResultMap" type="kr.co.pulmuone.v1.display.dictionary.dto.vo.SynonymDictionaryVo">
+        <result column="NO"                   property="no" />
+        <result column="DP_CUSTOMIZE_DIC_ID"  property="dpCustomizeDicId"/>
+        <result column="CUSTOMIZE_WORD"       property="customizeWord"/>
+        <result column="USE_YN"               property="useYn"/>
+        <result column="CREATE_DT"            property="createDate"/>
+    </resultMap>
+
+    <sql id="synonymDictionaryCondition">
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(representSynonym)">
+                AND d.DP_SYNONYM_DIC_ID IN (SELECT DP_SYNONYM_DIC_ID FROM DP_SYNONYM_DIC_DETAIL WHERE SYNONYM LIKE CONCAT('%',#{representSynonym},'%'))
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+                AND d.USE_YN = UPPER(#{useYn})
+            </if>
+        </where>
+    </sql>
+
+
+    <select id="getSynonymDictionaryList" resultMap="getSynonymDictionaryResultMap" parameterType="kr.co.pulmuone.v1.display.dictionary.dto.SynonymSearchRequestDto">
+        /* synonymDictionary.getSynonymDictionaryList */
+        SELECT
+        @rownum := @rownum + 1 AS NO
+        , T.*
+        FROM
+        (
+        SELECT d.DP_SYNONYM_DIC_ID  AS DP_SYNONYM_DIC_ID
+        ,(SELECT SYNONYM FROM DP_SYNONYM_DIC_DETAIL dd WHERE dd.DP_SYNONYM_DIC_ID = d.DP_SYNONYM_DIC_ID AND REPRESENT_YN='Y') AS REPRESENT_SYNONYM
+        ,(SELECT GROUP_CONCAT(dd.SYNONYM) FROM DP_SYNONYM_DIC_DETAIL dd WHERE dd.DP_SYNONYM_DIC_ID = d.DP_SYNONYM_DIC_ID AND REPRESENT_YN='N') AS SYNONYM
+        , USE_YN                AS USE_YN
+        FROM DP_SYNONYM_DIC d
+        <include refid="synonymDictionaryCondition" />
+        )T, ( SELECT	@rownum := 0	) R
+        ORDER BY DP_SYNONYM_DIC_ID DESC, NO DESC
+        <if test="ePage gt 0">
+            <include refid="_common.pageLimit"/>
+        </if>
+    </select>
+
+    <select id="getSynonymDictionaryListCount" resultType="int">
+        /* synonymDictionary.getSynonymDictionaryListCount */
+        SELECT COUNT(*)
+        FROM DP_SYNONYM_DIC d
+        <include refid="synonymDictionaryCondition" />
+    </select>
+
+
+    <!--─────────────────────────────────────────────────────────────────────
+     * description 		: 전시관리 동의어사전관리
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.02		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="deleteSynonymDetail">
+        /* synonymDictionary.deleteSynonymDetail */
+        DELETE FROM DP_SYNONYM_DIC_DETAIL
+        WHERE DP_SYNONYM_DIC_ID IN  (
+        <foreach item="deleteData" index="index" collection="list" open="" separator="," close="">
+            #{deleteData.dpSynonymDicId}
+        </foreach>
+        )
+    </delete>
+
+    <delete id="deleteSynonym">
+        /* synonymDictionary.deleteSynonym */
+        DELETE FROM DP_SYNONYM_DIC
+        WHERE DP_SYNONYM_DIC_ID IN  (
+        <foreach item="deleteData" index="index" collection="list" open="" separator="," close="">
+            #{deleteData.dpSynonymDicId}
+        </foreach>
+        )
+
+    </delete>
+
+
+    <select id="checkSynonymDuplicate" resultType="int">
+        /* synonymDictionary.checkSynonymDuplicate */
+		select count(*) as total FROM DP_SYNONYM_DIC_DETAIL
+		WHERE SYNONYM = #{synonym}
+	</select>
+
+    <insert id="addSynonym" >
+        /* synonymDictionary.addSynonym  */
+        INSERT INTO DP_SYNONYM_DIC
+        (
+            USE_YN
+            , CREATE_ID
+        )
+        VALUES
+        (
+            #{useYn}
+            , #{userVo.userId}
+        )
+        <selectKey resultType="String" keyProperty="dpSynonymDicId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+
+    <insert id="addSynonymDetail" >
+        /* synonymDictionary.addSynonymDetail */
+        INSERT INTO DP_SYNONYM_DIC_DETAIL
+        (
+             DP_SYNONYM_DIC_ID
+            , REPRESENT_YN
+            , SYNONYM
+        )
+        VALUES
+        (
+             #{dpSynonymDicId}
+            , #{representYn}
+            , #{synonym}
+        )
+	</insert>
+
+
+    <update id="updateSynonym">
+       /* synonymDictionary.updateSynonym */
+		UPDATE DP_SYNONYM_DIC
+		SET
+			USE_YN     		= #{useYn}
+			,MODIFY_ID 		= #{userVo.userId}
+		WHERE DP_SYNONYM_DIC_ID = #{dpSynonymDicId}
+	</update>
+
+
+</mapper>
+
+

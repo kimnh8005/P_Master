@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.payment.PolicyPaymentCardBenefitMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 신용카드혜택안내
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.07		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.payment.dto.vo.PolicyPaymentCardBenefitVo" id="getPolicyPaymentCardBenefitMap">
+		<result column="PS_CARD_BENEFIT_ID"  property="psCardBenefitId"  />
+		<result column="BENEFITSTATUS"  property="benefitStatus" />
+		<result column="PS_PG_CD"  property="psPgCd" />
+		<result column="PG_NAME"  property="pgName" />
+		<result column="CARD_BENEFIT_TP"  property="cardBenefitTp"  />
+		<result column="CARD_BENEFIT_TP_NAME"  property="cardBenefitTpName"  />
+		<result column="START_DT"  property="startDt" />
+		<result column="END_DT"  property="endDt" />
+		<result column="TITLE"  property="title" />
+		<result column="INFORMATION"  property="information" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+
+	<select id="checkDuplicateTermPolicyPaymentCardBenefit" resultMap="getPolicyPaymentCardBenefitMap">
+		/*	PolicyPaymentCardBenefit.checkDuplicateTermPolicyPaymentCardBenefit	*/
+		SELECT
+			PS_CARD_BENEFIT_ID, PS_PG_CD, CARD_BENEFIT_TP, START_DT, END_DT
+			, TITLE, INFORMATION
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM PS_CARD_BENEFIT
+		WHERE 1 = 1
+		AND (
+			START_DT BETWEEN #{startDt} AND #{endDt}
+			OR END_DT BETWEEN #{startDt} AND #{endDt}
+			OR #{startDt} BETWEEN START_DT AND END_DT
+			)
+		AND CARD_BENEFIT_TP = #{cardBenefitTp}
+		LIMIT 1
+	</select>
+	<select id="getPolicyPaymentCardBenefitListNow" resultMap="getPolicyPaymentCardBenefitMap">
+		/*	PolicyPaymentCardBenefit.getPolicyPaymentCardBenefitListNow	*/
+		SELECT
+			PS_CARD_BENEFIT_ID, PS_PG_CD, FN_COMN_CODE_DIC(PS_PG_CD) AS PG_NAME
+			, CARD_BENEFIT_TP, FN_COMN_CODE_DIC(CARD_BENEFIT_TP) AS CARD_BENEFIT_TP_NAME
+			, START_DT, END_DT
+			, TITLE, INFORMATION
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM PS_CARD_BENEFIT
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psPgCd)">
+		AND PS_PG_CD = #{psPgCd}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(cardBenefitTp)">
+		AND CARD_BENEFIT_TP = #{cardBenefitTp}
+		</if>
+		AND NOW() BETWEEN START_DT AND END_DT
+		ORDER BY CREATE_DT DESC
+	</select>
+	<select id="getPolicyPaymentCardBenefitList" resultMap="getPolicyPaymentCardBenefitMap">
+		/*	PolicyPaymentCardBenefit.getPolicyPaymentCardBenefitList	*/
+		SELECT
+			CASE
+				WHEN NOW() BETWEEN START_DT AND END_DT THEN '1'
+				WHEN NOW() &lt; START_DT THEN '2'
+				WHEN NOW() &gt; END_DT THEN '3'
+			END AS BENEFITSTATUS
+			, PS_CARD_BENEFIT_ID, PS_PG_CD, FN_COMN_CODE_DIC(PS_PG_CD) AS PG_NAME
+			, CARD_BENEFIT_TP, FN_COMN_CODE_DIC(CARD_BENEFIT_TP) AS CARD_BENEFIT_TP_NAME
+			, START_DT, END_DT
+			, TITLE, INFORMATION
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM PS_CARD_BENEFIT
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psPgCd)">
+		AND PS_PG_CD = #{psPgCd}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(cardBenefitTp)">
+		AND CARD_BENEFIT_TP = #{cardBenefitTp}
+		</if>
+		ORDER BY PS_CARD_BENEFIT_ID DESC
+	</select>
+	<select id="getPolicyPaymentCardBenefitInfo" resultMap="getPolicyPaymentCardBenefitMap">
+		/*	PolicyPaymentCardBenefit.getPolicyPaymentCardBenefitInfo	*/
+		SELECT
+			PS_CARD_BENEFIT_ID, PS_PG_CD, FN_COMN_CODE_DIC(PS_PG_CD) AS PG_NAME
+			, CARD_BENEFIT_TP, FN_COMN_CODE_DIC(CARD_BENEFIT_TP) AS CARD_BENEFIT_TP_NAME
+			, START_DT, END_DT
+			, TITLE, INFORMATION
+			,CASE
+				WHEN NOW() BETWEEN START_DT AND END_DT THEN '1'
+				WHEN NOW() &lt; START_DT THEN '2'
+				WHEN NOW() &gt; END_DT THEN '3'
+			END AS BENEFITSTATUS
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT
+		FROM PS_CARD_BENEFIT
+		WHERE PS_CARD_BENEFIT_ID = #{psCardBenefitId}
+	</select>
+	<insert id="addPolicyPaymentCardBenefit">
+		/*	PolicyPaymentCardBenefit.addPolicyPaymentCardBenefit	*/
+		INSERT INTO PS_CARD_BENEFIT
+			(
+				PS_PG_CD, CARD_BENEFIT_TP, START_DT, END_DT, TITLE
+				, INFORMATION, CREATE_ID, CREATE_DT)
+		VALUES
+			(
+				#{psPgCd}, #{cardBenefitTp}, #{startDt}, #{endDt}, #{title}
+				, #{information}, #{userVo.userId}, NOW())
+	</insert>
+	<update id="putPolicyPaymentCardBenefit">
+		/*	PolicyPaymentCardBenefit.putPolicyPaymentCardBenefit	*/
+		UPDATE PS_CARD_BENEFIT
+		SET
+			PS_PG_CD = #{psPgCd}
+			, CARD_BENEFIT_TP = #{cardBenefitTp}
+			, START_DT = #{startDt}
+			, END_DT = #{endDt}
+			, TITLE = #{title}
+			, INFORMATION = #{information}
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = NOW()
+		WHERE PS_CARD_BENEFIT_ID = #{psCardBenefitId}
+	</update>
+	<delete id="delPolicyPaymentCardBenefit">
+		/*	PolicyPaymentCardBenefit.delPolicyPaymentCardBenefit	*/
+		DELETE
+		FROM PS_CARD_BENEFIT
+		WHERE PS_CARD_BENEFIT_ID = #{psCardBenefitId}
+	</delete>
+</mapper>

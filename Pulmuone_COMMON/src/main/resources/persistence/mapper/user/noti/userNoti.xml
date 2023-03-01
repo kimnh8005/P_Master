@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.noti.UserNotiMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 알림 안읽은 정보 여부
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="isNotReadNoti" resultType="boolean">
+		/*	userNoti.isNotReadNoti	*/
+		SELECT (CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END) AS IS_NOT_READ_NOTI
+		FROM UR_NOTI
+		WHERE UR_USER_ID = #{urUserId}
+		AND READ_YN = 'N'
+		AND CREATE_DT BETWEEN (NOW() - INTERVAL 30 DAY) AND NOW()
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 알림 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getNotiListByUserMap" type="kr.co.pulmuone.v1.user.noti.dto.UserNotiDto">
+		<result column="UR_NOTI_ID" property="urNotiId" />
+		<result column="UR_NOTI_TP" property="userNotiType" />
+		<result column="UR_NOTI_TP_NM" property="userNotiTypeName" />
+		<result column="NOTI_MSG" property="notiMsg" />
+		<result column="READ_YN" property="readYn" />
+		<result column="CLICK_YN" property="clickYn" />
+		<result column="TARGET_TYPE" property="targetType" />
+		<result column="TARGET_PK" property="targetPk" />
+		<result column="CREATE_DT" property="createDate" />
+	</resultMap>
+	<select id="getNotiListByUser" resultMap="getNotiListByUserMap">
+		/*	userNoti.getNotiListByUser	*/
+		SELECT
+			UR_NOTI_ID
+			,UR_NOTI_TP
+			,FN_COMN_CODE_DIC(UR_NOTI_TP) AS UR_NOTI_TP_NM
+			,NOTI_MSG
+		  	,READ_YN
+			,CLICK_YN
+			,TARGET_TYPE
+			,TARGET_PK
+		  	,DATE_FORMAT(CREATE_DT, '%Y.%m.%d %H:%i') AS CREATE_DT
+		FROM
+			UR_NOTI
+		WHERE
+			UR_USER_ID = #{urUserId}
+			AND CREATE_DT BETWEEN (NOW() - INTERVAL 30 DAY) AND NOW()
+		ORDER BY CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 알림 읽음 처리 - 알람
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putNotiRead">
+		/*	userNoti.putNotiRead	*/
+		UPDATE
+			UR_NOTI
+		SET
+			READ_YN = 'Y'
+		WHERE
+			UR_USER_ID = #{urUserId}
+			AND READ_YN = 'N'
+			AND UR_NOTI_ID IN
+			<foreach collection="urNotiIds" item="urNotiId" separator="," open="(" close=")">
+			#{urNotiId}
+			</foreach>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 알림 읽음 처리 - 내용
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.08		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putNotiReadClick">
+		/*	userNoti.putNotiReadClick */
+		UPDATE UR_NOTI
+		SET CLICK_YN = 'Y'
+		WHERE UR_USER_ID = #{urUserId}
+			AND CLICK_YN = 'N'
+			AND UR_NOTI_ID = #{urNotiId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 알림등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addNoti">
+		/*	userNoti.addNoti	*/
+		INSERT INTO UR_NOTI (
+			UR_USER_ID, UR_NOTI_TP, NOTI_MSG, TARGET_TYPE, TARGET_PK
+		) VALUES
+		<foreach collection="urUserIdList" item="urUserId" separator=",">
+		(
+			#{urUserId}
+			,#{userNotiType}
+			,#{notiMessage}
+			,#{targetType}
+			,#{targetPk}
+		)
+		</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공지사항 대상 회원 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserListByBBS" resultType="Long">
+		/*	userNoti.getUserListByBBS	*/
+		SELECT
+			UU.UR_USER_ID
+		FROM
+		UR_USER UU
+		INNER JOIN UR_EMPLOYEE UE
+			ON UE.UR_USER_ID = UU.UR_USER_ID
+		INNER JOIN UR_COMPANY UC
+			ON UE.UR_COMPANY_ID = UC.UR_COMPANY_ID
+		WHERE
+			UU.USER_STATUS = 1
+			AND UE.STATUS_TP = 'EMPLOYEE_STATUS.NORMAL'
+		<choose>
+		 	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(bosBbsType, 'BOS_BBS_TYPE.ADMIN')">
+		 		AND UC.COMP_TP = 'COMPANY_TYPE.HEADQUARTERS'
+		 	</when>
+		 	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(bosBbsType, 'BOS_BBS_TYPE.COMPANY')">
+		 		AND UC.COMP_TP = 'COMPANY_TYPE.CLIENT'
+		 	</when>
+		 	<otherwise>
+				AND UC.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.CLIENT')
+			</otherwise>
+		 </choose>
+	</select>
+</mapper>

@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.ifday.IfDayExcelMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	  * description : 주문 정보 존재 카운트
+	  * @
+	  * @ 수정일                수정자   수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021. 04. 27   이명수   최초생성
+	  * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderDetlCount" resultType="kr.co.pulmuone.v1.order.ifday.dto.IfDayChangeOrderCntDto">
+        /* ifdayChange.getOrderDetlCount */
+        SELECT
+            MAX(ORDER_CNT) AS ORDER_CNT,
+            MAX(ORDER_DETL_CNT) AS ORDER_DETL_CNT,
+            MAX(OUTMALL_CNT) AS OUTMALL_CNT
+        FROM
+        (
+            SELECT
+                COUNT(*) AS ORDER_CNT, 0 AS ORDER_DETL_CNT, 0 AS OUTMALL_CNT
+            FROM
+                OD_ORDER
+            WHERE
+                ODID = #{odid}
+            UNION ALL
+            SELECT
+                0, COUNT(*), 0
+            FROM
+                OD_ORDER_DETL
+            WHERE
+                    ODID = #{odid}
+                AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+            UNION ALL
+            SELECT
+                0, 0, COUNT(*)
+            FROM
+                OD_ORDER_DETL
+            WHERE
+                    ODID = #{odid}
+                AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+                AND IFNULL(COLLECTION_MALL_DETAIL_ID, '') != ''
+        ) TT
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: I/F 일자 변경 엑셀업로드 - 현황
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.26		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addIfDayExcelInfo">
+        /* ifdayChange.addIfDayExcelInfo */
+        INSERT INTO IF_IF_DAY_EXCEL_INFO (
+        TOTAL_CNT, UPDATE_CNT, UPLOAD_START_DT, UPLOAD_STATUS_CD, CREATE_ID, CREATE_DT, UPLOAD_JSON_DATA, FILE_NM
+        ) VALUES (
+            #{totalCount}, 0, #{uploadStartDateTime}, #{uploadStatusCode}, #{createId}, NOW(), #{uploadJsonData}, #{fileNm}
+        )
+        <selectKey resultType="Long" keyProperty="ifIfDayExcelInfoId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: I/F 일자 변경 엑셀업로드 - 현황 - 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.26		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putIfDayExcelInfo">
+        /* ifdayChange.putIfDayExcelInfo */
+        UPDATE IF_IF_DAY_EXCEL_INFO
+        SET SUCC_CNT = #{successCount},
+            FAIL_CNT = #{failCount},
+            UPLOAD_END_DT = #{uploadEndDateTime},
+            UPLOAD_EXEC_TIME = #{uploadExecutionTime},
+            UPLOAD_STATUS_CD = #{uploadStatusCode},
+            BATCH_STATUS_CD = #{batchStatusCode}
+        WHERE IF_IF_DAY_EXCEL_INFO_ID = #{ifIfDayExcelInfoId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: I/F 일자 변경 엑셀업로드 - 성공 건
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addIfDayExcelSuccess">
+        /* ifdayChange.addIfDayExcelSuccess */
+        INSERT INTO IF_IF_DAY_EXCEL_SUCC
+            (IF_IF_DAY_EXCEL_INFO_ID, OD_ORDER_DETL_SEQ, ODID, IF_DAY)
+         VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+            (
+            #{ifIfDayExcelInfoId}, #{vo.odOrderDetlSeq}, #{vo.odid}, #{vo.ifDay}
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: I/F 일자 변경 엑셀업로드 - 현황
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addIfDayExcelFail">
+        /* ifdayChange.addIfDayExcelFail */
+        INSERT INTO IF_IF_DAY_EXCEL_FAIL
+            (IF_IF_DAY_EXCEL_INFO_ID, OD_ORDER_DETL_SEQ, ODID, IF_DAY, FAIL_MSG, FAIL_TYPE)
+        VALUES
+        <foreach collection="voList" item="vo" index="index"  open="" separator="," close="">
+            (
+            #{ifIfDayExcelInfoId}, #{vo.odOrderDetlSeq}, #{vo.odid}, #{vo.ifDay}, #{vo.failMessage}, #{vo.failType}
+            )
+        </foreach>
+    </insert>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: I/F 일자 변경 엑셀 업로드 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getIfDayExcelInfo" resultType="kr.co.pulmuone.v1.order.ifday.dto.vo.IfDayExcelInfoVo">
+        /* ifdayChange.getIfDayExcelInfo */
+    	SELECT
+			IF_IF_DAY_EXCEL_INFO_ID,
+			TOTAL_CNT,
+			SUCC_CNT,
+			FAIL_CNT,
+			UPLOAD_START_DT,
+			UPLOAD_END_DT,
+			UPLOAD_EXEC_TIME,
+			UPLOAD_STATUS_CD,
+			BATCH_START_DT,
+			BATCH_END_DT,
+			BATCH_EXEC_TIME,
+			BATCH_STATUS_CD,
+			CREATE_ID,
+			CREATE_DT,
+			IFNULL(UPLOAD_JSON_DATA, '') AS UPLOAD_JSON_DATA
+			, IFNULL(FILE_NM, '') AS FILE_NM
+    	FROM
+    		IF_IF_DAY_EXCEL_INFO
+    	WHERE
+    		IF_IF_DAY_EXCEL_INFO_ID = #{ifIfDayExcelInfoId}
+    </select>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: I/F 일자 변경  - I/F 일자 변경 주문 엑셀업로드 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		이명수          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getIfDayExcelInfoResultMap" type="kr.co.pulmuone.v1.order.ifday.dto.vo.IfDayExcelInfoVo">
+        <result column="IF_IF_DAY_EXCEL_INFO_ID"    property="ifIfDayExcelInfoId"/>
+        <result column="SUCC_CNT"                   property="successCount"/>
+        <result column="FAIL_CNT"                   property="failCount"/>
+        <result column="UPDATE_CNT"                   property="updateCount"/>
+        <result column="UPLOAD_STATUS_CD_NM"        property="uploadStatusCodeName"/>
+        <result column="BATCH_END_DT_NM"            property="batchEndDateTime"/>
+        <result column="BATCH_EXEC_TIME"            property="batchExecutionTime"/>
+        <result column="BATCH_STATUS_CD"            property="batchStatusCode"/>
+        <result column="CREATE_ID"                  property="createId"/>
+        <result column="CREATE_NM"                  property="createName"/>
+        <result column="CREATE_DT_NM"               property="createDateName"/>
+        <result column="LOGIN_ID"                   property="loginId"/>
+        <result column="UPLOAD_JSON_DATA"           property="uploadJsonData"/>
+        <result column="FILE_NM"                    property="fileNm"/>
+    </resultMap>
+    <select id="getIfDayExcelInfoList" resultMap="getIfDayExcelInfoResultMap">
+        /* ifdayChange.getIfDayExcelInfoList */
+        SELECT
+            T1.IF_IF_DAY_EXCEL_INFO_ID,
+            T1.SUCC_CNT,
+            T1.FAIL_CNT,
+            IFNULL(T1.UPDATE_CNT, 0) AS UPDATE_CNT,
+            (CASE WHEN T1.UPLOAD_STATUS_CD = '10' THEN '등록중'
+            WHEN T1.UPLOAD_STATUS_CD = '11' THEN '등록완료' END) AS UPLOAD_STATUS_CD_NM,
+            IFNULL((CASE WHEN T1.BATCH_END_DT IS NOT NULL THEN DATE_FORMAT(T1.BATCH_END_DT, '%Y-%m-%d %T') END), '') AS BATCH_END_DT_NM,
+            T1.BATCH_EXEC_TIME,
+            T1.BATCH_STATUS_CD,
+            T1.CREATE_ID,
+            UU.LOGIN_ID,
+            FN_DECRYPT(UU.USER_NM) AS CREATE_NM,
+            DATE_FORMAT(T1.CREATE_DT, '%Y-%m-%d %T') AS CREATE_DT_NM,
+            IFNULL(T1.UPLOAD_JSON_DATA, '') AS UPLOAD_JSON_DATA
+            , IFNULL(T1.FILE_NM, '') AS FILE_NM
+        FROM
+            IF_IF_DAY_EXCEL_INFO T1
+            LEFT OUTER JOIN UR_USER UU ON T1.CREATE_ID = UU.UR_USER_ID
+        WHERE
+            T1.CREATE_DT BETWEEN #{createStartDate} AND (#{createEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+            <if test="adminIdList!=null and adminIdList.size!=0">
+                AND T1.CREATE_ID IN
+                <foreach collection="adminIdList" item="adminId" index="index" separator="," open="(" close=")">
+                    #{adminId}
+                </foreach>
+            </if>
+        ORDER BY T1.CREATE_DT DESC
+    </select>
+
+
+
+    <select id="getIfDayFailExcelDownload" resultType="kr.co.pulmuone.v1.order.ifday.dto.vo.IfDayExcelFailVo">
+        /* ifdayChange.getIfDayFailExcelDownload */
+        SELECT
+        	FAIL_MSG AS FAIL_MESSAGE,
+            OD_ORDER_DETL_SEQ,
+            ODID,
+            IF_DAY
+        FROM
+            IF_IF_DAY_EXCEL_FAIL
+        WHERE
+                IF_IF_DAY_EXCEL_INFO_ID = #{ifIfDayExcelInfoId}
+            AND FAIL_TYPE = #{failType}
+        ORDER BY
+            IF_IF_DAY_EXCEL_FAIL_ID ASC
+    </select>
+
+
+    <select id="isSameOrderIfDay" resultType="boolean">
+        /* ifdayExcel.isSameOrderIfDay */
+        SELECT
+            IF(DATE_FORMAT(ORDER_IF_DT,'%Y-%m-%d') = #{ifDay},TRUE,FALSE)
+        FROM
+            OD_ORDER_DETL
+        WHERE
+            ODID = #{odid}
+            AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	  * description : 클레임 가능 주문 정보 존재 카운트
+	  * @
+	  * @ 수정일                수정자   수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021. 09. 01   배민영   최초생성
+	  * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getOrderDetlCountByClaim" resultType="kr.co.pulmuone.v1.order.ifday.dto.IfDayChangeOrderCntDto">
+        /* ifdayChange.getOrderDetlCountByClaim */
+        SELECT
+            MAX(ORDER_CNT) AS ORDER_CNT,
+            MAX(ORDER_DETL_CNT) AS ORDER_DETL_CNT,
+            MAX(OUTMALL_CNT) AS OUTMALL_CNT /* 취소 가능 수량 */
+        FROM
+            (
+                SELECT
+                    COUNT(*) AS ORDER_CNT, 0 AS ORDER_DETL_CNT, 0 AS OUTMALL_CNT
+                FROM
+                    OD_ORDER
+                WHERE
+                    ODID = #{odid}
+                UNION ALL
+                SELECT
+                    0, COUNT(*), 0
+                FROM
+                    OD_ORDER_DETL
+                WHERE
+                    ODID = #{odid}
+                  AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+                UNION ALL
+                SELECT
+                    0, 0, ORDER_CNT - CANCEL_CNT
+                FROM
+                    OD_ORDER_DETL
+                WHERE
+                    ODID = #{odid}
+                  AND OD_ORDER_DETL_SEQ = #{odOrderDetlSeq}
+            ) TT
+    </select>
+
+</mapper>

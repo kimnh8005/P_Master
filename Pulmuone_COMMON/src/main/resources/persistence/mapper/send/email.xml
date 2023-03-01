@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.send.template.SendTemplateMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 시스템 환경설정 리스트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.05.29		오영민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.send.template.dto.vo.GetEmailSendListResultVo" id="getEmailSendListResultMap">
+        <result column="SN_AUTO_SEND_ID"  property="snAutoSendId"  />
+        <result column="TEMPLATE_CODE" property="templateCode" />
+        <result column="TEMPLATE_NAME" property="templateName" />
+        <result column="MAIL_SEND_YN" property="mailSendYn" />
+        <result column="SMS_SEND_YN" property="smsSendYn" />
+    </resultMap>
+
+
+    <sql id="getEmailSendSql">
+        SELECT
+            A.SN_AUTO_SEND_ID     AS SN_AUTO_SEND_ID
+            , A.TEMPLATE_CD         AS TEMPLATE_CODE
+            , A.TEMPLATE_NM         AS TEMPLATE_NAME
+            , A.MAIL_TITLE          AS MAIL_TITLE
+            , A.MAIL_BODY           AS MAIL_BODY
+            , A.SMS_BODY            AS SMS_BODY
+            , A.MAIL_SEND_YN        AS MAIL_SEND_YN
+            , A.SMS_SEND_YN         AS SMS_SEND_YN
+        FROM SN_AUTO_SEND A
+        ORDER BY A.SN_AUTO_SEND_ID DESC
+    </sql>
+
+    <select id="getEmailSendList" resultMap="getEmailSendListResultMap">
+        /* email.getEmailSendList */
+        SELECT
+            SN_AUTO_SEND_ID
+            , TEMPLATE_CODE
+            , TEMPLATE_NAME
+            , MAIL_SEND_YN
+            , SMS_SEND_YN
+        FROM (
+        <include refid="getEmailSendSql"/>
+        ) T
+    </select>
+
+    <select id="getEmailSendListCount" resultType="java.lang.Integer" >
+        /* email.getEmailSendListCount */
+        SELECT COUNT(*) AS TOTAL
+        FROM   (
+        <include refid="getEmailSendSql" />
+        ) T
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: Email,SMS 템플릿 설정 상세조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.03		오영민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.send.template.dto.vo.GetEmailSendResultVo" id="getEmailSendResultMap">
+        <result column="SN_AUTO_SEND_ID"  property="snAutoSendId"  />
+        <result column="TEMPLATE_CODE" property="templateCode" />
+        <result column="TEMPLATE_NAME" property="templateName" />
+        <result column="MAIL_TITLE" property="mailTitle" />
+        <result column="MAIL_BODY" property="mailBody" />
+        <result column="SMS_BODY" property="smsBody" />
+        <result column="MAIL_SEND_YN" property="mailSendYn" />
+        <result column="SMS_SEND_YN" property="smsSendYn" />
+    </resultMap>
+
+    <select id="getEmailSend" resultMap="getEmailSendResultMap">
+        /* email.getEmailSend */
+        SELECT
+            SN_AUTO_SEND_ID
+            , TEMPLATE_CODE
+            , TEMPLATE_NAME
+            , MAIL_TITLE
+            , MAIL_BODY
+            , SMS_BODY
+            , MAIL_SEND_YN
+            , SMS_SEND_YN
+        FROM
+            (
+                <include refid="getEmailSendSql" />
+            ) T
+        WHERE SN_AUTO_SEND_ID = #{snAutoSendId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: Email,SMS 템플릿 설정 중복 체크
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.17		오영민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="checkEmailSendDuplicate" resultType="int">
+        /* email.checkEmailSendDuplicate */
+        SELECT	COUNT(*) AS TOTAL
+        FROM 	(
+        <include refid="getEmailSendSql" />
+        ) T
+        WHERE 1=1
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snAutoSendId)">
+            AND T.SN_AUTO_SEND_ID NOT IN ( #{snAutoSendId} )
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(templateCode)">
+            AND T.TEMPLATE_CODE = #{templateCode}
+        </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: Email,SMS 템플릿 설정 저장
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.03		오영민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEmailSend">
+        /* email.addEmailSend */
+        INSERT INTO SN_AUTO_SEND
+        (
+             TEMPLATE_CD
+            , TEMPLATE_NM
+            , MAIL_TITLE
+            , MAIL_BODY
+            , SMS_BODY
+            , MAIL_SEND_YN
+            , SMS_SEND_YN
+            , SENDER_NM
+            , CREATE_ID
+        )
+        VALUES
+        (
+            #{templateCode}
+            , #{templateName}
+            , #{mailTitle}
+            , #{mailBody}
+            , #{smsBody}
+            , #{mailSendYn}
+            , #{smsSendYn}
+            , #{userVo.userId}
+            , #{userVo.userId}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: Email,SMS 템플릿 설정 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.03		오영민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putEmailSend">
+        /* email.putEmailSend */
+        UPDATE SN_AUTO_SEND
+        SET
+            TEMPLATE_CD 	= #{templateCode}
+            , TEMPLATE_NM 	= #{templateName}
+            , MAIL_TITLE 	= #{mailTitle}
+            , MAIL_BODY 	= #{mailBody}
+            , SMS_BODY 		= #{smsBody}
+            , MAIL_SEND_YN 	= #{mailSendYn}
+            , SMS_SEND_YN 	= #{smsSendYn}
+            , MODIFY_ID 	= #{userVo.userId}
+        WHERE
+            SN_AUTO_SEND_ID = #{snAutoSendId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: Email,SMS 템플릿 설정 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.03		오영민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delEmailSend">
+        /* email.delEmailSend */
+        DELETE FROM SN_AUTO_SEND
+        WHERE SN_AUTO_SEND_ID = #{snAutoSendId}
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: email manual 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.29		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEmailManual">
+        /*	email.addEmailManual	*/
+        INSERT INTO SN_MANUAL_EMAIL
+        (
+            SENDER_NM
+            , SENDER_MAIL
+            , RESERVE_DT
+            , TITLE
+            , CONTENT
+            , ATTACHMENT
+            , ORG_FILE_NM
+            , BCC
+        )
+        VALUES
+        (
+            #{senderName}
+            , #{senderMail}
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reserveDate)">
+                , #{reserveDate}
+            </when>
+            <otherwise>
+                , NOW()
+            </otherwise>
+        </choose>
+            , #{title}
+            , #{content}
+            , #{attachment}
+            , #{originFileName}
+            , #{bcc}
+        )
+        <selectKey resultType="Long" keyProperty="snManualEmailId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: email 발송대상 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.29		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addEmailIssue">
+        /*	email.addEmailIssue	*/
+        INSERT INTO SN_MAIL_SEND
+        (
+            TITLE
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snManualEmailId)">
+            , SN_MANUAL_EMAIL_ID
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snMailTemplateId)">
+            , SN_MAIL_TEMPLATE_ID
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snAddressId)">
+            , SN_ADDRESS_ID
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snAutoSendId)">
+            , SN_AUTO_SEND_ID
+        </if>
+            , RESERVE_YN
+            , RESERVE_DT
+            , UR_USER_ID
+            , MAIL
+            , CONTENT
+            , SENDER_NM
+            , SENDER_MAIL
+        )
+        VALUES
+        (
+            #{title}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snManualEmailId)">
+            , #{snManualEmailId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snMailTemplateId)">
+            , #{snMailTemplateId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snAddressId)">
+            , #{snAddressId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snAutoSendId)">
+            , #{snAutoSendId}
+        </if>
+            , #{reserveYn}
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reserveDate)">
+            , #{reserveDate}
+            </when>
+            <otherwise>
+            , NOW()
+            </otherwise>
+        </choose>
+            , #{urUserId}
+            , #{mail}
+            , #{content}
+            , #{senderName}
+            , #{senderMail}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: sms manual 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.29		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSmsManual">
+        /*	email.addSmsManual	*/
+        INSERT INTO SN_MANUAL_SMS(
+        CONTENT
+        ,RESERVE_DT
+        ,SENDER_TEL
+        ,ATTACHMENT
+        )
+        VALUES(
+        #{content}
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reserveDate)">
+                ,#{reserveDate}
+            </when>
+            <otherwise>
+                ,NOW()
+            </otherwise>
+        </choose>
+        ,#{senderTelephone}
+        ,#{attachment}
+        )
+        <selectKey resultType="String" keyProperty="snManualSmsId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: sms 발송대상 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.29		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSmsIssue">
+        /*	email.addSmsIssue	*/
+        INSERT INTO SN_SMS_SEND(
+        UR_USER_ID
+        ,MOBILE
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snManualSmsId)">
+            ,SN_MANUAL_SMS_ID
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snAutoSendId)">
+            ,SN_AUTO_SEND_ID
+        </if>
+        ,SEND_YN
+        ,RESERVE_YN
+        ,RESERVE_DT
+        ,CONTENT
+        ,SENDER_TEL
+        )
+        VALUES(
+        #{urUserId}
+        ,#{mobile}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snManualSmsId)">
+            ,#{snManualSmsId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(snAutoSendId)">
+            ,#{snAutoSendId}
+        </if>
+        ,#{sendYn}
+        ,#{reserveYn}
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(reserveDate)">
+                ,#{reserveDate}
+            </when>
+            <otherwise>
+                ,NOW()
+            </otherwise>
+        </choose>
+        ,#{content}
+        ,#{senderTelephone}
+        )
+    </insert>
+
+
+    <select id="getSendTemplateByCode" resultType="kr.co.pulmuone.v1.send.template.dto.vo.GetEmailSendResultVo">
+        /* email.getSendTemplateByCode */
+        SELECT
+            SN_AUTO_SEND_ID
+            , TEMPLATE_CODE
+            , TEMPLATE_NAME
+            , MAIL_TITLE
+            , MAIL_BODY
+            , SMS_BODY
+            , MAIL_SEND_YN
+            , SMS_SEND_YN
+        FROM
+            (
+                <include refid="getEmailSendSql" />
+            ) T
+        WHERE TEMPLATE_CODE = #{templateCode}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: psKey값으로 psValue 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.15		최윤지          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getPsValue" resultType="String">
+    /* email.getPsValue */
+    SELECT
+           PS_VAL
+	  FROM PS_CONFIG
+	 WHERE
+	       PS_KEY = #{psKey}
+	   AND USE_YN = 'Y'
+	   AND ST_SHOP_ID = 1
+	 LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: Batch 전송 대상자 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.29		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.send.template.dto.vo.BatchSmsTargetVo" id="smsTargetResultMap">
+        <result column="UR_USER_ID"  property="urUserId"  />
+        <result column="MOBILE"  property="mobile"  />
+    </resultMap>
+    <select id="getBatchSmsTargetList" resultMap="smsTargetResultMap">
+        /* email.getBatchSmsTargetList */
+        SELECT UE.UR_USER_ID
+            , FN_DECRYPT(MOBILE) AS MOBILE
+        FROM ST_BATCH_NOTI_EMPLOYEE_LIST SB
+        INNER JOIN UR_EMPLOYEE UE ON SB.UR_EMPLOYEE_CD = UE.UR_EMPLOYEE_CD
+        WHERE SB.USE_YN = 'Y'
+            AND SB.BATCH_NO = #{batchNo}
+            AND UE.STATUS_TP = 'EMPLOYEE_STATUS.NORMAL'
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 발송 MAIL 중복검사
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.07		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="isOverlapSendMailForGoodsDelivery" resultType="int">
+        /* email.isOverlapSendMailForGoodsDelivery */
+        SELECT
+            COUNT(*)
+        FROM
+            SN_MAIL_SEND
+        WHERE
+            UR_USER_ID = #{urUserId}
+            AND MAIL = #{mail}
+            AND CONTENT = #{content}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 상품 발송 SMS 중복검사
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.07		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="isOverlapSendSmsForGoodsDelivery" resultType="int">
+        /* email.isOverlapSendSmsForGoodsDelivery */
+        SELECT
+            COUNT(*)
+        FROM
+            SN_SMS_SEND
+        WHERE
+            UR_USER_ID = #{urUserId}
+            AND MOBILE = #{mobile}
+            AND CONTENT = #{content}
+    </select>
+
+</mapper>

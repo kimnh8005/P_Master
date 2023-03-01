@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.user.group.UserGroupBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 삭제 배치 처리(적용시작일 도래 상태에서 등급 수 없을 경우)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.22		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserGroupNoDetailData">
+		/*	userGroupBatch.delUserGroupNoDetailData  */
+		<![CDATA[
+		DELETE FROM UR_GROUP_MASTER UGM
+		WHERE
+				START_DT <= NOW()
+			AND END_DT  IS NULL
+			AND (SELECT COUNT(1) FROM UR_GROUP UG WHERE UGM.UR_GROUP_MASTER_ID = UG.UR_GROUP_MASTER_ID ) = 0
+		]]>
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 적용종료일 배치 처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.22		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserGroupSetUp">
+		/*	userGroupBatch.putUserGroupSetUp  */
+		<![CDATA[
+		UPDATE UR_GROUP_MASTER UGM
+		SET END_DT = (
+				SELECT  DATE_SUB(MIN(START_DT), INTERVAL 1 SECOND) FROM (
+					SELECT 	START_DT
+					FROM (
+						SELECT START_DT
+						,(SELECT COUNT(1) FROM UR_GROUP UG WHERE UGM.UR_GROUP_MASTER_ID = UG.UR_GROUP_MASTER_ID ) CHECK_COUNT
+						FROM UR_GROUP_MASTER UGM
+						WHERE START_DT <= NOW()
+					) T
+					WHERE T.CHECK_COUNT > 0
+				) A
+				WHERE A.START_DT > UGM.START_DT
+		)
+		WHERE END_DT IS NULL
+			AND START_DT <= NOW()
+		]]>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 등급 마스터 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.27		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.batch.user.group.dto.vo.UserGroupMasterVo" id="userGroupMasterResultMap">
+		<result column="UR_GROUP_MASTER_ID" property="urGroupMasterId"/>
+		<result column="GROUP_MASTER_NM" property="groupMasterName"/>
+		<result column="CALCULATE_PERIOD" property="calculatePeriod"/>
+		<result column="START_DT" property="startDate"/>
+	</resultMap>
+	<select id="getUserGroupMaster" resultMap="userGroupMasterResultMap">
+		/*	userGroupBatch.getUserGroupMaster  */
+		SELECT UR_GROUP_MASTER_ID
+			, GROUP_MASTER_NM
+			, CALCULATE_PERIOD
+			, DATE(START_DT) AS START_DT
+		FROM UR_GROUP_MASTER
+		WHERE NOW() BETWEEN START_DT AND IFNULL(END_DT, '2999-12-31')
+		ORDER BY START_DT DESC
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 등급 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.27		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.batch.user.group.dto.vo.UserGroupVo" id="userGroupResultMap">
+		<result column="UR_GROUP_ID" property="urGroupId"/>
+		<result column="DEFAULT_YN" property="defaultYn"/>
+		<result column="PURCHASE_AMOUNT_FROM" property="purchaseAmountFrom"/>
+		<result column="PURCHASE_CNT_FROM" property="purchaseCountFrom"/>
+	</resultMap>
+	<select id="getUserGroup" resultMap="userGroupResultMap">
+		/*	userGroupBatch.getUserGroup  */
+		SELECT UG.UR_GROUP_ID
+			, UG.DEFAULT_YN
+			, UG.PURCHASE_AMOUNT_FROM
+			, UG.PURCHASE_CNT_FROM
+		FROM UR_GROUP UG
+			INNER JOIN ST_COMN_CODE CC ON UG.GROUP_LEVEL_TP = CC.ST_COMN_CODE_ID
+		WHERE UG.UR_GROUP_MASTER_ID = #{urGroupMasterId}
+		ORDER BY CC.SORT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 등급 혜택 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.27		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.batch.user.group.dto.vo.UserGroupBenefitVo" id="userGroupBenefitResultMap">
+		<result column="UR_GROUP_BENEFIT_ID" property="urGroupBenefitId"/>
+		<result column="UR_GROUP_BENEFIT_TP" property="urGroupBenefitType"/>
+		<result column="BENEFIT_REL_ID" property="benefitRelationId"/>
+	</resultMap>
+	<select id="getUserGroupBenefit" resultMap="userGroupBenefitResultMap">
+		/*	userGroupBatch.getUserGroupBenefit  */
+		SELECT B.UR_GROUP_BENEFIT_ID
+			, B.UR_GROUP_BENEFIT_TP
+			, B.BENEFIT_REL_ID
+		FROM UR_GROUP_BENEFIT B
+			INNER JOIN PM_COUPON PC ON B.BENEFIT_REL_ID = PC.PM_COUPON_ID
+		WHERE B.UR_GROUP_ID = #{urGroupId}
+			AND B.UR_GROUP_BENEFIT_TP = 'UR_GROUP_BENEFIT_TP.COUPON'
+			AND PC.USE_YN = 'Y'
+			AND NOW() BETWEEN PC.ISSUE_START_DT AND PC.ISSUE_END_DT
+			AND PC.ISSUE_TP = 'PAYMENT_TYPE.AUTO_PAYMENT'
+			AND PC.ISSUE_DETAIL_TP = 'AUTO_ISSUE_TYPE.USER_GRADE'
+			AND PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 등급 혜택 조회 - 적립금
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.batch.user.group.dto.vo.UserGroupBenefitPointVo" id="userGroupBenefitPointResultMap">
+		<result column="UR_GROUP_ID" property="urGroupId"/>
+		<result column="BENEFIT_REL_ID" property="benefitRelationId"/>
+	</resultMap>
+	<select id="getUserGroupBenefitPoint" resultMap="userGroupBenefitPointResultMap">
+		/*	userGroupBatch.getUserGroupBenefitPoint  */
+		SELECT UGB.UR_GROUP_ID
+			, UGB.BENEFIT_REL_ID
+		FROM UR_GROUP_BENEFIT UGB
+			INNER JOIN PM_POINT PP ON UGB.BENEFIT_REL_ID = PP.PM_POINT_ID
+		WHERE UR_GROUP_BENEFIT_TP = 'UR_GROUP_BENEFIT_TP.POINT'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원등급 변경 히스토리 추가
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.22     이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addGroupBatchHistory">
+		/* userGroupBatch.addGroupBatchHistory */
+		INSERT INTO UR_GROUP_BATCH_HISTORY(
+			BATCH_YM, BATCH_USER_TYPE, UR_USER_ID, UR_GROUP_ID, CREATED_DT
+		)
+		VALUES
+		<foreach item="insertData" index="index" collection="userBuyerVoList" open="" separator="," close="">
+			(
+			#{insertData.batchYearMonth}
+			, #{insertData.batchUserType}
+			, #{insertData.urUserId}
+			, #{insertData.urGroupId}
+			, CURRENT_TIMESTAMP
+			)
+		</foreach>
+	</insert>
+
+</mapper>

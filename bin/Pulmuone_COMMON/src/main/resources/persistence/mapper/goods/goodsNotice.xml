@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.notice.GoodsNoticeMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품공통공지
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.03		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.notice.dto.vo.GoodsNoticeVo" id="getGoodsNoticeMap">
+		<result column="IL_NOTICE_ID"  property="ilNoticeId"  />
+		<result column="GOODS_NOTICE_TP"  property="goodsNoticeTp" />
+		<result column="GOODS_NOTICE_TP_NAME"  property="goodsNoticeTpName" />
+		<result column="NOTICE_NM"  property="noticeNm" />
+		<result column="DISP_ALL_YN"  property="dispAllYn" />
+		<result column="WAREHOUSE_GROUP"  property="warehouseGroup"  />
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"  />
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId" />
+		<result column="WAREHOUSE_NAME"  property="warehouseName" />
+		<result column="NOTICE_START_DT"  property="noticeStartDt" />
+		<result column="NOTICE_END_DT"  property="noticeEndDt" />
+		<result column="USE_YN"  property="useYn" />
+		<result column="DETL_DESC"  property="detlDesc" />
+		<result column="CREATE_USER_NAME"  property="createUserName" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_USER_NAME"  property="modifyUserName" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+	<select id="getGoodsNoticeList" resultMap="getGoodsNoticeMap">
+		/*	GoodsNotice.getGoodsNoticeList	*/
+		SELECT
+			INTC.IL_NOTICE_ID, INTC.GOODS_NOTICE_TP, FN_COMN_CODE_DIC(INTC.GOODS_NOTICE_TP) AS GOODS_NOTICE_TP_NAME
+			, INTC.NOTICE_NM, INTC.DISP_ALL_YN, INTC.WAREHOUSE_GROUP, FN_COMN_CODE_DIC(INTC.WAREHOUSE_GROUP) AS WAREHOUSE_GROUP_NAME
+			, INTC.UR_WAREHOUSE_ID, W.WAREHOUSE_NM AS WAREHOUSE_NAME
+			, INTC.NOTICE_START_DT, INTC.NOTICE_END_DT
+			, CASE
+				WHEN INTC.USE_YN = 'Y' THEN '예'
+				ELSE '아니요'
+				END AS USE_YN
+			, INTC.DETL_DESC
+			, U.LOGIN_ID AS CREATE_ID, FN_DECRYPT(U.USER_NM) AS CREATE_USER_NAME
+			, INTC.CREATE_DT, INTC.MODIFY_ID, INTC.MODIFY_DT
+		FROM IL_NOTICE INTC
+		LEFT OUTER JOIN UR_WAREHOUSE W
+		  ON INTC.UR_WAREHOUSE_ID = W.UR_WAREHOUSE_ID
+		LEFT OUTER JOIN UR_USER U
+		  ON INTC.CREATE_ID = U.UR_USER_ID
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType, 'CREATE_NAME')">
+			AND FN_DECRYPT(U.USER_NM) = #{conditionValue}
+			</when>
+		    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType, 'CREATE_ID')">
+			AND U.LOGIN_ID = #{conditionValue}
+			</when>
+		    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType, 'TITLE')">
+			AND INTC.NOTICE_NM like CONCAT('%', #{conditionValue}, '%')
+			</when>
+		</choose>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsNoticeTp)">
+		AND INTC.GOODS_NOTICE_TP = #{goodsNoticeTp}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		AND INTC.USE_YN = #{useYn}
+		</if>
+		AND DATE_FORMAT(INTC.CREATE_DT,'%Y%m%d') BETWEEN #{startCreateDate} AND #{endCreateDate}
+           <!--
+				WHEN NOW() BETWEEN START_DT AND END_DT THEN '1'
+				WHEN NOW() &lt; START_DT THEN '2'
+				WHEN NOW() &gt; END_DT THEN '3'
+				 -->
+		ORDER BY INTC.CREATE_DT DESC
+	</select>
+	<select id="getGoodsNoticeInfo" resultMap="getGoodsNoticeMap">
+		/*	GoodsNotice.getGoodsNoticeInfo	*/
+		SELECT
+			INTC.IL_NOTICE_ID, INTC.GOODS_NOTICE_TP, INTC.NOTICE_NM, INTC.DISP_ALL_YN, INTC.WAREHOUSE_GROUP
+			, INTC.UR_WAREHOUSE_ID, INTC.NOTICE_START_DT, INTC.NOTICE_END_DT, INTC.USE_YN, INTC.DETL_DESC
+			, CU.LOGIN_ID AS CREATE_ID, FN_DECRYPT(CU.USER_NM) AS CREATE_USER_NAME
+			, INTC.CREATE_DT
+			, UU.LOGIN_ID AS MODIFY_ID, FN_DECRYPT(UU.USER_NM) AS MODIFY_USER_NAME
+			, INTC.MODIFY_DT
+		FROM IL_NOTICE INTC
+		LEFT OUTER JOIN UR_USER CU
+		  ON INTC.CREATE_ID = CU.UR_USER_ID
+		LEFT OUTER JOIN UR_USER UU
+		  ON INTC.MODIFY_ID = UU.UR_USER_ID
+		WHERE INTC.IL_NOTICE_ID = #{ilNoticeId}
+	</select>
+	<insert id="addGoodsNotice">
+		/*	GoodsNotice.addGoodsNotice	*/
+		INSERT INTO IL_NOTICE
+			(
+				GOODS_NOTICE_TP, NOTICE_NM, DISP_ALL_YN, WAREHOUSE_GROUP
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+				, UR_WAREHOUSE_ID
+				</if>
+				, NOTICE_START_DT, NOTICE_END_DT, USE_YN, DETL_DESC
+				, CREATE_ID, CREATE_DT)
+		VALUES
+			(
+				#{goodsNoticeTp}, #{noticeNm}, #{dispAllYn}, #{warehouseGroup}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+				, #{urWarehouseId}
+				</if>
+				, #{noticeStartDt}, #{noticeEndDt}, #{useYn}, #{detlDesc}
+				, #{userVo.userId}, NOW())
+	</insert>
+	<update id="putGoodsNotice">
+		/*	GoodsNotice.putGoodsNotice	*/
+		UPDATE IL_NOTICE
+		SET
+			GOODS_NOTICE_TP = #{goodsNoticeTp}
+			, NOTICE_NM = #{noticeNm}
+			, DISP_ALL_YN = #{dispAllYn}
+			, WAREHOUSE_GROUP = #{warehouseGroup}
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+			, UR_WAREHOUSE_ID = #{urWarehouseId}
+			</when>
+            <otherwise>
+			, UR_WAREHOUSE_ID = 0
+            </otherwise>
+		</choose>
+			, NOTICE_START_DT = #{noticeStartDt}
+			, NOTICE_END_DT = #{noticeEndDt}
+			, USE_YN = #{useYn}
+			, DETL_DESC = #{detlDesc}
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = NOW()
+		WHERE IL_NOTICE_ID = #{ilNoticeId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품공통공지
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.10		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsNoticeListByUser" resultMap="getGoodsNoticeMap">
+		/*	GoodsNotice.getGoodsNoticeListByUser	*/
+		SELECT
+			GOODS_NOTICE_TP,
+			NOTICE_NM,
+			DISP_ALL_YN,
+			WAREHOUSE_GROUP,
+			UR_WAREHOUSE_ID,
+			DETL_DESC
+		FROM IL_NOTICE
+		WHERE USE_YN = 'Y'
+			AND NOW() BETWEEN NOTICE_START_DT AND NOTICE_END_DT
+		ORDER BY GOODS_NOTICE_TP DESC, UR_WAREHOUSE_ID ASC
+	</select>
+
+</mapper>

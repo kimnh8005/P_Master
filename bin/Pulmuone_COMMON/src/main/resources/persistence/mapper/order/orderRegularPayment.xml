@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.regular.OrderRegularPaymentMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 결제 대상 목록 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.21		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRegularOrderResultPaymentList" resultType="kr.co.pulmuone.v1.order.regular.dto.RegularResultPaymentListDto">
+        /* regularOrderMapper.getRegularOrderResultPaymentList */
+        SELECT
+			ORR.OD_REGULAR_REQ_ID,
+			ORRT.OD_ORDER_ID,
+			ORRT.OD_REGULAR_RESULT_ID,
+			CONCAT(ORRD.GOODS_NM, CASE WHEN ORRD.GOODS_CNT > 1 THEN CONCAT(' 외 ', (ORRD.GOODS_CNT - 1), '건') ELSE '' END) AS GOODS_NM,
+			ORPK.BATCH_KEY,
+			ORPK.CARD_MASK_NUMBER,
+			ORPK.CARD_NM,
+			ORPK.UR_USER_ID,
+			OPM.OD_PAYMENT_MASTER_ID,
+			FN_DECRYPT(ORR.BUYER_NM) AS BUYER_NM,
+			FN_DECRYPT(ORR.BUYER_MAIL) AS BUYER_MAIL,
+			FN_DECRYPT(ORR.BUYER_HP) AS BUYER_HP,
+			OD.ODID,
+			OPM.PAYMENT_PRICE,
+			OPM.TAXABLE_PRICE,
+			OPM.NON_TAXABLE_PRICE,
+			ORR.TOT_CNT,
+            ORRT.REQ_ROUND,
+			IFNULL(
+			    (
+					SELECT	PAYMENT_FAIL_CNT
+					FROM	OD_REGULAR_RESULT
+					WHERE	OD_REGULAR_RESULT_ID = (
+					    <![CDATA[
+						SELECT	MAX(OD_REGULAR_RESULT_ID)
+						FROM	OD_REGULAR_RESULT T1
+						WHERE	T1.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+						AND		T1.OD_ORDER_ID > 0
+						AND		REQ_ROUND < ORRT.REQ_ROUND
+						]]>
+					)
+			    )
+			, 0) AS PREV_FAIL_CNT
+		FROM
+			OD_REGULAR_REQ ORR
+		INNER JOIN
+			OD_REGULAR_RESULT ORRT ON ORR.OD_REGULAR_REQ_ID = ORRT.OD_REGULAR_REQ_ID
+		INNER JOIN
+			(
+				SELECT
+					ORRD.OD_REGULAR_RESULT_ID,
+					MIN(GOODS_NM) AS GOODS_NM,
+					COUNT(1) AS GOODS_CNT
+				FROM
+					OD_REGULAR_RESULT_DETL ORRD
+				GROUP BY ORRD.OD_REGULAR_RESULT_ID
+			) ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+		INNER JOIN
+			OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+		INNER JOIN
+			OD_PAYMENT OP ON OD.OD_ORDER_ID = OP.OD_ORDER_ID
+		INNER JOIN
+			OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+		INNER JOIN
+			OD_REGULAR_PAYMENT_KEY ORPK ON ORR.UR_USER_ID = ORPK.UR_USER_ID
+									   AND ORPK.PAYMENT_YN = 'Y'
+		WHERE
+			ORR.REGULAR_STATUS_CD != 'REGULAR_STATUS_CD.CANCEL'
+		AND
+			ORRT.PAYMENT_DT BETWEEN (CURRENT_DATE() + INTERVAL - 1 DAY) AND CURRENT_DATE()
+		AND
+			ORRT.REGULAR_STATUS_CD != 'REGULAR_STATUS_CD.CANCEL'
+		AND
+			ORRT.ORDER_CREATE_YN = 'Y'
+		AND
+			ORRT.REQ_ROUND_YN = 'N'
+		AND
+		  	OPM.TYPE = 'G'
+		AND
+		  	OPM.STATUS = 'IR'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문날짜 정보 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDtInfo">
+        /* regularOrderMapper.putOrderDtInfo */
+		UPDATE
+			OD_ORDER_DT
+		SET
+			OD_ORDER_ID = OD_ORDER_ID
+			<if test="icId > 0">
+			,IC_DT = NOW(), IC_ID = #{icId}
+			</if>
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문상세 주문상태코드 업데이트
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.06		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetlInfo">
+        /* regularOrderMapper.putOrderDetlInfo */
+		UPDATE
+			OD_ORDER_DETL
+		SET
+			OD_ORDER_ID = OD_ORDER_ID
+			, ORDER_STATUS_CD = #{orderStatusCd}
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 테이블 회차 완료 여부 UPDATE
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularResultReqRoundYnInfo">
+        /* regularOrderMapper.putOrderRegularResultReqRoundYnInfo */
+		UPDATE
+			OD_REGULAR_RESULT
+		SET
+			REQ_ROUND_YN = #{reqRoundYn}
+		<if test="paymentFailCnt > 0">
+			,PAYMENT_FAIL_CNT = PAYMENT_FAIL_CNT + 1
+		</if>
+		WHERE
+			OD_REGULAR_RESULT_ID = #{odRegularResultId}
+		<selectKey resultType="kr.co.pulmuone.v1.order.regular.dto.vo.OrderRegularResultVo" keyProperty="paymentFailCnt" order="AFTER">
+	        SELECT
+	        	PAYMENT_FAIL_CNT
+	        FROM
+	        	OD_REGULAR_RESULT
+	        WHERE
+	        	OD_REGULAR_RESULT_ID = #{odRegularResultId}
+	    </selectKey>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상세 테이블 해지 처리
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularDetlStatusCancel">
+        /* regularOrderMapper.putOrderRegularDetlStatusCancel */
+		UPDATE
+			OD_REGULAR_RESULT_DETL
+		SET
+			REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+		WHERE
+			OD_REGULAR_RESULT_DETL_ID IN (
+											SELECT
+												A.*
+											FROM
+												(
+												SELECT
+													ORRD.OD_REGULAR_RESULT_DETL_ID
+												FROM
+													OD_REGULAR_RESULT ORRT
+												INNER JOIN
+													OD_REGULAR_RESULT_DETL ORRD ON ORRT.OD_REGULAR_RESULT_ID = ORRD.OD_REGULAR_RESULT_ID
+												WHERE
+													ORRT.OD_REGULAR_REQ_ID = (SELECT OD_REGULAR_REQ_ID FROM OD_REGULAR_RESULT WHERE OD_REGULAR_RESULT_ID = #{odRegularResultId})
+												AND
+													ORRT.PAYMENT_DT <![CDATA[>=]]> CURRENT_DATE()
+												) A
+											)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 테이블 해지 처리
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularStatusCancel">
+        /* regularOrderMapper.putOrderRegularStatusCancel */
+		UPDATE
+			OD_REGULAR_RESULT
+		SET
+			REGULAR_STATUS_CD = #{regularStatusCd}
+		WHERE
+			OD_REGULAR_REQ_ID = #{odRegularReqId}
+		AND
+			PAYMENT_DT <![CDATA[>=]]> CURRENT_DATE()
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 상세 테이블 해지 처리
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularReqDetlStatusCancel">
+        /* regularOrderMapper.putOrderRegularReqDetlStatusCancel */
+		UPDATE
+			OD_REGULAR_REQ_ORDER_DETL
+		SET
+			REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+		WHERE
+			OD_REGULAR_REQ_ID = #{odRegularReqId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 신청 테이블 해지 처리
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularReqStatusCancel">
+        /* regularOrderMapper.putOrderRegularReqStatusCancel */
+		UPDATE
+			OD_REGULAR_REQ
+		SET
+			REGULAR_STATUS_CD = #{regularStatusCd}
+		WHERE
+			OD_REGULAR_REQ_ID = #{odRegularReqId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 주문 상세 상품PK 목록 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.24		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOdRegularOrderDetlGoodsList" resultType="long">
+		/* regularOrderMapper.getOdRegularOrderDetlGoodsList */
+		SELECT
+			OOD.IL_GOODS_ID
+		FROM OD_REGULAR_RESULT ORRT
+		INNER JOIN OD_ORDER OD ON ORRT.OD_ORDER_ID = OD.OD_ORDER_ID
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		WHERE
+			ORRT.OD_REGULAR_RESULT_ID = #{odRegularResultId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정기배송 결과 상세 테이블 건너뛰기 처리
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.11		김명진		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderRegularDetlStatusSkip">
+		/* regularOrderMapper.putOrderRegularDetlStatusSkip */
+		UPDATE
+			OD_REGULAR_RESULT_DETL
+		SET
+			REQ_DETAIL_STATUS_CD = #{reqDetailStatusCd}
+		WHERE
+			OD_REGULAR_RESULT_ID = #{odRegularResultId}
+	</update>
+
+</mapper>
+

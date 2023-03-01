@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.promotion.PromotionAdvertisingBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부광고상풍리스트 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.20      최용호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getAdExternalGoodsListMap" type="kr.co.pulmuone.v1.batch.promotion.ad.dto.vo.SamsungAdVo">
+		<result column="SALE_PRICE" property="salePrice" />
+		<result column="RECOMMENDED_PRICE" property="originalPrice" />
+		<result column="ITEM_BARCODE" property="barCode" />
+		<result column="DISTRIBUTION_PERIOD" property="expirationDate" />
+		<result column="SUB_CTGRY_STD_NM" property="subCategory" />
+		<result column="IL_GOODS_ID" property="productId" />
+		<result column="INGREDIENTS" property="ingredients" />
+		<result column="URL" property="url" />
+		<result column="NAME" property="name" />
+		<result column="COMPANY" property="company" />
+		<result column="BRAND_NM" property="brand" />
+		<result column="IMAGE" property="image" />
+		<result column="INVENTORY" property="inventory" />
+		<result column="RATING" property="rating" />
+		<result column="CTGRY_STD_NM" property="category" />
+		<result column="REVIEWS_COUNT" property="reviewsCount" />
+		<result column="REVIEWS_URL" property="reviewsUrl" />
+	</resultMap>
+	<select id="getAdExternalGoodsList" resultMap="getAdExternalGoodsListMap">
+		/*	promotionAdvertising.getAdExternalGoodsList	*/
+		<![CDATA[
+		SELECT
+			A.IL_GOODS_ID
+			, CASE
+             	WHEN B.GOODS_TP = 'GOODS_TYPE.PACKAGE' AND B.PACKAGE_UNIT_DISP_YN = 'Y' THEN CONCAT(REPLACE(B.GOODS_NM, '&amp;', '&'), ' (', B.PACKAGE_UNIT_DESC, ')')
+             	WHEN B.GOODS_TP = 'GOODS_TYPE.PACKAGE' AND B.PACKAGE_UNIT_DISP_YN = 'N' THEN REPLACE(B.GOODS_NM, '&amp;', '&')
+             	WHEN IFNULL(D.QTY_PER_PACKAGE, '') = ''
+             		THEN CONCAT(
+             				REPLACE(B.GOODS_NM, '&amp;', '&')
+             				, ' ('
+	             			, CASE
+								WHEN D.SIZE_PER_PACKAGE IS NULL THEN ''
+								ELSE TRIM(D.SIZE_PER_PACKAGE) + 0
+								END
+    	         			, CASE
+								WHEN D.SIZE_UNIT_ETC IS NOT NULL AND TRIM(D.SIZE_UNIT_ETC) != '' THEN D.SIZE_UNIT_ETC
+								ELSE IFNULL(FN_COMN_CODE_DIC(D.SIZE_UNIT), '')
+								END
+        	     			, ')'
+        	     		)
+             	ELSE CONCAT(
+             			REPLACE(B.GOODS_NM, '&amp;', '&')
+             			, ' ('
+             			, CASE
+							WHEN D.SIZE_PER_PACKAGE IS NULL THEN ''
+							ELSE TRIM(D.SIZE_PER_PACKAGE) + 0
+							END
+	         			, CASE
+							WHEN D.SIZE_UNIT_ETC IS NOT NULL AND TRIM(D.SIZE_UNIT_ETC) != '' THEN D.SIZE_UNIT_ETC
+							ELSE IFNULL(FN_COMN_CODE_DIC(D.SIZE_UNIT), '')
+							END
+             			, 'X'
+             			, IFNULL(D.QTY_PER_PACKAGE, '')
+             			, CASE
+							WHEN D.PACKAGE_UNIT_ETC IS NOT NULL AND TRIM(D.PACKAGE_UNIT_ETC) != '' THEN D.PACKAGE_UNIT_ETC
+							ELSE IFNULL(FN_COMN_CODE_DIC(D.PACKAGE_UNIT), '')
+							END
+             			, ')'
+             		)
+	            END AS NAME /* 상품명 */
+			, '풀무원' AS COMPANY
+			, CONCAT(#{imageUrl}, '/', C.S_IMG) AS IMAGE
+			, CONCAT(#{apiDomain}, '/ad/gateway/', A.AD_ID, '/', A.IL_GOODS_ID) URL
+			, D.ITEM_BARCODE
+			, E.RECOMMENDED_PRICE
+			, E.SALE_PRICE
+			, '' AS INGREDIENTS
+			, CASE WHEN B.SALE_STATUS = 'SALE_STATUS.ON_SALE' THEN 'Y' ELSE 'N' END AS INVENTORY
+			, D.DISTRIBUTION_PERIOD
+			, G.BRAND_NM
+			, IFNULL(J.CTGRY_NM, '') AS CTGRY_STD_NM
+ 			, IFNULL(I.CTGRY_NM, '') AS SUB_CTGRY_STD_NM
+ 			, IFNULL((SELECT TRUNCATE(AVG(SATISFACTION_SCORE),1) FROM FB_FEEDBACK WHERE IL_GOODS_ID = A.IL_GOODS_ID),0) AS RATING
+ 			, IFNULL((SELECT COUNT(*) FROM FB_FEEDBACK K INNER JOIN IL_GOODS L ON(K.IL_GOODS_ID = L.IL_GOODS_ID) WHERE K.IL_GOODS_ID = A.IL_GOODS_ID),0) AS REVIEWS_COUNT
+ 			, '' AS REVIEWS_URL
+		FROM
+			PM_AD_EXTERNAL_GOODS A
+			INNER JOIN IL_GOODS B ON (
+					A.IL_GOODS_ID = B.IL_GOODS_ID
+			)
+			LEFT OUTER JOIN IL_ITEM_IMG C ON (
+					A.IL_ITEM_CD = C.IL_ITEM_CD
+				AND C.BASIC_YN = 'Y'
+			)
+			INNER JOIN IL_ITEM D ON (
+					B.IL_ITEM_CD = D.IL_ITEM_CD
+			)
+			INNER JOIN IL_GOODS_PRICE E ON (
+					A.IL_GOODS_ID = E.IL_GOODS_ID
+				AND E.USE_YN = 'Y'
+				AND E.PRICE_START_DT <= SYSDATE()
+				AND E.PRICE_END_DT >= SYSDATE()
+			)
+			LEFT OUTER JOIN UR_BRAND G ON (
+					D.UR_BRAND_ID = G.UR_BRAND_ID
+			)
+			LEFT OUTER JOIN IL_GOODS_CTGRY F ON (
+					A.IL_GOODS_ID = F.IL_GOODS_ID
+				AND F.BASIC_YN = 'Y'
+			)
+			LEFT OUTER JOIN IL_CTGRY H ON (
+					F.IL_CTGRY_ID = H.IL_CTGRY_ID
+			)
+			LEFT OUTER JOIN IL_CTGRY I ON (
+					H.PRNTS_CTGRY_ID = I.IL_CTGRY_ID
+			)
+			LEFT OUTER JOIN IL_CTGRY J ON (
+					I.PRNTS_CTGRY_ID = J.IL_CTGRY_ID
+			)
+		WHERE
+				A.AD_ID = #{adId}
+		]]>
+
+	</select>
+</mapper>

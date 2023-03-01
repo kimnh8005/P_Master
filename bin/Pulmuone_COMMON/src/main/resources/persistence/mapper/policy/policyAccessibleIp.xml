@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.accessibleIp.PolicyAccessibleIpMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 접근가능 IP 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.29		오영민          최초생성
+	 * @ 2020.10.20     최성현		   리팩토링 수정
+	 * @
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.accessibleip.dto.vo.GetPolicyAccessibleIpListResultVo" id="getPolicyAccessibleIpListResultMap">
+		<result column="PS_ACCESSIBLE_IP_ID"  	property="psAccessibleIpId" />
+		<result column="IP_ADDRESS"  			property="ipAddress" />
+		<result column="START_APPLY_DT" 		property="startApplyDate" />
+		<result column="END_APPLY_DT"  			property="endApplyDate" />
+		<result column="DEL_YN"  				property="delYn" />
+	</resultMap>
+
+	<select id="getPolicyAccessibleIpList" resultMap="getPolicyAccessibleIpListResultMap">
+		/* policyAccessibleIp.getPolicyAccessibleIpListResultMap */
+		SELECT
+			A.PS_ACCESSIBLE_IP_ID
+			,INET_NTOA(A.IP_ADDRESS)							AS IP_ADDRESS
+			,DATE_FORMAT(A.START_APPLY_DT,'%Y-%m-%d %H:%i') 	AS START_APPLY_DT
+			,DATE_FORMAT(A.END_APPLY_DT,'%Y-%m-%d %H:%i') 		AS END_APPLY_DT
+			,A.DEL_YN
+		FROM PS_ACCESSIBLE_IP A
+		WHERE DEL_YN = 'N'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIpAddress)">
+			AND INET_NTOA(A.IP_ADDRESS) LIKE CONCAT(#{searchIpAddress},'%')
+		</if>
+		ORDER BY A.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 접근가능 IP 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.24		오영민          최초생성
+	 * @ 2020.10.21     최성현		   리팩토링 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addPolicyAccessibleIp" >
+            /* policyAccessibleIp.addPolicyAccessibleIp */
+			INSERT INTO PS_ACCESSIBLE_IP(
+				IP_ADDRESS
+				,START_APPLY_DT
+				,END_APPLY_DT
+				,CREATE_ID
+			)
+			VALUES
+			<foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+				(
+					INET_ATON(#{insertData.ipAddress})
+					,#{insertData.startApplyDate}
+					,#{insertData.endApplyDate}
+					,#{insertData.userVo.userId}
+				)
+			</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 접근가능 IP 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.24		오영민          최초생성
+	 * @ 2020.10.21     최성현		   리팩토링 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPolicyAccessibleIp">
+        /* policyAccessibleIp.putPolicyAccessibleIp */
+		<foreach item="updateData" index="index" collection="list"  separator=";">
+		UPDATE PS_ACCESSIBLE_IP
+		SET
+			IP_ADDRESS			= INET_ATON(#{updateData.ipAddress})
+			,START_APPLY_DT		=#{updateData.startApplyDate}
+			,END_APPLY_DT		=#{updateData.endApplyDate}
+			,MODIFY_ID 			=#{updateData.userVo.userId}
+		WHERE PS_ACCESSIBLE_IP_ID = #{updateData.psAccessibleIpId}
+		</foreach>
+		;
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 접근가능 IP 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.24		오영민          최초생성
+	 * @ 2020.10.21     최성현		   리팩토링 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delPolicyAccessibleIp"  >
+        /* policyAccessibleIp.delPolicyAccessibleIp */
+		<foreach item="deleteData" collection="list" separator=";">
+		UPDATE PS_ACCESSIBLE_IP
+		SET
+			DEL_YN				= 'Y'
+			,MODIFY_ID 			=#{deleteData.userVo.userId}
+		WHERE PS_ACCESSIBLE_IP_ID = #{deleteData.psAccessibleIpId}
+		</foreach>
+		;
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 접근가능 IP 설정 중복체크
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.24		오영민          최초생성
+	 * @ 2020.10.21     최성현		   리팩토링 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="checkPolicyAccessibleIpDuplicate" resultType="int">
+		/* policyAccessibleIp.checkAccessibleIpDuplicate */
+		SELECT SUM(ROW_COUNT) TOTAL FROM (
+			SELECT COUNT(*) AS ROW_COUNT
+			FROM PS_ACCESSIBLE_IP
+			WHERE DEL_YN = 'N'
+			AND INET_NTOA(IP_ADDRESS) IN (
+			<foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+				#{insertData.ipAddress}
+			</foreach>
+			)
+			AND PS_ACCESSIBLE_IP_ID NOT IN (
+				<foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+					#{insertData.psAccessibleIpId}
+				</foreach>
+			)
+			<if test="list != null and list.size > 0">
+			UNION ALL
+			</if>
+			SELECT COUNT(*) AS ROW_COUNT FROM (
+				SELECT IP_ADDRESS, COUNT(IP_ADDRESS) FROM (
+				<foreach item="insertData" index="index" collection="list" open="" close="">
+					<if test="index > 0">
+					UNION ALL
+					</if>
+					SELECT #{insertData.ipAddress} AS IP_ADDRESS
+				</foreach>
+				) TMP_A
+				GROUP BY IP_ADDRESS
+				HAVING COUNT(IP_ADDRESS) > 1
+			) TMP_B
+		) T
+	</select>
+
+
+</mapper>
+

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prod-mall-was-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prod-mall-was
+  template:
+    metadata:
+      labels:
+        app: prod-mall-was
+    spec:
+      containers:
+        - name: prod-mall-was
+          image: prod-pumuone-image.kr.ncr.ntruss.com/pulmuone-mall-prod:latest
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: NODE_IP
+              valueFrom: {fieldRef: {fieldPath: status.hostIP}}
+            - name: NODE_NAME
+              valueFrom: {fieldRef: {fieldPath: spec.nodeName}}
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: OKIND
+              value: "deployment-pulmuone-mall-was-prod"
+            - name: license
+              value: x4fm123ffc6pg-x21fmbh9qi6l60-x231fq0kb38cs8
+          ports:
+            - containerPort: 8180
+          volumeMounts:
+            - name: nfsimage
+              mountPath: /data
+            - name: tz-config
+              mountPath: /etc/localtime
+      volumes:
+        - name: nfsimage
+          nfs:
+            path: /n2580623_prodimage
+            server: 10.250.53.85
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/Asia/Seoul
+      imagePullSecrets:
+        - name: prod-pulmuone-secret

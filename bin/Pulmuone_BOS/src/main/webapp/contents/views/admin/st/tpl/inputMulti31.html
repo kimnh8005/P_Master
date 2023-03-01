@@ -1,0 +1,779 @@
+<section class="fb__sect" style="width : 1300px;">
+	<div class="marginB20">
+		<h1 class="marginB20">&gt; 출고처 휴일 설정</h1>
+		<form id="searchForm">
+			<table class="datatable v-type">
+				<colgroup>
+					<col style="width : 20%">
+					<col style="width : 30%">
+					<col style="width : 20%">
+					<col style="width : 30%">
+				</colgroup>
+				<tr>
+					<th>
+						<label>출고처명</label>
+					</th>
+					<td>
+						<div class="complex-condition">
+							<input id="warehouseName" name="warehouseName" class="comm-input" type="text" maxlength="100"
+								style="width: 100%;">
+						</div>
+					</td>
+					<th>
+						<label>출고처 그룹</label>
+					</th>
+					<td>
+						<div class="complex-condition">
+							<input id="warehouseGroup" class="fb__custom__select left-input" name="warehouseGroup" type="text"
+								style="width:200px;">
+						</div>
+					</td>
+				</tr>
+			</table>
+			<div class="btn-area">
+				<button id="searchBtn" type="button" class="btn-point btn-l">조회</button>
+				<button id="clearBtn" type="button" class="btn-white btn-l">초기화</button>
+			</div>
+		</form>
+	</div>
+
+
+	<!-- 달력 감싸는 태그 -->
+	<div class="fb__calendar-wrapper">
+		<!-- 상단 달력 헤더 -->
+		<div class="fb__calendar__header">
+			<div class="left">
+				<span class="icon">▶</span>
+				<span>목록</span>
+			</div>
+
+			<div class="center">
+				<p class="center__prev">
+					<span id="prevDate" class="fb__calendar__date marginR5">
+						19-12
+					</span>
+					<span id="prevCount">()</span>
+				</p>
+				<div>
+					<button id="calendar-prev" class="fb__calendar__btn" type="button"><span
+							class="fc-icon fc-icon-chevron-left"></span></button>
+					<div class="center__current-wrapper">
+						<p class="center__current">
+							<span id="currentDate" class="fb__calendar__date marginR5">
+								2020-01
+							</span>
+							<span id="currentCount">()</span>
+						</p>
+						<div class="datePicker-hide">
+							<input id="datePicker" type="text">
+						</div>​
+					</div>
+					<button id="calendar-next" class="fb__calendar__btn" type="button"><span
+							class="fc-icon fc-icon-chevron-right"></span></button>
+				</div>
+				<p class="center__next">
+					<span id="nextDate" class="fb__calendar__date marginR5">
+						20-02
+					</span>
+					<span id="nextCount">()</span>
+				</p>
+			</div>
+
+			<div class="right">
+				<div class="fb__custom__checkbox">
+					<label>
+						<input type="checkbox" id="toggleView">
+						<span>목록으로 보기</span>
+					</label>
+				</div>
+				<button id="openPopupBtn" class="btn-white btn-l">휴일 등록</button>
+			</div>
+		</div>
+		<!-- 상단 달력 헤더 End -->
+
+		<!-- 상단 달력 -->
+		<div id="calendar" class="fb__calendar"></div>
+		<!-- 상단 달력 End -->
+	</div>
+
+	<!-- 하단 달력 감싸는 태그 -->
+	<div class="fb__calendar-wrapper" style="margin-top: 50px;">
+		<!-- 하단 달력 헤더 -->
+		<div class="fb__calendar__header">
+			<div class="center">
+				<div class="center__current-wrapper">
+					<p class="center__current">
+						<span id="next-currentDate" class="fb__calendar__date marginR5">
+							2020-01
+						</span>
+						<span id="next-currentCount">(0)</span>
+					</p>
+				</div>
+			</div>
+		</div>
+		<!-- 하단 달력 헤더 End -->
+
+		<!-- 하단 달력 -->
+		<div id="calendar--next" class="fb__calendar"></div>
+	</div>
+
+	<!-- 휴일 등록 팝업 -->
+	<div id="kendoPopup">
+		<form id="popupForm">
+			<div>
+				<textarea class="comm-textarea" name="holidayName" id="holidayName" placeholder="출고처 입력"
+					style="width:100%;"></textarea>
+			</div>
+			<div>
+				<input id="popupPicker" name="holidayDate" type="text">
+			</div>
+			<div class="btn-area">
+				<button type="submit" id="saveHoliday" class="btn-point btn-l">저장</button>
+				<button type="button" id="cancelHoliday" class="btn-white btn-l">초기화</button>
+			</div>
+		</form>
+	</div>
+</section>
+
+
+<script type="text/javascript">
+	$(document).ready(function () {
+		"use strict";
+
+		fnInitialize();	//Initialize Page Call ---------------------------------
+
+		// Constants
+		// 캘린더 이벤트 소스 아이디 => 이 아이디를 가지고 이벤트소스를 삭제 후 새로운 데이터로 계속 갱신
+		var PAGE_SIZE = 20;
+		var SOURCE_ID = "test";
+		var FULL_DATE_FORMAT = "yyyy-MM-dd"
+		var DATE_FORMAT = "yyyy-MM";
+		var VIEW_TYPE = {
+			month: "dayGridMonth",
+			week: "dayGridWeek"
+		}
+
+		// 날짜 변수 세팅
+		var todayDate = new Date();
+
+		// 캘린더 초기 날짜 설정 변수
+		var initialDate = todayDate.oFormat(FULL_DATE_FORMAT);
+
+		// 다음달
+		var nextDate = todayDate.getNextMonth();
+		// 이전달
+		var prevDate = todayDate.getPrevMonth();
+		var datePicker = null;
+		var popupPicker = null;
+
+		// 출고처 개수 담을 객체
+		var counts = {
+			next: 0,
+			current: 0,
+			prev: 0
+		}
+
+
+		// Functions..
+		//Initialize PageR
+		function fnInitialize() {
+			$scope.$emit('fnIsMenu', { flag: 'true' });
+
+			fnPageInfo({
+				PG_ID: 'warehouse',
+				callback: init
+			});
+		}
+
+		// 초기 설정
+		function init() {
+			initPopup();
+			initCalendar();
+			initDatePicker();
+			initWareHouseGroup();
+			bindEvents();
+			render();
+			$scope.fnSearch = fnSearch;
+		}
+
+		//Functions..
+		// 화면 렌더링
+		function render() {
+			renderDate();
+			renderCount();
+
+			// destroy를 안하면 dayCellDidMount훅을 타지 않는다.
+			var type = calendar.getViewType();
+
+			calendar.destroy().render();
+			nextCalendar.destroy().render();
+
+			// 타입이 목록으로 보기면 Calendar에서 제공하는 기본 헤더를 보여준다.
+			if (type === "dayGridWeek") {
+				toggleHeader(true);
+			} else {
+				toggleHeader(false);
+			}
+		}
+
+		// 데이트피커 초기화
+		function initDatePicker() {
+			datePicker = fnKendoDatePicker({
+				id: "datePicker",
+				format: FULL_DATE_FORMAT,
+				change: changeDatePicker
+			});
+
+			popupPicker = fnKendoDatePicker({
+				id: "popupPicker",
+				format: FULL_DATE_FORMAT,
+				defVal: initialDate
+			});
+		}
+
+		// 켄도데이트피커 클릭 이벤트
+		function changeDatePicker(e) {
+
+			var pickedDate = e.sender.value();
+
+			if (!pickedDate instanceof Date || !pickedDate) return;
+
+			// 선택된 날짜를 기준으로 todayDate, prevDate, nextDate 값 변경
+			todayDate = pickedDate;
+			prevDate = todayDate.getPrevMonth();
+			nextDate = todayDate.getNextMonth();
+
+			// 선택된 날짜를 기준으로 출고처 개수를 변경
+			counts.current = getWarehouseCount(todayDate.getMonth());
+			counts.prev = getWarehouseCount(prevDate.getMonth());
+			counts.next = getWarehouseCount(nextDate.getMonth());
+
+			// 선택된 날짜로 달력 날짜 변경
+			calendar.setDate(todayDate);
+			nextCalendar.setDate(nextDate);
+
+			// 화면 전체 다시 렌더링
+			render();
+		}
+
+		// 이벤트 바인딩
+		function bindEvents() {
+			// 달력 네비게이션 버튼
+			var $nextBtn = $("#calendar-next");
+			var $prevBtn = $("#calendar-prev");
+
+			//목록으로 보기 버튼 
+			var toggleView = $("#toggleView");
+
+			// 휴일 등록 버튼
+			var openPopupBtn = $("#openPopupBtn");
+
+			// 조회 버튼
+			var searchBtn = $("#searchBtn");
+			var clearBtn = $("#clearBtn")
+
+			// 팝업 버튼
+			var popupCancelBtn = $("#cancelHoliday");
+			var popupSaveBtn = $("#saveHoliday");
+
+			// 팝업 Form
+			var $popupForm = $("#popupForm");
+
+
+			// 목록으로 보기 상단 버튼
+			var $topTodayBtn = $("#calendar .fc-today-button");
+			var $topPrevBtn = $("#calendar .fc-prev-button");
+			var $topNextBtn = $("#calendar .fc-next-button");
+
+
+
+			// 다음 달로 이동
+			$nextBtn.on("click", function (e) {
+				// 날짜 변경
+				prevDate = todayDate;
+				todayDate = nextDate;
+				nextDate = todayDate.getNextMonth();
+
+				// 출고처 개수 변경
+				counts.prev = counts.current;
+				counts.current = counts.next;
+				counts.next = getWarehouseCount(nextDate.getMonth());
+
+				$("#datePicker").data("kendoDatePicker").value(todayDate);
+				calendar.next();
+				nextCalendar.next();
+				renderDate();
+				renderCount();
+			})
+
+			// 이전 달로 이동
+			$prevBtn.on("click", function (e) {
+				// 날짜 변경
+				nextDate = todayDate;
+				todayDate = prevDate;
+				prevDate = todayDate.getPrevMonth();
+
+				// 출고처 개수 변경
+				counts.next = counts.current;
+				counts.current = counts.prev;
+				counts.prev = getWarehouseCount(prevDate.getMonth());
+
+				$("#datePicker").data("kendoDatePicker").value(todayDate);
+				calendar.prev();
+				nextCalendar.prev();
+				renderDate();
+				renderCount();
+			})
+
+			// 목록으로 보기 클릭 이벤트 => 달력 뷰 타입 변경
+			toggleView.on("change", function (e) {
+				var checked = e.target.checked;
+				if (checked) {
+					$("#calendar").hide();
+					$("#calendar--next").hide();
+				} else {
+					$("#calendar").show();
+					$("#calendar--next").show();
+				}
+			})
+
+			// 휴일 등록 이벤트
+			openPopupBtn.on("click", function (e) {
+				$popupForm.formClear(true);
+				openPopup("create");
+			})
+
+			// 조회 버튼 이벤트
+			searchBtn.on("click", function (e) {
+				fnSearch();
+			})
+
+			// 초기화 버튼
+			clearBtn.on("click", function (e) {
+				fnClear();
+			})
+
+
+			// 팝업 취소 버튼
+			popupCancelBtn.on("click", function (e) {
+				$popupForm.formClear(true);
+			})
+
+			// 팝업 저장 버튼
+			popupSaveBtn.on("click", function (e) {
+				e.preventDefault();
+
+				var _date = $("#popupPicker").val();
+				var _title = $("#holidayName").val();
+
+				if (!_date || !_title) {
+					fnKendoMessage({
+						message: "날짜 혹은 출고처 이름을 입력해주세요.",
+					})
+					return;
+				}
+
+				// 달력에 출고처 데이터 변경 => ajax통신으로 변경
+				calendar.setEvent(_title, _date, SOURCE_ID);
+				nextCalendar.setEvent(_title, _date, SOURCE_ID);
+
+				// 출고처 개수 갱신
+				counts.prev = getWarehouseCount(prevDate.getMonth());
+				counts.current = getWarehouseCount(todayDate.getMonth());;
+				counts.next = getWarehouseCount(nextDate.getMonth());
+
+				render();
+
+				fnKendoMessage({
+					message: "저장되었습니다.",
+					ok: function (e) {
+						fnClose();
+					}
+				})
+			})
+
+
+		}
+
+		/******************* FullCalendar Functions *******************/
+		// FullCalendar 생성
+		function initCalendar() {
+			// 이번달 달력
+			var calendarEl = $("#calendar")[0];
+			var calendarOpt = {
+				// events를 기본적으로 빈 배열로 초기화해야 달력이 그려진다.
+				eventSources: [{
+					id: SOURCE_ID,
+					events: [],
+				}],
+				eventContent: eventContent,
+				eventDidMount: eventDidMount,
+				dayCellDidMount: dayCellDidMount,
+				eventClassNames: "fb__calendar__event",
+				height: 860,
+				// 달력 셀 선택시 발생하는 이벤트
+				select: onSelectCell,
+				// 이벤트 => 출고처 제목 클릭시 발생하는 이벤트
+				eventClick: onClickEventCell,
+				// 초기 설정 날짜
+				initialDate: initialDate ? initialDate : null,
+			}
+
+			var calendar = new FbCalendar({ target: calendarEl, options: calendarOpt });
+			window.calendar = calendar;
+
+
+			//다음달 달력
+			var nextCalendarEl = $("#calendar--next")[0];
+			var nextCalendarOpt = {
+				eventSources: [{
+					id: SOURCE_ID,
+					events: [],
+				}],
+				eventContent: eventContent,
+				eventDidMount: eventDidMount,
+				dayCellDidMount: dayCellDidMount,
+				eventClassNames: "fb__calendar__event",
+				height: 860,
+				select: onSelectCell,
+				eventClick: onClickEventCell,
+				initialDate: nextDate ? nextDate : null,
+			}
+
+			var nextCalendar = new FbCalendar({ target: nextCalendarEl, options: nextCalendarOpt });
+			window.nextCalendar = nextCalendar;
+		}
+
+		// 지난달, 이번달, 다음달 출력
+		function renderDate() {
+			// 상단 달력 헤더
+			var $current = $("#currentDate");
+			var $prev = $("#prevDate");
+			var $next = $("#nextDate")
+
+			// 하단 달력 헤더
+			var $nextCurrent = $("#next-currentDate");
+
+			$prev.html(prevDate.oFormat(DATE_FORMAT));
+			$next.html(nextDate.oFormat(DATE_FORMAT));
+			$current.html(todayDate.oFormat(DATE_FORMAT));
+			$nextCurrent.html(nextDate.oFormat(DATE_FORMAT));
+		}
+
+		// 달 별 출고처 개수 출력
+		function renderCount() {
+			var $next = $("#nextCount");
+			var $prev = $("#prevCount");
+			var $current = $("#currentCount");
+
+			var $nextCurrent = $("#next-currentCount");
+
+			$next.html("(" + counts.next + ")");
+			$prev.html("(" + counts.prev + ")");
+			$current.html("(" + counts.current + ")");
+			$nextCurrent.html("(" + counts.next + ")");
+		}
+
+
+
+		// 달력 리스트로 표현 시 헤더 노출
+		function toggleHeader(toggle) {
+			var $el = $(".fc-header-toolbar");
+
+			$el.each(function () {
+				var self = $(this);
+				var _visibility = toggle ? "visible" : "hidden";
+
+				self.css("visibility", _visibility);
+			})
+		}
+
+		// Calendar 이벤트(타이틀)가 매핑되는 템플릿
+		function eventContent(arg) {
+			var el = "";
+			var title = arg.event.title;
+
+			if (!title || !title.length) {
+				// 타이틀이 없거나 빈 배열인 경우
+
+				el = document.createElement("div");
+				el.className = "event-item event-button-item";
+
+				var button = document.createElement("button");
+				button.className = "btn-s btn-white";
+				button.innerHTML = "추가"
+				el.appendChild(button);
+
+			}
+			// else if (title.indexOf(",") !== -1) {
+			else {
+				//타이틀이 배열로 전달되었을 경우
+
+				title = title.split(",");
+				el = document.createElement("ul");
+				el.classList.add("event-list");
+
+				el.innerHTML = title.map(function (t) {
+					return '<li class="event-item group">' + t + '</li>'
+				}).join("");
+			}
+			// else {
+			// 	// 일반적인 경우
+			// 	el = document.createElement("div");
+			// 	el.classList.add("event-item");
+			// 	el.innerHTML = title;
+			// }
+
+			var arrayOfDomNodes = [el]
+			return { domNodes: arrayOfDomNodes }
+		}
+
+		// 캘린더 이벤트가 모두 렌더링되고 실행되는 함수
+		function eventDidMount(arg) {
+			var $td = arg.el.closest("td");
+			var buttonOverlay = $td.querySelector(".button-overlay");
+
+			// 이벤트가 있으면, 추가 버튼을 display : none 처리한다.
+			if (buttonOverlay) {
+				buttonOverlay.style.display = "none";
+			}
+
+			return true;
+		}
+
+		// 캘린더 각 셀이 렌더링되고 실행되는 함수
+		function dayCellDidMount(arg) {
+			var el = arg.el;
+			var cell = el.querySelector(".fc-daygrid-day-frame");
+
+			var div = document.createElement("div");
+			div.className = "button-overlay";
+
+			var button = document.createElement("button");
+			button.className = "btn-s btn-white";
+			button.innerHTML = "추가"
+
+			div.appendChild(button);
+			cell.appendChild(div);
+			return true;
+		}
+
+		// 달력 셀 클릭 이벤트
+		function onSelectCell(info) {
+			console.log("달력 셀 클릭 이벤트");
+			var start = info.startStr;
+			var $el = this.el;
+			var _list = null;
+
+			// 해당 셀이 포함되어있는 달력 객체를 가져온다.
+			var _calendar = $el === calendar.el ? calendar : nextCalendar;
+
+			// 해당 날짜에 출고처 리스트가 있는지 체크한다.
+			var _list = _calendar.getEventsByDate(start);
+
+			$("#popupForm").formClear(true);
+			// 출고처 데이트피커에 현재 날짜 설정
+			$("#popupPicker").data("kendoDatePicker").value(start);
+
+			// 출고처 리스트가 있다면 설정 팝업
+			if (_list) {
+
+				var _holidayData = _list.title;
+				openPopup("update");
+
+				// 출고처 입력 textarea에 현재 데이터 설정
+				$("#holidayName").val(_holidayData);
+
+			} else {
+				// 출고처 리스트가 없다면 등록 팝업
+				openPopup("create");
+			}
+		}
+
+		// 달력 출고처(이벤트) 클릭 이벤트
+		function onClickEventCell(info) {
+			console.log("달력 출고처/이벤트 클릭 이벤트");
+
+			var start = info.event.startStr;
+			var $el = info.view.calendar.el;
+			var _calendar = $el === calendar.el ? calendar : nextCalendar;
+			var _holidayData = info.event.title;
+
+			openPopup("update");
+			$("#popupForm").formClear(true);
+
+			// 출고처 입력 textarea에 현재 데이터 설정
+			$("#holidayName").val(_holidayData);
+
+			// 출고처 데이트피커에 현재 날짜 설정
+			$("#popupPicker").data("kendoDatePicker").value(start);
+		}
+
+		/******************* FullCalendar Functions End *******************/
+
+		/******************* Popup Functions *******************/
+
+		// 팝업창 초기화
+		function initPopup() {
+			var $popup = $("#kendoPopup");
+			$popup.kendoWindow({
+				visible: false,
+				modal: true
+			});
+		}
+
+		// 팝업창 열기
+		function openPopup(type) {
+
+			var title = type === "update" ? "휴일 설정" : "휴일 등록";
+			var opt = {
+				id: "kendoPopup",
+				width: 500,
+				height: "auto",
+				title: { nullMsg: title },
+			}
+
+			fnKendoInputPoup(opt);
+		}
+
+		/******************* Popup Functions End *******************/
+
+		/******************* DropDownList Functions *******************/
+
+		// 출고처 그룹 드롭다운 리스트
+		function initWareHouseGroup() {
+			fnKendoDropDownList({
+				id: "warehouseGroup",
+				url: "/admin/comn/getCodeList",
+				params: { "stCommonCodeMasterCode": "WAREHOUSE_GROUP", "useYn": "Y" },
+				tagId: 'warehouseGroupCode',
+				blank: "선택해주세요"
+			});
+		}
+
+		/******************* DropDownList Functions End *******************/
+
+		/******************* Form Functions *******************/
+
+		// 조회 버튼 이벤트
+		function fnSearch() {
+			var data = null;
+			data = $('#searchForm').formSerialize(true);
+
+			var query = {
+				page: 1,
+				pageSize: PAGE_SIZE,
+				filterLength: fnSearchData(data).length,
+				filter: {
+					filters: fnSearchData(data)
+				}
+			};
+
+
+			// 조회 버튼 클릭시 query를 생성 => ajax요청으로 데이터를 받아온다.
+			$.ajax({
+				url: "/admin/ur/warehouse/getWarehouseList",
+				data: query,
+				type: "POST",
+				dataType: "json"
+			}).done(function (json) {
+				// data가 날짜별로 안들어왔을 경우 예시
+				var rows = json.data.rows;
+
+				// rows의 데이터를 Calendar에 eventSources의 events : []에 넣어주기 위한 데이터로 변경합니다.
+				// 달력에 정상적으로 렌더링하기 위해서 events는 title : 제목, start : 해당 날짜로 구성되어야 합니다.
+				var newRows = rows.map(item => {
+					return {
+						title: item.warehouseName,
+						start: new Date(item.createDate).oFormat(FULL_DATE_FORMAT)
+					}
+				})
+
+				// groupBy를 통해서 각 날짜별로 모아진 데이터를 생성한다.
+				newRows = groupBy(newRows, "start");
+
+				// 기존의 이벤트 소스를 삭제합니다.
+				calendar.removeEventSource(SOURCE_ID);
+				nextCalendar.removeEventSource(SOURCE_ID);
+
+				// 두 캘린더에 새로운 이벤트 소스를 추가한다,
+				calendar.addEventSource(newRows, SOURCE_ID);
+				nextCalendar.addEventSource(newRows, SOURCE_ID);
+
+				// 월 별 출고처 개수 설정
+				counts.current = getWarehouseCount(todayDate.getMonth());
+				counts.next = getWarehouseCount(nextDate.getMonth());
+				counts.prev = getWarehouseCount(prevDate.getMonth());
+
+				// 다시 화면을 렌더링한다.
+				render();
+
+			}).fail(function (xhr, status, errorThrown) {
+				console.log(xhr, status, errorThrown)
+			}).always(function (xhr, status) {
+				console.log("완료");
+			})
+		}
+
+		function fnClear() {
+			// $("#popupForm").formClear(true);
+			$("#searchForm").formClear(true);
+		}
+
+		function fnClose() {
+			var kendoWindow = $('#kendoPopup').data('kendoWindow');
+			kendoWindow.close();
+		}
+
+		/******************* Form Functions End *******************/
+
+		/*
+		* list : 정렬시킬 배열
+		* keyGetter : 기준으로 정렬시킬 키 값
+		*/
+		function groupBy(list, keyGetter) {
+			// 배열을 생성
+			const map = [];
+			list.forEach((item) => {
+				// item의 키값을 가져온다.
+				var key = item[keyGetter];
+
+				// map안에서 현재 item의 start값과 같은 start값을 가진 데이터의 인덱스 값을 가져온다.
+				var idx = map.findIndex(function (m) { return m.start === item.start });
+
+				// 같은 값이 있을 경우 title 배열에 현재 아이템의 title값을 추가한다.
+				if (idx >= 0) {
+					map[idx].title.push(item.title);
+				} else {
+					// 없을 경우 map 배열에 새로운 데이터를 추가한다.
+					map.push({
+						title: [item.title],
+						start: item.start,
+					})
+				}
+			});
+
+			return map;
+		}
+
+		// 해당 월 출고처 개수
+		function getWarehouseCount(month) {
+			var count = 0;
+
+			// 인자로 전달받은 month에 존재하는 events 데이터를 가져옵니다.
+			var events = calendar.getEventsByMonth(month);
+
+			// events의 title값이 출고처 이름에 해당하므로 count에 모두 더해줍니다.
+			for (var i = 0; i < events.length; i++) {
+				count += events[i].title.split(",").length;
+			}
+
+			return count;
+		}
+
+		/******************* Search Functions End *******************/
+
+
+	});
+
+</script>

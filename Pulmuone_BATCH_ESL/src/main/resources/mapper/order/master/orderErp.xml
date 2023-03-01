@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.batch.esl.infra.mapper.order.master.OrderErpMapper">
+
+    <!-- 잇슬림 일일배송 주문 리스트 조회 -->
+    <select id="selectEatsslimOrderList" resultType="EatsslimOrderListVo">
+        /* orderErp.selectEatsslimOrderList */
+        SELECT
+        x.OD_ORDER_ID AS odOrderId
+        , x.ODID AS odid
+        , x.OD_ORDER_DETL_ID AS odOrderDetlId
+        , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+        , x.BUYER_NM AS buyerNm
+        , x.RECV_NM AS recvNm
+        , x.RECV_ZIP_CD AS recvZipCd
+        , x.RECV_ADDR1 AS recvAddr1
+        , x.RECV_ADDR2 AS recvAddr2
+        , x.RECV_HP AS recvHp
+        , x.RECV_TEL AS recvTel
+        , x.DELIVERY_MSG AS deliveryMsg
+        , x.DOOR_MSG_NM AS doorMsgNm
+        , x.DOOR_MSG AS doorMsg
+        , x.RECOMMENDED_PRICE AS recommendedPrice
+        , x.SALE_PRICE AS salePrice
+        , x.SHIPPING_PRICE AS shippingPrice
+        , x.CART_COUPON_PRICE AS cartCouponPrice
+        , x.GOODS_COUPON_PRICE AS goodsCouponPrice
+        , x.DIRECT_PRICE AS directPrice
+        , x.PAID_PRICE AS paidPrice
+        , x.CREATE_DT AS createDt
+        , x.PDM_GROUP_CD AS pdmGroupCd
+        , x.UR_STORE_ID AS urStoreId
+        , x.ORDER_CANCEL_CNT AS orderCancelCnt
+        , x.DELIVERY_DT AS deliveryDt
+        , x.BUYER_TYPE_CD AS buyerTypeCd
+        , x.AGENT_TYPE_CD AS agentTypeCd
+        , x.GOODS_CYCLE_TP AS goodsCycleTp
+        , x.GOODS_CYCLE_TERM_TP AS goodsCycleTermTp
+        FROM
+        (
+        SELECT
+        oo.OD_ORDER_ID
+        , oo.ODID
+        , ood.OD_ORDER_DETL_ID
+        , ood.OD_ORDER_DETL_SEQ
+        , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+        , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+        , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+        , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+        , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+        , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+        , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+        , osz.DELIVERY_MSG
+        , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+        , FN_DECRYPT(osz.DOOR_MSG) AS DOOR_MSG
+        , ood.RECOMMENDED_PRICE
+        , ood.SALE_PRICE
+        , op.SHIPPING_PRICE
+        , ood.CART_COUPON_PRICE
+        , ood.GOODS_COUPON_PRICE
+        , ood.DIRECT_PRICE
+        , ood.PAID_PRICE
+        , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d') AS CREATE_DT
+        , (SELECT PDM_GROUP_CD FROM IL_ITEM WHERE IL_ITEM_CD = ood.IL_ITEM_CD) as PDM_GROUP_CD
+        , (SELECT UR_STORE_DM_ID FROM UR_STORE WHERE UR_STORE_ID = oodd.UR_STORE_ID) AS UR_STORE_ID
+        , oodd.ORDER_CNT AS ORDER_CANCEL_CNT
+        , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d') AS DELIVERY_DT
+        , oo.BUYER_TYPE_CD
+        , oo.AGENT_TYPE_CD
+        , oodd.GOODS_CYCLE_TP
+        , oodd.GOODS_CYCLE_TERM_TP
+        FROM OD_ORDER oo
+        INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+        INNER JOIN OD_ORDER_DETL_DAILY oodd ON oo.OD_ORDER_ID = oodd.OD_ORDER_ID AND ood.OD_ORDER_DETL_ID = oodd.OD_ORDER_DETL_ID
+        INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID AND op.OD_CLAIM_ID = 0
+        INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+        INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY IN (<foreach collection="urWarehouseId" item="urWarehouseId" separator=",">#{urWarehouseId}</foreach>)
+        INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+        WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+        AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+        AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+        AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+        AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ) x
+        WHERE NULLIF(x.PDM_GROUP_CD, '') IS NOT NULL
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 잇슬림 택배배송 주문 리스트 조회 -->
+    <select id="selectEatsslimNormalDeliveryOrderList" resultType="EatsslimOrderListVo">
+        /* orderErp.selectEatsslimNormalDeliveryOrderList */
+        SELECT
+        x.OD_ORDER_ID AS odOrderId
+        , x.ODID AS odid
+        , x.OD_ORDER_DETL_ID AS odOrderDetlId
+        , x.OD_ORDER_DETL_SEQ AS odOrderDetlSeq
+        , x.BUYER_NM AS buyerNm
+        , x.RECV_NM AS recvNm
+        , x.RECV_ZIP_CD AS recvZipCd
+        , x.RECV_ADDR1 AS recvAddr1
+        , x.RECV_ADDR2 AS recvAddr2
+        , x.RECV_HP AS recvHp
+        , x.RECV_TEL AS recvTel
+        , x.DELIVERY_MSG AS deliveryMsg
+        , x.DOOR_MSG_NM AS doorMsgNm
+        , x.DOOR_MSG AS doorMsg
+        , x.RECOMMENDED_PRICE AS recommendedPrice
+        , x.SALE_PRICE AS salePrice
+        , x.SHIPPING_PRICE AS shippingPrice
+        , x.CART_COUPON_PRICE AS cartCouponPrice
+        , x.GOODS_COUPON_PRICE AS goodsCouponPrice
+        , x.DIRECT_PRICE AS directPrice
+        , x.PAID_PRICE AS paidPrice
+        , x.CREATE_DT AS createDt
+        , x.PDM_GROUP_CD AS pdmGroupCd
+        , x.UR_STORE_ID AS urStoreId
+        , x.ORDER_CANCEL_CNT AS orderCancelCnt
+        , x.DELIVERY_DT AS deliveryDt
+        , x.BUYER_TYPE_CD AS buyerTypeCd
+        , x.AGENT_TYPE_CD AS agentTypeCd
+        , x.GOODS_CYCLE_TP AS goodsCycleTp
+        , x.GOODS_CYCLE_TERM_TP AS goodsCycleTermTp
+        FROM
+        (
+        SELECT
+        oo.OD_ORDER_ID
+        , oo.ODID
+        , ood.OD_ORDER_DETL_ID
+        , ood.OD_ORDER_DETL_SEQ
+        , FN_DECRYPT(oo.BUYER_NM) AS BUYER_NM
+        , FN_DECRYPT(osz.RECV_NM) AS RECV_NM
+        , FN_DECRYPT(osz.RECV_ZIP_CD) AS RECV_ZIP_CD
+        , FN_DECRYPT(osz.RECV_ADDR1) AS RECV_ADDR1
+        , FN_DECRYPT(osz.RECV_ADDR2) AS RECV_ADDR2
+        , REPLACE(FN_DECRYPT(osz.RECV_HP),'-','') AS RECV_HP
+        , REPLACE(FN_DECRYPT(osz.RECV_TEL),'-','') AS RECV_TEL
+        , osz.DELIVERY_MSG
+        , FN_COMN_CODE_DIC(osz.DOOR_MSG_CD) AS DOOR_MSG_NM
+        , FN_DECRYPT(osz.DOOR_MSG) AS DOOR_MSG
+        , ood.RECOMMENDED_PRICE
+        , ood.SALE_PRICE
+        , op.SHIPPING_PRICE
+        , ood.CART_COUPON_PRICE
+        , ood.GOODS_COUPON_PRICE
+        , ood.DIRECT_PRICE
+        , ood.PAID_PRICE
+        , DATE_FORMAT(oo.CREATE_DT, '%Y%m%d') AS CREATE_DT
+        , (SELECT PDM_GROUP_CD FROM IL_ITEM WHERE IL_ITEM_CD = ood.IL_ITEM_CD) as PDM_GROUP_CD
+        , '' AS UR_STORE_ID
+        , (ood.ORDER_CNT - ood.CANCEL_CNT) AS ORDER_CANCEL_CNT
+        , DATE_FORMAT(ood.DELIVERY_DT, '%Y%m%d') AS DELIVERY_DT
+        , oo.BUYER_TYPE_CD
+        , oo.AGENT_TYPE_CD
+        , '0' AS GOODS_CYCLE_TP
+        , '0' AS GOODS_CYCLE_TERM_TP
+        FROM OD_ORDER oo
+        INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+        INNER JOIN OD_PAYMENT op ON ood.OD_ORDER_ID = op.OD_ORDER_ID AND op.OD_CLAIM_ID = 0
+        INNER JOIN OD_SHIPPING_ZONE osz ON ood.OD_ORDER_ID = osz.OD_ORDER_ID AND ood.OD_SHIPPING_ZONE_ID = osz.OD_SHIPPING_ZONE_ID
+        INNER JOIN PS_CONFIG pc ON ood.UR_WAREHOUSE_ID = pc.PS_VAL AND pc.PS_KEY IN (<foreach collection="urWarehouseId" item="urWarehouseId" separator=",">#{urWarehouseId}</foreach>)
+        INNER JOIN UR_WAREHOUSE uw ON ood.UR_WAREHOUSE_ID = uw.UR_WAREHOUSE_ID AND uw.ORDER_CHANGE_TP = 'ORDER_CHANGE_TP.ORDER_IF'
+        WHERE ood.BATCH_EXEC_FL = 'N' /* 배치여부 */
+        AND oo.ORDER_YN = 'Y' /* 정상주문여부 */
+        AND (ood.ORDER_CNT - ood.CANCEL_CNT) > 0 /* 주문수량-취소수량 */
+        AND ood.ORDER_IF_DT BETWEEN DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00') AND DATE_FORMAT(NOW(),'%Y-%m-%d 23:59:59') /* 인터페이스일자 */
+        AND ood.ORDER_STATUS_CD = #{orderStatusCd} /* 결제완료 */
+        ) x
+        WHERE NULLIF(x.PDM_GROUP_CD, '') IS NOT NULL
+        ORDER BY x.OD_ORDER_ID, x.OD_ORDER_DETL_ID
+    </select>
+
+    <!-- 성공 주문 배치완료 업데이트 (매출 O) -->
+    <update id="putOrderBatchCompleteUpdate" >
+		/* orderErp.putOrderBatchCompleteUpdate */
+		UPDATE OD_ORDER_DETL
+		   SET BATCH_EXEC_FL = 'Y'
+		       , BATCH_EXEC_DT = now()
+		       , SALES_EXEC_FL = 'Y'
+		       , SALES_EXEC_DT = now()
+		       , ORDER_STATUS_CD = #{orderStatusCd}
+		       , DR_DT = now()
+		       , DR_ID = 0
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+    <!-- 대체배송 주문상세 업데이트 -->
+    <update id="putAlternateDeliveryOrder">
+        /* orderErp.putAlternateDeliveryOrder */
+		UPDATE OD_ORDER_DETL
+		   SET ALTERNATE_DELIVERY_TP = #{alternateDeliveryTp}
+		 WHERE OD_ORDER_DETL_ID = #{odOrderDetlId}
+    </update>
+
+    <!-- 주문 상세 상태 변경 이력 등록 -->
+    <insert id="addOrderDetailStatusHist">
+		/*	orderErp.addOrderDetailStatusHist  */
+		INSERT INTO OD_ORDER_DETL_HIST (
+			  OD_ORDER_ID
+			, OD_ORDER_DETL_ID
+			, OD_ORDER_DETL_SEQ
+			, PREV_STATUS_CD
+			, STATUS_CD
+			, HIST_MSG
+			, CREATE_ID
+			, CREATE_DT
+		)
+		SELECT  OD_ORDER_ID
+			  , OD_ORDER_DETL_ID
+			  , OD_ORDER_DETL_SEQ
+			  , #{statusCd}
+			  , ORDER_STATUS_CD
+			  , #{histMsg}
+			  , #{createId}
+			  , NOW()
+		FROM	OD_ORDER_DETL
+		WHERE	1 = 1
+		AND		OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</insert>
+</mapper>

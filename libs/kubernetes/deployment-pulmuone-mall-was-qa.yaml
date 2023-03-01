@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qa-mall-was-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qa-mall-dev-was
+  template:
+    metadata:
+      labels:
+        app: qa-mall-dev-was
+    spec:
+      containers:
+        - name: qa-mall-dev-was
+          image: dev-pulmuone-image.kr.ncr.ntruss.com/pulmuone-mall-qa:latest
+          #resources:
+          # requests:
+          #  cpu: "50m"
+          #  memory: "800Mi"
+          # limits:
+          #  cpu: "50m"
+          #  memory: "800Mi"
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: NODE_IP
+              valueFrom: {fieldRef: {fieldPath: status.hostIP}}
+            - name: NODE_NAME
+              valueFrom: {fieldRef: {fieldPath: spec.nodeName}}
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: OKIND
+              value: "deployment-pulmuone-mall-was-qa"
+            - name: license
+              value: x4fmd21m01afr-z7n3btpmps49js-z362f58rhh5mh6
+          ports:
+            - containerPort: 8180
+          volumeMounts:
+            - name: nfsimage
+              mountPath: /data
+            - name: tz-config
+              mountPath: /etc/localtime
+      volumes:
+        - name: nfsimage
+          nfs:
+            path: /n2580623_dev
+            server: 10.250.53.86
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/Asia/Seoul
+      imagePullSecrets:
+        - name: dev-pulmuone-secret
+

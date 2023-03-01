@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.log.SystemLogMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 접속로그
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.29		dora47          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getConnectLogListCount" resultType="int">
+		/* log.getConnectLogListCount */
+		SELECT
+		  COUNT(*) as total
+		FROM
+			UR_CONNECT_LOG UCL
+			INNER JOIN UR_USER UU
+				ON UCL.UR_USER_ID = UU.UR_USER_ID
+			LEFT OUTER JOIN UR_PCID UP
+				ON UCL.UR_PCID_CD = UP.UR_PCID_CD
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ACCESS_LOG_DIV.1')">
+				AND UPPER(UU.LOGIN_ID) LIKE UPPER(CONCAT(#{condiValue},'%'))
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ACCESS_LOG_DIV.2')">
+				AND UU.USER_NM = FN_ENCRYPT(#{condiValue})
+			</if>
+		    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ACCESS_LOG_DIV.3')">
+				AND UCL.IP LIKE CONCAT(#{condiValue}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(service)">
+			    AND UCL.SERVICE = #{service}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND UCL.LOGIN_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    </if>
+			</if>
+
+		</where>
+	</select>
+
+	<resultMap type="kr.co.pulmuone.v1.system.log.dto.GetConnectLogListResultVo" id="getConnectLogsResultMap">
+		<result column="LOGIN_ID"  property="loginId"/>			<!-- 접속ID -->
+		<result column="USER_NAME"  property="userName"/>		<!-- 접속자 -->
+		<result column="SERVICE_NAME"  property="serviceName"/>	<!-- 서비스 -->
+		<result column="IP"  property="ip"/>					<!-- 접속IP -->
+		<result column="LOGIN_DATE"  property="loginDate"/>		<!-- 로그인 시간 -->
+		<result column="LOGOUT_DATE"  property="logoutDate"/>	<!-- 로그아웃 시간 -->
+		<result column="SUCCESS_YN" property="successYn"/>		<!-- 구분 -->
+		<result column="AGENT" property="agent"/>				<!-- userAgent 값 -->
+	</resultMap>
+
+	<select id="getConnectLogList" resultMap="getConnectLogsResultMap">
+		/* log.getConnectLogList */
+		SELECT
+		  UCL.UR_CONNECT_LOG_ID
+		  , UCL.UR_CONNECT_LOG_ID AS ID
+		  , UU.LOGIN_ID
+		  , FN_DECRYPT(UU.USER_NM) AS USER_NAME
+		  , UCL.SERVICE
+		  , FN_COMN_CODE_DIC (UCL.SERVICE) AS SERVICE_NAME
+		  , UCL.IP
+		  , DATE_FORMAT(UCL.LOGIN_DT, '%Y-%m-%d %T') AS LOGIN_DATE
+		  , DATE_FORMAT(UCL.LOGOUT_DT, '%Y-%m-%d %T') AS LOGOUT_DATE
+		  , UCL.SUCCESS_YN
+		  , UP.AGENT
+		FROM
+			UR_CONNECT_LOG UCL
+			INNER JOIN UR_USER UU
+				ON UCL.UR_USER_ID = UU.UR_USER_ID
+			LEFT OUTER JOIN UR_PCID UP
+				ON UCL.UR_PCID_CD = UP.UR_PCID_CD
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ACCESS_LOG_DIV.1')">
+				AND UPPER(UU.LOGIN_ID) LIKE UPPER(CONCAT(#{condiValue},'%'))
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ACCESS_LOG_DIV.2')">
+				AND UU.USER_NM = FN_ENCRYPT(#{condiValue})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'ACCESS_LOG_DIV.3')">
+				AND UCL.IP LIKE CONCAT(#{condiValue}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(service)">
+			    AND UCL.SERVICE = #{service}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND UCL.LOGIN_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    </if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(successCondition)">
+				AND UCL.SUCCESS_YN = #{successCondition}
+			</if>
+		</where>
+		ORDER BY UCL.LOGIN_DT DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배치로그
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.30		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBatchLogList" resultType="kr.co.pulmuone.v1.system.log.dto.GetBatchLogListResultVo">
+		/* log.getBatchLogList */
+		SELECT
+			 BATCH_NAME
+			,DESCRIPTION
+			,JOB_CLASS_FULL_PATH
+			,SCHEDULE
+			,SBJE.START_TIME
+			,SBJE.END_TIME
+			,SBJE.STATUS
+			,SBJE.ERROR_MSG	AS ERROR_MESSAGE
+		FROM
+			ST_BATCH_JOB SBJ
+		INNER JOIN ST_BATCH_JOB_EXECUTION SBJE
+		ON SBJ.BATCH_NO = SBJE .BATCH_NO
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(status)">
+			    AND STATUS = #{status}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchText)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'batchName')">
+				    AND BATCH_NAME LIKE CONCAT(#{searchText},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'errorMsg')">
+				    AND ERROR_MSG LIKE CONCAT('%', #{searchText},'%')
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+				<![CDATA[
+					AND START_TIME >= #{startCreateDate}
+					AND END_TIME <= #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    ]]>
+			    </if>
+			</if>
+		</where>
+		ORDER BY SBJE.JOB_EXECUTION_ID DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 메뉴사용이력 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.11		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getMenuOperLogList" resultType="kr.co.pulmuone.v1.system.log.dto.vo.MenuOperLogResultVo">
+	 	/* systemLog.getMenuOperLogList */
+		SELECT
+			  MENU_NM AS MENU_NAME
+			, URL_NM  AS URL_NAME
+			, LOGIN_ID
+			, FN_DECRYPT(LOGIN_NM) AS LOGIN_NAME
+			, IP
+			, CREATE_DT AS CREATE_DATE
+		FROM	ST_MENU_OPER_LOG
+        <where>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+	        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'menu')">
+					AND MENU_NM LIKE UPPER(CONCAT(#{searchValue},'%'))
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'url')">
+					AND URL_NM LIKE UPPER(CONCAT(#{searchValue},'%'))
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(loginName)">
+			    AND LOGIN_NM = FN_ENCRYPT(#{loginName})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    </if>
+			</if>
+        </where>
+		ORDER BY ST_MENU_OPER_LOG_ID DESC
+	</select>
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 개인정보처리 이력 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.11		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPrivacyMenuOperLogList" resultType="kr.co.pulmuone.v1.system.log.dto.vo.PrivacyMenuOperLogResultVo">
+	 	/* systemLog.getPrivacyMenuOperLogList */
+		SELECT
+			  LOGIN_ID
+			, FN_DECRYPT(LOGIN_NM) AS LOGIN_NAME
+			, PARAM_VALUE
+			, URL
+			, URL_NM AS URL_NAME
+			, FN_COMN_CODE_DIC(CRUD_TP) AS CRUD_TYPE
+			, IP
+			, CREATE_DT AS CREATE_DATE
+		FROM	ST_PRIVACY_MENU_OPER_LOG
+        <where>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValue)">
+	        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'loginId')">
+					AND LOGIN_ID = #{searchValue}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'loginName')">
+					AND LOGIN_NM = FN_ENCRYPT(#{searchValue})
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'url')">
+					AND URL_NM LIKE UPPER(CONCAT(#{searchValue},'%'))
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'ip')">
+					AND IP = #{searchValue}
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(paramValue)">
+			    AND PARAM_VALUE LIKE UPPER(CONCAT('%', #{paramValue},'%'))
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    </if>
+			</if>
+			<if test="crudTypeList !=null and crudTypeList.size != 0">
+				AND CRUD_TP IN
+				<foreach collection="crudTypeList" item="crudType" index="index" separator="," open="(" close=")">
+					#{crudType}
+				</foreach>
+			</if>
+        </where>
+		ORDER BY ST_PRIVACY_MENU_OPER_LOG_ID DESC
+	</select>
+
+
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 엑셀 다운로드 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.04		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getExcelDownloadLogList" resultType="kr.co.pulmuone.v1.system.log.dto.vo.ExcelDownloadLogResultVo">
+	 	/* systemLog.getExcelDownloadLogList */
+		SELECT
+			  HANDLE_UR_USER_ID	AS HANDLE_USER_ID	/* 처리자 ID */
+			, IP					/* 접속IP */
+			, DOWN_REASON	AS	DOWNLOAD_REASON		/* 다운로드 사유 */
+			, SEDL.CREATE_DT	AS	CREATE_DATE		/* 등록일 */
+			, FN_DECRYPT(USER_NM)	AS USER_NAME	/* 접속자명 */
+			, FN_COMN_CODE_DIC(EXCEL_DOWN_TP)	AS EXCEL_DOWNLOAD_TYPE_NAME /* 엑셀 다운로드 유형 명 */
+			, LOGIN_ID /* 아이디 */
+		FROM ST_EXCEL_DOWNLOAD_LOG SEDL
+		LEFT OUTER JOIN UR_USER UU
+		ON SEDL.HANDLE_UR_USER_ID = UU.UR_USER_ID
+        <where>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'id')">
+				AND UPPER(UU.LOGIN_ID) LIKE UPPER(CONCAT(#{searchValue},'%'))
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'name')">
+				AND UU.USER_NM = FN_ENCRYPT(#{searchValue})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(excelDownType)">
+			    AND EXCEL_DOWN_TP = #{excelDownType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND SEDL.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    </if>
+			</if>
+        </where>
+        ORDER BY ST_EXCEL_DOWNLOAD_LOG_ID DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 엑셀 다운로드 사유 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.04		강윤경          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addExcelDownReason">
+		/* systemLog.addExcelDownReason */
+		INSERT INTO ST_EXCEL_DOWNLOAD_LOG
+		(
+			  HANDLE_UR_USER_ID
+			, EXCEL_DOWN_TP
+			, IP
+			, DOWN_REASON
+		)
+		VALUES
+		(	  #{userVo.userId}
+			, #{excelDownloadType}
+			, #{ip}
+			, #{downloadReason}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 엑셀 다운로드 비동기 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.28		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addExcelDownloadAsync">
+		/* systemLog.addExcelDownloadAsync */
+		INSERT INTO ST_EXCEL_DOWNLOAD_ASYNC (
+			UR_USER_ID, FILE_NAME
+		) VALUES (
+			#{urUserId}, #{fileName}
+		)
+		<selectKey resultType="Long" keyProperty="stExcelDownloadAsyncId" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 엑셀 다운로드 비동기 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.28		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putExcelDownloadAsyncSetUse">
+		/* systemLog.putExcelDownloadAsyncSetUse */
+		UPDATE ST_EXCEL_DOWNLOAD_ASYNC
+		SET USE_YN = 'Y'
+			, MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE ST_EXCEL_DOWNLOAD_ASYNC_ID = #{stExcelDownloadAsyncId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 엑셀 다운로드 비동기 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.11.08		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putExcelDownloadAsyncSetError">
+		/* systemLog.putExcelDownloadAsyncSetError */
+		UPDATE ST_EXCEL_DOWNLOAD_ASYNC
+		SET USE_YN = 'E'
+			, MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE ST_EXCEL_DOWNLOAD_ASYNC_ID = #{stExcelDownloadAsyncId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 엑셀 다운로드 비동기 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.28		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getExcelDownloadAsyncUseYn" resultType="string">
+		/* systemLog.getExcelDownloadAsyncUseYn */
+		SELECT USE_YN
+		FROM ST_EXCEL_DOWNLOAD_ASYNC
+		WHERE ST_EXCEL_DOWNLOAD_ASYNC_ID = #{stExcelDownloadAsyncId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 디바이스 로그 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.22		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addDeviceLog">
+		/* systemLog.addDeviceLog */
+		INSERT INTO ST_DEVICE_LOG (
+			DEVICE_LOG_TYPE, UR_PCID_CD, UR_USER_ID
+		)VALUES(
+			#{deviceLogType}, #{urPcidCd}, #{urUserId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정탐지 로그 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.22		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addIllegalLog">
+		/* systemLog.addIllegalLog */
+		INSERT INTO ST_ILLEGAL_LOG (
+			ILLEGAL_TYPE, ILLEGAL_DETAIL_TYPE, ILLEGAL_STATUS_TYPE, UR_PCID_CD, ILLEGAL_DETECT,
+			DETECT_START_DT, DETECT_END_DT, CREATE_ID
+		) VALUES (
+			#{illegalType}, #{illegalDetailType}, #{illegalStatusType}, #{urPcidCd}, #{illegalDetect},
+			#{detectStartDate}, #{detectEndDate}, #{createId}
+		)
+		<selectKey resultType="long" keyProperty="stIllegalLogId" keyColumn="ST_ILLEGAL_LOG_ID" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정탐지 로그 저장 - 회원
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.23		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addIllegalLogUser">
+		/* systemLog.addIllegalLogUser */
+		INSERT INTO ST_ILLEGAL_LOG_USER (
+			ST_ILLEGAL_LOG_ID, UR_USER_ID
+		) VALUES (
+			#{stIllegalLogId}, #{urUserId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정탐지 로그 저장 - 회원 list
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.23		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addIllegalLogUserList">
+		/* systemLog.addIllegalLogUserList */
+		INSERT INTO ST_ILLEGAL_LOG_USER (
+			ST_ILLEGAL_LOG_ID, UR_USER_ID
+		) VALUES
+		<foreach collection="userIdList" item="userId" open="" separator="," close="">
+			(
+			#{stIllegalLogId}
+			, #{userId}
+			)
+		</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정탐지 로그 저장 - 주문 list
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.23		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addIllegalLogOrderList">
+		/* systemLog.addIllegalLogOrderList */
+		INSERT INTO ST_ILLEGAL_LOG_ORDER (
+			ST_ILLEGAL_LOG_ID, OD_ORDER_ID
+		) VALUES
+		<foreach collection="orderIdList" item="orderId" open="" separator="," close="">
+			(
+			#{stIllegalLogId}
+			, #{orderId}
+			)
+		</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정탐지 - 회원가입, 로그인실패
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.23		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.system.log.dto.vo.DeviceLogVo" id="getDeviceLogResultMap">
+		<result column="UR_PCID_CD"  property="urPcidCd"/>
+		<result column="CNT"  property="detectContent"/>
+	</resultMap>
+	<select id="getDeviceLogDetect" resultMap="getDeviceLogResultMap">
+		/* systemLog.getDeviceLogDetect */
+		SELECT UR_PCID_CD, CNT
+		FROM (
+			SELECT UR_PCID_CD, COUNT(*) AS CNT
+			FROM ST_DEVICE_LOG SDL
+			WHERE DEVICE_LOG_TYPE = #{deviceLogType}
+				AND CREATE_DT BETWEEN #{startDateTime} AND #{endDateTime}
+			GROUP BY UR_PCID_CD
+		) G1
+		WHERE G1.CNT <![CDATA[ > ]]> #{detectCount}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정탐지 - 회원가입 - 회원 PK 추출
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.23		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDeviceLogDetectUser" resultType="long">
+		/* systemLog.getDeviceLogDetectUser */
+		SELECT UR_USER_ID
+		FROM ST_DEVICE_LOG
+		WHERE DEVICE_LOG_TYPE = #{dto.deviceLogType}
+			AND CREATE_DT BETWEEN #{dto.startDateTime} AND #{dto.endDateTime}
+			AND UR_PCID_CD = #{urPcidCd}
+		GROUP BY UR_USER_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정탐지 - 로그인실패
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.24		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getLoginFailDetect" resultMap="getDeviceLogResultMap">
+		/* systemLog.getLoginFailDetect */
+		SELECT UR_PCID_CD, CNT
+		FROM (
+			SELECT UR_PCID_CD, COUNT(*) AS CNT
+			FROM UR_CONNECT_LOG
+			WHERE SERVICE = 'SERVICE_TYPE.MALL'
+				AND LOGIN_DT BETWEEN #{startDateTime} AND #{endDateTime}
+				AND SUCCESS_YN = 'N'
+				AND UR_PCID_CD != ''
+			GROUP BY UR_PCID_CD
+		) G1
+		WHERE G1.CNT <![CDATA[ > ]]> #{detectCount}
+	</select>
+
+</mapper>
+

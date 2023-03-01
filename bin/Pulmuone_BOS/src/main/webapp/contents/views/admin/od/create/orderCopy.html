@@ -1,0 +1,398 @@
+<style type="text/css">
+	.tab-cont__body >.table-wrapper {margin-bottom: 20px;}
+	.datatable.v-type.payment tbody th {padding: 20px 5px !important; text-align: center;}
+	.datatable.v-type.payment tbody td {padding: 20px 5px !important; text-align: center;}
+</style>
+<div class="wrap-location">
+    <h1 class="title"></h1>
+    <button class="btn-type-star">즐겨찾기</button>
+    <span class="location"></span>
+</div>
+
+<!-- 검색폼 영역-->
+<div class="fb__sect">
+    <form id="searchForm" class="fb__sect__form inputForm" name="searchForm">
+        <!-- table -->
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width: 15%" />
+                <col style="width: 35%" />
+                <col style="width: 15%" />
+                <col style="width: 35%" />
+            </colgroup>
+            <tbody>
+                <!-- 행1 : 조건검색 -->
+                <tr>
+                    <th scope="row">
+                        <label>주문 조회</label>
+                    </th>
+					<td colspan="3">
+						<div class="complex-condition">
+							<!-- 조건 dropdown -->
+							<div class="fb__custom__select fb__space--divide" style="width: 180px">
+								<input id="searchOrderType" name="searchOrderType" type="text">
+							</div>
+							<!-- 조건 입력 input -->
+							<input type="text" id="conditionValue" name="conditionValue" class="comm-input" style="width: 400px; margin: 0 10px"
+							placeholder="주문번호, 외부몰 주문번호, 수집몰 주문번호 중  선택하여, 조회 가능" maxlength="30" required data-validate-title="주문번호, 외부몰 주문번호, 수집몰 주문번호"/>
+						</div>
+					</td>
+				</tr>
+            </tbody>
+        </table>
+        <!-- table End -->
+
+        <!-- button area-->
+        <div class="btn-area">
+            <button id="fnSearch" class="btn-point btn-l" type="button" onclick="$scope.fnSearch()">조회</button>
+			<button id="fnClear"  class="btn-white btn-l formClear-btn" type="button" onclick="$scope.fnClear()">초기화</button>
+        </div>
+        <!-- button area End -->
+    </form>
+</div>
+<!-- 검색폼 영역 End -->
+
+<!-- 컨텐츠 상단 버튼 영역 -->
+<form id="saveForm" class="fb__sect__form inputForm" name="saveForm">
+	<div class="fb__sect grid-sect sort sheet">
+	    <div class="wrap-tit">
+	        <div class="ea-title">
+	            <h3 id="copyTitle">주문조회 결과</h3>
+	        </div>
+			<div class="btn-area">
+				<div class="fb__custom__select inlineBlock left-input" style="width: 160px">
+					<input id="saveOrderIfType" name="saveOrderIfType" class="left-input" type="text" data-validate-title="주문 연동 방법 선택" required>
+				</div>
+				<div class="fb__custom__select inlineBlock left-input" style="width: 130px; margin: 0 7px">
+					<input id="savePaymentType" name="savePaymentType" class="left-input" type="text" data-validate-title="결제 정보 선택" required>
+				</div>
+				<button id="fnNext" class="fb-btn btn-l btn-point" type="button" onclick="$scope.fnNext()">다음</button>
+				<button id="fnSave" class="fb-btn btn-l btn-point" type="button" onclick="$scope.fnSave()">저장</button>
+			</div>
+		</div>
+	</div>
+<!-- 컨텐츠 상단 버튼 영역 End-->
+
+<!-- 컨텐츠 영역 -->
+<div class="tab-cont__body">
+	<!-- 주문자 정보 -->
+	<div class="table-wrapper">
+		<table class="datatable v-type ">
+			<caption>주문자 정보</caption>
+			<tbody>
+				<tr>
+					<th scope="row" class="active">
+						<label style="font-size: 20px;">주문자 정보</label>
+						<span class="k-icon k-i-arrow-chevron-up" style="float: right; font-size: 30px; padding-right: 50px; cursor: pointer;" data-flag="SHOW"
+						onclick="$scope.fnToggleArea(this, 2)"></span>
+					</th>
+				</tr>
+				<tr class="toggleRow">
+					<td>
+						<div id="buyerDiv" class="complex-condition">
+							<table class="datatable v-type">
+								<colgroup>
+									<col style="width: 14%;">
+									<col style="width: 36%;">
+									<col style="width: 20%;">
+									<col style="width: 30%;">
+								</colgroup>
+								<tbody>
+									<!-- 행1 -->
+									<tr>
+										<th><div class="orderBuyer_info">주문번호</div></th>
+										<td><div class="orderBuyer_info_result" id="odid"></div></td>
+										<th><div class="orderBuyer_info">외부몰주문번호(판매처주문번호)</div></th>
+										<td>
+											<div class="orderBuyer_info_result" id="outCollectId"></div>
+											<div class="orderBuyer_info_result" id="outmallId" style="display: none;"></div>
+											<div class="orderBuyer_info_result" id="collectionMallId" style="display: none;"></div>
+										</td>
+									</tr>
+									<!-- 행2 -->
+									<tr>
+										<th><div class="orderBuyer_info">주문자정보</div></th>
+										<td>
+											<div class="orderBuyer_info_result" id="buyerInfo"></div>
+											<div class="orderBuyer_info_result" id="buyerNm"   style="display: none;"></div>
+											<div class="orderBuyer_info_result" id="loginId"   style="display: none;"></div>
+											<div class="orderBuyer_info_result" id="urUserId"  style="display: none;"></div>
+											<div class="orderBuyer_info_result" id="urGroupNm" style="display: none;"></div>
+										</td>
+										<th><div class="orderBuyer_info">판매처</div></th>
+										<td>
+											<div class="orderBuyer_info_result" id="sellersInfo"></div>
+											<div class="orderBuyer_info_result" id="sellersGroupNm" style="display: none;"></div>
+											<div class="orderBuyer_info_result" id="sellersNm" style="display: none;"></div>
+										</td>
+									</tr>
+									<!-- 행3 -->
+									<tr>
+										<th><div class="orderBuyer_info">주문자 휴대폰</div></th>
+										<td><div class="orderBuyer_info_result" id="buyerHp"></div></td>
+										<th><div class="orderBuyer_info">주문일시/결제일시</div></th>
+										<td>
+											<div class="orderBuyer_info_result" id="orderPayDtInfo"></div>
+											<div class="orderBuyer_info_result" id="createDt" style="display: none;"></div>
+											<div class="orderBuyer_info_result" id="approvalDt" style="display: none;"></div>
+										</td>
+									</tr>
+									<!-- 행4-->
+									<tr>
+										<th><div class="orderBuyer_info">주문자 이메일</div></th>
+										<td><div class="orderBuyer_info_result" id="buyerMail"></div></td>
+										<th><div class="orderBuyer_info">결제정보</div></th>
+										<td><!-- {총결제금액} = {결제수단} {실결제금액} + {적립금 사용금액} -->
+											<div class="orderBuyer_info_result" id="orderPayInfo"></div>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<!-- 주문자 정보 End-->
+
+	<!-- 상품정보 -->
+	<div id="goodsDiv" class="table-wrapper">
+		<table class="datatable v-type ">
+			<caption>상품 정보</caption>
+			<tbody>
+				<tr>
+					<th scope="row" class="active">
+						<label style="font-size: 20px;">상품 정보</label>
+						<span class="k-icon k-i-arrow-chevron-up" style="float: right; font-size: 30px; padding-right: 50px; cursor: pointer;" data-flag="SHOW"
+						onclick="$scope.fnToggleArea(this, 2)"></span>
+					</th>
+				</tr>
+				<tr class="toggleRow">
+					<td><div id="orderGoodsGrid" class="orderGoodsGrid"></div></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<!-- 상품정보 End-->
+</form>
+
+	<!-- 배송정보 -->
+	<div id="shippingDiv" class="table-wrapper">
+		<table class="datatable v-type ">
+			<caption>배송정보</caption>
+			<tbody>
+				<tr>
+					<th scope="row" class="active">
+						<label style="font-size: 20px;">배송정보</label>
+						<span class="k-icon k-i-arrow-chevron-up" style="float: right; font-size: 30px; padding-right: 50px; cursor: pointer;" data-flag="SHOW"
+						onclick="$scope.fnToggleArea(this, 2)"></span>
+					</th>
+				</tr>
+				<tr class="toggleRow">
+					<td><div id="shippingGrid" class="orderShippingGrid"></div></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<!-- 배송정보 End-->
+
+	<!-- 결제 정보 -->
+	<form id="payForm" name="payForm">
+		<div class="table-wrapper">
+			<table class="datatable v-type">
+				<caption>결제 정보</caption>
+				<tbody>
+					<tr>
+						<th scope="row" class="active">
+							<label style="font-size: 20px;">결제 정보</label>
+							<span class="k-icon k-i-arrow-chevron-up" style="float: right; font-size: 30px; padding-right: 50px; cursor: pointer;" data-flag="SHOW"
+							onclick="$scope.fnToggleArea(this, 2)"></span>
+						</th>
+					</tr>
+					<tr class="toggleRow">
+						<td>
+							<div id="payDiv" class="complex-condition">
+								<table>
+									<tbody id="tbodyPaymentArea">
+										<div id="divPaymentArea">
+											<table class="datatable v-type payment">
+												<tr>
+													<th style="width: 180px;"><div>주문/결제일자</div></th>
+													<th><div>총상품금액</div></th>
+													<th><div>총배송비</div></th>
+													<th><div>쿠폰할인</div></th>
+													<th><div>결제대상금액</div></th>
+													<th><div>적립금사용</div></th>
+													<th><div>실결제금액</div></th>
+													<th><div>결제상태</div></th>
+													<th><div>결제방법</div></th>
+													<th><div>결제기관(PG)</div></th>
+												</tr>
+												<tr>
+													<td><div><span id="orderPayDt"></span></div></td>
+													<td><div><span id="salePrice"></span></div></td>
+													<td><div><span id="shippingPrice"></span></div></td>
+													<td><div><span id="discountCouponPrice"></span></div></td>
+													<td><div><span id="paymentTargetPrice"></span></div></td>
+													<td><div><span id="pointPrice"></span></div></td>
+													<td><div><span id="paymentPrice"></span></div></td>
+													<td><div><span id="orderStatus"></span></div></td>
+													<td><div><span id="payType"></span></div></td>
+													<td><div><span id="pgService"></span></div></td>
+												</tr>
+												<!-- <tr>
+													<th rowspan="2"><div class="mainTitle">결제상세정보</div></th>
+													<th><div>판매가 합계</div></th>
+													<th><div>총배송비</div></th>
+													<th>
+														<div class="thirdDiv"><span class="marginR5">즉시할인</span>
+														<button id="immediateDiscountBtn" type="button" class="btn-s btn-point" onclick="$scope.fnImmediateDiscount()">즉시 할인 내역</button>
+													</div>
+													</th>
+													<th><div>쿠폰할인</div></th>
+													<th><div>적립금 사용금액</div></th>
+													<th><div>PG결제금액</div></th>
+												</tr>
+												<tr>
+													<td><div><span id="salePrice"></span></div></td>
+													<td><div><span id="shippingPrice"></span></div></td>
+													<td><div><span id="directPrice"></span></div></td>
+													<td><div><span id="couponPrice"></span></div></td>
+													<td><div><span id="pointPrice"></span></div></td>
+													<td><div><span id="paymentPrice"></span></div></td>
+												</tr>
+												<tr>
+													<th rowspan="2"><div>결제정보</div></th>
+													<th><div>연동PG</div></th>
+													<th><div>결제방법</div></th>
+													<th><div>수단</div></th>
+													<th><div>주문상태</div></th>
+													<th><div>주문일 / 결제일</div></th>
+													<th><div>결제금액</div></th>
+												</tr>
+												<tr>
+													<td><div><span id="pgService"></span></div></td>
+													<td><div><span id="payType"></span></div></td>
+													<td><div><span id="payWay"></span></div></td>
+													<td><div><span id="orderStatus"></span></div></td>
+													<td><div><span id="orderPayDt"></span></div></td>
+													<td><div><span id="payPrice"></span></div></td>
+												</tr> -->
+											</table>
+										</div>
+									</tbody>
+								</table>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</form>
+	<!-- 결제 정보 End-->
+
+	<!-- 배송비 정보 -->
+	<div id="shippingPriceDiv" class="table-wrapper">
+		<table class="datatable v-type ">
+			<caption>배송비 정보</caption>
+			<tbody>
+			<tr>
+				<th scope="row" class="active">
+					<label style="font-size: 20px;">배송비 정보</label>
+					<span class="k-icon k-i-arrow-chevron-up" style="float: right; font-size: 30px; padding-right: 50px; cursor: pointer;" data-flag="SHOW" onclick="$scope.fnToggleArea(this, 2)"></span>
+				</th>
+			</tr>
+			<tr class="toggleRow">
+				<td>
+					<div class="complex-condition">
+						<table class="datatable v-type">
+							<colgroup>
+								<col style="width: 15%;">
+								<col style="width: *;">
+							</colgroup>
+							<tbody>
+							<!-- 행1 -->
+							<tr id="shippingPriceDiv1">
+								<th><div class="orderBuyer_info">배송비</div></th>
+								<td>
+									<span class="cell__desc textRight paddingL10 paddingR5">배송비 제외&nbsp;</span>
+									<input type="checkbox" id="freeShippingPriceYn" name="freeShippingPriceYn" value="Y"/>
+								</td>
+							</tr>
+							</tbody>
+						</table>
+					</div>
+				</td>
+			</tr>
+			</tbody>
+		</table>
+	</div>
+	<!-- 배송비 정보 End-->
+
+	<!-- 결제 기타정보 -->
+	<div id="virtualBankInfoDiv" class="table-wrapper">
+		<table class="datatable v-type ">
+			<caption>결제 기타정보</caption>
+			<tbody>
+			<tr>
+				<th scope="row" class="active">
+					<label style="font-size: 20px;">결제 기타정보</label>
+					<span class="k-icon k-i-arrow-chevron-up" style="float: right; font-size: 30px; padding-right: 50px; cursor: pointer;" data-flag="SHOW" onclick="$scope.fnToggleArea(this, 2)"></span>
+				</th>
+			</tr>
+			<tr class="toggleRow">
+				<td>
+					<div class="complex-condition">
+						<table class="datatable v-type">
+							<colgroup>
+								<col style="width: 15%;">
+								<col style="width: *;">
+							</colgroup>
+							<tbody>
+							<!-- 행1 -->
+							<tr id="virtualBankDiv1">
+								<th><div class="orderBuyer_info">은행 선택</div></th>
+								<td>
+									<input id="virtualBankId" name="virtualBankId" type="hidden">
+									<input id="pgBankCd" name="pgBankCd" class="fb__custom__select" type="text">
+									<input id="pgBankNm" name="pgBankNm" class="comm-input" type="hidden">
+								</td>
+							</tr>
+							<!-- 행2 -->
+							<tr id="virtualBankDiv2">
+								<th><div class="orderBuyer_info">현금영수증 선택</div></th>
+								<td>
+									<span id="receiptType" name="receiptType" class="radios-wrapper fb__custom__radio"></span>
+									<span class="cell__desc textRight paddingL20 paddingR5">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;발급정보 : </span>
+									<input id="receiptIssueNoType" name="receiptIssueNoType" class="fb__custom__select marginR10" type="text" style="width: 120px;" readonly>
+									<input class="comm-input" type="text" id="regNumber" name="regNumber" style="width: 150px;" maxlength="20">
+								</td>
+							</tr>
+							<!-- 행3 -->
+							<tr id="inputFormRefundBank">
+								<th><div class="orderBuyer_info">환불계좌</div></th>
+								<td>
+									<span class="cell__desc textRight paddingL10 paddingR5">은행명 : </span>
+									<input id="urRefundBankId" name="urRefundBankId" type="hidden">
+									<input id="bankCode" name="bankCode" class="fb__custom__select" type="text">
+									<input id="bankName" name="bankName" class="comm-input" type="hidden">
+									<span class="cell__desc textRight paddingL20 paddingR5">계좌번호 : </span>
+									<input id="accountNumber" class="comm-input" name="accountNumber" type="text" style="width: 200px;" maxlength="20">
+									<span class="cell__desc textRight paddingL20 paddingR5">예금주 : </span>
+									<input id="holderName" class="comm-input" name="holderName" type="text" style="width: 120px;" maxlength="10">
+									<button type="button" id="fnValidBankAccount" name="fnValidBankAccount" class="btn-point btn-s marginL10" onclick="$scope.fnValidBankAccount()">유효성 체크</button>
+									<span style="color: red; margin-left: 10px; line-height: 35px;" id="validBankAccountDiv"></span>
+								</td>
+							</tr>
+							</tbody>
+						</table>
+					</div>
+				</td>
+			</tr>
+			</tbody>
+		</table>
+	</div>
+	<!-- 결제 기타정보 End-->
+</div>
+<!-- 컨텐츠 영역 End-->

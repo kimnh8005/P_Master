@@ -1,0 +1,199 @@
+plugins {
+    id 'org.springframework.boot'
+    id "com.github.johnrengelman.shadow" version "6.0.0"
+    id 'jacoco'
+}
+
+ext {
+
+    isLocal = (!project.hasProperty('profile') || !profile)
+
+    profile = isLocal ? "${DEFAULT_PROFILE}" : profile
+
+    println "[ INFO ]  Active profile : " + profile
+
+    jacocoRun = (project.hasProperty("jacocorun") ? project.getProperty("jacocorun") : "Y")
+
+    COMMON_MODULE_NAME = "COMMON"
+    COMMON_JAR_BUILD_VERSION = "${BUILD_VERSION}"   // 'v1'
+
+    // profile 별 넥서스 Snapshot Repository 계정 정보 지정
+    switch (profile) {
+
+        case "${DEFAULT_PROFILE}":
+
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            break;
+
+        case "${DEV_PROFILE}":
+
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            break;
+
+        case "${QA_PROFILE}":
+
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            break;
+
+        case "${VER_PROFILE}":
+
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            break;
+
+        case "${PROD_PROFILE}":
+
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL = "${NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_URL = "${NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_USERNAME = "${NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+            ext.COMMON_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD = "${NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+
+            break;
+    }   // end of switch
+
+}
+
+group = 'kr.co.pulmuone.common'
+version = "${COMMON_JAR_BUILD_VERSION}" + "-${COMMON_MODULE_NAME}-SNAPSHOT"
+
+// 마스터의 build.gradle 과 COMMON 모듈의 build.gradle 에 동일하게 등록
+bootJar {
+    enabled = false
+}
+
+jar {
+
+    finalizedBy shadowJar
+
+    doFirst {
+        println "[ INFO ]  ${COMMON_MODULE_NAME} 모듈 Jar 빌드 시작 => Active profile : " + profile
+    }
+
+    enabled = true
+    archiveBaseName = "pulmuone-${COMMON_MODULE_NAME}-${profile}"
+    archiveVersion = version
+}
+
+shadowJar {
+
+    archiveBaseName = "pulmuone-${COMMON_MODULE_NAME}-${profile}"
+    archiveVersion = version
+    classifier = null
+
+    dependencies {  // COMMON 모듈 jar 패키징시 하단 dependency 들을 포함
+        include(dependency('org.elasticsearch:elasticsearch:7.9.2'))
+        include(dependency('org.elasticsearch.client:elasticsearch-rest-client:7.9.2'))
+        include(dependency('org.elasticsearch.client:elasticsearch-rest-high-level-client:7.9.2'))
+    }
+
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = group
+            artifactId = "${tasks.jar.getArchiveBaseName().get()}"
+            version = version
+            artifact("build/libs/${tasks.jar.outputs.files.singleFile.name}")
+                    { extension 'jar' }
+        }
+    }
+
+    repositories {
+        maven {
+            name 'nexus-snapshot-repository'
+            url "${COMMON_NEXUS_SNAPSHOT_REPOSITORY_PROTOCOL}://${COMMON_NEXUS_SNAPSHOT_REPOSITORY_URL}"
+            credentials {
+                username "${COMMON_NEXUS_SNAPSHOT_REPOSITORY_USERNAME}"
+                password "${COMMON_NEXUS_SNAPSHOT_REPOSITORY_PASSWORD}"
+            }
+        }
+    }
+}
+
+dependencies {
+
+    implementation fileTree(dir: 'src/main/webapp/WEB-INF', include: ['**/*.jar'])
+
+    // 본인인증 모듈
+    implementation group: 'kr.co.pulmuone.3rdparty', name: 'icert-secu-jdk18', version: '1.0.0'
+
+    // SNS간편로그인 연동 인증
+    implementation 'com.github.scribejava:scribejava-apis:4.0.0'
+    implementation 'com.github.scribejava:scribejava-core:4.0.0'
+
+    // KCP
+    implementation group: 'kr.co.pulmuone.3rdparty', name: 'connection-kcp', version: '1.0'
+    implementation group: 'kr.co.pulmuone.3rdparty', name: 'ppclie', version: '1.0'
+
+    // INICIS
+    implementation group: 'kr.co.pulmuone.3rdparty', name: 'inipay-sample', version: '1.3'
+
+    // jasypt
+    implementation group: 'com.github.ulisesbocchio', name: 'jasypt-spring-boot-starter', version: '3.0.2'
+}
+
+jacoco {
+    toolVersion = "0.8.5"
+}
+
+test {
+    useJUnitPlatform()
+
+    systemProperty 'spring.profiles.active', "${profile}"
+
+    if ("${jacocoRun}" == "Y") {
+        finalizedBy 'jacocoTestReport'
+    }
+
+}
+
+jacocoTestReport {
+    reports {
+        html.enabled true
+    }
+
+    afterEvaluate {
+        classDirectories.from = files(classDirectories.files.collect {
+            fileTree (
+                    dir: it,
+//                        exclude: ['**/service/**Biz**'],
+                    include: ['**/service/**Service**/**']
+            )
+        })
+    }
+
+    finalizedBy 'jacocoTestCoverageVerification'
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            enabled = true
+            element = 'CLASS'
+
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.60
+            }
+//                excludes = ['**.**Biz**']
+            includes = ['kr.co.**.service.**Service']
+        }
+    }
+}

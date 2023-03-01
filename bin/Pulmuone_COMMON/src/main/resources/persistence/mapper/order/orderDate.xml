@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.order.OrderDateMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 주문 상태별 일자 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.28 	이명수          최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDt" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDtVo">
+		/*	order.status.putOrderStatus  */
+		UPDATE OD_ORDER_DT
+		SET OD_ORDER_ID = OD_ORDER_ID
+		<choose>
+			<when test="irId       != nul and irId       > 0">, IR_ID        = #{irId      }, IR_DT        = NOW() </when>
+			<when test="ibId       != nul and ibId       > 0">, IB_ID        = #{ibId      }, IB_DT        = NOW() </when>
+			<when test="icId       != nul and icId       > 0">, IC_ID        = #{icId      }, IC_DT        = NOW() </when>
+		</choose>
+		WHERE
+		OD_ORDER_ID = #{odOrderId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상태별 일자 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.28 	이명수          최초생성
+     * @ 2021.01.12     김명진          컬럼변경
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOrderDetailDt" parameterType="kr.co.pulmuone.v1.order.order.dto.vo.OrderDetlVo">
+	/*	order.status.putOrderDetailDt  */
+	UPDATE OD_ORDER_DETL
+		SET OD_ORDER_DETL_ID = OD_ORDER_DETL_ID
+			<choose>
+				<when test="drId       != null and drId       > 0">, DR_ID        = #{drId      }, DR_DT        = NOW() </when>
+				<when test="diId       != null and diId       > 0">, DI_ID        = #{diId      }, DI_DT        = NOW() </when>
+				<when test="dcId       != null and dcId       > 0">, DC_ID        = #{dcId      }, DC_DT        = NOW() </when>
+				<when test="bfId       != null and bfId       > 0">, BF_ID        = #{bfId      }, BF_DT        = NOW() </when>
+			</choose>
+			<if test="orderIfId  != null and orderIfId  > 0 and orderIfDt  != null
+					and shippingId != null and shippingId > 0 and shippingDt  != null
+					and deliveryId != null and deliveryId > 0 and deliveryDt  != null"
+				>
+				, ORDER_IF_ID  = #{orderIfId }, ORDER_IF_DT  = #{orderIfDt}
+				, SHIPPING_ID  = #{shippingId}, SHIPPING_DT  = #{shippingDt}
+				, DELIVERY_ID  = #{deliveryId}, DELIVERY_DT  = #{deliveryDt}
+			</if>
+	WHERE
+		OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 상세 상태별 일자 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.12 	김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putClaimDetailDt" parameterType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimDetlDtVo">
+	/*	order.status.putClaimDetailDt  */
+	UPDATE OD_CLAIM_DETL_DT
+		SET OD_CLAIM_DETL_ID = OD_CLAIM_DETL_ID
+			<choose>
+				<when test="caId       != null and caId       > 0">, CA_ID        = #{caId      }, CA_DT        = NOW() </when>
+				<when test="cwId       != null and cwId       > 0">, CW_ID        = #{cwId      }, CW_DT        = NOW() </when>
+				<when test="ccId       != null and ccId       > 0">, CC_ID        = #{ccId      }, CC_DT        = NOW() </when>
+				<when test="raId       != null and raId       > 0">, RA_ID        = #{raId      }, RA_DT        = NOW() </when>
+				<when test="riId       != null and riId       > 0">, RI_ID        = #{riId      }, RI_DT        = NOW() </when>
+				<when test="rfId       != null and rfId       > 0">, RF_ID        = #{rfId      }, RF_DT        = NOW() </when>
+				<when test="rcId       != null and rcId       > 0">, RC_ID        = #{rcId      }, RC_DT        = NOW() </when>
+				<when test="rwId       != null and rwId       > 0">, RW_ID        = #{rwId      }, RC_DT        = NOW() </when>
+				<when test="ecId       != null and ecId       > 0">, EC_ID        = #{ecId      }, EC_DT        = NOW() </when>
+				<when test="csId       != null and csId       > 0">, CS_ID        = #{csId      }, CS_DT        = NOW() </when>
+				<when test="faId       != null and faId       > 0">, FA_ID        = #{faId      }, FA_DT        = NOW() </when>
+				<when test="fcId       != null and fcId       > 0">, FC_ID        = #{fcId      }, FC_DT        = NOW() </when>
+				<when test="crId       != null and crId       > 0">, CR_ID        = #{crId      }, CR_DT        = NOW() </when>
+				<when test="ceId       != null and ceId       > 0">, CE_ID        = #{ceId      }, CE_DT        = NOW() </when>
+			</choose>
+	WHERE
+		OD_CLAIM_DETL_ID = #{odClaimDetlId}
+	</update>
+</mapper>

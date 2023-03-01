@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.outmall.OutmallExcelOrderMapper">
+
+   	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부몰 엑셀 업로드 주문 생성 대상 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.07		김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getOutmallExcelOrderTargetList" resultType="kr.co.pulmuone.v1.outmall.order.dto.OutMallOrderDto">
+        /* outmallExcelOrder.getOutmallExcelOrderTargetList */
+		SELECT
+			IF_OUTMALL_EXCEL_INFO_ID
+		FROM
+			IF_OUTMALL_EXCEL_INFO IOEI
+		WHERE
+			IOEI.BATCH_STATUS_CD IN
+			<foreach collection="batchStatusList" item="batchStatusCd" separator="," open="(" close=")">
+				#{batchStatusCd}
+			</foreach>
+			AND EXISTS
+			(
+				SELECT 'X' FROM IF_OUTMALL_EXCEL_SUCC S1
+				WHERE
+					S1.IF_OUTMALL_EXCEL_INFO_ID = IOEI.IF_OUTMALL_EXCEL_INFO_ID
+			)
+		ORDER BY IF_OUTMALL_EXCEL_INFO_ID ASC
+		LIMIT 1
+	</select>
+
+   	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부몰 엑셀 업로드 주문 처리상태 업데이트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.03.07		김명진          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putOutmallExcelInfo">
+        /* outmallExcelOrder.putOutmallExcelInfo */
+        UPDATE
+        	IF_OUTMALL_EXCEL_INFO
+        SET
+        	IF_OUTMALL_EXCEL_INFO_ID = IF_OUTMALL_EXCEL_INFO_ID
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchStartDateTime)">
+        	,BATCH_START_DT = #{batchStartDateTime}
+        	</if>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchEndDateTime)">
+        	,BATCH_END_DT = #{batchEndDateTime}
+        	</if>
+        	<if test="batchExecutionTime > 0">
+        	,BATCH_EXEC_TIME = #{batchExecutionTime}
+        	</if>
+        	<if test="successCount > 0">
+        	,SUCC_CNT = #{successCount}
+        	</if>
+        	<if test="orderCreateCnt > 0">
+        	,ORDER_CREATE_CNT = #{orderCreateCnt}
+        	</if>
+        	<if test="failCount > 0">
+        	,FAIL_CNT = #{failCount} + FAIL_CNT
+        	</if>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchStatusCd)">
+        	,BATCH_STATUS_CD = #{batchStatusCd}
+        	</if>
+        WHERE
+        	IF_OUTMALL_EXCEL_INFO_ID = #{ifOutmallExcelInfoId}
+	</update>
+</mapper>
+
+

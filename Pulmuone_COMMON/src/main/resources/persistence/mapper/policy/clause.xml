@@ -1,0 +1,589 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.clause.PolicyClauseMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원가입 최신 약관 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getLatestJoinClauseListMap2" type="kr.co.pulmuone.v1.policy.clause.dto.vo.GetLatestJoinClauseListResultVo" >
+		<result column="PS_CLAUSE_GRP_CD"    property="psClauseGrpCd"  />
+		<result column="CLAUSE_GRP_NAME"     property="clauseGrpName"  />
+		<result column="CLAUSE_TITLE"        property="clauseTitle"  />
+		<result column="EXECUTE_DATE"        property="executeDate"  />
+		<result column="MANDATORY_YN"        property="mandatoryYn" />
+		<result column="CLAUSE_CONTENT"      property="clauseContent" />
+		<result column="CLAUSE_DESCRIPTION"  property="clauseDescription" />
+	</resultMap>
+	<select id="getLatestJoinClauseList" resultMap="getLatestJoinClauseListMap2">
+		/*	clause.getLatestJoinClauseList	*/
+		SELECT
+			  PCG.PS_CLAUSE_GRP_CD
+			, PCG.CLAUSE_GRP_NM      AS  CLAUSE_GRP_NAME
+			, PCG.CLAUSE_TITLE
+			, T1.EXECUTE_DT          AS EXECUTE_DATE
+			, PCG.MANDATORY_YN
+			,T1.CONTENT              AS  CLAUSE_CONTENT
+			,T1.CLAUSE_DESCRIPTION
+		FROM
+			PS_CLAUSE_GRP PCG
+		INNER JOIN (
+				SELECT
+					PS_CLAUSE_GRP_CD, EXECUTE_DT, CONTENT,CLAUSE_DESCRIPTION
+				FROM
+					(
+						SELECT
+							PS_CLAUSE_GRP_CD, EXECUTE_DT, CONTENT ,CLAUSE_DESCRIPTION, ROW_NUMBER() OVER(
+								PARTITION BY PS_CLAUSE_GRP_CD
+							ORDER BY
+								EXECUTE_DT DESC
+							) AS RANKING
+						FROM
+							PS_CLAUSE
+						WHERE
+							EXECUTE_DT <![CDATA[ < ]]> NOW()
+					) T
+				WHERE
+					RANKING = 1
+			) T1 ON PCG.PS_CLAUSE_GRP_CD =T1.PS_CLAUSE_GRP_CD
+		WHERE
+			PCG.USE_YN = 'Y'
+			AND PCG.PS_CLAUSE_GRP_CD IN ('TERMS_CONDITIONS_SERVICE','PRIVACY_POLICY_SIGNUP','PRIVACY_POLICY_SELECT','THIRD_PARTY_INFORMATION', 'MARKETING_RECEIPT_AGREEMENT', 'SENDING_ADVERTISING_AGREEMENT')
+		ORDER BY CASE WHEN PCG.PS_CLAUSE_GRP_CD = 'TERMS_CONDITIONS_SERVICE' THEN 1
+			          WHEN PCG.PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY_SIGNUP' THEN 2
+			          WHEN PCG.PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY_SELECT' THEN 3
+			          WHEN PCG.PS_CLAUSE_GRP_CD = 'THIRD_PARTY_INFORMATION' THEN 4
+			          WHEN PCG.PS_CLAUSE_GRP_CD = 'MARKETING_RECEIPT_AGREEMENT' THEN 5 ELSE 6
+			          END
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최신 약관 내용 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.clause.dto.vo.GetClauseResultVo" id="getLatestClauseResultMap">
+		<result column="CLAUSE_TITLE"  property="clauseTitle"  />
+		<result column="CLAUSE_CONTENT"  property="clauseContent" />
+		<result column="EXECUTE_DATE"  property="executeDate" />
+	</resultMap>
+	<select id="getLatestClause" resultMap="getLatestClauseResultMap">
+		/*	clause.getLatestClause	*/
+		SELECT
+			PCG.PS_CLAUSE_GRP_CD
+			, PCG.CLAUSE_TITLE
+			, PC.CONTENT AS CLAUSE_CONTENT
+			, PC.EXECUTE_DT AS EXECUTE_DATE
+		FROM
+			PS_CLAUSE PC
+			INNER JOIN PS_CLAUSE_GRP PCG ON PC.PS_CLAUSE_GRP_CD = PCG.PS_CLAUSE_GRP_CD
+		WHERE
+			PC.DEL_YN !='Y'
+			AND PCG.USE_YN ='Y'
+			AND PCG.PS_CLAUSE_GRP_CD = #{psClauseGrpCd}
+			AND PC.EXECUTE_DT <![CDATA[ < ]]> NOW()
+		ORDER BY PC.EXECUTE_DT DESC
+		LIMIT 1
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 약관 변경이력 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.clause.dto.vo.GetClauseHistoryResultVo" id="getClauseHistoryListResultMap">
+		<result column="EXECUTE_DATE"  property="executeDate" />
+	</resultMap>
+	<select id="getClauseHistoryList" resultMap="getClauseHistoryListResultMap">
+		/*	clause.getClauseHistoryList	*/
+		SELECT
+			PC.EXECUTE_DT AS EXECUTE_DATE
+		FROM
+			PS_CLAUSE PC
+			INNER JOIN PS_CLAUSE_GRP PCG ON PC.PS_CLAUSE_GRP_CD = PCG.PS_CLAUSE_GRP_CD
+		WHERE
+			PC.PS_CLAUSE_GRP_CD = #{psClauseGrpCd}
+			AND PC.EXECUTE_DT <![CDATA[ < ]]> NOW()
+		ORDER BY PC.CREATE_DT DESC
+
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 버전별 약관 내용 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.clause.dto.vo.GetClauseResultVo" id="getClauseResultMap">
+		<result column="CLAUSE_TITLE"  property="clauseTitle"  />
+		<result column="CLAUSE_CONTENT"  property="clauseContent" />
+	</resultMap>
+	<select id="getClause" resultMap="getClauseResultMap">
+		/*	clause.getClause	*/
+		SELECT
+			PCG.CLAUSE_TITLE AS CLAUSE_TITLE
+			,PC.CONTENT AS CLAUSE_CONTENT
+		FROM
+			PS_CLAUSE PC
+			JOIN PS_CLAUSE_GRP PCG ON PC.PS_CLAUSE_GRP_CD = PCG.PS_CLAUSE_GRP_CD
+		WHERE
+			PC.PS_CLAUSE_GRP_CD = #{psClauseGrpCd}
+			AND PC.EXECUTE_DT = DATE_FORMAT(#{executeDate},'%y-%m-%d')
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문/결제 구매 약관 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.07		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPurchaseTermsClauseListResultMap" type="kr.co.pulmuone.v1.policy.clause.dto.vo.GetLatestJoinClauseListResultVo" >
+		<result column="PS_CLAUSE_GRP_CD"    property="psClauseGrpCd"  />
+		<result column="CLAUSE_GRP_NAME"     property="clauseGrpName"  />
+		<result column="CLAUSE_TITLE"        property="clauseTitle"  />
+		<result column="EXECUTE_DATE"        property="executeDate"  />
+		<result column="MANDATORY_YN"        property="mandatoryYn" />
+		<result column="CLAUSE_CONTENT"      property="clauseContent" />
+		<result column="CLAUSE_DESCRIPTION"  property="clauseDescription" />
+	</resultMap>
+	<select id="getPurchaseTermsClauseList" resultMap="getPurchaseTermsClauseListResultMap">
+		/*	clause.getPurchaseTermsClauseList	*/
+		SELECT
+			  PCG.PS_CLAUSE_GRP_CD
+			, PCG.CLAUSE_GRP_NM      AS  CLAUSE_GRP_NAME
+			, PCG.CLAUSE_TITLE
+			, T1.EXECUTE_DT          AS EXECUTE_DATE
+			, PCG.MANDATORY_YN
+			,T1.CONTENT              AS  CLAUSE_CONTENT
+			,T1.CLAUSE_DESCRIPTION
+		FROM
+			PS_CLAUSE_GRP PCG
+		INNER JOIN (
+				SELECT
+					PS_CLAUSE_GRP_CD, EXECUTE_DT, CONTENT,CLAUSE_DESCRIPTION
+				FROM
+					(
+						SELECT
+							PS_CLAUSE_GRP_CD, EXECUTE_DT, CONTENT ,CLAUSE_DESCRIPTION, ROW_NUMBER() OVER(
+								PARTITION BY PS_CLAUSE_GRP_CD
+							ORDER BY
+								EXECUTE_DT DESC
+							) AS RANKING
+						FROM
+							PS_CLAUSE
+						WHERE
+							EXECUTE_DT <![CDATA[ < ]]> NOW()
+					) T
+				WHERE
+					RANKING = 1
+			) T1 ON PCG.PS_CLAUSE_GRP_CD =T1.PS_CLAUSE_GRP_CD
+		WHERE
+			PCG.USE_YN = 'Y'
+			AND PCG.PS_CLAUSE_GRP_CD IN
+			<foreach collection="psClauseGrpCdList" item="psClauseGrpCdList" index="index" separator="," open="(" close=")">
+				#{psClauseGrpCdList}
+			</foreach>
+		ORDER BY CASE WHEN PCG.PS_CLAUSE_GRP_CD = 'PURCHASE_TERMS' THEN 1
+			          WHEN PCG.PS_CLAUSE_GRP_CD = 'PRIVACY_POLICY' THEN 2
+			          END
+	</select>
+
+	<resultMap id="getClauseGroupListResultMap" type="kr.co.pulmuone.v1.policy.clause.dto.vo.PolicyGetClauseGroupListResultVo">
+		<result column="PS_CLAUSE_GROUP_CD" property="psClauseGroupCd" />
+		<result column="CLAUSE_GROUP_NAME" property="clauseGroupName" />
+		<result column="CLAUSE_TITLE" property="clauseTitle" />
+		<result column="USE_YN" property="useYn" />
+		<result column="MANDATORY_YN" property="mandatoryYn" />
+		<result column="SORT" property="sort" />
+		<result column="EXIST_YN" property="existYn" />
+	</resultMap>
+
+	<select id="getClauseGroupList" resultMap="getClauseGroupListResultMap">
+		/* clause.getClauseGroupList */
+		SELECT	PS_CLAUSE_GRP_CD AS PS_CLAUSE_GROUP_CD
+				,CLAUSE_GRP_NM AS CLAUSE_GROUP_NAME
+				,CLAUSE_TITLE AS CLAUSE_TITLE
+				,USE_YN AS USE_YN
+				,MANDATORY_YN
+				,SORT
+				,'Y' AS EXIST_YN
+		FROM 	PS_CLAUSE_GRP
+		WHERE	1 = 1
+		ORDER BY SORT DESC, CLAUSE_GRP_NM
+		<include refid="_common.pageLimit"/>
+	</select>
+
+	<select id="getClauseGroupListCount" resultType="int">
+		/* clause.getClauseGroupListCount */
+		SELECT	COUNT(*)
+		FROM 	PS_CLAUSE_GRP
+		WHERE 	1 = 1
+	</select>
+
+	<insert id="addClauseGroup">
+		/* clause.addClauseGroup */
+		INSERT INTO PS_CLAUSE_GRP
+		(
+			PS_CLAUSE_GRP_CD
+			,CLAUSE_GRP_NM
+			,CLAUSE_TITLE
+			,USE_YN
+			,CREATE_ID
+			,MANDATORY_YN
+			,SORT
+		)
+		VALUES
+		(
+			#{psClauseGroupCd},
+			#{clauseGroupName},
+			#{clauseTitle},
+			#{useYn},
+			#{userVo.userId},
+			#{mandatoryYn},
+			#{sort}
+		)
+	</insert>
+
+	<update id="putClauseGroup">
+		/* clause.putClauseGroup */
+		UPDATE	PS_CLAUSE_GRP
+		SET		CLAUSE_GRP_NM = #{clauseGroupName},
+				CLAUSE_TITLE = #{clauseTitle},
+				USE_YN = #{useYn},
+				MODIFY_ID = #{userVo.userId},
+				SORT = #{sort},
+				MANDATORY_YN = #{mandatoryYn}
+		WHERE	PS_CLAUSE_GRP_CD = #{psClauseGroupCd}
+	</update>
+
+	<select id="getDuplicateClauseGroupCount" resultType="int">
+		/* clause.getDuplicateClauseGroupCount */
+		SELECT 	COUNT(*)
+		FROM 	PS_CLAUSE_GRP
+		WHERE 	PS_CLAUSE_GRP_CD = #{psClauseGroupCd}
+	</select>
+
+	<resultMap id="getClauseGroupNameListResultMap" type="kr.co.pulmuone.v1.policy.clause.dto.vo.PolicyGetClauseGroupNameListResultVo">
+		<result column="PS_CLAUSE_GRP_CD" property="psClauseGroupCd" />
+		<result column="CLAUSE_GRP_NM" property="clauseGroupName" />
+	</resultMap>
+
+	<select id="getClauseGroupNameList" resultMap="getClauseGroupNameListResultMap">
+		/* clause.getClauseGroupNameList */
+		SELECT
+			PS_CLAUSE_GRP_CD
+			,CLAUSE_GRP_NM
+		FROM PS_CLAUSE_GRP
+		WHERE USE_YN = 'Y'
+		ORDER BY SORT, CLAUSE_GRP_NM
+	</select>
+
+
+	<resultMap id="getClauseListResultMap" type="kr.co.pulmuone.v1.policy.clause.dto.vo.PolicyGetClauseListResultVo">
+		<result column="PS_CLAUSE_ID" property="psClauseId" />
+		<result column="PS_CLAUSE_GROUP_CD" property="psClauseGroupCd" />
+		<result column="CONTENT" property="content" />
+		<result column="CREATE_NAME" property="createName" />
+		<result column="MODIFY_NAME" property="modifyName" />
+		<result column="EXECUTE_DT" property="executeDate" />
+		<result column="MODIFY_DT" property="modifyDate" />
+		<result column="EXCUTE_TYPE" property="executeType" />
+		<result column="CLAUSE_VER" property="clauseVersion" />
+		<result column="MANDATORY_YN" property="mandatoryYn" />
+		<result column="CLAUSE_INFO" property="clauseInfo" />
+	</resultMap>
+
+	<select id="getClauseList" resultMap="getClauseListResultMap">
+		/* clause.getClauseList */
+		SELECT
+				CASE WHEN PC.EXECUTE_DT > DATE_FORMAT(SYSDATE(), '%Y-%m-%d') THEN 'SCHEDULE'
+                    WHEN PC.EXECUTE_DT <![CDATA[<]]> (SELECT MAX(EXECUTE_DT) as test FROM PS_CLAUSE WHERE PS_CLAUSE_GRP_CD = #{psClauseGroupCd} AND EXECUTE_DT <![CDATA[<=]]> DATE_FORMAT(SYSDATE(), '%Y-%m-%d')) THEN 'PAST'
+					WHEN DATE_FORMAT(SYSDATE(), '%Y-%m-%d') THEN 'RUN'
+         		END AS EXCUTE_TYPE
+         		,PC.PS_CLAUSE_ID
+         		,PC.PS_CLAUSE_GRP_CD
+         		,PC.CONTENT
+         		,CONCAT( FN_DECRYPT(CUU.USER_NM), '(', CUU.LOGIN_ID ,')' ) AS CREATE_NAME
+         		,CONCAT( FN_DECRYPT(CUU.USER_NM), '(', CUU.LOGIN_ID ,')' ) AS MODIFY_NAME
+         		,PC.EXECUTE_DT
+         		,PC.MODIFY_DT
+         		,PC.CLAUSE_VER
+         		,PC.MANDATORY_YN
+         		,PC.CLAUSE_INFO
+         FROM PS_CLAUSE PC
+         LEFT OUTER JOIN UR_USER CUU
+         ON CUU.UR_USER_ID = PC.CREATE_ID
+         LEFT OUTER JOIN UR_USER MUU
+         ON MUU.UR_USER_ID = PC.MODIFY_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClauseGroupCd)">
+			AND PS_CLAUSE_GRP_CD = #{psClauseGroupCd}
+		</if>
+		AND DEL_YN = 'N'
+		ORDER BY PC.EXECUTE_DT DESC
+	</select>
+
+
+
+	<resultMap id="getClauseViewResultMap" type="kr.co.pulmuone.v1.policy.clause.dto.vo.PolicyGetClauseViewResultVo">
+		<result column="PS_CLAUSE_ID" property="psClauseId" />
+		<result column="PS_CLAUSE_GROUP_CD" property="psClauseGroupCd" />
+		<result column="CONTENT" property="content" />
+	</resultMap>
+
+	<select id="getClauseView" resultMap="getClauseViewResultMap">
+		/* clause.getClauseView */
+		SELECT
+				 PC.PS_CLAUSE_ID
+         		,PC.PS_CLAUSE_GRP_CD
+         		,PC.CONTENT
+         FROM PS_CLAUSE PC
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClauseId)">
+			AND PS_CLAUSE_ID = #{psClauseId}
+		</if>
+		ORDER BY PC.EXECUTE_DT DESC
+	</select>
+
+	<resultMap id="getPolicyClauseResultMap" type="kr.co.pulmuone.v1.policy.clause.dto.vo.PolicyGetClauseResultVo">
+		<result column="PS_CLAUSE_ID" property="psClauseId" />
+		<result column="PS_CLAUSE_GROUP_CD" property="psClauseGroupCd" />
+		<result column="CONTENT" property="content" />
+	</resultMap>
+
+	<select id="getPolicyClause" resultMap="getPolicyClauseResultMap">
+		/* clause.getPolicyClause */
+		SELECT
+				 PC.PS_CLAUSE_ID
+         		,PC.PS_CLAUSE_GRP_CD
+         		,PC.EXECUTE_DT
+         		,CLAUSE_DESCRIPTION
+         		,PC.CONTENT
+         		,PC.MANDATORY_YN
+         		,CLAUSE_INFO
+         		,CREATE_ID
+         		,CREATE_DT
+         		,MODIFY_ID
+         		,MODIFY_DT
+         FROM PS_CLAUSE PC
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClauseId)">
+			AND PS_CLAUSE_ID = #{psClauseId}
+		</if>
+		ORDER BY PC.EXECUTE_DT DESC
+	</select>
+
+
+	<insert id="addClause">
+		/* clause.addClause */
+		INSERT INTO PS_CLAUSE
+		(
+			PS_CLAUSE_GRP_CD
+			,EXECUTE_DT
+			,CLAUSE_DESCRIPTION
+			,CONTENT
+			,MANDATORY_YN
+			,CLAUSE_INFO
+			,CREATE_ID
+			,CREATE_DT
+			,CLAUSE_VER
+		)
+		VALUES
+		(
+			#{inputPsClauseGroupCd}
+			,#{executeDate}
+			,#{clauseDescription}
+			,#{content}
+			,#{mandatoryYn}
+			,#{clauseInfo}
+			,#{userVo.userId}
+			,SYSDATE()
+			,CONCAT('v',SUBSTRING(#{executeDate}, 3, 2),SUBSTRING(#{executeDate}, 5, 2), SUBSTRING(#{executeDate}, 7, 2))
+		)
+	</insert>
+
+	<resultMap id="getClauseModifyViewResultMap" type="kr.co.pulmuone.v1.policy.clause.dto.vo.PolicyGetClauseModifyViewResultVo">
+		<result column="PS_CLAUSE_ID" property="psClauseId" />
+		<result column="PS_CLAUSE_GROUP_CD" property="psClauseGroupCd" />
+		<result column="CONTENT" property="content" />
+		<result column="CLAUSE_GRP_NM" property="clauseGroupName" />
+		<result column="CREATE_USER_INFO" property="createUserInfo" />
+		<result column="MODIFY_USER_INFO" property="modifyUserInfo" />
+		<result column="EXECUTE_DT" property="executeDate" />
+		<result column="MANDATORY_YN" property="mandatoryYn" />
+		<result column="CLAUSE_INFO" property="clauseInfo" />
+		<result column="CLAUSE_DESCRIPTION" property="clauseDescription" />
+	</resultMap>
+
+	<select id="getClauseModifyView" resultMap="getClauseModifyViewResultMap">
+		/* clause.getClauseModifyView */
+		SELECT
+				 PC.PS_CLAUSE_ID
+         		,PC.PS_CLAUSE_GRP_CD
+         		,PC.EXECUTE_DT
+         		,PC.CLAUSE_DESCRIPTION
+         		,PC.CONTENT
+         		,PC.MANDATORY_YN
+         		,PC.CLAUSE_INFO
+         		,CONCAT(PC.CREATE_DT,'/', FN_DECRYPT(CUU.USER_NM), '(', CUU.LOGIN_ID ,')')  AS CREATE_USER_INFO
+				,CONCAT(PC.MODIFY_DT,'/', FN_DECRYPT(MUU.USER_NM), '(', MUU.LOGIN_ID ,')')  AS MODIFY_USER_INFO
+         		,PG.CLAUSE_GRP_NM
+         FROM PS_CLAUSE PC
+         INNER JOIN PS_CLAUSE_GRP PG
+         ON PC.PS_CLAUSE_GRP_CD = PG.PS_CLAUSE_GRP_CD
+         LEFT OUTER JOIN UR_USER CUU
+         ON CUU.UR_USER_ID = PC.CREATE_ID
+         LEFT OUTER JOIN UR_USER MUU
+         ON MUU.UR_USER_ID = PC.MODIFY_ID
+		WHERE 1=1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psClauseId)">
+				AND PC.PS_CLAUSE_ID = #{psClauseId}
+			</when>
+			<otherwise>
+				AND 1=2
+			</otherwise>
+		</choose>
+
+		ORDER BY PC.EXECUTE_DT DESC
+	</select>
+
+	<update id="putClause">
+		/* clause.putClause */
+		UPDATE 	PS_CLAUSE
+		SET 	EXECUTE_DT			 = #{executeDate}
+				,CLAUSE_DESCRIPTION  = #{clauseDescription}
+				,CONTENT 		     = #{content}
+				,MANDATORY_YN        = #{mandatoryYn}
+				,CLAUSE_INFO		 = #{clauseInfo}
+				,MODIFY_DT			 = SYSDATE()
+				,MODIFY_ID		 	 = #{userVo.userId}
+		WHERE  	PS_CLAUSE_ID         = #{psClauseId}
+	</update>
+
+	<update id="putUpdateClause">
+		/* clause.putUpdateClause */
+		UPDATE 	PS_CLAUSE
+		SET 	EXECUTE_DT			 = #{executeDate}
+				,CLAUSE_DESCRIPTION  = #{clauseDescription}
+				,CONTENT 		     = #{content}
+				,MANDATORY_YN        = #{mandatoryYn}
+				,CLAUSE_INFO		 = #{clauseInfo}
+				,MODIFY_ID		 	 = #{userVo.userId}
+				,CLAUSE_VER			 = CONCAT('v',SUBSTRING(#{executeDate}, 3, 2),SUBSTRING(#{executeDate}, 5, 2), SUBSTRING(#{executeDate}, 7, 2))
+		WHERE  	PS_CLAUSE_ID         = #{psClauseId}
+	</update>
+
+	<update id="putDeleteClause">
+		/* clause.putDeleteClause */
+		UPDATE 	PS_CLAUSE
+		SET 	DEL_YN				 = 'Y'
+				,MODIFY_DT			 = SYSDATE()
+				,MODIFY_ID		 	 = '1'
+		WHERE  	PS_CLAUSE_ID         = #{psClauseId}
+
+	</update>
+
+	<delete id="delClause">
+        /* clause.delClause */
+        DELETE FROM PS_CLAUSE
+        WHERE
+            PS_CLAUSE_ID = #{psClauseId}
+    </delete>
+
+
+	<insert id="addClauseUpdateHistory">
+		/* clause.addClauseUpdateHistory */
+		INSERT INTO PS_CLAUSE_HIST
+		(
+			HIST_TP
+			,PS_CLAUSE_ID
+			,PS_CLAUSE_GRP_CD
+			,EXECUTE_DT
+			,CLAUSE_DESCRIPTION
+			,CONTENT
+			,MANDATORY_YN
+			,CLAUSE_INFO
+			,DEL_YN
+			,ORIG_CREATE_ID
+			,ORIG_CREATE_DT
+			,ORIG_MODIFY_ID
+			,ORIG_MODIFY_DT
+			,CREATE_ID
+			,CREATE_DT
+		)
+		 SELECT #{histType} AS HIST_TP
+		    ,ORIG.PS_CLAUSE_ID
+			,ORIG.PS_CLAUSE_GRP_CD
+			,ORIG.EXECUTE_DT
+			,ORIG.CLAUSE_DESCRIPTION
+			,ORIG.CONTENT
+			,ORIG.MANDATORY_YN
+			,ORIG.CLAUSE_INFO
+			,ORIG.DEL_YN
+			,ORIG.CREATE_ID
+			,ORIG.CREATE_DT
+			,ORIG.MODIFY_ID
+			,ORIG.MODIFY_DT
+  		    ,'1'
+		    ,SYSDATE() AS CREATE_DT
+		 FROM PS_CLAUSE ORIG
+		 WHERE PS_CLAUSE_ID = #{psClauseId};
+	</insert>
+
+	<insert id="addClauseDeleteHistory">
+		/* clause.addClauseDeleteHistory */
+		INSERT INTO PS_CLAUSE_HIST
+		(
+			HIST_TP
+			,PS_CLAUSE_ID
+			,PS_CLAUSE_GRP_CD
+			,EXECUTE_DT
+			,CLAUSE_DESCRIPTION
+			,CONTENT
+			,MANDATORY_YN
+			,CLAUSE_INFO
+			,DEL_YN
+			,ORIG_CREATE_ID
+			,ORIG_CREATE_DT
+			,ORIG_MODIFY_ID
+			,ORIG_MODIFY_DT
+			,CREATE_ID
+			,CREATE_DT
+		)
+		 SELECT #{histType} AS HIST_TP
+		    ,ORIG.PS_CLAUSE_ID
+			,ORIG.PS_CLAUSE_GRP_CD
+			,ORIG.EXECUTE_DT
+			,ORIG.CLAUSE_DESCRIPTION
+			,ORIG.CONTENT
+			,ORIG.MANDATORY_YN
+			,ORIG.CLAUSE_INFO
+			,ORIG.DEL_YN
+			,ORIG.CREATE_ID
+			,ORIG.CREATE_DT
+			,ORIG.MODIFY_ID
+			,ORIG.MODIFY_DT
+  		    ,'1'
+		    ,SYSDATE() AS CREATE_DT
+		 FROM PS_CLAUSE ORIG
+		 WHERE PS_CLAUSE_ID = #{psClauseId};
+	</insert>
+
+</mapper>

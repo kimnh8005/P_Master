@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.display.DisplayPopupMapper">
+
+ <!--───────────────────────────────────────────────────────────────────────
+     * description 		: MALL 메인팝업 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.24         천혜현	    최초생성
+     * @
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getPopupInfoResultMap" type="kr.co.pulmuone.v1.display.popup.dto.vo.GetPopupInfoMallResultVo">
+	    <result column="DP_FRONT_POPUP_ID" property="dpFrontPopupId" />
+	    <result column="POPUP_SUBJECT" property="popupSubject" />
+	    <result column="TD_STOP_YN" property="todayStopYn" />
+	    <result column="POPUP_TP" property="popupType" />
+	    <result column="LINK_URL" property="linkUrl" />
+	    <result column="POPUP_DESC" property="popupDescription" />
+	    <result column="POPUP_IMG_PATH" property="popupImagePath" />
+	    <result column="POPUP_IMG_ORIGIN_NM" property="popupImageOriginName" />
+	</resultMap>
+	<select id="getPopupInfo" resultMap="getPopupInfoResultMap">
+		/*	displayPopup.getPopupInfo  */
+		SELECT
+			DP_FRONT_POPUP_ID
+			,POPUP_SUBJECT
+			,TD_STOP_YN
+			,POPUP_TP
+			,LINK_URL
+			,POPUP_DESC
+			,POPUP_IMG_PATH
+			,POPUP_IMG_ORIGIN_NM
+		FROM
+			DP_FRONT_POPUP
+		WHERE
+		    NOW() BETWEEN DP_START_DT AND DP_END_DT
+			AND USE_YN = 'Y'
+			AND DEL_YN = 'N'
+            AND POPUP_IMG_PATH is not null
+            AND POPUP_IMG_PATH != ''
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpTargetTypeList)">
+			    AND DP_TARGET_TP IN
+			    <foreach collection="dpTargetTypeList" item="dpTargetType" separator="," open="(" close=")">
+			        #{dpTargetType}
+			    </foreach>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpRangeTypeList)">
+			    AND DP_RANGE_TP IN
+			    <foreach collection="dpRangeTypeList" item="dpRangeType" separator="," open="(" close=")">
+				    #{dpRangeType}
+			    </foreach>
+		    </if>
+		    <if test="todayStopIdList !=null and !todayStopIdList.isEmpty()">
+		    	AND (TD_STOP_YN = 'N' OR
+		    		(TD_STOP_YN = 'Y' AND DP_FRONT_POPUP_ID NOT IN
+				    <foreach collection="todayStopIdList" item="todayStopId" separator="," open="(" close=")">
+					    #{todayStopId}
+				    </foreach>
+				    ))
+		    </if>
+		ORDER BY SORT
+	</select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: BOS 팝업 관리 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18     최성현		   최초생성
+     * @
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getDisplayPopupListResultMap" type="kr.co.pulmuone.v1.display.popup.dto.vo.GetDisplayPopupListResultVo">
+        <result column="DP_FRONT_POPUP_ID"  property="displayFrontPopupId" />
+        <result column="SORT"  	            property="sort" />
+        <result column="DP_TARGET_TP"  		property="displayTargetType" />
+        <result column="DP_RANGE_TP"  		property="displayRangeType" />
+        <result column="POPUP_SUBJECT" 		property="popupSubject" />
+        <result column="POPUP_TP"  			property="popupType" />
+        <result column="DP_POPUP_DT"  		property="displayPopupDate" />
+        <result column="CREATE_ID"  		property="createId" />
+        <result column="EXPOSURE_STATE"  	property="exposureState" />
+        <result column="USE_YN"  			property="useYn" />
+
+    </resultMap>
+
+    <select id="getPopupList" resultMap="getDisplayPopupListResultMap">
+        /* displayPopup.getPopupListResultMap */
+
+        SELECT
+                DP_FRONT_POPUP_ID
+                ,FN_COMN_CODE_DIC(DP_TARGET_TP) AS DP_TARGET_TP
+                ,FN_COMN_CODE_DIC(DP_RANGE_TP) AS DP_RANGE_TP
+                ,SORT
+                ,POPUP_SUBJECT
+                ,FN_COMN_CODE_DIC(POPUP_TP) AS POPUP_TP
+                ,CONCAT(DP_START_DT, ' - ', DP_END_DT) AS DP_POPUP_DT
+                ,USE_YN
+                ,CONCAT(FN_DECRYPT(UU.USER_NM),'{',UU.LOGIN_ID,'}') AS CREATE_ID
+                    ,(CASE
+                        WHEN (DP_START_DT <![CDATA[>]]> now()) THEN 'E'
+                        WHEN (now() <![CDATA[>=]]> DP_START_DT AND now() <![CDATA[<=]]> DP_END_DT) THEN 'Y'
+                        WHEN (DP_END_DT <![CDATA[<]]> now()) THEN 'N'
+                        END
+                        )AS EXPOSURE_STATE
+            FROM
+                    DP_FRONT_POPUP
+                    INNER JOIN UR_USER AS UU
+                    ON DP_FRONT_POPUP.CREATE_ID = UU.UR_USER_ID
+            <where>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayTargetType)">
+                     AND DP_TARGET_TP IN
+                    <foreach collection="displayTargetTypeList" item="targetType" index="index" separator="," open="(" close=")">
+		                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(targetType)">
+						    #{targetType}
+						</if>
+                    </foreach>
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupType)">
+                    AND POPUP_TP = #{popupType}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+                    AND USE_YN = #{useYn}
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupSubject)">
+                    AND POPUP_SUBJECT like CONCAT('%', #{popupSubject}, '%')
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayRangeType)">
+                    AND DP_RANGE_TP IN
+                    <foreach collection="displayRangeTypeList" item="rangeType" index="index" separator="," open="(" close=")">
+		                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(rangeType)">
+						    #{rangeType}
+						</if>
+                    </foreach>
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(exposureState)">
+                    AND
+                    <foreach collection="exposureStateList" item="List" index="index" separator="or" open="(" close=")">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(List,'Y')">
+                             now() <![CDATA[>=]]> DP_START_DT AND now() <![CDATA[<=]]> DP_END_DT
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(List,'E')">
+                             DP_START_DT <![CDATA[>]]> now()
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(List,'N')">
+                             DP_END_DT <![CDATA[<]]> now()
+                        </if>
+                    </foreach>
+                </if>
+	        </where>
+	        ORDER BY SORT ASC, DP_START_DT DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+ * description 		: 팝업관리 팝업 추가
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.11.25     최성현		   최초생성
+ * @
+ * @
+────────────────────────────────────────────────────────────────────────-->
+
+    <insert id="addPopup">
+    INSERT INTO DP_FRONT_POPUP
+    (   DP_TARGET_TP,
+        DP_RANGE_TP,
+        DP_START_DT,
+        DP_END_DT,
+        SORT,
+        POPUP_TP,
+        POPUP_DESC,
+        LINK_URL,
+        POPUP_SUBJECT,
+        TD_STOP_YN,
+        POPUP_IMG_PATH,
+        POPUP_IMG_ORIGIN_NM,
+        CREATE_ID,
+        CREATE_DT,
+        USE_YN
+    )
+    VALUES
+    (   #{displayTargetType},
+        #{displayRangeType},
+        DATE_FORMAT(#{displayStartDate}, '%Y-%m-%d %H:%i:%s'),
+        DATE_FORMAT(#{displayEndDate},'%Y-%m-%d %H:%i:%s'),
+        #{sort},
+        #{popupType},
+        #{html},
+        #{linkUrl},
+        #{popupSubject},
+        #{todayStopYn},
+        #{popupImagePath},
+        #{popupImageOriginName},
+        #{createId},
+        NOW(),
+        #{useYn}
+    )
+    </insert>
+
+        <!--───────────────────────────────────────────────────────────────────────
+     * description 		: BOS 팝업 관리 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18     최성현		   최초생성
+     * @
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="putPopupDetailResultMap" type="kr.co.pulmuone.v1.display.popup.dto.PutDisplayPopupDetailResponseDto">
+        <result column="DP_FRONT_POPUP_ID"  property="displayFrontPopupId" />
+        <result column="SORT"  	property="sort" />
+        <result column="DP_TARGET_TP"  			property="displayTargetType" />
+        <result column="DP_RANGE_TP"  			property="displayRangeType" />
+        <result column="POPUP_SUBJECT" 		property="popupSubject" />
+        <result column="POPUP_TP"  			property="popupType" />
+        <result column="DP_START_DT"  				property="displayPopupStartDate" />
+        <result column="DP_END_DT"  				property="displayPopupEndDate" />
+        <result column="TD_STOP_YN"  				property="todayStopYn" />
+        <result column="LINK_URL"  				property="linkUrl" />
+        <result column="USE_YN"  				property="useYn" />
+        <result column="POPUP_DESC"  				property="html" />
+        <result column="POPUP_IMG_ORIGIN_NM"  				property="popupImageOriginName" />
+
+    </resultMap>
+
+
+    <select id="putPopupDetail" resultMap="putPopupDetailResultMap">
+        /* displayPopup.putPopupDetailResultMap */
+
+        SELECT
+                DP_FRONT_POPUP_ID,
+                SORT,
+                DP_TARGET_TP,
+                DP_RANGE_TP,
+                POPUP_SUBJECT,
+                POPUP_TP,
+                DP_START_DT,
+                DP_END_DT,
+				TD_STOP_YN,
+				LINK_URL,
+				USE_YN,
+				POPUP_DESC,
+				POPUP_IMG_ORIGIN_NM
+            FROM
+                    DP_FRONT_POPUP
+
+			WHERE
+					DP_FRONT_POPUP_ID = #{displayPopupId}
+
+    </select>
+   <!--───────────────────────────────────────────────────────────────────────
+     * description 		: BOS 팝업 관리 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18     최성현		   최초생성
+     * @
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	  <update id="putPopup">
+          /* displayPopup.putPopup */
+    UPDATE DP_FRONT_POPUP
+ 	SET
+ 	    DP_TARGET_TP = #{displayTargetType},
+        DP_RANGE_TP =  #{displayRangeType},
+        DP_START_DT = DATE_FORMAT(#{displayStartDate}, '%Y-%m-%d %H:%i:%s'),
+        DP_END_DT = DATE_FORMAT(#{displayEndDate},'%Y-%m-%d %H:%i:%s'),
+        SORT = #{sort},
+        POPUP_TP =  #{popupType},
+        POPUP_DESC =  #{html},
+        LINK_URL =  #{linkUrl},
+        POPUP_SUBJECT = #{popupSubject},
+        TD_STOP_YN = #{todayStopYn},
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupImagePath)">
+              POPUP_IMG_PATH = #{popupImagePath},
+          </if>
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(popupImageOriginName)">
+              POPUP_IMG_ORIGIN_NM = #{popupImageOriginName},
+          </if>
+        MODIFY_ID = #{createId},
+        MODIFY_DT = NOW(),
+        USE_YN = #{useYn}
+	WHERE
+		DP_FRONT_POPUP_ID = #{displayFrontPopupId}
+
+    </update>
+   <!--───────────────────────────────────────────────────────────────────────
+     * description 		: BOS 팝업 관리 수정 페이지 데이터셋
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.18     최성현		   최초생성
+     * @
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delPopup">
+    delete
+    	from
+    			DP_FRONT_POPUP
+      	where
+      			DP_FRONT_POPUP_ID = #{displayFrontPopupId}
+    </delete>
+
+       <!--───────────────────────────────────────────────────────────────────────
+     * description 		: BOS 팝업 관리 미리보기
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.12.01     최성현		   최초생성
+     * @
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+<resultMap id="previewPopupResultMap" type="kr.co.pulmuone.v1.display.popup.dto.PreviewPopupResponseDto">
+        <result column="TD_STOP_YN"  			property="todayStopYn" />
+        <result column="POPUP_DESC"  			property="html" />
+		<result column="POPUP_IMG_PATH"			property="popupImgPath" />
+    </resultMap>
+
+
+    <select id="previewPopup" resultMap="previewPopupResultMap">
+        /* displayPopup.previewPopupResultMap */
+
+        SELECT
+				TD_STOP_YN,
+				POPUP_DESC,
+				POPUP_IMG_PATH
+        FROM
+                DP_FRONT_POPUP
+
+		WHERE
+				DP_FRONT_POPUP_ID = #{displayPopupId}
+    </select>
+
+</mapper>

@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.dormancy.UserDormancyMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 정상전환
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.15		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserActive">
+		/*	dormancy.putUserActive  */
+		UPDATE UR_USER
+		SET
+			USER_STATUS = 1
+			,USER_NM = (SELECT USER_NM FROM UR_USER_MOVE WHERE UR_USER_ID = #{urUserId})
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</update>
+
+	<insert id="addUserBuyerActive">
+		/*	dormancy.addUserBuyerActive	*/
+		INSERT INTO UR_BUYER(
+			UR_USER_ID
+			,GENDER
+			,BDAY
+			,MAIL
+			,LOWER_MAIL
+			,MOBILE
+			,SMS_YN
+			,MAIL_YN
+			,MARKETING_YN
+			,SMS_YN_DT
+			,MAIL_YN_DT
+			,MARKETING_YN_DT
+			,LEVELUP_DT
+			,STATUS
+			,UR_GROUP_ID
+			,CI_CD
+			,RECOMM_USER_ID
+			,EVENT_JOIN_YN
+			,UR_ERP_EMPLOYEE_CD
+			,FOREIGNER_YN
+		)
+			SELECT
+				UR_USER_ID
+				,GENDER
+				,BDAY
+				,MAIL
+				,LOWER_MAIL
+				,MOBILE
+				,SMS_YN
+				,MAIL_YN
+				,MARKETING_YN
+				,SMS_YN_DT
+				,MAIL_YN_DT
+				,MARKETING_YN_DT
+				,LEVELUP_DT
+				,STATUS
+				,UR_GROUP_ID
+				,CI_CD
+				,RECOMM_USER_ID
+				,EVENT_JOIN_YN
+				,UR_ERP_EMPLOYEE_CD
+				,FOREIGNER_YN
+			FROM
+				UR_BUYER_MOVE
+			WHERE UR_USER_ID = #{urUserId}
+	</insert>
+
+	<update id="putUrUserMoveLog">
+		/*	dormancy.putUrUserMoveLog  */
+		UPDATE UR_USER_MOVE_LOG
+		SET
+			MODIFY_DT = SYSDATE()
+		WHERE
+			UR_USER_MOVE_ID = #{urUserMoveId}
+	</update>
+
+	<delete id="delUrBuyerMove">
+		/*	dormancy.delUrBuyerMove  */
+		DELETE FROM UR_BUYER_MOVE
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</delete>
+
+	<delete id="delUrUserMove">
+		/*	dormancy.delUrUserMove  */
+		DELETE FROM UR_USER_MOVE
+		WHERE
+			UR_USER_ID = #{urUserId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 아이디중복확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="isCheckUserMoveMap" type="kr.co.pulmuone.v1.user.dormancy.dto.vo.GetIsCheckUserMoveResultVo" >
+		<result column="UR_USER_MOVE_ID"    property="urUserMoveId"  />
+	</resultMap>
+	<select id="isCheckUserMove" resultMap="isCheckUserMoveMap">
+		/*	dormancy.isCheckUserMove 휴면 회원 체크	*/
+      SELECT UR_USER_MOVE_ID
+      FROM UR_USER_MOVE
+      WHERE UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: CI 값으로 휴면 회원 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerMoveInfoByCIMap" type="kr.co.pulmuone.v1.user.dormancy.dto.vo.GetBuyerMoveInfoByCiVo" >
+		<result column="UR_USER_ID"    property="urUserId"  />
+		<result column="UR_USER_MOVE_ID"    property="urUserMoveId"  />
+		<result column="PWD_CHANGE_CD"    property="passwordChangeCd"  />
+	</resultMap>
+	<select id="getBuyerMoveInfoByCI" resultMap="getBuyerMoveInfoByCIMap">
+		/*	dormancy.getBuyerMoveInfoByCI CI 값으로 휴면 회원 조회	*/
+      SELECT
+      	m.UR_USER_ID
+      	, m.UR_USER_MOVE_ID
+      	, c.PWD_CHANGE_CD
+      FROM UR_BUYER_MOVE m
+      JOIN UR_CERTIFICATION c ON (m.UR_USER_ID = c.UR_USER_ID)
+      WHERE m.CI_CD = #{ciCd}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.12		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserDormantListResultMap" type="kr.co.pulmuone.v1.user.dormancy.dto.vo.GetUserDormantListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="UR_USER_MOVE_ID" property="urUserMoveId" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="USER_NM" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="LAST_LOGIN_DT" property="lastLoginDate" />
+		<result column="CREATE_DT" property="createDate" />
+	</resultMap>
+	<select id="getUserDormantList" resultMap="getUserDormantListResultMap">
+		/*	dormancy.getUserDormantList  */
+		SELECT
+		@ROWNUM := @ROWNUM +1 AS RNUM
+		,TBL.*
+		FROM (
+		SELECT
+		UUM.UR_USER_MOVE_ID
+		,UUM.UR_USER_ID
+		,IF(IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+		,FN_DECRYPT(UUM.USER_NM)  AS USER_NM
+		,UU.LOGIN_ID
+		,FN_DECRYPT(UB.MOBILE)  AS MOBILE
+		,FN_DECRYPT(UB.MAIL)  AS MAIL
+		,DATE_FORMAT(UA.LAST_LOGIN_DT, '%Y-%m-%d') AS LAST_LOGIN_DT
+		,DATE_FORMAT(UUM.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		FROM
+		UR_USER_MOVE UUM
+		JOIN UR_USER UU ON UUM.UR_USER_ID = UU.UR_USER_ID
+		JOIN UR_BUYER_MOVE UB ON UUM.UR_USER_ID = UB.UR_USER_ID
+		LEFT JOIN UR_ACCOUNT UA ON UUM.UR_USER_ID = UA.UR_USER_ID
+		JOIN (SELECT @ROWNUM := 0) R
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UUM.USER_NM)  IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND
+					<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+						UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+					AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+					AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+							AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+							AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+						</when>
+					</choose>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+						AND UUM.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+					</if>
+				</if>
+			</otherwise>
+		</choose>
+		ORDER BY UUM.UR_USER_MOVE_ID ASC
+		)TBL
+		ORDER BY RNUM DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.12		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserDormantListCount" resultType="int" >
+		/*	dormancy.getUserDormantListCount	*/
+		SELECT
+		COUNT(*)
+		FROM
+		UR_USER_MOVE UUM
+		JOIN UR_USER UU ON UUM.UR_USER_ID = UU.UR_USER_ID
+		JOIN UR_BUYER_MOVE UB ON UUM.UR_USER_ID = UB.UR_USER_ID
+		JOIN UR_ACCOUNT UA ON UUM.UR_USER_ID = UA.UR_USER_ID
+		JOIN (SELECT @ROWNUM := 0) R
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UUM.USER_NM) IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND
+					<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+						UU.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+					AND FN_DECRYPT(UB.MOBILE) LIKE CONCAT('%',#{mobile},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+					AND FN_DECRYPT(UB.MAIL) LIKE CONCAT('%',#{mail},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+							AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+							AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+						</when>
+					</choose>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+						AND UUM.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+					</if>
+				</if>
+			</otherwise>
+		</choose>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 이력관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.15		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserDormantHistoryListResultMap" type="kr.co.pulmuone.v1.user.dormancy.dto.vo.GetUserDormantHistoryListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="USER_NM" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="MODIFY_DT" property="modifyDate" />
+		<result column="UR_USER_ID" property="urUserId" />
+	</resultMap>
+	<select id="getUserDormantHistoryList" resultMap="getUserDormantHistoryListResultMap">
+		/*	dormancy.getUserDormantHistoryList  */
+		SELECT
+		@ROWNUM := @ROWNUM +1 AS RNUM
+		,TBL.*
+		FROM(
+		SELECT
+		IF(IFNULL(UBM.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+		,IF(UU.USER_NM != '',FN_DECRYPT(UU.USER_NM),FN_DECRYPT(UUM.USER_NM)) AS USER_NM
+		,UU.LOGIN_ID
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MOBILE), FN_DECRYPT(UBM.MOBILE)) AS MOBILE
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MAIL), FN_DECRYPT(UBM.MAIL)) AS MAIL
+		,DATE_FORMAT(UUML.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		,CASE WHEN UUML.MODIFY_DT IS NULL THEN '-'
+		ELSE DATE_FORMAT(UUML.MODIFY_DT, '%Y-%m-%d')
+		END AS MODIFY_DT
+		,UU.UR_USER_ID
+		FROM
+		UR_USER_MOVE_LOG UUML
+		LEFT JOIN UR_USER UU ON UUML.UR_USER_ID = UU.UR_USER_ID
+		LEFT JOIN UR_USER_MOVE UUM ON UUM.UR_USER_ID = UU.UR_USER_ID
+		LEFT JOIN UR_BUYER UB ON UUML.UR_USER_ID = UB.UR_USER_ID
+		LEFT JOIN UR_BUYER_MOVE UBM ON UUML.UR_USER_ID = UBM.UR_USER_ID
+		JOIN (SELECT @ROWNUM := 0) R
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND UUML.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startModifyDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endModifyDate)">
+					AND UUML.MODIFY_DT BETWEEN #{startModifyDate} AND #{endModifyDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</if>
+		ORDER BY UUML.UR_USER_MOVE_LOG_ID ASC
+		) TBL
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND TBL.USER_NM IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND
+					<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+						TBL.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+					AND TBL.MOBILE LIKE CONCAT('%',#{mobile},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+					AND TBL.MAIL LIKE CONCAT('%',#{mail},'%')
+				</if>
+			</otherwise>
+		</choose>
+		ORDER BY RNUM DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 이력관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.15		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserDormantHistoryListCount" resultType="int" >
+		/*	dormancy.getUserDormantHistoryListCount	*/
+		SELECT
+		COUNT(*)
+		FROM(
+		SELECT
+		IF(IFNULL(UBM.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+		,FN_DECRYPT(UU.USER_NM) AS USER_NM
+		,UU.LOGIN_ID
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MOBILE), FN_DECRYPT(UBM.MOBILE)) AS MOBILE
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MAIL), FN_DECRYPT(UBM.MAIL)) AS MAIL
+		,DATE_FORMAT(UUML.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		,CASE WHEN UUML.MODIFY_DT IS NULL THEN '-'
+		ELSE DATE_FORMAT(UUML.MODIFY_DT, '%Y-%m-%d')
+		END AS MODIFY_DT
+		FROM
+		UR_USER_MOVE_LOG UUML
+		LEFT JOIN UR_USER UU ON UUML.UR_USER_ID = UU.UR_USER_ID
+		LEFT JOIN UR_BUYER UB ON UUML.UR_USER_ID = UB.UR_USER_ID
+		LEFT JOIN UR_BUYER_MOVE UBM ON UUML.UR_USER_ID = UBM.UR_USER_ID
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND UUML.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startModifyDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endModifyDate)">
+					AND UUML.MODIFY_DT BETWEEN #{startModifyDate} AND #{endModifyDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</if>
+		) TBL
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND TBL.USER_NM IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND
+					<foreach collection="condiValueArray" item="condiValueArray" separator="or" open="(" close=")">
+						TBL.LOGIN_ID LIKE CONCAT(#{condiValueArray}, '%')
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+					AND TBL.MOBILE LIKE CONCAT('%',#{mobile},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+					AND TBL.MAIL LIKE CONCAT('%',#{mail},'%')
+				</if>
+			</otherwise>
+		</choose>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 전환 완료 시 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserDormancyInfoResultMap" type="kr.co.pulmuone.v1.user.dormancy.dto.vo.UserDormancyResultVo">
+        <result column="UR_USER_ID" property="urUserId" />
+        <result column="LOGIN_ID" property="loginId" />
+        <result column="CREATE_DT" property="createDate" />
+     	<result column="MAIL" property="mail" />
+        <result column="MOBILE" property="mobile" />
+    </resultMap>
+	<select id="getUserDormancyInfo" resultMap="getUserDormancyInfoResultMap">
+		/*	dormancy.getUserDormancyInfo  */
+		SELECT
+			   UBM.UR_USER_ID
+			  ,DATE_FORMAT(UBM.CREATE_DT,'%Y-%m-%d') AS CREATE_DT
+			  ,UBM.MAIL
+			  ,UBM.MOBILE
+			  ,UU.LOGIN_ID
+		FROM UR_BUYER_MOVE UBM
+		INNER JOIN UR_USER UU ON UBM.UR_USER_ID = UU.UR_USER_ID
+		WHERE UBM.UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 전환 예정 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.28		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserDormancyExpected" resultMap="getUserDormancyInfoResultMap">
+		/*	userDormancyBatch.getUserDormancyExpected  */
+		SELECT
+			UU.UR_USER_ID
+			,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 30 DAY),'%Y-%m-%d') AS CREATE_DT
+			,FN_DECRYPT(UB.MAIL) AS MAIL
+			,FN_DECRYPT(UB.MOBILE) AS MOBILE
+			,UU.LOGIN_ID
+		FROM
+			UR_USER UU
+			JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+		WHERE
+			UU.UR_USER_ID = #{urUserId}
+	</select>
+
+</mapper>
+

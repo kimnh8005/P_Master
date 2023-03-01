@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.send.SendPushBatchMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  푸시메시지
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.21		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.send.push.dto.vo.SendManualPushVo" id="sendManualPushResultMap">
+        <result column="SN_MANUAL_PUSH_ID" property="snManualPushId"/>
+        <result column="OS_TP" property="osType"/>
+        <result column="PUSH_TP" property="pushType"/>
+        <result column="IOS_TITLE" property="iosTitle"/>
+        <result column="ANDROID_TITLE" property="androidTitle"/>
+        <result column="CONTENT" property="content"/>
+        <result column="IMAGE" property="image"/>
+        <result column="LINK" property="link"/>
+        <result column="PUSH_SEND_TP" property="pushSendType"/>
+    </resultMap>
+    <select id="getManualPush" resultMap="sendManualPushResultMap">
+        SELECT SN_MANUAL_PUSH_ID
+            , OS_TP
+            , PUSH_TP
+            , IOS_TITLE
+            , ANDROID_TITLE
+            , CONTENT
+            , IMAGE
+            , LINK
+            , (CASE WHEN PUSH_SEND_TP = 'PUSH_SEND_TYPE.NOTICE' THEN 'noti'
+                WHEN PUSH_SEND_TP = 'PUSH_SEND_TYPE.ADVERT' THEN 'sale' END) AS PUSH_SEND_TP
+        FROM SN_MANUAL_PUSH
+        WHERE  SEND_YN = 'N'
+            AND RESERVE_DT <![CDATA[<= ]]> NOW()
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		:  푸시메시지 상태 수정 wait W, yes Y, no N
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.21		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putManualPush">
+        UPDATE SN_MANUAL_PUSH
+        SET SEND_YN = #{sendYn}
+        WHERE SN_MANUAL_PUSH_ID = #{snManualPushId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		:  푸시대상
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.21		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.batch.send.push.dto.vo.SendDeviceInfoVo" id="sendDeviceInfoResultMap">
+        <result column="SN_PUSH_SEND_ID" property="snPushSendId"/>
+        <result column="OS_TP" property="osType"/>
+        <result column="PUSH_KEY" property="pushKey"/>
+        <result column="DEVICE_ID" property="deviceId"/>
+    </resultMap>
+    <select id="getDeviceInfo" resultMap="sendDeviceInfoResultMap">
+        SELECT SPS.SN_PUSH_SEND_ID
+            , SDI.OS_TP
+            , SDI.PUSH_KEY
+            , SDI.DEVICE_ID
+        FROM SN_PUSH_SEND SPS
+            INNER JOIN SN_DEVICE_INFO SDI ON SPS.SN_DEVICE_INFO_ID = SDI.SN_DEVICE_INFO_ID
+        WHERE SPS.SN_MANUAL_PUSH_ID = #{snManualPushId}
+            AND SDI.OS_TP = #{osType}
+            AND SPS.SEND_YN = 'N'
+            AND SDI.PUSH_YN = 'Y'
+            AND SDI.PUSH_KEY IS NOT NULL
+            AND SDI.UR_USER_ID IS NOT NULL
+        ORDER BY SDI.SN_DEVICE_INFO_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		:  푸시대상 상태 수정
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.21		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putPushSend">
+        UPDATE SN_PUSH_SEND
+        SET SEND_YN = 'Y'
+        WHERE SN_PUSH_SEND_ID IN
+        <foreach collection="snPushSendIdList" item="snPushSendId" open="(" separator="," close=")">
+            #{snPushSendId}
+        </foreach>
+    </update>
+
+</mapper>

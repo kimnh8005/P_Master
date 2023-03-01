@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.basic.SystemBasicSiteConfigMapper">
+
+
+    <resultMap id="getPSKeyTypeListResultMap" type="kr.co.pulmuone.v1.system.basic.dto.vo.GetPSKeyTypeListResultVo">
+        <result column="PS_VALUE"    property="psValue"/>
+    </resultMap>
+
+    <!-- 네이버페이 정보를 조회한다. -->
+    <select id="getPSKeyType" resultMap="getPSKeyTypeListResultMap">
+        /* siteConf.getPSKeyType */
+
+        SELECT C.PS_VAL  AS  PS_VALUE
+          FROM PS_CONFIG C
+             , ST_SHOP   S
+         WHERE C.ST_SHOP_ID = S.ST_SHOP_ID
+           AND C.USE_YN     = 'Y'
+           AND S.USE_YN     = 'Y'
+           AND C.PS_KEY     = #{psKey}
+	</select>
+
+    <resultMap id="getPsConfigListResultMap" type="kr.co.pulmuone.v1.system.basic.dto.vo.GetPsConfigListResultVo">
+        <result column="PS_KEY"    property="psKey"  />
+        <result column="PS_VALUE"  property="psValue"/>
+    </resultMap>
+
+	<!-- 상점별 정책정보를 조회한다. -->
+    <select id="getPsConfig" resultMap="getPsConfigListResultMap">
+        /* siteConf.getPsConfig */
+
+        SELECT CONCAT(C.ST_SHOP_ID, '_', C.PS_KEY)  AS  PS_KEY
+             , C.PS_VAL  AS  PS_VALUE
+          FROM PS_CONFIG  C
+             , ST_SHOP    S
+         WHERE C.ST_SHOP_ID = S.ST_SHOP_ID
+           AND C.USE_YN     = 'Y'
+           AND S.USE_YN     = 'Y'
+
+	</select>
+
+    <resultMap id="getStShopListResultMap" type="kr.co.pulmuone.v1.system.basic.dto.vo.GetStShopListResultVo">
+        <result column="SHOP_ID"         property="shopId"      />
+        <result column="SHOP_NAME"       property="shopName"    />
+        <result column="SHOP_AUTHZ_ID"   property="shopAuthzId" />
+        <result column="SHOP_AUTHZ_KEY"  property="shopAuthzKey"/>
+        <result column="SITE_DOMAIN"     property="siteDomain"  />
+        <result column="SITE_DOMAIN_MO"  property="siteDomainMo"/>
+        <result column="COUNTRY_CODE"    property="countryCode" />
+    </resultMap>
+
+	<!-- 상점정보를 조회한다. -->
+    <select id="getStShop" resultMap="getStShopListResultMap">
+        /* siteConf.getStShop */
+
+        SELECT ST_SHOP_ID AS  SHOP_ID
+             , SHOP_NM    AS  SHOP_NAME
+             , SHOP_AUTHZ_ID
+             , SHOP_AUTHZ_KEY
+             , SITE_DOMAIN
+             , SITE_DOMAIN_MO
+             , COUNTRY_CD  AS  COUNTRY_CODE
+          FROM ST_SHOP
+         WHERE USE_YN = 'Y'
+	</select>
+
+    <resultMap id="getUrGroupResultMap" type="kr.co.pulmuone.v1.system.basic.dto.vo.GetUrGroupResultResultVo">
+        <result column="UR_GROUP_ID"            property="groupId"          />
+        <result column="UR_GROUP_MASTER_ID"     property="urGroupMasterId"          />
+        <result column="GROUP_LEVEL_TP"         property="groupLevelType"         />
+        <result column="GROUP_NM"          		property="groupName"       />
+        <result column="PURCHASE_AMOUNT_FROM"   property="purchaseAmountFrom"    />
+        <result column="PURCHASE_CNT_FROM"      property="purchaseCountFrom"    />
+        <result column="CALCULATE_PERIOD"       property="calculatePeriod"      />
+        <result column="DEFAULT_YN"             property="defaultYn"             />
+    </resultMap>
+
+	<!-- 회원그룹정보를 조회한다. -->
+    <select id="getUrGroup" resultMap="getUrGroupResultMap">
+        /* siteConf.getUrGroup */
+		SELECT
+			UG.UR_GROUP_ID
+			,UG.UR_GROUP_MASTER_ID
+			,UG.GROUP_LEVEL_TP
+			,UG.GROUP_NM
+			,UG.PURCHASE_AMOUNT_FROM
+			,UG.PURCHASE_CNT_FROM
+			,UGM.CALCULATE_PERIOD
+			,UG.DEFAULT_YN
+        FROM UR_GROUP UG
+            INNER JOIN UR_GROUP_MASTER UGM ON UG.UR_GROUP_MASTER_ID = UGM.UR_GROUP_MASTER_ID
+            INNER JOIN ST_COMN_CODE CC ON UG.GROUP_LEVEL_TP = CC.ST_COMN_CODE_ID
+        WHERE ((NOW() <![CDATA[>=]]> UGM.START_DT AND UGM.END_DT IS NULL) OR (NOW() BETWEEN UGM.START_DT AND UGM.END_DT))
+        ORDER BY UGM.START_DT DESC, CC.SORT ASC
+	</select>
+
+
+</mapper>

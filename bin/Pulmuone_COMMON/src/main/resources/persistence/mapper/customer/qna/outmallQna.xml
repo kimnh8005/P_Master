@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.qna.OutmallQnaMapper">
+
+   	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 외부몰관리 목록 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.26	    최윤지          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.customer.qna.dto.vo.QnaBosListVo" id="getOutmallQnaListResultMap">
+        <result column="CS_OUTMALL_QNA_ID" property="csOutmallQnaId"/>
+        <result column="SALE_CHANNEL_ID" property="saleChannelId"/>
+        <result column="SALE_CHANNEL_NM" property="saleChannelNm"/>
+        <result column="SHOP_PRODUCT_ID" property="shopProductId"/>
+        <result column="OD_ORDER_ID" property="odOrderId"/>
+        <result column="OD_ORDER_DETL_ID" property="odOrderDetailId"/>
+        <result column="QNA_TP" property="qnaType"/>
+        <result column="QNA_TYPE_NAME" property="qnaTypeName"/>
+        <result column="QNA_DIVISION" property="qnaDivision"/>
+        <result column="QNA_DIVISION_NAME" property="qnaDivisionName"/>
+        <result column="QNA_TITLE" property="qnaTitle"/>
+        <result column="GOODS_NAME" property="goodsName"/>
+        <result column="GOODS_TP" property="goodsTp"/>
+        <result column="IL_GOODS_ID" property="ilGoodsId"/>
+        <result column="USER_NAME" property="userName"/>
+        <result column="USER_ID" property="userId"/>
+        <result column="STATUS" property="status"/>
+        <result column="QNA_STATUS_NAME" property="qnaStatusName"/>
+        <result column="REG_DATE" property="createDate"/>
+        <result column="ANSWER_USER_ID" property="answerUserId"/>
+        <result column="ANSWER_USER_NAME" property="answerUserName"/>
+        <result column="ANSWER_DT" property="answerDate"/>
+        <result column="DELAY_YN" property="delayYn"/>
+        <result column="EASYADMIN_STATUS" property="easyadminStatus"/>
+        <result column="EASYADMIN_STATUS_TEXT" property="easyadminStatusText"/>
+        <result column="PROC_YN" property="procYn"/>
+        <result column="PROC_YN_TEXT" property="procYnText"/>
+    </resultMap>
+    <select id="getOutmallQnaList" resultMap="getOutmallQnaListResultMap">
+          /* outmallQna.getOutmallQnaList */
+          SELECT  C.CS_OUTMALL_QNA_ID
+                , C.SALE_CHANNEL_ID
+                , IFNULL(OS.OUTMALL_NM,'') AS SALE_CHANNEL_NM
+                , C.SHOP_PRODUCT_ID
+                , C.OD_ORDER_ID
+                , C.OD_ORDER_DETL_ID
+                , C.TITLE AS QNA_TITLE
+                , C.STATUS
+                , FN_COMN_CODE_DIC(C.STATUS) AS QNA_STATUS_NAME
+                , C.REG_DATE
+                , CASE WHEN C.STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN IFNULL(UU.LOGIN_ID,'')
+                  ELSE ''
+                  END AS ANSWER_USER_ID
+                , CASE WHEN C.STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN IFNULL(FN_DECRYPT(UU.USER_NM),'')
+                  ELSE ''
+                  END AS ANSWER_USER_NAME
+                , CASE WHEN C.STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN IFNULL(CA.ANSWER_DT,'')
+                  ELSE ''
+                  END AS ANSWER_DT
+                , IFNULL(CA.ANSWER, '') AS ANSWER
+                , IFNULL(C.QUESTION, '') AS QUESTION
+                , CASE  WHEN STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN '정상'
+                        WHEN DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 1 DAY), INTERVAL 18 HOUR) <![CDATA[>]]>  NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+                        ELSE CASE WHEN DAYOFWEEK(C.REG_DATE) = '6' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 3 DAY), INTERVAL 18 HOUR)  <![CDATA[>]]>  NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+                                  WHEN DAYOFWEEK(C.REG_DATE) = '6' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 3 DAY), INTERVAL 18 HOUR)  <![CDATA[<]]>  NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '지연'
+                                  WHEN DAYOFWEEK(C.REG_DATE) = '7' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 2 DAY), INTERVAL 18 HOUR)  <![CDATA[>]]>  NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+                                  WHEN DAYOFWEEK(C.REG_DATE) = '7' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 2 DAY), INTERVAL 18 HOUR)  <![CDATA[<]]>  NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '지연'
+                                  ELSE '지연'
+                             END
+                  END AS DELAY_YN
+                , FN_COMN_CODE_DIC(C.OUTMALL_TP) AS OUTMALL_TYPE_NAME
+                , CONCAT(OS.OUTMALL_PRODUCT_URL, C.SHOP_PRODUCT_ID) AS SHOP_PRODUCT_URL
+                , C.EASYADMIN_STATUS
+                , CASE C.EASYADMIN_STATUS
+                	WHEN 0 THEN '답변대기'
+                	WHEN 1 THEN '답변입력'
+                	WHEN 2 THEN '전송실패'
+                	WHEN 3 THEN '전송완료'
+                ELSE '-' END AS EASYADMIN_STATUS_TEXT
+                , IFNULL(C.COLLECTION_MALL_ID, '') AS COLLECTION_MALL_ID
+                , C.PROC_YN
+                , CASE C.PROC_YN WHEN 'Y' OR ' ' THEN '처리가능'
+                	             ELSE '처리불가' END AS PROC_YN_TEXT
+                , CASE WHEN C.OD_ORDER_ID = 0 OR '' THEN ''
+                       ELSE (SELECT ODID FROM OD_ORDER WHERE OUTMALL_ID = C.OD_ORDER_ID LIMIT 1)
+                  END AS ODID
+          FROM    CS_OUTMALL_QNA C
+                      LEFT JOIN CS_OUTMALL_QNA_ANSWER CA ON C.CS_OUTMALL_QNA_ID = CA.CS_OUTMALL_QNA_ID AND C.STATUS = CA.ANSWER_TP
+                      LEFT JOIN UR_USER UU ON CA.ANSWER_UR_USER_ID = UU.UR_USER_ID
+                      LEFT JOIN OM_SELLERS OS ON C.SALE_CHANNEL_ID = OS.OUTMALL_CD
+    <where>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+            AND   C.REG_DATE BETWEEN  DATE_FORMAT(#{createDateStart}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{createDateEnd}, '%Y-%m-%d 23:59:59')
+          </if>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(qnaStatusList)">
+          <if test="qnaStatusList.size() > 0"> <!-- 처리상태 -->
+            AND   C.STATUS IN
+                                <foreach collection="qnaStatusList" item="qnaStatus" index="index" separator="," open="(" close=")">
+                                  #{qnaStatus}
+                                </foreach>
+          </if>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(saleChannelList)">
+          <if test="saleChannelList.size() > 0"> <!-- 문의채널 -->
+            AND   C.SALE_CHANNEL_ID IN
+                                <foreach collection="saleChannelList" item="saleChannelId" index="index" separator="," open="(" close=")">
+                                  #{saleChannelId}
+                                </foreach>
+          </if>
+        </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findManyKeyword)">
+        <choose>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.TITLE")'>
+            AND   C.TITLE LIKE CONCAT('%',#{findManyKeyword},'%')
+          </when>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.QUESTION")'>
+            AND   C.QUESTION LIKE CONCAT('%',#{findManyKeyword},'%')
+          </when>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchManySelect, "SEARCH_SELECT.ANSWER")'>
+            AND   (CA.ANSWER LIKE CONCAT('%',#{findManyKeyword},'%')  OR CA.ANSWER LIKE  CONCAT('%',#{findManyKeyword},'%'))
+          </when>
+        </choose>
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findAnswerKeyword)">
+        <choose>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchAnswerSelect, "SEARCH_ANSWER.USER_NAME")'>
+            AND   CASE WHEN C.STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN FN_DECRYPT(UU.USER_NM)
+                  ELSE ''
+                  END LIKE CONCAT('%',#{findAnswerKeyword},'%')
+          </when>
+          <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchAnswerSelect, "SEARCH_ANSWER.USER_ID")'>
+            AND   CASE WHEN C.STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN UU.LOGIN_ID
+                  ELSE ''
+                  END LIKE CONCAT('%',#{findAnswerKeyword},'%')
+          </when>
+          <otherwise>
+            AND   (
+                  CASE WHEN C.STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN UU.LOGIN_ID
+                  ELSE ''
+                  END   LIKE CONCAT('%',#{findAnswerKeyword},'%')
+                  OR
+                  CASE WHEN C.STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN FN_DECRYPT(UU.USER_NM)
+                  ELSE ''
+                  END   LIKE CONCAT('%',#{findAnswerKeyword},'%')
+                  )
+          </otherwise>
+        </choose>
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(answerDelayView, 'Y')">
+        AND   CASE  WHEN STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN '정상'
+                    WHEN DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 1 DAY), INTERVAL 18 HOUR) <![CDATA[>]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+                    ELSE CASE WHEN DAYOFWEEK(C.REG_DATE) = '6' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 3 DAY), INTERVAL 18 HOUR) <![CDATA[>]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+                              WHEN DAYOFWEEK(C.REG_DATE) = '6' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 3 DAY), INTERVAL 18 HOUR) <![CDATA[<]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '지연'
+                              WHEN DAYOFWEEK(C.REG_DATE) = '7' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 2 DAY), INTERVAL 18 HOUR) <![CDATA[>]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+                              WHEN DAYOFWEEK(C.REG_DATE) = '7' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 2 DAY), INTERVAL 18 HOUR) <![CDATA[<]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '지연'
+                              ELSE '지연'
+                         END
+              END = '지연'
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(collectionMallId)">
+         AND C.COLLECTION_MALL_ID = #{collectionMallId}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(procYn)">
+         AND C.PROC_YN = #{procYn}
+      </if>
+    </where>
+          ORDER BY C.REG_DATE DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰문의 관리 상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.26		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getQnaDetailResultMap" type="kr.co.pulmuone.v1.customer.qna.dto.vo.QnaBosDetailVo">
+        <result column="USER_NAME"   	property="userName" />
+        <result column="USER_ID"         property="userId" />
+        <result column="USER_MOBILE"  property="userMobile" />
+        <result column="USER_EMAIL"      property="userEmail" />
+        <result column="QNA_TP"        property="qnaType" />
+        <result column="QNA_TYPE_NAME"        property="qnaTypeName" />
+        <result column="QNA_DIVISION_NAME"        property="qnaDivisionName" />
+        <result column="ANSWER_SMS_YN"     property="answerSmsYn" />
+        <result column="ANSWER_MAIL_YN"        property="answerMailYn" />
+        <result column="STATUS"     property="status" />
+        <result column="QNA_STATUS_NAME"     property="qnaStatusName" />
+        <result column="REG_DATE"     property="questionCreateDate" />
+        <result column="DELAY_GBN_WEEK"     property="answerDelayYn" />
+        <result column="GOODS_NAME"     property="goodsName" />
+        <result column="IL_GOODS_ID"     property="ilGoodsId" />
+        <result column="GOODS_TP"     property="goodsTp" />
+        <result column="TITLE"     property="title" />
+        <result column="QUESTION"     property="question" />
+        <result column="FIRST_USER_INFO"     property="firstUserInfo" />
+        <result column="SECOND_USER_INFO"     property="secondUserInfo" />
+        <result column="CS_QNA_ID"     property="csQnaId" />
+        <result column="HD_BCODE"     property="ecsCtgryStd1" />
+        <result column="HD_SCODE"     property="ecsCtgryStd2" />
+        <result column="CLAIM_GUBUN"     property="ecsCtgryStd3" />
+        <result column="OD_ORDER_ID"     property="odOrderId" />
+        <result column="OD_ORDER_DETL_ID"     property="odOrderDetlId" />
+        <result column="ODID"     property="odid" />
+        <result column="ORGANIZATION_NM"     property="organizationNm" />
+        <result column="UR_USER_ID"         property="urUserId" />
+        <result column="SALE_CHANNEL_ID" property="saleChannelId"/>
+        <result column="SALE_CHANNEL_NM" property="saleChannelNm"/>
+        <result column="SHOP_PRODUCT_ID" property="shopProductId"/>
+        <result column="ANSWER"     property="outmallQnaAnswerContent" />
+        <result column="ANSWER_DT"     property="outmallQnaAnswerDate" />
+    </resultMap>
+    <select id="getOutmallQnaDetail" resultMap="getQnaDetailResultMap">
+        /* outmallQna.getOutmallQnaDetail */
+        SELECT
+		     C.STATUS
+		    , FN_COMN_CODE_DIC(C.STATUS) AS QNA_STATUS_NAME
+		    , C.REG_DATE
+		    , CA.ANSWER_DT
+		    , CASE
+				 WHEN STATUS = 'QNA_STATUS.ANSWER_COMPLETED' THEN '정상'
+	    	     WHEN DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 1 DAY), INTERVAL 16 HOUR)  <![CDATA[>]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+	     		 ELSE CASE DAYOFWEEK(C.REG_DATE) WHEN '5' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 3 DAY), INTERVAL 16 HOUR) <![CDATA[>]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+												  WHEN '5' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 3 DAY), INTERVAL 16 HOUR) <![CDATA[<]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '지연'
+												  WHEN '6' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 2 DAY), INTERVAL 16 HOUR) <![CDATA[>]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '정상'
+												  WHEN '6' AND DATE_ADD(DATE_ADD(DATE_FORMAT(C.REG_DATE,'%Y-%m-%d'), INTERVAL 2 DAY), INTERVAL 16 HOUR) <![CDATA[<]]> NOW() AND (C.STATUS = 'QNA_STATUS.ANSWER_CHECKING' OR C.STATUS = 'QNA_STATUS.RECEPTION') THEN '지연'
+							  					  ELSE '지연'
+							  				      END
+			  END AS DELAY_GBN_WEEK
+		    , C.TITLE
+		    , C.QUESTION
+		    , C.CS_OUTMALL_QNA_ID
+		    , C.HD_BCODE
+		    , C.HD_SCODE
+		    , C.CLAIM_GUBUN
+		    , C.OD_ORDER_ID
+			, C.OD_ORDER_DETL_ID
+			, CA.ANSWER
+		    , CA.ANSWER_DT
+		    , CONCAT(FN_DECRYPT(UF.USER_NM), '(',UF.LOGIN_ID,')') AS FIRST_USER_INFO
+		    , IFNULL((SELECT ORGANIZATION_NM FROM UR_EMPLOYEE WHERE UR_USER_ID = '1'),'CS커뮤니케이션') AS ORGANIZATION_NM
+            , FN_COMN_CODE_DIC(C.OUTMALL_TP) AS OUTMALL_TYPE_NAME
+            , C.SALE_CHANNEL_ID
+            , IFNULL(OS.OUTMALL_NM,'') AS SALE_CHANNEL_NM
+            , C.SHOP_PRODUCT_ID
+            , CONCAT(OS.OUTMALL_PRODUCT_URL, C.SHOP_PRODUCT_ID) AS SHOP_PRODUCT_URL
+            , C.CS_OUTMALL_QNA_SEQ
+            , C.EASYADMIN_STATUS
+            , C.CREATE_DT AS EASYADMIN_IF_DT
+            , IFNULL(C.COLLECTION_MALL_ID, '') AS COLLECTION_MALL_ID
+            , C.PROC_YN
+            , CASE WHEN C.OD_ORDER_ID = 0 OR '' THEN ''
+                       ELSE (SELECT ODID FROM OD_ORDER WHERE OUTMALL_ID = C.OD_ORDER_ID LIMIT 1)
+                  END AS ODID
+		FROM CS_OUTMALL_QNA C
+			LEFT JOIN CS_OUTMALL_QNA_ANSWER CA ON C.CS_OUTMALL_QNA_ID = CA.CS_OUTMALL_QNA_ID AND C.STATUS = CA.ANSWER_TP
+			LEFT JOIN UR_USER UF ON CA.ANSWER_UR_USER_ID = UF.UR_USER_ID
+            LEFT JOIN OM_SELLERS OS ON C.SALE_CHANNEL_ID = OS.OUTMALL_CD
+        WHERE C.CS_OUTMALL_QNA_ID = #{csOutmallQnaId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 문의 답변진행 상태변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.27		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putOutmallQnaAnswerStatus">
+        /*	outmallQna.putOutmallQnaAnswerStatus	*/
+        UPDATE CS_OUTMALL_QNA
+        SET STATUS = 'QNA_STATUS.ANSWER_CHECKING',
+            MODIFY_DT = now()
+        WHERE CS_OUTMALL_QNA_ID = #{csOutmallQnaId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 문의 답변정보 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.27		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putOutmallQnaInfo">
+        /*	outmallQna.putOutmallQnaInfo	*/
+        UPDATE CS_OUTMALL_QNA
+        SET STATUS = #{status},
+        	HD_BCODE = #{ecsCtgryStd1},
+        	HD_SCODE = #{ecsCtgryStd2},
+        	CLAIM_GUBUN = #{ecsCtgryStd3},
+            MODIFY_DT = now()
+        WHERE CS_OUTMALL_QNA_ID = #{csOutmallQnaId}
+    </update>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 문의 답변 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.27		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <insert id="addOutmallQnaAnswer">
+    /* outmallQna.addOutmallQnaAnswer */
+       INSERT INTO CS_OUTMALL_QNA_ANSWER
+               (
+                  CS_OUTMALL_QNA_ID
+                , CS_OUTMALL_QNA_SEQ
+                , ANSWER_TP
+                , ANSWER
+                , ANSWER_UR_USER_ID
+                , ANSWER_DT
+                )
+       VALUES
+                (
+                   #{csOutmallQnaId}
+                 , #{csOutmallQnaSeq}
+                 , #{status}
+                 , #{outmallQnaAnswerContent}
+                 , #{userVo.userId}
+                 , now()
+                )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 문의관리  - 외부몰명 체크박스 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.12		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getCodeListResultMap" type="kr.co.pulmuone.v1.base.dto.vo.GetCodeListResultVo">
+        <result column="CODE" property="code" />
+        <result column="NAME" property="name" />
+    </resultMap>
+    <select id="getOutmallNameList" resultMap="getCodeListResultMap">
+        SELECT OUTMALL_CD AS CODE,
+               OUTMALL_NM AS NAME
+        FROM OM_SELLERS
+        WHERE USE_YN = 'Y'
+            AND OM_SELLERS_ID != 0
+            AND CHAR_LENGTH(OUTMALL_CD) > 0
+        ORDER BY OM_SELLERS_ID ASC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 문의 답변 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.19		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <update id="putOutmallQnaAnswer">
+        /*	outmallQna.putOutmallQnaAnswer	*/
+        UPDATE CS_OUTMALL_QNA_ANSWER
+        SET   ANSWER_TP = #{status}
+            , ANSWER = #{outmallQnaAnswerContent}
+            , ANSWER_UR_USER_ID = #{userVo.userId}
+            , ANSWER_DT = now()
+        WHERE CS_OUTMALL_QNA_ID = #{csOutmallQnaId}
+    </update>
+
+</mapper>

@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.basic.SystemBasicClassificationMapper">
+
+	<resultMap type="kr.co.pulmuone.v1.system.basic.dto.vo.GetClassificationListResultVo" id="getClassificationListResultMap">
+		<result column="ST_CLASSIFICATION_ID"  property="stClassificationId"  />
+		<result column="ID"  property="id" />
+		<result column="TYPE"  property="type" />
+		<result column="TYPE_NAME"  property="typeName" />
+		<result column="DEPTH"  property="depth" />
+		<result column="PARENTS_CLASSIFICATION_ID"  property="parentsClassificationId" />
+		<result column="PARENTS_NAME"  property="parentsName" />
+		<result column="USE_YN"  property="useYn" />
+		<result column="SORT"  property="sort" />
+		<result column="GB_DICTIONARY_MASTER_ID"  property="gbDictionaryMasterId" />
+	</resultMap>
+
+	<select id="getClassificationList" resultMap="getClassificationListResultMap">
+		SELECT	A.ST_CLASSIFICATION_ID AS ST_CLASSIFICATION_ID
+		,A.ST_CLASSIFICATION_ID AS ID
+		,FN_COMN_CODE_DIC(A.CLASSIFICATION_TP) AS TYPE
+		,B.DIC_NM AS TYPE_NAME
+		,A.DEPTH AS DEPTH
+		,A.PRNTS_ST_CLASSIFICATION_ID AS PARENTS_CLASSIFICATION_ID
+		,P.NAME AS PARENTS_NAME
+		,A.USE_YN AS USE_YN
+		,A.SORT AS SORT
+		,B.GB_DIC_MST_ID AS GB_DICTIONARY_MASTER_ID
+		FROM 	ST_CLASSIFICATION A
+		LEFT OUTER JOIN	(	SELECT 	A.ST_CLASSIFICATION_ID
+		,B.DIC_NM AS NAME
+		FROM 	ST_CLASSIFICATION A
+		INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+		) P	ON A.PRNTS_ST_CLASSIFICATION_ID = P.ST_CLASSIFICATION_ID
+		INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+		WHERE 	1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+			AND A.ST_CLASSIFICATION_ID = #{id}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stClassificationId)">
+			AND A.ST_CLASSIFICATION_ID = #{stClassificationId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(useYn, '') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+			AND A.USE_YN = #{useYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(type)">
+			AND A.CLASSIFICATION_TP = #{type}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(typeName)">
+			AND B.DIC_NM LIKE CONCAT('%',#{typeName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(depth)">
+			AND A.DEPTH = #{depth}
+		</if>
+		ORDER BY A.CREATE_DT DESC
+	</select>
+	
+	
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 분류관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.01		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClassificationListCount" resultType="int">
+		SELECT 	COUNT(*) AS TOTAL
+		FROM 	ST_CLASSIFICATION A
+		INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+		WHERE 	1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+			AND A.ST_CLASSIFICATION_ID = #{id}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stClassificationId)">
+			AND A.ST_CLASSIFICATION_ID = #{stClassificationId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+			AND A.USE_YN = #{useYn}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(type)">
+			AND A.CLASSIFICATION_TP = #{type}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(typeName)">
+			AND B.DIC_NM LIKE #{typeName}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(depth)">
+			AND A.DEPTH = #{depth}
+		</if>
+	</select>
+	
+	
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.29		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.system.basic.dto.GetClassificationResultVo" id="getClassificationResultMap">
+		<result column="ST_CLASSIFICATION_ID"  property="stClassificationId"  />
+		<result column="ID"  property="id"  />
+		<result column="TYPE"  property="type" />
+		<result column="CLASSIFICATION_TP"  property="classificationTp" />
+		<result column="TYPE_NAME"  property="typeName" />
+		<result column="DEPTH"  property="depth" />
+		<result column="PARENTS_CLASSIFICATION_ID"  property="parentsClassificationId" />
+		<result column="PARENTS_NAME"  property="parentsName" />
+		<result column="USE_YN"  property="useYn" />
+		<result column="SORT"  property="sort" />
+		<result column="GB_DICTIONARY_MASTER_ID"  property="gbDictionaryMasterId" />
+	</resultMap>
+
+	<select id="getClassification" resultMap="getClassificationResultMap">
+		/* classification.getClassification */
+		SELECT
+		 	A.ST_CLASSIFICATION_ID 		AS ST_CLASSIFICATION_ID
+			,A.ST_CLASSIFICATION_ID 		AS ID
+			,FN_COMN_CODE_DIC(A.CLASSIFICATION_TP) AS TYPE
+			,A.CLASSIFICATION_TP
+			,B.DIC_NM 						AS TYPE_NAME
+			,A.DEPTH
+			,A.PRNTS_ST_CLASSIFICATION_ID 	AS PARENTS_CLASSIFICATION_ID
+			,P.NAME 						AS PARENTS_NAME
+			,A.USE_YN
+			,A.SORT
+			,B.GB_DIC_MST_ID			AS GB_DICTIONARY_MASTER_ID
+		FROM ST_CLASSIFICATION A	INNER JOIN GB_DIC B
+										ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+									 LEFT OUTER JOIN(SELECT
+						                    			A.ST_CLASSIFICATION_ID
+						                    			,B.DIC_NM AS NAME
+								                    FROM ST_CLASSIFICATION A  INNER JOIN GB_DIC B
+								                    	ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                                        ) P
+                                     ON A.PRNTS_ST_CLASSIFICATION_ID = P.ST_CLASSIFICATION_ID
+		WHERE 1=1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(stClassificationId)">
+				AND A.ST_CLASSIFICATION_ID = #{stClassificationId}
+			</when>
+			<otherwise>
+				AND 1=2
+			</otherwise>
+		</choose>
+	</select>
+
+
+	<select id="checkClassificationDuplicate" resultType="int">
+		/* classification.checkClassificationDuplicate */
+		SELECT COUNT(*) TOTAL
+		FROM ST_CLASSIFICATION A	INNER JOIN GB_DIC B
+										ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+									 LEFT OUTER JOIN(SELECT
+						                    			A.ST_CLASSIFICATION_ID
+						                    			,B.DIC_NM AS NAME
+								                    FROM ST_CLASSIFICATION A  INNER JOIN GB_DIC B
+								                    	ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+                                        ) P
+                                     ON A.PRNTS_ST_CLASSIFICATION_ID = P.ST_CLASSIFICATION_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+		    AND A.ST_CLASSIFICATION_ID NOT IN ( #{id} )
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(classificationTp)">
+		    AND A.CLASSIFICATION_TP = #{classificationTp}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(gbDictionaryMasterId)">
+		    AND B.GB_DIC_MST_ID = #{gbDictionaryMasterId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentsClassificationId)">
+		    AND A.PRNTS_ST_CLASSIFICATION_ID = #{parentsClassificationId}
+		</if>
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 분류관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.03		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addClassification">
+		/* classification.addClassification */
+		INSERT INTO ST_CLASSIFICATION(
+			CLASSIFICATION_TP
+			,DEPTH
+			,PRNTS_ST_CLASSIFICATION_ID
+			,USE_YN
+			,SORT
+			,GB_DIC_MST_ID
+			,CREATE_ID
+		)
+		SELECT
+			#{classificationTp}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentsClassificationId)">
+				,(DEPTH + 1)
+				,#{parentsClassificationId}
+				</when>
+				<otherwise>
+				,1
+				,0
+				</otherwise>
+			</choose>
+			,#{useYn}
+			,#{sort}
+			,#{gbDictionaryMasterId}
+			,#{userVo.userId}
+		FROM ST_CLASSIFICATION
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentsClassificationId)">
+				AND ST_CLASSIFICATION_ID = #{parentsClassificationId}
+			</if>
+		</where>
+		LIMIT 1
+
+		<selectKey resultType="long" keyProperty="id" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 분류관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.03		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putClassification">
+		/* classification.putClassification */
+		UPDATE ST_CLASSIFICATION C
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentsClassificationId)">
+			,(
+				SELECT
+					(B.DEPTH + 1) AS DEPTH
+				FROM ST_CLASSIFICATION B
+				WHERE ST_CLASSIFICATION_ID = #{parentsClassificationId}
+			) PC
+		</if>
+		SET
+			CLASSIFICATION_TP	=#{classificationTp}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(parentsClassificationId)">
+				,C.DEPTH = PC.DEPTH
+		    	,PRNTS_ST_CLASSIFICATION_ID = #{parentsClassificationId}
+			</if>
+			,USE_YN=#{useYn}
+			,SORT=#{sort}
+			,GB_DIC_MST_ID=#{gbDictionaryMasterId}
+			,MODIFY_ID = #{userVo.userId}
+		WHERE C.ST_CLASSIFICATION_ID = #{id}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 분류관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.03		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delClassification">
+		/* classification.delClassification */
+		DELETE FROM ST_CLASSIFICATION
+		WHERE ST_CLASSIFICATION_ID = #{id}
+	</delete>
+
+	<resultMap type="kr.co.pulmuone.v1.system.basic.dto.GetTypeListResultVo" id="getTypeListResultMap">
+		<result column="TYPE_NAME"  property="typeName" />
+		<result column="TYPE_ID"  property="typeId" />
+		<result column="SORT"  property="sort" />
+	</resultMap>
+
+	<select id="getTypeList" resultMap="getTypeListResultMap">
+		/* classification.getTypeList */
+		SELECT FN_COMN_CODE_DIC(ST_COMN_CODE_ID) AS TYPE_NAME
+		      ,ST_COMN_CODE_ID AS TYPE_ID
+		      ,SORT
+		FROM ST_COMN_CODE SCC
+		WHERE ST_COMN_CODE_MST_CD ='CLASSIFICATION_CODE'
+		ORDER BY SORT
+
+	</select>
+
+</mapper>

@@ -1,0 +1,472 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.feedback.FeedbackMapper">
+
+  <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 후기관리 목록조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getFeedbackListMap" type="kr.co.pulmuone.v1.customer.feedback.dto.vo.FeedbackBosListVo">
+        <result column="FEEDBACK_PRODUCT_TYPE_NAME"   property="feedbackProductTypeName" />
+        <result column="FEEDBACK_TYPE_NAME"           property="feedbackTypeName" />
+        <result column="ITEM_NAME"               	  property="itemName" />
+        <result column="COMMENT"              		  property="comment" />
+        <result column="USER_NAME"           		  property="userName" />
+        <result column="LOGIN_ID"               	  property="userId" />
+        <result column="SATISFACTION_SCORE"       	  property="satisfactionScore" />
+        <result column="CREATE_DT"                	  property="createDate" />
+        <result column="DISP_YN"                  	  property="displayYn" />
+        <result column="GOODS_NAME"                   property="goodsName" />
+        <result column="IL_GOODS_ID"                  property="ilGoodsId" />
+        <result column="FB_FEEDBACK_ID"               property="feedbackId" />
+        <result column="IL_ITEM_CD"                   property="itemCode" />
+    </resultMap>
+    <select id="getFeedbackList" resultMap="getFeedbackListMap">
+    /* feedbackBos.getFeedbackList */
+        SELECT  T.FEEDBACK_PRODUCT_TP
+              , T.FEEDBACK_PRODUCT_TYPE_NAME
+              , T.FEEDBACK_TP
+              , T.FEEDBACK_TYPE_NAME
+              , T.ITEM_NAME
+              , T.COMMENT
+              , T.USER_NAME
+              , T.LOGIN_ID
+              , CASE  WHEN T.SATISFACTION_SCORE = 0 THEN '☆'
+                      WHEN T.SATISFACTION_SCORE = 1 THEN '★'
+                      WHEN T.SATISFACTION_SCORE = 2 THEN '★★'
+                      WHEN T.SATISFACTION_SCORE = 3 THEN '★★★'
+                      WHEN T.SATISFACTION_SCORE = 4 THEN '★★★★'
+                      WHEN T.SATISFACTION_SCORE = 5 THEN '★★★★★'
+                 END AS SATISFACTION_SCORE
+              , T.CREATE_DT
+              , T.DISP_YN
+              , T.GOODS_NAME
+              , T.IL_GOODS_ID
+              , T.FB_FEEDBACK_ID
+              , T.IL_ITEM_CD
+              , T.EV_EVENT_ID
+        FROM    (
+                SELECT  FF.FEEDBACK_PRODUCT_TP
+                      , FN_COMN_CODE_DIC(FF.FEEDBACK_PRODUCT_TP)  AS FEEDBACK_PRODUCT_TYPE_NAME
+                      , FF.FEEDBACK_TP
+                      , FN_COMN_CODE_DIC(FF.FEEDBACK_TP)          AS FEEDBACK_TYPE_NAME
+                      , II.ITEM_NM                                AS ITEM_NAME      /*품목명*/
+                      , FF.COMMENT                                AS COMMENT        /*후기 내용*/
+                      , FN_DECRYPT(FF.USER_NM)                    AS USER_NAME
+                      , FF.LOGIN_ID
+                      , FF.SATISFACTION_SCORE
+                      , FF.CREATE_DT
+                      , FF.DISP_YN
+                      , FF.ITEM_NM                                AS GOODS_NAME     /*상품정보백업 - 마스터 품목명 --상품명 */
+                      , FF.IL_GOODS_ID                            AS IL_GOODS_ID    /*상품PK*/
+                      , FF.FB_FEEDBACK_ID                         AS FB_FEEDBACK_ID /*후기PK*/
+                      , FF.IL_ITEM_CD                             AS IL_ITEM_CD     /*품목PK*/
+                      , FF.BEST_CNT
+                      , FF.ADMIN_BEST_YN
+                      , FF.ADMIN_EXCELLENT_YN
+                      , FF.EV_EVENT_ID
+                FROM    FB_FEEDBACK FF
+                                LEFT OUTER JOIN OD_ORDER OO ON FF.OD_ORDER_ID = OO.OD_ORDER_ID
+                                LEFT OUTER JOIN IL_GOODS IG ON FF.IL_GOODS_ID = IG.IL_GOODS_ID
+                                LEFT OUTER JOIN IL_ITEM II  ON II.IL_ITEM_CD  = FF.IL_ITEM_CD
+        <where>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(satisfactionScore)">
+                  AND   FF.SATISFACTION_SCORE = #{satisfactionScore}
+                </if>
+            <if test="feedbackFilterList !=null and feedbackFilterList.size == 1">
+              <foreach collection="feedbackFilterList" item="feedbackFilter" index="index" >
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_AUTO')">
+                  AND   FF.BEST_CNT <![CDATA[>]]> 9
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_ADMIN')">
+                  AND   FF.ADMIN_BEST_YN = 'Y'
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.GREAT')">
+                  AND   FF.ADMIN_EXCELLENT_YN = 'Y'
+                </if>
+              </foreach>
+            </if>
+          <if test="feedbackFilterList !=null and feedbackFilterList.size == 2">
+            <foreach collection="feedbackFilterList" item="feedbackFilter" index="index" >
+              <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(index, 0)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_AUTO')">
+                  AND   FF.BEST_CNT <![CDATA[>]]> 9
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_ADMIN')">
+                  AND   FF.ADMIN_BEST_YN = 'Y'
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.GREAT')">
+                  AND   FF.ADMIN_EXCELLENT_YN = 'Y'
+                </if>
+              </if>
+              <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(index, 1)">
+                  AND   (
+                        1 = 1
+                      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_ADMIN')">
+                        OR  FF.ADMIN_BEST_YN = 'Y'
+                      </if>
+                      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.GREAT')">
+                        OR  FF.ADMIN_EXCELLENT_YN = 'Y'
+                       </if>
+                         )
+               </if>
+            </foreach>
+          </if>
+                <if test="feedbackFilterList !=null and feedbackFilterList.size == 3">
+                  AND   (
+                        FF.BEST_CNT <![CDATA[>]]> 9
+                        OR
+                        FF.ADMIN_BEST_YN = 'Y'
+                        OR
+                        FF.ADMIN_EXCELLENT_YN = 'Y'
+                        )
+                </if>
+                <if test="feedbackFilterList == null">
+                  AND   FF.BEST_CNT <![CDATA[<]]> 10
+                  AND   FF.ADMIN_BEST_YN = 'N'
+                  AND   FF.ADMIN_EXCELLENT_YN = 'N'
+                </if>
+
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+              <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.ITEM")'>
+                  AND   II.ITEM_NM IN
+                                        <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                          #{findKeyword}
+                                        </foreach>
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.ITEM_CODE")'>
+                  AND   FF.IL_ITEM_CD IN
+                                        <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                          #{findKeyword}
+                                        </foreach>
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USER_NAME")'>
+                  AND   FF.USER_NM IN
+                                        <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                          (SELECT FN_ENCRYPT(#{findKeyword}))
+                                        </foreach>
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USE_ID")'>
+                  AND   FF.LOGIN_ID IN
+                                        <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                          #{findKeyword}
+                                        </foreach>
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.EVENT_CODE")'>
+                  AND   FF.EV_EVENT_ID IN
+                                        <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+                                          #{findKeyword}
+                                        </foreach>
+                </when>
+              </choose>
+            </if>
+              <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+                  AND   FF.CREATE_DT BETWEEN DATE_FORMAT(#{createDateStart}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{createDateEnd}, '%Y-%m-%d 23:59:59')
+                </if>
+              </if>
+              <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayYn)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(displayYn, 'DISPLAY_YN.DISPLAY_Y')">
+                  AND   FF.DISP_YN = 'Y'
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(displayYn, 'DISPLAY_YN.DISPLAY_N')">
+                  AND   FF.DISP_YN = 'N'
+                </if>
+              </if>
+              <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackProductType)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(feedbackProductType, 'ALL')">
+                  AND   FF.FEEDBACK_PRODUCT_TP = #{feedbackProductType}
+                </if>
+              </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackType)">
+                  AND   FF.FEEDBACK_TP = #{feedbackType}
+                </if>
+        </where>
+            ) T
+        ORDER BY T.CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 후기관리 리스트 엑셀 다운로드
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.24     안치열
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="feedbackExportExcel" resultMap="getFeedbackListMap">
+        /* feedbackBos.feedbackExportExcel */
+        SELECT T.*
+        FROM(
+        SELECT F.FEEDBACK_PRODUCT_TP
+        	 , F.FEEDBACK_PRODUCT_TYPE_NAME
+        	 , F.FEEDBACK_TP
+        	 , F.FEEDBACK_TYPE_NAME
+        	 , F.ITEM_NAME
+        	 , F.COMMENT
+        	 , F.USER_NAME
+        	 , F.LOGIN_ID
+       		 , CASE WHEN F.SATISFACTION_SCORE = 1 THEN '★'
+                    WHEN F.SATISFACTION_SCORE = 2 THEN '★★'
+                    WHEN F.SATISFACTION_SCORE = 3 THEN '★★★'
+                    WHEN F.SATISFACTION_SCORE = 4 THEN '★★★★'
+                    WHEN F.SATISFACTION_SCORE = 5 THEN '★★★★★'
+               END AS SATISFACTION_SCORE
+              , F.CREATE_DT
+              , F.DISP_YN
+              , F.IL_ITEM_CD
+        FROM
+        (
+	        SELECT
+			       FF.FEEDBACK_PRODUCT_TP
+			     , IFNULL(FN_COMN_CODE_DIC(FF.FEEDBACK_PRODUCT_TP),'') AS FEEDBACK_PRODUCT_TYPE_NAME
+			     , FF.FEEDBACK_TP
+			     , IFNULL(FN_COMN_CODE_DIC(FF.FEEDBACK_TP),'') AS FEEDBACK_TYPE_NAME
+			     , IFNULL(( SELECT  II.ITEM_NM
+	                FROM IL_ITEM II
+	                WHERE II.IL_ITEM_CD  = FF.IL_ITEM_CD),'')          AS ITEM_NAME      /*품목명*/
+	             , IFNULL(FF.COMMENT,'')                               AS COMMENT        /*후기 내용*/
+	             , IFNULL(FN_DECRYPT(FF.USER_NM),'') AS USER_NAME
+	             , IFNULL(FF.LOGIN_ID,'') AS LOGIN_ID
+	             , FF.SATISFACTION_SCORE
+	             , FF.CREATE_DT
+	             , IFNULL(FF.DISP_YN,'') 		AS DISP_YN
+	             , IFNULL(FF.IL_ITEM_CD,'')     AS IL_ITEM_CD     /*품목PK*/
+	             ,FF.BEST_CNT
+	             ,FF.ADMIN_BEST_YN
+	             ,FF.ADMIN_EXCELLENT_YN
+	          FROM FB_FEEDBACK FF
+	            LEFT OUTER JOIN OD_ORDER OO ON FF.OD_ORDER_ID = OO.OD_ORDER_ID
+	        	LEFT OUTER JOIN IL_GOODS IG ON FF.IL_GOODS_ID = IG.IL_GOODS_ID
+	          WHERE 1=1
+        	  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(satisfactionScore)">
+	              AND FF.SATISFACTION_SCORE = #{satisfactionScore}
+	          </if>
+	    ) AS F
+         WHERE 1=1
+	        <if test="feedbackFilterList !=null and feedbackFilterList.size == 1">
+                 <foreach collection="feedbackFilterList" item="feedbackFilter" index="index" >
+                 	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_AUTO')">
+                    	AND F.BEST_CNT <![CDATA[>]]> 9
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_ADMIN')">
+                    	AND F.ADMIN_BEST_YN = 'Y'
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.GREAT')">
+                    	AND F.ADMIN_EXCELLENT_YN = 'Y'
+                    </if>
+                 </foreach>
+             </if>
+             <if test="feedbackFilterList !=null and feedbackFilterList.size == 2">
+                 <foreach collection="feedbackFilterList" item="feedbackFilter" index="index" >
+                 	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(index, 0)">
+	                 	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_AUTO')">
+	                    	AND F.BEST_CNT <![CDATA[>]]> 9
+	                    </if>
+	                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_ADMIN')">
+	                    	AND F.ADMIN_BEST_YN = 'Y'
+	                    </if>
+	                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.GREAT')">
+	                    	AND F.ADMIN_EXCELLENT_YN = 'Y'
+	                    </if>
+	                </if>
+	                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(index, 1)">
+	                 	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.BEST_ADMIN')">
+	                    	OR F.ADMIN_BEST_YN = 'Y'
+	                    </if>
+	                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(feedbackFilter, 'FEEDBACK_FILTER.GREAT')">
+	                    	OR F.ADMIN_EXCELLENT_YN = 'Y'
+	                    </if>
+	                </if>
+                 </foreach>
+             </if>
+             <if test="feedbackFilterList !=null and feedbackFilterList.size == 3">
+                   	AND F.BEST_CNT <![CDATA[>]]> 9
+                   	OR F.ADMIN_BEST_YN = 'Y'
+                   	OR F.ADMIN_EXCELLENT_YN = 'Y'
+             </if>
+             <if test="feedbackFilterList == null">
+                  	AND F.BEST_CNT <![CDATA[<]]> 10
+                  	AND F.ADMIN_BEST_YN = 'N'
+                  	AND F.ADMIN_EXCELLENT_YN = 'N'
+           	 </if>
+	        ) AS T
+	         WHERE 1=1
+       		 <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+                 <choose>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.ITEM")'>
+                         AND T.ITEM_NAME IN
+                         <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+							#{findKeyword}
+						</foreach>
+                     </when>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.ITEM_CODE")'>
+                         AND T.IL_ITEM_CD IN
+                         <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+							#{findKeyword}
+						</foreach>
+                     </when>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USER_NAME")'>
+                         AND T.USER_NAME IN
+                         <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+							#{findKeyword}
+						</foreach>
+                     </when>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.USE_ID")'>
+                         AND T.LOGIN_ID IN
+                         <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+							#{findKeyword}
+						</foreach>
+                     </when>
+                     <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.EVENT_CODE")'>
+                         AND .EV_EVENT_ID IN
+                         <foreach collection="findKeywordArray" item="findKeyword" separator="," open="(" close=")">
+							#{findKeyword}
+						</foreach>
+                     </when>
+                 </choose>
+             </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+            		AND T.CREATE_DT BETWEEN DATE_FORMAT(#{createDateStart}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{createDateEnd}, '%Y-%m-%d 23:59:59')
+            	</if>
+            </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayYn)">
+             	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(displayYn, 'DISPLAY_YN.DISPLAY_Y')">
+            		AND T.DISP_YN = 'Y'
+            	</if>
+            	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(displayYn, 'DISPLAY_YN.DISPLAY_N')">
+            		AND T.DISP_YN = 'N'
+            	</if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackProductType)">
+            	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(feedbackProductType, 'ALL')">
+            		AND T.FEEDBACK_PRODUCT_TP = #{feedbackProductType}
+            	</if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackType)">
+            	AND T.FEEDBACK_TP = #{feedbackType}
+            </if>
+        ORDER BY T.CREATE_DT DESC
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 후기관리 상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getDetailFeedbackMap" type="kr.co.pulmuone.v1.customer.feedback.dto.vo.FeedbackBosDetailVo">
+        <result column="FEEDBACK_PRODUCT_TYPE_NAME"   property="feedbackProductTypeName" />
+        <result column="FEEDBACK_TYPE_NAME"           property="feedbackTypeName" />
+        <result column="ITEM_NAME"               	  property="itemName" />
+        <result column="COMMENT"              		  property="comment" />
+        <result column="USER_NAME"           		  property="userName" />
+        <result column="LOGIN_ID"               	  property="userId" />
+        <result column="SATISFACTION_SCORE"       	  property="satisfactionScore" />
+        <result column="CREATE_DT"                	  property="createDate" />
+        <result column="DISP_YN"                  	  property="displayYn" />
+        <result column="GOODS_NAME"                   property="goodsName" />
+        <result column="IL_GOODS_ID"                  property="ilGoodsId" />
+        <result column="FB_FEEDBACK_ID"               property="feedbackId" />
+        <result column="IL_ITEM_CD"                   property="itemCode" />
+        <result column="BEST_CNT"                     property="bestCnt" />
+        <result column="ADMIN_BEST_YN"                property="adminBestYn" />
+        <result column="ADMIN_EXCELLENT_YN"           property="adminExcellentYn" />
+        <result column="EV_EVENT_ID"           		  property="evEventId" />
+    </resultMap>
+    <select id="getDetailFeedback" resultMap="getDetailFeedbackMap">
+        /* feedbackBos.getDetailFeedback */
+	        SELECT
+			       FF.FEEDBACK_PRODUCT_TP
+			     , FN_COMN_CODE_DIC(FF.FEEDBACK_PRODUCT_TP) AS FEEDBACK_PRODUCT_TYPE_NAME
+			     , FF.FEEDBACK_TP
+			     , FN_COMN_CODE_DIC(FF.FEEDBACK_TP) AS FEEDBACK_TYPE_NAME
+			     ,( SELECT  II.ITEM_NM
+	                FROM IL_ITEM II
+	                WHERE II.IL_ITEM_CD  = FF.IL_ITEM_CD)          AS ITEM_NAME      /*품목명*/
+	             , FF.COMMENT                                      AS COMMENT        /*후기 내용*/
+	             , FN_DECRYPT(FF.USER_NM) AS USER_NAME
+	             , FF.LOGIN_ID
+	             , CASE WHEN FF.SATISFACTION_SCORE = 1 THEN '★'
+	                    WHEN FF.SATISFACTION_SCORE = 2 THEN '★★'
+	                    WHEN FF.SATISFACTION_SCORE = 3 THEN '★★★'
+	                    WHEN FF.SATISFACTION_SCORE = 4 THEN '★★★★'
+	                    WHEN FF.SATISFACTION_SCORE = 5 THEN '★★★★★'
+               		END AS SATISFACTION_SCORE
+	             , FF.CREATE_DT
+	             , FF.DISP_YN
+	             ,FF.ITEM_NM                                       AS GOODS_NAME     /*상품정보백업 - 마스터 품목명 --상품명 */
+	             ,FF.IL_GOODS_ID                                   AS IL_GOODS_ID    /*상품PK*/
+	             ,FF.FB_FEEDBACK_ID                                AS FB_FEEDBACK_ID /*후기PK*/
+	             ,FF.IL_ITEM_CD                                    AS IL_ITEM_CD     /*품목PK*/
+	             ,FF.BEST_CNT
+	             ,FF.ADMIN_BEST_YN
+	             ,FF.ADMIN_EXCELLENT_YN
+	             ,FF.EV_EVENT_ID
+	          FROM FB_FEEDBACK FF
+	            LEFT OUTER JOIN OD_ORDER OO ON FF.OD_ORDER_ID = OO.OD_ORDER_ID
+	        	LEFT OUTER JOIN IL_GOODS IG ON FF.IL_GOODS_ID = IG.IL_GOODS_ID
+        WHERE 1=1
+        AND FF.FB_FEEDBACK_ID = #{feedbackId}
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 후기관리 상세 첨부파일 이미지
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.25		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getImageList" resultType="kr.co.pulmuone.v1.customer.feedback.dto.vo.FeedbackBosDetailVo">
+		/* feedbackBos.getImageList */
+		SELECT
+			FB_FEEDBACK_ATTC_ID
+		  , FB_FEEDBACK_ID
+		  , IMG_ORIGIN_NM
+		  ,	IMG_NM
+		  ,	IMG_PATH
+		  , CONCAT(IMG_PATH, IMG_NM) AS IMAGE_NAME
+		FROM
+			FB_FEEDBACK_ATTC
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackId)">
+		WHERE FB_FEEDBACK_ID = #{feedbackId}
+		</if>
+
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 후기관리정보 수정
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.25		안치열		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putFeedbackInfo">
+	/* feedbackBos.putFeedbackInfo */
+		UPDATE FB_FEEDBACK
+		SET ADMIN_BEST_YN 		= #{adminBestYn}
+			, DISP_YN  			= #{popupDisplayYn}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminExcellentYnCheck)">
+			, ADMIN_EXCELLENT_YN  = #{adminExcellentYnCheck}
+		</if>
+		WHERE FB_FEEDBACK_ID = #{feedbackId}
+
+	</update>
+
+</mapper>
+
+

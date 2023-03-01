@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.itemprice.ItemDiscountMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 할인 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		ykk          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemDiscount" >
+		/* itemDiscount.addItemDiscount */
+		INSERT INTO IL_ITEM_DISCOUNT (
+		      IL_ITEM_CD			/* 품목 PK	*/
+			, DISCOUNT_TP           /* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인)	*/
+			, DISCOUNT_START_DT     /* 할인 시작일	*/
+			, DISCOUNT_END_DT       /* 할인 종료일	*/
+			, DISCOUNT_METHOD_TP    /* 상품할인 방법 유형 공통코드(GOODS_DISCOUNT_METHOD_TP - FIXED_PRICE:고정가할인, FIXED_RATE:정률할인)	*/
+			, DISCOUNT_SALE_PRICE   /* 할인판매가	*/
+			, USE_YN				/* 사용여부(Y:사용) */
+			, CREATE_ID             /* 등록자	*/
+
+		)
+		VALUES
+		(
+			 #{ilItemCode}
+			,#{discountType}
+			,#{discountStartDate}
+			,#{discountEndDate}
+			,#{discountMethodType}
+			,#{discountSalePrice}
+			,'Y'
+			,#{createId}
+		)
+	    ON DUPLICATE KEY UPDATE
+	    	  DISCOUNT_END_DT = #{discountEndDate}
+	    	, DISCOUNT_METHOD_TP = #{discountMethodType}
+	    	, DISCOUNT_RATIO = NULL
+	    	, DISCOUNT_SALE_PRICE = #{discountSalePrice}
+	    	, USE_YN = 'Y'
+
+	</insert>
+
+
+
+
+
+</mapper>

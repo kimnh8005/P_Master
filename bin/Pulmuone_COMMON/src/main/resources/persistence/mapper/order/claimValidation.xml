@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.claim.ClaimValidationMapper">
+
+	<select id="selectOrderStatusList" resultType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimOrderStatusVo">
+		/* claimValidation.selectOrderStatusList */
+		SELECT
+			oo.OD_ORDER_ID AS odOrderId
+			, ood.OD_ORDER_DETL_ID AS odOrderDetlId
+			, ood.ORDER_STATUS_CD AS orderStatusCd
+		FROM OD_ORDER oo
+		INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+		WHERE oo.ORDER_YN = 'Y'
+		AND ood.OD_ORDER_DETL_ID IN
+		<foreach item="odOrderDetlId" collection="odOrderDetlIds" open="(" separator="," close=")">
+			#{odOrderDetlId}
+		</foreach>
+	</select>
+
+	<select id="selectClaimStatusList" resultType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimOrderStatusVo">
+		/* claimValidation.selectClaimStatusList */
+		SELECT
+			oo.OD_ORDER_ID AS odOrderId
+			, ood.OD_ORDER_DETL_ID AS odOrderDetlId
+			, ood.ORDER_STATUS_CD AS orderStatusCd
+			, ocd.CLAIM_STATUS_CD AS claimStatusCd
+		FROM OD_ORDER oo
+		INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+		LEFT OUTER JOIN OD_CLAIM_DETL ocd ON ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+		LEFT OUTER JOIN OD_CLAIM oc ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND oo.OD_ORDER_ID = oc.OD_ORDER_ID
+		WHERE oo.ORDER_YN = 'Y'
+		AND ocd.OD_CLAIM_DETL_ID IN
+		<foreach item="odClaimDetlId" collection="odClaimDetlIds" open="(" separator="," close=")">
+			#{odClaimDetlId}
+		</foreach>
+		AND oc.OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<select id="selectClaimCnt" resultType="int">
+		/* claimValidation.selectClaimCnt */
+		SELECT
+			ood.ORDER_CNT - ood.CANCEL_CNT - #{claimCnt} AS resultClaimCnt
+		FROM OD_ORDER oo
+		INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+		WHERE oo.ORDER_YN = 'Y'
+		AND ood.OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+</mapper>

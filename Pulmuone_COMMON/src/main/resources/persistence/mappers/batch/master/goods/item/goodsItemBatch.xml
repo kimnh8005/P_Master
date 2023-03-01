@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.item.BatchGoodsItemMapper">
+
+    <!-- 품목 배치 관련 로직 Start -->
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description :  ERP 품목정보 수정
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.23        박주형          최초생성
+     * @ 2020.10.21        박주형          코드 리팩토링 : Common 모듈로 이동
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="modifyErpItem">
+    /* goodsItemBatch.modifyErpItem */
+    UPDATE  IL_ITEM
+       SET  ERP_ITEM_NM                = #{erpItemName}
+          , ERP_ITEM_BARCODE           = #{erpItemBarcode}
+          , ITEM_BARCODE           	   = #{erpItemBarcode}
+          , ERP_CTGRY_LV1_ID           = #{erpCategoryLevel1Id}
+          , ERP_CTGRY_LV2_ID           = #{erpCategoryLevel2Id}
+          , ERP_CTGRY_LV3_ID           = #{erpCategoryLevel3Id}
+          , ERP_CTGRY_LV4_ID           = #{erpCategoryLevel4Id}
+          , ERP_BRAND_NM               = #{erpBrandName}
+          , ERP_ITEM_GRP               = #{erpItemGroup}
+          , ERP_STORAGE_METHOD         = #{erpStorageMethod}
+          , ERP_ORIGIN_NM              = #{erpOriginName}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(erpDistributionPeriod)">
+          , ERP_DISTRIBUTION_PERIOD    = #{erpDistributionPeriod}
+          , DISTRIBUTION_PERIOD		   = #{erpDistributionPeriod}
+        </if>
+          , ERP_BOX_WIDTH              = #{erpBoxWidth}
+          , ERP_BOX_DEPTH              = #{erpBoxDepth}
+          , ERP_BOX_HEIGHT             = #{erpBoxHeight}
+          , ERP_ITEM_WIDTH			   = #{erpItemWidth}
+          , ERP_ITEM_DEPTH			   = #{erpItemDepth}
+          , ERP_ITEM_HEIGHT			   = #{erpItemHeight}
+          , ITEM_DISP_WEIGHT           = #{itemDispWeight}
+          , ITEM_REAL_WEIGHT           = #{itemRealWeight}
+          , ERP_PCS_PER_BOX            = #{erpPiecesPerBox}
+          , BOX_WIDTH              	   = #{erpBoxWidth}
+          , BOX_DEPTH                  = #{erpBoxDepth}
+          , BOX_HEIGHT                 = #{erpBoxHeight}
+          , PCS_PER_BOX                = #{erpPiecesPerBox}
+          , ERP_TAX_YN                 = #{erpTaxYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+          , ERP_PO_TYPE                = #{erpPoType}
+          , ERP_CAN_PO_YN              = #{erpCanPoYn, typeHandler=kr.co.pulmuone.v1.comm.base.mybatis.hanlder.BooleanTypeHandler}
+          , ERP_NUTRITION_QTY_PER_ONCE = #{erpNutritionQtyPerOnce}
+          , ERP_NUTRITION_QTY_TOTAL    = #{erpNutritionQtyTotal}
+          , ERP_NUTRITION_ETC          = #{erpNutritionEtc}
+          , ERP_O2O_EXPOSURE_TP        = #{erpO2oExposureType}
+          , ERP_PRODUCT_TP             = #{erpProductType}
+          , ERP_REGAL_CD               = #{erpLegalTypeCode}
+          , MODIFY_ID                  = #{modifyId}
+          , MODIFY_DT                  = NOW()
+     WHERE  IL_ITEM_CD                 = #{ilItemCode}
+       AND  ERP_IF_YN                  = 'Y'
+    </update>
+
+	<select id="getItemByItemCd" resultType = "kr.co.pulmuone.v1.goods.item.dto.vo.MasterItemVo">
+	/* goodsItemBatch.getItemByItemCd */
+		SELECT
+			II.IL_ITEM_CD AS IL_ITEM_CODE
+			, US.SUPPLIER_CD AS SUPPLIER_CD
+			, II.ERP_PO_TYPE AS ERP_PO_TYPE
+			, II.ERP_CTGRY_LV1_ID AS ERP_CATEGORY_LEVEL1_ID
+		FROM
+			IL_ITEM II
+			INNER JOIN UR_SUPPLIER US
+				ON US.UR_SUPPLIER_ID = II.UR_SUPPLIER_ID
+		WHERE
+			II.IL_ITEM_CD = #{ilItemCode}
+	</select>
+
+    <select id="getPoTpIdByErpPoTp" resultType = "String">
+	/* goodsItemBatch.getPoTpIdByErpPoTp */
+    	SELECT
+    		IPT.IL_PO_TP_ID AS IL_PO_TP_ID
+    	FROM
+    		IL_PO_TP IPT
+    	WHERE
+    		IPT.ERP_PO_TP = #{erpPoTp}
+    		AND IPT.TEMPLATE_YN = 'Y'
+	</select>
+
+    <update id="updatePoInfo">
+	/* goodsItemBatch.updatePoInfo */
+		UPDATE
+			IL_ITEM_WAREHOUSE IIW
+		SET
+			IIW.IL_PO_TP_ID = #{ilPoTpId}
+			, IIW.PRE_ORDER_YN = #{preOrderYn}
+			, IIW.PRE_ORDER_TP = #{preOrderTp}
+		WHERE
+			IIW.IL_ITEM_CD = #{ilItemCode}
+	</update>
+
+    <!-- 품목 배치 관련 로직 End -->
+
+</mapper>

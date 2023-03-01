@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.ItemChangeLogListMapper">
+
+	<!-- 상품목록 resultMap -->
+	<resultMap id="getItemChangeLogListResultMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemChangeLogListVo">
+		<result column="CREATE_DT"			property="createDate"/>
+		<result column="IL_ITEM_CD"			property="ilItemCode"/>
+		<result column="ERP_IF_YN"			property="erpLinkIfYn"/>
+		<result column="ITEM_BARCODE"		property="itemBarcode"/>
+		<result column="ITEM_TP"			property="itemType"/>
+		<result column="ITEM_TYPE_NAME"		property="itemTypeName"/>
+		<result column="ITEM_NM"			property="itemName"/>
+		<result column="CHARGE_NAME"		property="chargeName"/>
+		<result column="CHARGE_ID"			property="chargeId"/>
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description	  : 상품목록 조회
+	 * @
+	 * @ 수정일		 수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.22	 임상건		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemChangeLogList" resultMap="getItemChangeLogListResultMap">
+		/* itemChangeLogList.getItemChangeLogList */
+		SELECT
+			IICL.CREATE_DT
+		,	II.IL_ITEM_CD
+		,	II.ERP_IF_YN
+		,	IFNULL(II.ITEM_BARCODE, '') AS ITEM_BARCODE
+		,	II.ITEM_TP
+		,	ITEM_TYPE_CODE.NAME AS ITEM_TYPE_NAME
+		,	II.ITEM_NM
+		,	FN_DECRYPT(UU.USER_NM) AS CHARGE_NAME
+		,	UU.LOGIN_ID AS CHARGE_ID
+		FROM (
+			SELECT
+				IICL.IL_ITEM_CD
+			,	IICL.CREATE_DT
+			,	IICL.CREATE_ID
+			FROM
+				IL_ITEM_CHNAGE_LOG IICL
+			GROUP BY
+				IICL.IL_ITEM_CD, IICL.CREATE_DT
+			ORDER BY
+				IICL.IL_ITEM_CD DESC, IICL.CREATE_DT DESC
+		) IICL
+		INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = IICL.IL_ITEM_CD
+		LEFT JOIN (
+			SELECT
+				A.ST_COMN_CODE_ID AS CODE
+				, B.DIC_NM AS NAME
+			FROM
+				ST_COMN_CODE A
+			INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+			WHERE
+				A.ST_COMN_CODE_MST_CD = 'MASTER_ITEM_TYPE'
+			AND A.USE_YN = UPPER('Y')
+		) ITEM_TYPE_CODE ON ITEM_TYPE_CODE.CODE = II.ITEM_TP
+		LEFT JOIN UR_USER UU ON UU.UR_USER_ID = IICL.CREATE_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '')">
+						AND (
+							CAST(II.IL_ITEM_CD AS UNSIGNED) IN
+							<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+								#{data}
+							</foreach>
+
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+									OR CAST(II.ERP_ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+									OR CAST(II.ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<otherwise>
+									OR CAST(II.ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+									OR CAST(II.ERP_ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</otherwise>
+							</choose>
+						)
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '1')">
+						AND
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+							 II.IL_ITEM_CD IN
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+							CAST(II.IL_ITEM_CD AS UNSIGNED) IN
+						</if>
+
+						<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							#{data}
+						</foreach>
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '2')">
+						AND (
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ERP_ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ERP_ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<otherwise>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+
+									OR
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ERP_ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ERP_ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</otherwise>
+							</choose>
+						)
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+				AND II.ITEM_NM LIKE CONCAT('%', #{itemName}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(chargeType, 'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(charge)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createName')"> <!-- 등록자명 -->
+						AND FN_DECRYPT(UU.USER_NM) = #{charge}
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createId')"> <!-- 등록자 LOGIN ID -->
+						AND UU.LOGIN_ID = #{charge}
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)"> <!-- 업데이트일 검색 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+					AND IICL.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</if>
+			</if>
+		</where>
+		ORDER BY IICL.IL_ITEM_CD DESC, IICL.CREATE_DT DESC
+	</select>
+
+	 <!--───────────────────────────────────────────────────────────────────────
+	 * description	  : 상품목록 조회 - 엑셀다운로드
+	 * @
+	 * @ 수정일		 수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ * @ 2021.04.22	 임상건		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getItemChangeLogListExcel" resultMap="getItemChangeLogListResultMap">
+		SELECT
+			IICL.CREATE_DT
+		,	II.IL_ITEM_CD
+		,	IFNULL(II.ITEM_BARCODE, '') AS ITEM_BARCODE
+		,	II.ITEM_TP
+		,	ITEM_TYPE_CODE.NAME AS ITEM_TYPE_NAME
+		,	II.ITEM_NM
+		,	FN_DECRYPT(UU.USER_NM) AS CHARGE_NAME
+		,	UU.LOGIN_ID AS CHARGE_ID
+		FROM (
+			SELECT
+				IICL.IL_ITEM_CD
+			,	IICL.CREATE_DT
+			,	IICL.CREATE_ID
+			FROM
+				IL_ITEM_CHNAGE_LOG IICL
+			GROUP BY
+				IICL.IL_ITEM_CD, IICL.CREATE_DT
+			ORDER BY
+				IICL.IL_ITEM_CD DESC, IICL.CREATE_DT DESC
+		) IICL
+		INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = IICL.IL_ITEM_CD
+		LEFT JOIN (
+			SELECT
+				A.ST_COMN_CODE_ID AS CODE
+				, B.DIC_NM AS NAME
+			FROM
+				ST_COMN_CODE A
+			INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+			WHERE
+				A.ST_COMN_CODE_MST_CD = 'MASTER_ITEM_TYPE'
+			AND A.USE_YN = UPPER('Y')
+		) ITEM_TYPE_CODE ON ITEM_TYPE_CODE.CODE = II.ITEM_TP
+		LEFT JOIN UR_USER UU ON UU.UR_USER_ID = IICL.CREATE_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCode)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '')">
+						AND (
+							CAST(II.IL_ITEM_CD AS UNSIGNED) IN
+							<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+								#{data}
+							</foreach>
+
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+									OR CAST(II.ERP_ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+									OR CAST(II.ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<otherwise>
+									OR CAST(II.ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+									OR CAST(II.ERP_ITEM_BARCODE AS UNSIGNED) IN
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</otherwise>
+							</choose>
+						)
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '1')">
+						AND
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+							 II.IL_ITEM_CD IN
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+							CAST(II.IL_ITEM_CD AS UNSIGNED) IN
+						</if>
+
+						<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+							#{data}
+						</foreach>
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeKind, '2')">
+						AND (
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'Y')">
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ERP_ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ERP_ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(erpLinkIfYn, 'N')">
+
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</when>
+								<otherwise>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+
+									OR
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'Y')">
+										II.ERP_ITEM_BARCODE IN
+									</if>
+									<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ilItemCodeStrFlag, 'N')">
+										CAST(II.ERP_ITEM_BARCODE AS UNSIGNED)  IN
+									</if>
+
+									<foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+										#{data}
+									</foreach>
+								</otherwise>
+							</choose>
+						)
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemName)">
+				AND II.ITEM_NM LIKE CONCAT('%', #{itemName}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(chargeType, 'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(charge)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createName')"> <!-- 등록자명 -->
+						AND FN_DECRYPT(UU.USER_NM) = #{charge}
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(chargeType, 'createId')"> <!-- 등록자 LOGIN ID -->
+						AND UU.LOGIN_ID = #{charge}
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)"> <!-- 업데이트일 검색 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchEnd)">
+					AND IICL.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</if>
+			</if>
+		</where>
+		ORDER BY IICL.IL_ITEM_CD DESC, IICL.CREATE_DT DESC
+	</select>
+
+	 <!--───────────────────────────────────────────────────────────────────────
+	 * description	  : 업데이트 상세 내역
+	 * @
+	 * @ 수정일		 수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ * @ 2021.04.21	 임상건		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getItemChangeLogPopupMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemChangeLogListVo">
+		<result column="COLUMN_NM"		property="columnName"/>
+		<result column="COLUMN_LABEL"	property="columnLabel"/>
+		<result column="BEFORE_DATA"	property="beforeData"/>
+		<result column="AFTER_DATA"		property="afterData"/>
+	</resultMap>
+
+	<select id="getItemChangeLogPopup" resultMap="getItemChangeLogPopupMap">
+		/* goodsChangeLogList.getItemChangeLogPopup */
+		SELECT
+			IICL.COLUMN_NM
+		,	IICL.COLUMN_LABEL
+		,	IFNULL(BEFORE_CODE.NAME, IICL.BEFORE_DATA) AS BEFORE_DATA
+		,	IFNULL(AFTER_CODE.NAME, IICL.AFTER_DATA) AS AFTER_DATA
+		FROM
+			IL_ITEM_CHNAGE_LOG IICL
+		LEFT JOIN (
+			SELECT
+				A.ST_COMN_CODE_ID AS CODE
+				, B.DIC_NM AS NAME
+				, A.ST_COMN_CODE_MST_CD
+			FROM
+				ST_COMN_CODE A
+			INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+			WHERE
+				A.USE_YN = UPPER('Y')
+		) BEFORE_CODE ON BEFORE_CODE.ST_COMN_CODE_MST_CD = SUBSTRING_INDEX(IICL.BEFORE_DATA, ".", 1) AND BEFORE_CODE.CODE = IICL.BEFORE_DATA
+		LEFT JOIN (
+			SELECT
+				A.ST_COMN_CODE_ID AS CODE
+				, B.DIC_NM AS NAME
+				, A.ST_COMN_CODE_MST_CD
+			FROM
+				ST_COMN_CODE A
+			INNER JOIN GB_DIC B ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID AND B.GB_LANG_ID = '1'
+			WHERE
+				A.USE_YN = UPPER('Y')
+		) AFTER_CODE ON AFTER_CODE.ST_COMN_CODE_MST_CD = SUBSTRING_INDEX(IICL.AFTER_DATA, ".", 1) AND AFTER_CODE.CODE = IICL.AFTER_DATA
+		WHERE
+			IL_ITEM_CD = #{ilItemCode}
+		AND	CREATE_DT = #{createDate}
+	</select>
+</mapper>

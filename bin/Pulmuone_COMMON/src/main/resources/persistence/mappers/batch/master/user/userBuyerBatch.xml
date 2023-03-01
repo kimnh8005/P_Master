@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.user.UserBuyerBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.27		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.batch.user.buyer.dto.vo.UserBuyerVo" id="userBuyerResultMap">
+		<result column="UR_BUYER_ID"  property="urBuyerId"/>
+		<result column="UR_USER_ID"   property="urUserId"/>
+		<result column="UR_GROUP_ID"  property="beforeUrGroupId"/>
+		<result column="BATCH_YEAR_MONTH"  property="batchYearMonth"/>
+		<result column="BATCH_USER_TYPE"  property="batchUserType"/>
+	</resultMap>
+	<select id="getBuyerList" resultMap="userBuyerResultMap">
+		/*	userBuyerBatch.getBuyerList  */
+		SELECT *,
+			#{batchYearMonth} AS BATCH_YEAR_MONTH,
+			#{batchUserType} AS BATCH_USER_TYPE
+		FROM (
+			SELECT UB.UR_BUYER_ID
+				, UB.UR_USER_ID
+				, UB.UR_GROUP_ID
+				, (CASE WHEN UGB.UR_USER_ID THEN 1 ELSE 0 END) AS HISTORY_CNT
+			FROM UR_BUYER UB
+				INNER JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+				LEFT OUTER JOIN UR_GROUP_BATCH_HISTORY UGB ON UU.UR_USER_ID = UGB.UR_USER_ID AND UGB.BATCH_YM = #{batchYearMonth} AND UGB.BATCH_USER_TYPE = #{batchUserType}
+			WHERE UU.USER_STATUS = 1
+				AND UU.USER_TP = 'USER_TYPE.BUYER'
+		) G1
+		WHERE G1.HISTORY_CNT = 0
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 정보 수정 - 등급 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.27		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putBuyerGroup">
+		/*	userBuyerBatch.putBuyerGroup  */
+		<foreach collection="userBuyerList" item="item" separator=";">
+			UPDATE UR_BUYER
+			SET UR_GROUP_ID = #{item.urGroupId},
+				LEVELUP_DT = NOW()
+			WHERE UR_BUYER_ID = #{item.urBuyerId}
+		</foreach>
+		;
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면 회원 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.28		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBuyerMoveList" resultMap="userBuyerResultMap">
+		/*	userBuyerBatch.getBuyerMoveList  */
+		SELECT *,
+			#{batchYearMonth} AS BATCH_YEAR_MONTH,
+			#{batchUserType} AS BATCH_USER_TYPE
+		FROM (
+			SELECT UB.UR_BUYER_MOVE_ID AS UR_BUYER_ID
+				,UB.UR_USER_ID
+				,UB.UR_GROUP_ID
+				, (CASE WHEN UGB.UR_USER_ID THEN 1 ELSE 0 END) AS HISTORY_CNT
+			FROM UR_BUYER_MOVE UB
+				INNER JOIN UR_USER UU ON UB.UR_USER_ID = UU.UR_USER_ID
+				LEFT OUTER JOIN UR_GROUP_BATCH_HISTORY UGB ON UU.UR_USER_ID = UGB.UR_USER_ID AND UGB.BATCH_YM = #{batchYearMonth} AND UGB.BATCH_USER_TYPE = #{batchUserType}
+			WHERE UU.USER_TP = 'USER_TYPE.BUYER'
+		) G1
+		WHERE G1.HISTORY_CNT = 0
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원 정보 수정 - 등급 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.27		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putBuyerMoveGroup">
+		/*	userBuyerBatch.putBuyerMoveGroup  */
+		<foreach collection="userBuyerList" item="item" separator=";">
+			UPDATE UR_BUYER_MOVE
+			SET UR_GROUP_ID = #{item.urGroupId},
+				LEVELUP_DT = NOW()
+			WHERE UR_BUYER_MOVE_ID = #{item.urBuyerId}
+		</foreach>
+		;
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원등급 변경 로그 추가
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.24     천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addChangeLog" parameterType="HashMap">
+        /* userBuyerBatch.addChangeLog */
+        INSERT INTO UR_CHANGE_LOG  (
+            UR_USER_ID
+            ,BEFORE_DATA
+            ,AFTER_DATA
+            ,COLUMN_NM
+            ,COLUMN_LABEL
+            ,CREATE_ID
+        )
+        VALUES
+        <foreach item="insertData" index="index" collection="userBuyerList" open="" separator="," close="">
+            (
+                #{insertData.urUserId}
+                ,FN_ENCRYPT(#{insertData.beforeUrGroupId})
+                ,FN_ENCRYPT(#{insertData.urGroupId})
+                ,'urGroupId'
+                ,'회원등급'
+                ,0
+            )
+        </foreach>
+    </insert>
+
+</mapper>
+

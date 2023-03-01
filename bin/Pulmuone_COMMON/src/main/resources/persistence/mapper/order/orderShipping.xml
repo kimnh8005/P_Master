@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.shipping.OrderShippingMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근배송지리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.04 	김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getRecentlyShippingAddressListMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetShippingAddressListResultVo">
+    	<result column="UR_LATELY_SHIPPING_ADDR_ID" property="shippingAddressId" />
+        <result column="RECEIVER_NM" property="receiverName" />
+        <result column="RECEIVER_ZIP_CD" property="receiverZipCode" />
+        <result column="RECEIVER_ADDR1" property="receiverAddress1" />
+        <result column="RECEIVER_ADDR2" property="receiverAddress2" />
+        <result column="RECEIVER_MO" property="receiverMobile" />
+        <result column="BUILDING_CODE" property="buildingCode" />
+        <result column="ACCESS_INFORMATION_TYPE" property="accessInformationType" />
+        <result column="ACCESS_INFORMATION_PASSWORD" property="accessInformationPassword" />
+        <result column="SHIPPING_CMNT" property="shippingComment" />
+    </resultMap>
+    <select id="getRecentlyShippingAddressList" resultMap="getRecentlyShippingAddressListMap">
+		/*	orderShipping.getRecentlyShippingAddressList 최근 배송지 */
+		SELECT
+			A.UR_LATELY_SHIPPING_ADDR_ID
+			,FN_DECRYPT(A.RECEIVER_NM) AS RECEIVER_NM
+			,FN_DECRYPT(A.RECEIVER_ZIP_CD) AS RECEIVER_ZIP_CD
+			,FN_DECRYPT(A.RECEIVER_ADDR1) AS RECEIVER_ADDR1
+			,FN_DECRYPT(A.RECEIVER_ADDR2) AS RECEIVER_ADDR2
+			,FN_DECRYPT(A.RECEIVER_MO) AS RECEIVER_MO
+			,FN_DECRYPT(A.BUILDING_CD) AS BUILDING_CODE
+			,A.ACCESS_INFORMATION_TP AS ACCESS_INFORMATION_TYPE
+			,FN_DECRYPT(A.ACCESS_INFORMATION_PASSWORD)   AS ACCESS_INFORMATION_PASSWORD
+			,A.SHIPPING_CMNT
+		FROM
+			UR_LATELY_SHIPPING_ADDR A
+		WHERE
+		  A.UR_USER_ID = #{urUserId}
+		ORDER BY A.UR_LATELY_SHIPPING_ADDR_ID DESC
+		LIMIT 0, #{limitCount}
+	</select>
+
+</mapper>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.pg.PgMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: Pg 은행 & 카드 코드 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.28		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPgBankCode" resultType="String">
+		/*	pg.getPgBankCode	*/
+		SELECT
+			  PG_BANK_CD
+		FROM
+			PS_PAYMENT_METHOD ppm
+			JOIN PS_PG_PAY ppp ON (ppm.PS_PG_PAY_ID = ppp.PS_PG_PAY_ID)
+		WHERE
+			ppp.PS_PG_CD = #{pgServiceTypeCode}
+			AND ppp.PS_PAY_CD = #{paymentTypeCode}
+			AND ppm.BANK_NM_CD = #{bankNameCode}
+			AND ppm.USE_YN = 'Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: PG 비율 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.22		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPgActiveRateMap" type="kr.co.pulmuone.v1.pg.dto.vo.PgActiveRateVo" >
+		<result column="KCP_RATE"    property="kcpRate"  />
+		<result column="INICIS_RATE"     property="inicisRate"  />
+	</resultMap>
+	<select id="getPgActiveRate" resultMap="getPgActiveRateMap">
+		/*	pg.getPgActiveRate	*/
+		SELECT
+			 kcp.USE_RATIO AS KCP_RATE
+			 ,inicis.USE_RATIO AS INICIS_RATE
+		FROM
+			PS_PG_PAY kcp
+			JOIN PS_PG_PAY inicis ON (kcp.PS_PAY_CD = inicis.PS_PAY_CD AND inicis.PS_PG_CD = 'PG_SERVICE.INICIS')
+		WHERE
+			kcp.PS_PAY_CD = #{psPayCd}
+			AND kcp.PS_PG_CD = 'PG_SERVICE.KCP'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 은행명 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.28		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPgBankName" resultType="String">
+		/*	pg.getPgBankName	*/
+		SELECT
+			  FN_COMN_CODE_DIC(ppm.BANK_NM_CD) AS BANK_NM
+		FROM
+			PS_PAYMENT_METHOD ppm
+			JOIN PS_PG_PAY ppp ON (ppm.PS_PG_PAY_ID = ppp.PS_PG_PAY_ID)
+		WHERE
+			ppp.PS_PG_CD = #{pgServiceTypeCode}
+			AND ppp.PS_PAY_CD = #{paymentTypeCode}
+			AND ppm.PG_BANK_CD = #{pgBankCode}
+	</select>
+</mapper>

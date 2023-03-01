@@ -1,0 +1,803 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.statics.pm.PromotionStaticsMapper">
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description    : 내부광고코드별 매출현황 통계
+      * @
+      * @ 수정일       수정자    수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.07.28   안치열    최초생성
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStaticsInternalAdvertisingList" resultType="kr.co.pulmuone.v1.statics.pm.dto.vo.PromotionStaticsVo">
+        /* promotionStatics.getStaticsInternalAdvertisingList */
+
+        SELECT
+            IFNULL(pai.PAGE_NM, '-') AS PAGE_NM
+            , IFNULL(pai.CONTENT_NM, IFNULL(d.PM_AD_INTERNAL_CONTENT_CD, '-')) AS CONTENT_NM
+            , PAID_PRICE
+            , IFNULL(FORMAT(PAID_PRICE, 0),0) AS PAID_PRICE_FM -- 고객매출(엑셀)
+            , ORDER_CNT -- 주문건수
+            , IFNULL(FORMAT(ORDER_CNT, 0),0) AS ORDER_CNT_FM -- 주문건수(엑셀)
+            , ROUND(PAID_PRICE / ORDER_CNT) AS ORDER_UNIT_PRICE -- 주문단가
+            , IFNULL(FORMAT(ROUND(PAID_PRICE / ORDER_CNT), 0),0) AS ORDER_UNIT_PRICE_FM -- 주문단가(엑셀)
+            , USER_CNT -- 구매고객수
+            , IFNULL(FORMAT(USER_CNT, 0),0) AS USER_CNT_FM -- 구매고객수(엑셀)
+            , ROUND(PAID_PRICE / USER_CNT) AS USER_UNIT_PRICE -- 인단가
+            , IFNULL(FORMAT(ROUND(PAID_PRICE / USER_CNT), 0),0) AS USER_UNIT_PRICE_FM -- 인단가(엑셀)
+        FROM (
+            SELECT
+                PM_AD_INTERNAL_PAGE_CD
+                , PM_AD_INTERNAL_CONTENT_CD
+                , COUNT(DISTINCT UR_USER_ID) AS USER_CNT   -- 구매고객 수
+                , SUM(PAID_PRICE) AS PAID_PRICE  -- 매출금액(VAT포함)
+                , COUNT(DISTINCT o.OD_ORDER_ID)  AS ORDER_CNT -- 주문건수
+            FROM (
+            SELECT
+                ood.PM_AD_INTERNAL_PAGE_CD -- 내부 광고 페이지 코드
+                , ood.PM_AD_INTERNAL_CONTENT_CD -- 내부 광고 영역
+                , oo.OD_ORDER_ID -- 주문번호
+                , oo.UR_USER_ID -- 구매자 PK
+                , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                ELSE ood.PAID_PRICE
+                END, 0) AS PAID_PRICE     -- 매출금액(VAT포함)
+            FROM OD_ORDER_DETL ood
+            JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+            JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+            LEFT JOIN OD_TRACKING_NUMBER otn ON	(otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+            LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER')
+            WHERE
+                -- * 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 프로그램 변경 *
+                -- ood2.CREATE_DT BETWEEN STR_TO_DATE('20210601000000', '%Y%m%d%H%i%s') AND STR_TO_DATE('20210630235959', '%Y%m%d%H%i%s') -- 기간
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'ODR')">
+                        ood2.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 주문일
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'PAY')">
+                        ood2.IC_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 결제일
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'SAL')">
+                        otn.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 매출일
+                    </if>
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPmAdInternalPageCd)">
+                    AND ood.PM_AD_INTERNAL_PAGE_CD LIKE CONCAT('%', #{searchPmAdInternalPageCd}, '%') -- 내부광고코드 검색
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pageCd)">
+                    AND ood.PM_AD_INTERNAL_PAGE_CD = #{pageCd} -- 내부 광고 페이지 코드
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(contentCd)">
+                    AND ood.PM_AD_INTERNAL_CONTENT_CD = #{contentCd} -- 내부 광고 영역 코드
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchContentNm)">
+                    AND ood.PM_AD_INTERNAL_CONTENT_CD LIKE CONCAT('%', #{searchContentNm}, '%') -- 내부 광고 영역 코드
+                </if>
+            UNION ALL
+            SELECT
+                ood.PM_AD_INTERNAL_PAGE_CD -- 내부 광고 페이지 코드
+                , ood.PM_AD_INTERNAL_CONTENT_CD -- 내부 광고 영역
+                , oo.OD_ORDER_ID -- 주문번호
+                , oo.UR_USER_ID -- 구매자 PK
+                , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                ELSE ocd.PAID_PRICE
+                END, 0) AS SIGNED) * -1  AS PAID_PRICE -- 매출금액(VAT포함)
+            FROM OD_CLAIM_DETL ocd
+            JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+            JOIN OD_ORDER oo ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+            JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+            LEFT JOIN OD_TRACKING_NUMBER otn ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+            LEFT JOIN IF_SALES_SETTLE_INFO issi ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ
+            AND issi.SETTLE_TYPE = 'RETURN' AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID)
+            WHERE
+                (
+                ocd.CC_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 기준기간
+                OR
+                ocd.RC_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 기준기간
+                )
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPmAdInternalPageCd)">
+                    AND ood.PM_AD_INTERNAL_PAGE_CD LIKE CONCAT('%', #{searchPmAdInternalPageCd}, '%') -- 내부광고코드 검색
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pageCd)">
+                    AND ood.PM_AD_INTERNAL_PAGE_CD = #{pageCd} -- 내부 광고 페이지 코드
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(contentCd)">
+                    AND ood.PM_AD_INTERNAL_CONTENT_CD = #{contentCd} -- 내부 광고 영역 코드
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchContentNm)">
+                    AND ood.PM_AD_INTERNAL_CONTENT_CD LIKE CONCAT('%', #{searchContentNm}, '%') -- 내부 광고 영역 코드
+                </if>
+            ) o
+            GROUP BY PM_AD_INTERNAL_PAGE_CD, PM_AD_INTERNAL_CONTENT_CD
+        ) d LEFT JOIN PM_AD_INTERNAL pai ON (pai.PM_AD_INTERNAL_PAGE_CD = d.PM_AD_INTERNAL_PAGE_CD AND pai.PM_AD_INTERNAL_CONTENT_CD = d.PM_AD_INTERNAL_CONTENT_CD)
+
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description    : 외부광고코드별 매출현황 통계
+      * @
+      * @ 수정일       수정자    수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.07.28   안치열    최초생성
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStaticsAdvertisingList" resultType="kr.co.pulmuone.v1.statics.pm.dto.vo.PromotionStaticsVo">
+        /* promotionStatics.getStaticsAdvertisingList */
+
+        SELECT
+            pae.SOURCE -- 대분류(매체)
+            , pae.MEDIUM -- 중분류(구좌)
+            , pae.CAMPAIGN -- 소분류(캠페인)
+            , pae.CONTENT -- 세분류(콘텐츠)
+            , PAID_PRICE -- 고객매출
+            , IFNULL(FORMAT(PAID_PRICE, 0),0) AS PAID_PRICE_FM -- 고객매출(엑셀)
+            , ORDER_CNT -- 주문건수
+            , IFNULL(FORMAT(ORDER_CNT, 0),0) AS ORDER_CNT_FM -- 주문건수(엑셀)
+            , ROUND(PAID_PRICE / ORDER_CNT) AS ORDER_UNIT_PRICE -- 주문단가
+            , IFNULL(FORMAT(ROUND(PAID_PRICE / ORDER_CNT), 0),0) AS ORDER_UNIT_PRICE_FM -- 주문단가(엑셀)
+            , USER_CNT -- 구매고객수
+            , IFNULL(FORMAT(USER_CNT, 0),0) AS USER_CNT_FM -- 구매고객수(엑셀)
+            , ROUND(PAID_PRICE / USER_CNT) AS USER_UNIT_PRICE -- 인단가
+            , IFNULL(FORMAT(ROUND(PAID_PRICE / USER_CNT), 0),0) AS USER_UNIT_PRICE_FM -- 인단가(엑셀)
+        FROM (
+            SELECT
+                PM_AD_EXTERNAL_CD
+                , COUNT(DISTINCT UR_USER_ID) AS USER_CNT   -- 구매고객 수
+                , SUM(PAID_PRICE) AS PAID_PRICE  -- 매출금액(VAT포함)
+                , COUNT(DISTINCT o.OD_ORDER_ID)  AS ORDER_CNT -- 주문건수
+            FROM (
+                SELECT
+                    ood.PM_AD_EXTERNAL_CD -- 외부 광고 코드
+                    , oo.OD_ORDER_ID -- 주문번호
+                    , oo.UR_USER_ID -- 구매자 PK
+                    , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                    ELSE ood.PAID_PRICE
+                    END, 0) AS PAID_PRICE     -- 매출금액(VAT포함)
+                FROM OD_ORDER_DETL ood
+                JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                JOIN PM_AD_EXTERNAL pae ON (pae.PM_AD_EXTERNAL_CD =ood.PM_AD_EXTERNAL_CD)
+                LEFT JOIN OD_TRACKING_NUMBER otn ON	(otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER')
+                WHERE
+                -- * 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 프로그램 변경 *
+                -- ood2.CREATE_DT BETWEEN STR_TO_DATE('', '%Y%m%d%H%i%s') AND STR_TO_DATE('', '%Y%m%d%H%i%s') -- 기간
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'ODR')">
+                        ood2.CREATE_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 주문일
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'PAY')">
+                        ood2.IC_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 결제일
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'SAL')">
+                        otn.CREATE_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 매출일
+                    </if>
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPmAdExternalCd)">
+                    AND pae.PM_AD_EXTERNAL_CD = #{searchPmAdExternalCd} -- 외부 광고 코드
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(source)">
+                    AND pae.SOURCE = #{source} -- 대분류(매체)
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(medium)">
+                    AND pae.MEDIUM = #{medium} -- 중분류(구좌)1
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(campaign)">
+                    AND pae.CAMPAIGN = #{campaign} -- 소분류(캠페인)
+                </if>
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(content)">
+                    AND pae.CONTENT = #{content} -- 세분류(콘텐츠)
+                </if>
+                UNION ALL
+                SELECT
+                    ood.PM_AD_EXTERNAL_CD -- 외부 광고 코드
+                    , oo.OD_ORDER_ID -- 주문번호
+                    , oo.UR_USER_ID -- 구매자 PK
+                    , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                    ELSE ocd.PAID_PRICE
+                    END, 0) AS SIGNED) * -1  AS PAID_PRICE -- 매출금액(VAT포함)
+                FROM OD_CLAIM_DETL ocd
+                JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+                JOIN OD_ORDER oo ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                JOIN PM_AD_EXTERNAL pae ON (pae.PM_AD_EXTERNAL_CD =ood.PM_AD_EXTERNAL_CD)
+                LEFT JOIN OD_TRACKING_NUMBER otn ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                LEFT JOIN IF_SALES_SETTLE_INFO issi ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ
+                AND issi.SETTLE_TYPE = 'RETURN' AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID)
+                WHERE
+                    (
+                    ocd.CC_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 기준기간
+                    OR
+                    ocd.RC_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 기준기간
+                    )
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPmAdExternalCd)">
+                        AND pae.PM_AD_EXTERNAL_CD = #{searchPmAdExternalCd} -- 외부 광고 코드
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(source)">
+                        AND pae.SOURCE = #{source} -- 대분류(매체)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(medium)">
+                        AND pae.MEDIUM = #{medium} -- 중분류(구좌)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(campaign)">
+                        AND pae.CAMPAIGN = #{campaign} -- 소분류(캠페인)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(content)">
+                        AND pae.CONTENT = #{content} -- 세분류(콘텐츠)
+                    </if>
+                ) o
+                GROUP BY PM_AD_EXTERNAL_CD
+            ) d LEFT JOIN PM_AD_EXTERNAL pae ON (pae.PM_AD_EXTERNAL_CD = d.PM_AD_EXTERNAL_CD)
+
+    </select>
+
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 쿠폰 별 매출현황 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.27   안치열    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStaticsCouponSaleStatusList" resultType="kr.co.pulmuone.v1.statics.pm.dto.vo.PromotionStaticsVo">
+        /* promotionStatics.getStaticsCouponSaleStatusList */
+        -- 쿠폰별 매출현황 통계
+        WITH COUPON AS
+        (
+        SELECT
+        pc.PM_COUPON_ID
+        , pc.ISSUE_PURPOSE
+        , pc.COUPON_TP
+        , pc.DISPLAY_COUPON_NM
+        , pc.BOS_COUPON_NM
+        , pc.USE_PC_YN
+        , pc.USE_MO_WEB_YN
+        , pc.USE_MO_APP_YN
+        , pc.ISSUE_QTY
+        , (SELECT COUNT(*) FROM PM_COUPON_ISSUE pci WHERE pci.PM_COUPON_ID = pc.PM_COUPON_ID) AS ISSUE_CNT
+        , IF(pc.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.FIXED_DISCOUNT', pc.DISCOUNT_VAL, pc.PERCENTAGE_MAX_DISCOUNT_AMOUNT) AS DISCOUNT_PRICE
+        FROM
+        PM_COUPON pc
+        <where>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'CRD')">
+                AND pc.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 생성일
+            </if>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCouponId)">
+            AND pc.PM_COUPON_ID IN () -- 쿠폰번호
+            <foreach collection="searchCouponIdArray" item="searchCouponIdArray" separator="," open="(" close=")">
+                #{searchCouponIdArray}
+            </foreach>
+        </if>
+
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCouponStatus)">
+            AND pc.COUPON_TP = #{searchCouponStatus} -- 쿠폰종류
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIssuedType)">
+            AND pc.ISSUE_PURPOSE = #{searchIssuedType} -- 발급목적
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchCouponName)">
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.DISPLAY")'>
+                    AND pc.DISPLAY_COUPON_NM LIKE CONCAT('%', #{searchCouponName},'%')
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.BOS")'>
+                    AND pc.BOS_COUPON_NM  LIKE CONCAT('%', #{searchCouponName},'%')
+                </when>
+            </choose>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchReissue,'EXCEPT')">
+            AND IFNULL(pc.ORIGIN_PM_COUPON_ID, 0) = 0 -- 재발행 제외 (포함은 해당 조건 주석)
+        </if>
+        LIMIT 0, 1000 -- * 리미트 여기에 걸어주세요.
+        </where>
+        )
+        SELECT
+        c.PM_COUPON_ID -- 쿠폰번호
+        , FN_COMN_CODE_DIC(c.COUPON_TP) AS COUPON_TP -- 쿠폰종류
+        , FN_COMN_CODE_DIC(c.ISSUE_PURPOSE) AS ISSUE_PURPOSE -- 발급목적
+        , c.DISPLAY_COUPON_NM -- 전시쿠폰명
+        , c.BOS_COUPON_NM -- 관리자쿠폰명
+        , c.USE_PC_YN -- PC 가능 여부
+        , c.USE_MO_WEB_YN -- 모바일 가능 여부
+        , c.USE_MO_APP_YN -- APP 가능 여부
+        , c.ISSUE_QTY -- , 생성수량 (0 은 무제한 수량)
+        , FORMAT(c.ISSUE_QTY, 0) AS ISSUE_QTY_FM -- , 생성수량 (0 은 무제한 수량) (엑셀)
+        , c.ISSUE_CNT -- , 발급수량
+        , IFNULL(FORMAT(c.ISSUE_CNT, 0),0) AS ISSUE_CNT_FM -- , 발급수량(엑셀)
+        , IFNULL(c.ISSUE_CNT * c.DISCOUNT_PRICE,0) AS ISSUE_PRICE -- ,
+        , IFNULL(FORMAT(c.ISSUE_CNT * c.DISCOUNT_PRICE, 0),0) AS ISSUE_PRICE_FM -- , 발급금액(엑셀)
+        , IFNULL(d.ORDER_CNT, 0) AS ORDER_CNT -- 주문건수
+        , FORMAT(IFNULL(d.ORDER_CNT, 0), 0) AS ORDER_CNT_FM -- 주문건수(엑셀)
+        , IFNULL(d.DISCOUNT_PRICE, 0) AS DISCOUNT_PRICE -- 쿠폰할인금액
+        , FORMAT(IFNULL(d.DISCOUNT_PRICE, 0),0) AS DISCOUNT_PRICE_FM -- 쿠폰할인금액(엑셀)
+        , IFNULL(d.PAID_PRICE, 0) AS PAID_PRICE -- 매출기여
+        , FORMAT(IFNULL(d.PAID_PRICE, 0),0) AS PAID_PRICE_FM -- 매출기여(엑셀)
+        , IFNULL(d.USER_CNT, 0) AS USER_CNT -- 구매자수
+        , FORMAT(IFNULL(d.USER_CNT, 0),0) AS USER_CNT_FM -- 구매자수(엑셀)
+        FROM COUPON c
+        LEFT JOIN (
+        SELECT
+        l.PM_COUPON_ID
+        , COUNT(DISTINCT l.OD_ORDER_ID) AS ORDER_CNT -- 주문건수
+        , SUM(l.DISCOUNT_PRICE) AS DISCOUNT_PRICE  -- 쿠폰할인금액
+        , SUM(l.PAID_PRICE) AS PAID_PRICE  -- 매출금액
+        , COUNT(DISTINCT l.UR_USER_ID) AS USER_CNT   -- 구매자 수
+        FROM
+        (
+        -- 상품 + 매출
+        SELECT
+        c.PM_COUPON_ID -- 쿠폰 PK
+        , oo.OD_ORDER_ID -- 주문번호
+        , oo.UR_USER_ID -- 구매자 PK
+        , oodd.DISCOUNT_PRICE -- 쿠폰 할인 금액
+        , ood.PAID_PRICE -- 발생 매출
+        FROM
+        COUPON c
+        JOIN OD_ORDER_DETL_DISCOUNT oodd ON (oodd.PM_COUPON_ID = c.PM_COUPON_ID)
+        JOIN PM_COUPON_ISSUE pci ON (pci.PM_COUPON_ISSUE_ID = oodd.PM_COUPON_ISSUE_ID)
+        JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = oodd.OD_ORDER_DETL_ID)
+        JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+        WHERE
+        c.COUPON_TP != 'COUPON_TYPE.SHIPPING_PRICE'
+        -- 조회기간 pci.CREATE_DT : 발급일, pci.USE_DT : 사용일
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'ISD')">
+                AND pci.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 발급일
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'USD')">
+                AND pci.USE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 사용일
+            </if>
+        </if>
+        UNION ALL
+        -- 상품 - 매출
+        SELECT
+        c.PM_COUPON_ID -- 쿠폰 PK
+        , oo.OD_ORDER_ID -- 주문번호
+        , oo.UR_USER_ID -- 구매자 PK
+        , CAST(ocdd.DISCOUNT_PRICE AS SIGNED) * -1 AS DISCOUNT_PRICE  -- 쿠폰 할인 금액
+        , CAST(ocd.PAID_PRICE AS SIGNED) * -1 AS PAID_PRICE -- 발생 매출
+        FROM
+        COUPON c
+        JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON (ocdd.PM_COUPON_ID = c.PM_COUPON_ID)
+        JOIN PM_COUPON_ISSUE pci ON (pci.PM_COUPON_ISSUE_ID = ocdd.PM_COUPON_ISSUE_ID)
+        JOIN OD_CLAIM_DETL ocd ON (ocd.OD_CLAIM_DETL_ID = ocdd.OD_CLAIM_DETL_ID)
+        JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = ocdd.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+        WHERE
+        c.COUPON_TP != 'COUPON_TYPE.SHIPPING_PRICE'
+        -- 조회기간 pci.CREATE_DT : 발급일, pci.USE_DT : 사용일
+        -- AND pci.CREATE_DT BETWEEN STR_TO_DATE('20210601000000', '%Y%m%d%H%i%s') AND STR_TO_DATE('20210630235959', '%Y%m%d%H%i%s') -- 조회기간 발급일
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'ISD')">
+                AND pci.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 발급일
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'USD')">
+                AND pci.USE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 사용일
+            </if>
+        </if>
+        UNION ALL
+        -- 배송비 + 매출
+        SELECT
+        c.PM_COUPON_ID -- 쿠폰 PK
+        , oo.OD_ORDER_ID -- 주문번호
+        , oo.UR_USER_ID -- 구매자 PK
+        , osp.SHIPPING_DISCOUNT_PRICE AS DISCOUNT_PRICE -- 쿠폰 할인 금액
+        , osp.SHIPPING_PRICE AS PAID_PRICE -- 발생 매출
+        FROM
+        COUPON c
+        JOIN PM_COUPON_ISSUE pci ON (pci.PM_COUPON_ID = c.PM_COUPON_ID)
+        JOIN OD_SHIPPING_PRICE osp ON (osp.PM_COUPON_ISSUE_ID = pci.PM_COUPON_ISSUE_ID)
+        JOIN OD_ORDER_DETL ood ON (ood.OD_SHIPPING_PRICE_ID = osp.OD_SHIPPING_PRICE_ID)
+        JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+        WHERE
+        c.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE'
+        -- 조회기간 pci.CREATE_DT : 발급일, pci.USE_DT : 사용일
+        -- AND pci.CREATE_DT BETWEEN STR_TO_DATE('20200603000000', '%Y%m%d%H%i%s') AND STR_TO_DATE('20210630235959', '%Y%m%d%H%i%s') -- 조회기간 발급일
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'ISD')">
+                AND pci.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 발급일
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'USD')">
+                AND pci.USE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 사용일
+            </if>
+        </if>
+        GROUP BY ood.OD_SHIPPING_PRICE_ID
+        UNION ALL
+        -- 배송비 - 매출
+        SELECT
+        c.PM_COUPON_ID -- 쿠폰 PK
+        , oo.OD_ORDER_ID -- 주문번호
+        , oo.UR_USER_ID -- 구매자 PK
+        , CAST(osp.SHIPPING_DISCOUNT_PRICE AS SIGNED) * -1 AS DISCOUNT_PRICE -- 쿠폰 할인 금액
+        , CAST(osp.SHIPPING_PRICE AS SIGNED) * -1 AS PAID_PRICE -- 발생 매출
+        FROM
+        COUPON c
+        JOIN PM_COUPON_ISSUE pci ON (pci.PM_COUPON_ID = c.PM_COUPON_ID)
+        JOIN OD_SHIPPING_PRICE osp ON (osp.PM_COUPON_ISSUE_ID = pci.PM_COUPON_ISSUE_ID)
+        JOIN OD_ORDER_DETL ood ON (ood.OD_SHIPPING_PRICE_ID = osp.OD_SHIPPING_PRICE_ID)
+        JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+        WHERE
+        c.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE'
+        -- 조회기간 pci.CREATE_DT : 발급일, pci.USE_DT : 사용일
+        -- AND pci.CREATE_DT BETWEEN STR_TO_DATE('20200603000000', '%Y%m%d%H%i%s') AND STR_TO_DATE('20210630235959', '%Y%m%d%H%i%s') -- 조회기간 발급일
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'ISD')">
+                AND pci.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 발급일
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'USD')">
+                AND pci.USE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 조회기간 사용일
+            </if>
+        </if>
+        GROUP BY ood.OD_SHIPPING_PRICE_ID
+        HAVING SUM(ood.ORDER_CNT) - SUM(ood.CANCEL_CNT) = 0
+        ) l
+        GROUP BY l.PM_COUPON_ID
+        ) d ON (c.PM_COUPON_ID = d.PM_COUPON_ID)
+
+    </select>
+
+
+
+
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description    : 회원등급 쿠폰현황 통계
+      * @
+      * @ 수정일       수정자    수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.07.28   안치열    최초생성
+      * @
+     ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStaticsUserGroupCouponStatusList" resultType="kr.co.pulmuone.v1.statics.pm.dto.vo.PromotionStaticsVo">
+        /* promotionStatics.getStaticsUserGroupCouponStatusList */
+        -- 회원등급 쿠폰현황 통계
+        WITH COUPON AS
+        (
+        SELECT
+            pci.PM_COUPON_ISSUE_ID
+            , pci.STATUS
+            , IF(pci.EXPIRATION_DT <![CDATA[<=]]> NOW(), 'Y', 'N') AS EXPIRATION_YN -- 소멸여부
+            , pc.COUPON_TP
+            , pc.ISSUE_QTY
+            , IF(pc.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.FIXED_DISCOUNT', pc.DISCOUNT_VAL, pc.PERCENTAGE_MAX_DISCOUNT_AMOUNT) AS DISCOUNT_PRICE
+            , ub.UR_GROUP_ID
+        FROM
+            PM_COUPON_ISSUE pci
+            JOIN PM_COUPON pc ON (pc.PM_COUPON_ID = pci.PM_COUPON_ID)
+            JOIN UR_BUYER ub ON (ub.UR_USER_ID = pci.UR_USER_ID)
+        WHERE
+            pc.ISSUE_DETAIL_TP = 'AUTO_ISSUE_TYPE.USER_GRADE'
+            AND pci.CREATE_DT BETWEEN STR_TO_DATE(#{searchDateStart}, '%Y%m%d%H%i%s') AND STR_TO_DATE(#{searchDateEnd}, '%Y%m%d%H%i%s') -- 발급기간조회
+        ), USE_DATA AS
+        (
+            SELECT
+                l.UR_GROUP_ID
+                , SUM(l.DISCOUNT_PRICE) AS USE_PRICE  -- 사용금액
+        FROM
+        (
+            -- 상품 + 매출
+            SELECT
+                c.UR_GROUP_ID -- 회원등급 PK
+                , oodd.DISCOUNT_PRICE -- 쿠폰 할인 금액
+            FROM
+                COUPON c
+                JOIN OD_ORDER_DETL_DISCOUNT oodd ON (oodd.PM_COUPON_ISSUE_ID = c.PM_COUPON_ISSUE_ID)
+                JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = oodd.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+            WHERE
+                c.COUPON_TP != 'COUPON_TYPE.SHIPPING_PRICE'
+            UNION ALL
+            -- 상품 - 매출
+            SELECT
+                c.UR_GROUP_ID -- 회원등급 PK
+                , CAST(ocdd.DISCOUNT_PRICE AS SIGNED) * -1 AS DISCOUNT_PRICE  -- 쿠폰 할인 금액
+            FROM
+                COUPON c
+                JOIN OD_CLAIM_DETL_DISCOUNT ocdd ON (ocdd.PM_COUPON_ISSUE_ID = c.PM_COUPON_ISSUE_ID)
+                JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = ocdd.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+            WHERE
+                c.COUPON_TP != 'COUPON_TYPE.SHIPPING_PRICE'
+            UNION ALL
+            -- 배송비 + 매출
+            SELECT
+                c.UR_GROUP_ID -- 회원등급 PK
+                , osp.SHIPPING_DISCOUNT_PRICE AS DISCOUNT_PRICE -- 쿠폰 할인 금액
+            FROM
+                COUPON c
+                JOIN OD_SHIPPING_PRICE osp ON (osp.PM_COUPON_ISSUE_ID = c.PM_COUPON_ISSUE_ID)
+                JOIN OD_ORDER_DETL ood ON (ood.OD_SHIPPING_PRICE_ID = osp.OD_SHIPPING_PRICE_ID)
+                JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+            WHERE
+                c.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE'
+            GROUP BY ood.OD_SHIPPING_PRICE_ID
+            UNION ALL
+            -- 배송비 - 매출
+            SELECT
+                c.UR_GROUP_ID -- 회원등급 PK
+                , CAST(osp.SHIPPING_DISCOUNT_PRICE AS SIGNED) * -1 AS DISCOUNT_PRICE -- 쿠폰 할인 금액
+            FROM
+                COUPON c
+                JOIN OD_SHIPPING_PRICE osp ON (osp.PM_COUPON_ISSUE_ID = c.PM_COUPON_ISSUE_ID)
+                JOIN OD_ORDER_DETL ood ON (ood.OD_SHIPPING_PRICE_ID = osp.OD_SHIPPING_PRICE_ID)
+                JOIN OD_ORDER oo ON (oo.OD_ORDER_ID = ood.OD_ORDER_ID AND oo.ORDER_YN = 'Y')
+            WHERE
+                c.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE'
+            GROUP BY ood.OD_SHIPPING_PRICE_ID
+            HAVING SUM(ood.ORDER_CNT) - SUM(ood.CANCEL_CNT) = 0
+        ) l
+        GROUP BY l.UR_GROUP_ID
+        )
+        SELECT
+            ugm.GROUP_MASTER_NM -- 그룹 마스터명
+            , ug.GROUP_NM -- 그룹명
+            , d.ISSUE_CNT -- 발급 수량
+            , IFNULL(FORMAT(d.ISSUE_CNT, 0),0) AS ISSUE_CNT_FM -- 발급 수량(엑셀)
+            , d.ISSUE_PRICE -- 발급금액
+            , IFNULL(FORMAT(d.ISSUE_PRICE, 0),0) AS ISSUE_PRICE_FM -- 발급금액(엑셀)
+            , d.USE_CNT -- 사용수량
+            , IFNULL(FORMAT(d.USE_CNT, 0),0) AS USE_CNT_FM -- 사용수량(엑셀)
+            , IFNULL(ud.USE_PRICE, 0) AS USE_PRICE-- 사용금액
+            , FORMAT(IFNULL(ud.USE_PRICE, 0), 0) AS USE_PRICE_FM-- 사용금액(엑셀)
+            , d.EXPIRATION_CNT -- 소멸수량
+            , IFNULL(FORMAT(d.EXPIRATION_CNT, 0),0) AS EXPIRATION_CNT_FM -- 소멸수량(엑셀)
+            , d.EXPIRATION_PRICE -- 소멸금액
+            , IFNULL(FORMAT(d.EXPIRATION_PRICE, 0),0) AS EXPIRATION_PRICE_FM -- 소멸금액(엑셀)
+        FROM (
+        SELECT
+            c.UR_GROUP_ID
+            , COUNT(*) AS ISSUE_CNT -- 발급 수량
+            , SUM(c.DISCOUNT_PRICE) AS ISSUE_PRICE -- 발급금액
+            , COUNT(IF(c.STATUS = 'COUPON_STATUS.USE', 1, NULL)) AS USE_CNT -- 사용수량
+            , COUNT(IF(c.STATUS != 'COUPON_STATUS.USE' AND EXPIRATION_YN = 'Y', 1, NULL)) AS EXPIRATION_CNT -- 소멸수량
+            , SUM(IF(c.STATUS != 'COUPON_STATUS.USE' AND EXPIRATION_YN = 'Y', c.DISCOUNT_PRICE, 0)) AS EXPIRATION_PRICE -- 소멸금액
+        FROM
+            COUPON c
+        GROUP BY c.UR_GROUP_ID
+        ) d
+        LEFT JOIN USE_DATA ud ON (ud.UR_GROUP_ID = d.UR_GROUP_ID)
+        LEFT JOIN UR_GROUP ug ON (ug.UR_GROUP_ID = d.UR_GROUP_ID)
+        LEFT JOIN UR_GROUP_MASTER ugm ON (ugm.UR_GROUP_MASTER_ID = ug.UR_GROUP_MASTER_ID)
+    </select>
+
+
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 적립금 현황 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.26   안치열    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStaticsPointStatusList" resultType="kr.co.pulmuone.v1.statics.pm.dto.vo.PromotionStaticsVo">
+        /* promotionStatics.getStaticsPointStatusList */
+        WITH STATICS_POINT AS(
+        SELECT '총 지급 금액' AS STATICS, 1 AS STATICS_NO ,PP.POINT_TP, FN_COMN_CODE_DIC(PP.POINT_TP) AS POINT_TYPE, PP.ISSUE_DEPT_CD, IFNULL(PPU.AMOUNT, 0) AS AMOUNT, PP.PM_POINT_ID
+        FROM PM_POINT_USED PPU JOIN PM_POINT PP ON PP.PM_POINT_ID = PPU.PM_POINT_ID
+        WHERE PPU.CREATE_DT   BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59')
+        AND PPU.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+        UNION ALL
+        SELECT '총 사용 금액' AS STATICS, 2 AS STATICS_NO, PP.POINT_TP, FN_COMN_CODE_DIC(PP.POINT_TP) AS POINT_TYPE, PP.ISSUE_DEPT_CD, IFNULL(PPUD.AMOUNT, 0) AS AMOUNT , PP.PM_POINT_ID
+        FROM PM_POINT_USED_DETL PPUD JOIN PM_POINT PP ON PP.PM_POINT_ID = PPUD.PM_POINT_ID
+        JOIN PM_POINT_USED PPU ON PPU.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID AND PPU.CREATE_DT   BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59') AND PPU.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION'
+        WHERE PPUD.CLOSE_YN = 'Y'
+        UNION ALL
+        /*당월 소멸예정 적립금*/
+        SELECT '당월 소멸(예정)금액' AS STATICS,3 AS STATICS_NO, PP.POINT_TP,'관리자 지급' AS POINT_TYPE, PP.ISSUE_DEPT_CD, IFNULL(P.AMOUNT,0) AS AMOUNT , P.PM_POINT_ID
+        FROM PM_POINT_USED P
+        JOIN PM_POINT PP ON PP.PM_POINT_ID = P.PM_POINT_ID
+        WHERE 1=1
+        AND STR_TO_DATE(DATE_ADD(P.CREATE_DT ,INTERVAL PP.VALIDITY_DAY DAY) , '%Y-%m-%d %H:%i:%s') BETWEEN STR_TO_DATE((LAST_DAY(NOW() - interval 1 month) + interval 1 DAY), '%Y-%m-%d %H:%i:%s') AND STR_TO_DATE((LAST_DAY(NOW() ) + interval 1 DAY), '%Y-%m-%d %H:%i:%s')
+        )
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchOrganization, 'ONLINE') or @kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(searchOrganization)">
+        /*외부몰 */
+        SELECT FORMAT(ABS(SUM(AMOUNT)), 0) AS AMOUNT,FORMAT(ABS(SUM(AMOUNT)), 0) AS AMOUNT_FM, SP.POINT_TP, FN_COMN_CODE_DIC(SP.POINT_TP) AS POINT_TYPE,STATICS, SP.STATICS_NO, SP.ISSUE_DEPT_CD, '온라인사업부' AS ISSUE_DEPT_NAME
+        FROM STATICS_POINT SP
+        WHERE SP.ISSUE_DEPT_CD= '23015'
+        GROUP BY  SP.POINT_TP, SP.STATICS
+        UNION ALL
+        /*외부몰 관리자 차감*/
+        SELECT IFNULL(FORMAT(ABS(SUM(AMOUNT)), 0),0) AS AMOUNT ,IFNULL(FORMAT(ABS(SUM(AMOUNT)), 0),0) AS AMOUNT_FM, 'POINT_TYPE.ADMIN' AS POINT_TP,'관리자 차감' AS POINT_TYPE, '총 차감 금액' AS STATICS, 5 AS STATICS_NO , '23015' AS ISSUE_DEPT_CD, '온라인사업부' AS ISSUE_DEPT_NAME
+        FROM PM_POINT_USED PPU JOIN PM_POINT PP ON PP.PM_POINT_ID = PPU.PM_POINT_ID   AND PP.POINT_TP = 'POINT_TYPE.ADMIN'   AND PP.ISSUE_DEPT_CD = '23015'
+        WHERE PPU.CREATE_DT   BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59')
+        AND PPU.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION'
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(searchOrganization)">
+        UNION ALL
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchOrganization, 'ETC') or @kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(searchOrganization)">
+        /*외부몰 외*/
+        SELECT FORMAT(ABS(SUM(AMOUNT)), 0) AS AMOUNT,FORMAT(ABS(SUM(AMOUNT)), 0) AS AMOUNT_FM,  SP.POINT_TP, FN_COMN_CODE_DIC(SP.POINT_TP) AS POINT_TYPE,STATICS, SP.STATICS_NO, '' AS ISSUE_DEPT_CD, '온라인사업부 외' AS ISSUE_DEPT_NAME
+        FROM STATICS_POINT SP
+        GROUP BY SP.POINT_TP, SP.STATICS
+        UNION ALL
+        /*외부몰 외 관리자 차감*/
+        SELECT IFNULL(FORMAT(ABS(SUM(AMOUNT)), 0),0) AS AMOUNT , FORMAT(ABS(SUM(AMOUNT)), 0) AS AMOUNT_FM, 'POINT_TYPE.ADMIN' AS POINT_TP,'관리자 차감' AS POINT_TYPE, '총 차감 금액' AS STATICS, 5 AS STATICS_NO , '' AS ISSUE_DEPT_CD, '온라인사업부 외' AS ISSUE_DEPT_NAME
+        FROM PM_POINT_USED PPU JOIN PM_POINT PP ON PP.PM_POINT_ID = PPU.PM_POINT_ID
+        AND PP.POINT_TP = 'POINT_TYPE.ADMIN'
+        WHERE PPU.CREATE_DT   BETWEEN CONCAT(#{searchDateStart}, ' 00:00:00')  AND CONCAT(#{searchDateEnd}, ' 23:59:59')
+        AND PPU.PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION'
+        </if>
+        ORDER BY ISSUE_DEPT_CD DESC, POINT_TP desc, STATICS_NO
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 내부광고코드 유형 조회
+     * @
+     * @ 수정일			 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.29      안치열         최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getAdvertisingType" resultType="kr.co.pulmuone.v1.statics.pm.dto.vo.PromotionStaticsVo">
+        /*	promotionStatics.getAdvertisingType	*/
+        SELECT
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'PAGE') ">
+            PM_AD_INTERNAL_PAGE_CD AS CODE, CONCAT('(',CHANNEL_NM,')' ,MALL_NM) AS NAME
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CONTENT') ">
+            CONCAT(PM_AD_INTERNAL_PAGE_CD,'∀',PM_AD_INTERNAL_CONTENT_CD) AS CODE,  CONTENT_NM AS NAME
+        </if>
+        FROM PM_AD_INTERNAL
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'PAGE') ">
+            GROUP BY PM_AD_INTERNAL_PAGE_CD
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchType,'CONTENT') ">
+            WHERE  PM_AD_INTERNAL_PAGE_CD = #{pageCd}
+            GROUP BY PM_AD_INTERNAL_CONTENT_CD
+        </if>
+    </select>
+
+    <select id="getStaticsAdvertisingGoodsList" resultType="kr.co.pulmuone.v1.statics.pm.dto.vo.PromotionStaticsVo">
+        /* promotionStatics.getStaticsAdvertisingGoodsList */
+        SELECT
+            pae.SOURCE -- 대분류(매체)
+            , pae.MEDIUM -- 중분류(구좌)
+            , pae.CAMPAIGN -- 소분류(캠페인)
+            , pae.CONTENT -- 세분류(콘텐츠)
+            , IL_GOODS_ID
+            , GOODS_NM
+            , PAID_PRICE -- 고객매출
+            , IFNULL(FORMAT(PAID_PRICE, 0),0) AS PAID_PRICE_FM -- 고객매출(엑셀)
+            , ORDER_CNT -- 주문건수
+            , IFNULL(FORMAT(ORDER_CNT, 0),0) AS ORDER_CNT_FM -- 주문건수(엑셀)
+            , ROUND(PAID_PRICE / ORDER_CNT) AS ORDER_UNIT_PRICE -- 주문단가
+            , IFNULL(FORMAT(ROUND(PAID_PRICE / ORDER_CNT), 0),0) AS ORDER_UNIT_PRICE_FM -- 주문단가(엑셀)
+            , USER_CNT -- 구매고객수
+            , IFNULL(FORMAT(USER_CNT, 0),0) AS USER_CNT_FM -- 구매고객수(엑셀)
+            , ROUND(PAID_PRICE / USER_CNT) AS USER_UNIT_PRICE -- 인단가
+            , IFNULL(FORMAT(ROUND(PAID_PRICE / USER_CNT), 0),0) AS USER_UNIT_PRICE_FM -- 인단가(엑셀)
+            , PAKAGE_GOODS_ID -- 묶음 상품아이디
+            , PAKAGE_GOODS_NM -- 묶음 상품명
+        FROM (
+            SELECT
+                PM_AD_EXTERNAL_CD
+                , IL_GOODS_ID
+                , GOODS_NM
+                , COUNT(DISTINCT UR_USER_ID) AS USER_CNT   -- 구매고객 수
+                , SUM(PAID_PRICE) AS PAID_PRICE  -- 매출금액(VAT포함)
+                , COUNT(DISTINCT o.OD_ORDER_ID)  AS ORDER_CNT -- 주문건수
+                , o.PAKAGE_GOODS_ID -- 묶음 상품아이디
+                , o.PAKAGE_GOODS_NM -- 묶음 상품명
+            FROM (
+                SELECT
+                    ood.PM_AD_EXTERNAL_CD -- 외부 광고 코드
+                    , oo.OD_ORDER_ID -- 주문번호
+                    , oo.UR_USER_ID -- 구매자 PK
+                    , ood.IL_GOODS_ID
+                    , ood.GOODS_NM
+                    , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                    ELSE ood.PAID_PRICE
+                    END, 0) AS PAID_PRICE     -- 매출금액(VAT포함)
+                    , CASE WHEN IFNULL(ood.OD_ORDER_DETL_PARENT_ID, '') != '' THEN IFNULL((select IL_GOODS_ID from OD_ORDER_DETL_PACK where OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_PARENT_ID limit 1), '') ELSE '' END PAKAGE_GOODS_ID
+                    , CASE WHEN IFNULL(ood.OD_ORDER_DETL_PARENT_ID, '') != '' THEN IFNULL((select GOODS_NM from OD_ORDER_DETL_PACK where OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_PARENT_ID limit 1), '') ELSE '' END PAKAGE_GOODS_NM
+                FROM OD_ORDER_DETL ood
+                JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                JOIN PM_AD_EXTERNAL pae ON (pae.PM_AD_EXTERNAL_CD =ood.PM_AD_EXTERNAL_CD)
+                LEFT JOIN OD_TRACKING_NUMBER otn ON	(otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER')
+                WHERE
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchDateStart)">
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'ODR')">
+                            ood2.CREATE_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 주문일
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'PAY')">
+                            ood2.IC_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 결제일
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, 'SAL')">
+                            otn.CREATE_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 매출일
+                        </if>
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPmAdExternalCd)">
+                        AND pae.PM_AD_EXTERNAL_CD = #{searchPmAdExternalCd} -- 외부 광고 코드
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(source)">
+                        AND pae.SOURCE = #{source} -- 대분류(매체)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(medium)">
+                        AND pae.MEDIUM = #{medium} -- 중분류(구좌)1
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(campaign)">
+                        AND pae.CAMPAIGN = #{campaign} -- 소분류(캠페인)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(content)">
+                        AND pae.CONTENT = #{content} -- 세분류(콘텐츠)
+                    </if>
+                UNION ALL
+                SELECT
+                    ood.PM_AD_EXTERNAL_CD -- 외부 광고 코드
+                    , oo.OD_ORDER_ID -- 주문번호
+                    , oo.UR_USER_ID -- 구매자 PK
+                    , ood.IL_GOODS_ID
+                    , ood.GOODS_NM
+                    , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                    WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                    WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                    ELSE ocd.PAID_PRICE
+                    END, 0) AS SIGNED) * -1  AS PAID_PRICE -- 매출금액(VAT포함)
+                    , CASE WHEN IFNULL(ood.OD_ORDER_DETL_PARENT_ID, '') != '' THEN IFNULL((select IL_GOODS_ID from OD_ORDER_DETL_PACK where OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_PARENT_ID limit 1), '') ELSE '' END PAKAGE_GOODS_ID
+                    , CASE WHEN IFNULL(ood.OD_ORDER_DETL_PARENT_ID, '') != '' THEN IFNULL((select GOODS_NM from OD_ORDER_DETL_PACK where OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_PARENT_ID limit 1), '') ELSE '' END PAKAGE_GOODS_NM
+                FROM OD_CLAIM_DETL ocd
+                JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+                JOIN OD_ORDER oo ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                JOIN PM_AD_EXTERNAL pae ON (pae.PM_AD_EXTERNAL_CD =ood.PM_AD_EXTERNAL_CD)
+                LEFT JOIN OD_TRACKING_NUMBER otn ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                LEFT JOIN IF_SALES_SETTLE_INFO issi ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ
+                AND issi.SETTLE_TYPE = 'RETURN' AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID)
+                WHERE
+                    (
+                    ocd.CC_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 기준기간
+                    OR
+                    ocd.RC_DT BETWEEN #{searchDateStart} AND (#{searchDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND) -- 기준기간
+                    )
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPmAdExternalCd)">
+                        AND pae.PM_AD_EXTERNAL_CD = #{searchPmAdExternalCd} -- 외부 광고 코드
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(source)">
+                        AND pae.SOURCE = #{source} -- 대분류(매체)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(medium)">
+                        AND pae.MEDIUM = #{medium} -- 중분류(구좌)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(campaign)">
+                        AND pae.CAMPAIGN = #{campaign} -- 소분류(캠페인)
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(content)">
+                        AND pae.CONTENT = #{content} -- 세분류(콘텐츠)
+                    </if>
+            ) o
+            GROUP BY PM_AD_EXTERNAL_CD, IL_GOODS_ID, GOODS_NM
+        ) d LEFT JOIN PM_AD_EXTERNAL pae ON (pae.PM_AD_EXTERNAL_CD = d.PM_AD_EXTERNAL_CD)
+        ORDER BY SOURCE, MEDIUM, CAMPAIGN, CONTENT, PAKAGE_GOODS_ID, IL_GOODS_ID
+    </select>
+
+
+</mapper>

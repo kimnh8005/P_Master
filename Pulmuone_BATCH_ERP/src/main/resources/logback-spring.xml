@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <!--    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>-->
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>[%d{yyyy-MM-dd HH:mm:ss:SSS}] %highlight([%-5level]) %magenta([%thread])
+                %cyan([%logger{5}\(%line\)]) - %msg%n%ex{3}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <appender name="dailyRollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE}</file>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss:SSS} %highlight(%-5level) %clr(${PID:- }) %clr([%15.15t])
+                %cyan(%-40.40logger{39}):%4L %cyan(%-25.25M) - %msg%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}
+            </pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE}.%d{yyyy-MM-dd}%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <!-- or whenever the file size reaches 100MB -->
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+    </appender>
+
+    <springProfile name="local">
+        <logger name="jdbc" level="off" additivity="false">
+            <appender-ref ref="console"/>
+        </logger>
+
+<!--        <logger name="jdbc.sqlonly" level="debug" additivity="false">-->
+<!--            <appender-ref ref="console"/>-->
+<!--        </logger>-->
+
+<!--        <logger name="jdbc.resultsettable" level="debug" additivity="false">-->
+<!--            <appender-ref ref="console"/>-->
+<!--        </logger>-->
+
+        <logger name="jdbc.sqltiming" level="debug" additivity="false">
+            <appender-ref ref="console"/>
+        </logger>
+
+        <logger name="kr.co.pulmuone.batch.erp.BatchApplication" level="info" additivity="false">
+            <appender-ref ref="console"/>
+        </logger>
+
+        <logger name="com.zaxxer.hikari" level="error" additivity="false">
+            <appender-ref ref="console"/>
+        </logger>
+
+        <logger name="kr.co.pulmuone.batch.erp" level="debug" additivity="false">
+            <appender-ref ref="console"/>
+        </logger>
+
+        <root level="debug">
+            <appender-ref ref="console"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="dev">
+        <logger name="jdbc.sqltiming" level="error" additivity="false">
+            <appender-ref ref="console"/>
+            <appender-ref ref="dailyRollingFile"/>
+        </logger>
+
+        <logger name="kr.co.pulmuone.batch.erp.BatchApplication" level="info" additivity="false">
+            <appender-ref ref="dailyRollingFile"/>
+        </logger>
+
+        <root level="error">
+            <appender-ref ref="console"/>
+            <appender-ref ref="dailyRollingFile"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <logger name="kr.co.pulmuone.batch.erp.BatchApplication" level="info" additivity="false">
+            <appender-ref ref="console"/>
+            <appender-ref ref="dailyRollingFile"/>
+        </logger>
+
+        <root level="error">
+            <appender-ref ref="console"/>
+            <appender-ref ref="dailyRollingFile"/>
+        </root>
+    </springProfile>
+</configuration>

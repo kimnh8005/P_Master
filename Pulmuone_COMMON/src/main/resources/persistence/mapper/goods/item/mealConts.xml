@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.MealContsMapper">
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 구문 전체 조회
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.07		안치열	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <sql id="findSearch">
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsDailyMealContsCdList)">
+                <if test="ilGoodsDailyMealContsCdList.size() > 0">
+                    AND IL_GOODS_DAILY_MEAL_CONTS_CD IN
+                    <foreach collection="ilGoodsDailyMealContsCdList" item="searchIlGoodsDailyMealContsCd" index="index" separator="," open="(" close=")">
+                        #{searchIlGoodsDailyMealContsCd}
+                    </foreach>
+                </if>
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIlGoodsDailyMealNm)">
+                AND   IL_GOODS_DAILY_MEAL_NM LIKE CONCAT ('%', #{searchIlGoodsDailyMealNm},'%')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDiv)">
+                AND   MALL_DIV = #{mallDiv}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDt)">
+                <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDt)">
+                    <choose>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CREATE_DATE")'> <!-- 등록일 -->
+                            AND CREATE_DT BETWEEN #{startDt} AND (#{endDt} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "MODIFY_DATE")'> <!-- 최근수정일 -->
+                            AND MODIFY_DT BETWEEN #{startDt} AND (#{endDt} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                        </when>
+                    </choose>
+                </if>
+            </if>
+        </where>
+    </sql>
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 식단컨텐츠 리스트 카운트 조회
+     * @ 수정일			수정자		  수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.07		안치열	  		최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealContsListCount" resultType="long">
+        SELECT
+        COUNT(*) AS CNT
+        FROM IL_GOODS_DAILY_MEAL_CONTS
+        <include refid="findSearch" />
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 식단컨텐츠 리스트 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.07    안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getMealContsList" resultType="kr.co.pulmuone.v1.goods.item.dto.vo.MealContsVo">
+        /* mealConts.getMealContsList */
+        SELECT
+            IL_GOODS_DAILY_MEAL_CONTS_CD
+            , IL_GOODS_DAILY_MEAL_NM
+            , MALL_DIV
+            , FN_COMN_CODE_DIC(MALL_DIV) AS MALL_DIV_NM
+            , IF(ALLERGY_YN = 'Y', 'Y', '') AS ALLERGY_YN
+            , CASE WHEN MODIFY_DT IS NOT NULL THEN CONCAT(CREATE_DT, ' / ', MODIFY_DT)
+                   ELSE CREATE_DT
+             END AS CREATE_INFO
+            , IFNULL(CREATE_DT, '') AS CREATE_DT
+            , IFNULL(MODIFY_DT, '') AS MODIFY_DT
+            , IF(((SELECT COUNT(*) FROM IL_GOODS_DAILY_MEAL_PATTERN_DETL WHERE IL_GOODS_DAILY_MEAL_CONTS_CD = TBL.IL_GOODS_DAILY_MEAL_CONTS_CD) > 0) ,'Y','N') AS DELETE_POSSIBLE_YN
+          FROM IL_GOODS_DAILY_MEAL_CONTS TBL
+        <include refid="findSearch" />
+        ORDER BY CREATE_DT DESC
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 식단컨텐츠 등록
+     * @
+     * @ 수정일            수정자             수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.08      천혜현              최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealConts" parameterType="kr.co.pulmuone.v1.goods.item.dto.vo.MealContsVo">
+        /*mealConts.addMealConts*/
+        INSERT INTO IL_GOODS_DAILY_MEAL_CONTS (
+            IL_GOODS_DAILY_MEAL_CONTS_CD
+            ,IL_GOODS_DAILY_MEAL_NM
+            ,MALL_DIV
+            ,ALLERGY_YN
+            ,THUMBNAIL_IMG
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(totalCapacity)">
+            ,TOTAL_CAPACITY
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(calorie)">
+            ,CALORIE
+            </if>
+            ,RECOMMENDED_AGE
+            ,EATSSLIM_INDEX
+            ,DESCRIPTION
+            ,ALLERGY_EGG
+            ,ALLERGY_MILK
+            ,ALLERGY_SHRIMP
+            ,ALLERGY_MACKEREL
+            ,ALLERGY_SQUID
+            ,ALLERGY_CRAB
+            ,ALLERGY_SHELLFISH
+            ,ALLERGY_PORK
+            ,ALLERGY_BEEF
+            ,ALLERGY_CHICKEN
+            ,ALLERGY_BUCKWHEAT
+            ,ALLERGY_WHEAT
+            ,ALLERGY_SOYBEAN
+            ,ALLERGY_PEANUT
+            ,ALLERGY_WALNUT
+            ,ALLERGY_PINENUT
+            ,ALLERGY_SULFITE
+            ,ALLERGY_PEACH
+            ,ALLERGY_TOMATO
+            ,NUTRITION_TOTAL_CARBOHYDRATE
+            ,NUTRITION_TOTAL_CARBOHYDRATE_RATE
+            ,NUTRITION_FIBER
+            ,NUTRITION_FIBER_RATE
+            ,NUTRITION_SUGARS
+            ,NUTRITION_SUGARS_RATE
+            ,NUTRITION_TOTAL_FAT
+            ,NUTRITION_TOTAL_FAT_RATE
+            ,NUTRITION_SATURATED_FAT
+            ,NUTRITION_SATURATED_FAT_RATE
+            ,NUTRITION_TRANS_FAT
+            ,NUTRITION_TRANS_FAT_RATE
+            ,NUTRITION_PROTEIN
+            ,NUTRITION_PROTEIN_RATE
+            ,NUTRITION_CHOLESTEROL
+            ,NUTRITION_CHOLESTEROL_RATE
+            ,NUTRITION_SODIUM
+            ,NUTRITION_SODIUM_RATE
+            ,SPEC_GOODS_NAME
+            ,SPEC_GOODS_TYPE
+            ,SPEC_PRODUCER_LOCATION
+            ,SPEC_MANUFACTURING_DATE
+            ,SPEC_EXPIRATION_DATE
+            ,SPEC_STORAGE_METHOD
+            ,SPEC_ORIGINAL_MATERIAL
+            ,CREATE_ID
+            ,CREATE_DT
+        ) VALUES(
+            #{ilGoodsDailyMealContsCd}
+            ,#{ilGoodsDailyMealNm}
+            ,#{mallDiv}
+            ,IF(#{allergyYn} = 'Y', 'Y', 'N')
+            ,#{thumbnailImg}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(totalCapacity)">
+            ,#{totalCapacity}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(totalCapacity)">
+            ,#{calorie}
+            </if>
+            ,#{recommendedAge}
+            ,#{eatsslimIndex}
+            ,#{description}
+            ,#{allergyEgg}
+            ,#{allergyMilk}
+            ,#{allergyShrimp}
+            ,#{allergyMackerel}
+            ,#{allergySquid}
+            ,#{allergyCrab}
+            ,#{allergyShellfish}
+            ,#{allergyPork}
+            ,#{allergyBeef}
+            ,#{allergyChicken}
+            ,#{allergyBuckwheat}
+            ,#{allergyWheat}
+            ,#{allergySoybean}
+            ,#{allergyPeanut}
+            ,#{allergyWalnut}
+            ,#{allergyPinenut}
+            ,#{allergySulfite}
+            ,#{allergyPeach}
+            ,#{allergyTomato}
+            ,#{nutritionTotalCarbohydrate}
+            ,#{nutritionTotalCarbohydrateRate}
+            ,#{nutritionFiber}
+            ,#{nutritionFiberRate}
+            ,#{nutritionSugars}
+            ,#{nutritionSugarsRate}
+            ,#{nutritionTotalFat}
+            ,#{nutritionTotalFatRate}
+            ,#{nutritionSaturatedFat}
+            ,#{nutritionSaturatedFatRate}
+            ,#{nutritionTransFat}
+            ,#{nutritionTransFatRate}
+            ,#{nutritionProtein}
+            ,#{nutritionProteinRate}
+            ,#{nutritionCholesterol}
+            ,#{nutritionCholesterolRate}
+            ,#{nutritionSodium}
+            ,#{nutritionSodiumRate}
+            ,#{specGoodsName}
+            ,#{specGoodsType}
+            ,#{specProducerLocation}
+            ,#{specManufacturingDate}
+            ,#{specExpirationDate}
+            ,#{specStorageMethod}
+            ,#{specOriginalMaterial}
+            ,#{createId}
+            ,NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 식단컨텐츠 수정
+     * @
+     * @ 수정일            수정자             수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.08      천혜현              최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putMealConts" parameterType="kr.co.pulmuone.v1.goods.item.dto.vo.MealContsVo">
+        /*mealConts.putMealConts*/
+        UPDATE IL_GOODS_DAILY_MEAL_CONTS SET
+            IL_GOODS_DAILY_MEAL_NM  = #{ilGoodsDailyMealNm}
+            ,ALLERGY_YN             = #{allergyYn}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(thumbnailImg)">
+            ,THUMBNAIL_IMG          = #{thumbnailImg}
+            </if>
+            ,TOTAL_CAPACITY         = #{totalCapacity}
+            ,CALORIE                = #{calorie}
+            ,RECOMMENDED_AGE        = #{recommendedAge}
+            ,EATSSLIM_INDEX         = #{eatsslimIndex}
+            ,DESCRIPTION            = #{description}
+            ,ALLERGY_EGG            = #{allergyEgg}
+            ,ALLERGY_MILK           = #{allergyMilk}
+            ,ALLERGY_SHRIMP         = #{allergyShrimp}
+            ,ALLERGY_MACKEREL       = #{allergyMackerel}
+            ,ALLERGY_SQUID          = #{allergySquid}
+            ,ALLERGY_CRAB           = #{allergyCrab}
+            ,ALLERGY_SHELLFISH      = #{allergyShellfish}
+            ,ALLERGY_PORK           = #{allergyPork}
+            ,ALLERGY_BEEF           = #{allergyBeef}
+            ,ALLERGY_CHICKEN        = #{allergyChicken}
+            ,ALLERGY_BUCKWHEAT      = #{allergyBuckwheat}
+            ,ALLERGY_WHEAT          = #{allergyWheat}
+            ,ALLERGY_SOYBEAN        = #{allergySoybean}
+            ,ALLERGY_PEANUT         = #{allergyPeanut}
+            ,ALLERGY_WALNUT         = #{allergyWalnut}
+            ,ALLERGY_PINENUT        = #{allergyPinenut}
+            ,ALLERGY_SULFITE        = #{allergySulfite}
+            ,ALLERGY_PEACH          = #{allergyPeach}
+            ,ALLERGY_TOMATO         = #{allergyTomato}
+            ,NUTRITION_TOTAL_CARBOHYDRATE   = #{nutritionTotalCarbohydrate}
+            ,NUTRITION_TOTAL_CARBOHYDRATE_RATE   = #{nutritionTotalCarbohydrateRate}
+            ,NUTRITION_FIBER                = #{nutritionFiber}
+            ,NUTRITION_FIBER_RATE           = #{nutritionFiberRate}
+            ,NUTRITION_SUGARS               = #{nutritionSugars}
+            ,NUTRITION_SUGARS_RATE          = #{nutritionSugarsRate}
+            ,NUTRITION_TOTAL_FAT            = #{nutritionTotalFat}
+            ,NUTRITION_TOTAL_FAT_RATE       = #{nutritionTotalFatRate}
+            ,NUTRITION_SATURATED_FAT        = #{nutritionSaturatedFat}
+            ,NUTRITION_SATURATED_FAT_RATE   = #{nutritionSaturatedFatRate}
+            ,NUTRITION_TRANS_FAT            = #{nutritionTransFat}
+            ,NUTRITION_TRANS_FAT_RATE       = #{nutritionTransFatRate}
+            ,NUTRITION_PROTEIN              = #{nutritionProtein}
+            ,NUTRITION_PROTEIN_RATE         = #{nutritionProteinRate}
+            ,NUTRITION_CHOLESTEROL          = #{nutritionCholesterol}
+            ,NUTRITION_CHOLESTEROL_RATE     = #{nutritionCholesterolRate}
+            ,NUTRITION_SODIUM               = #{nutritionSodium}
+            ,NUTRITION_SODIUM_RATE          = #{nutritionSodiumRate}
+            ,SPEC_GOODS_NAME                = #{specGoodsName}
+            ,SPEC_GOODS_TYPE                = #{specGoodsType}
+            ,SPEC_PRODUCER_LOCATION         = #{specProducerLocation}
+            ,SPEC_MANUFACTURING_DATE        = #{specManufacturingDate}
+            ,SPEC_EXPIRATION_DATE           = #{specExpirationDate}
+            ,SPEC_STORAGE_METHOD            = #{specStorageMethod}
+            ,SPEC_ORIGINAL_MATERIAL         = #{specOriginalMaterial}
+            ,MODIFY_ID                      = #{modifyId}
+            ,MODIFY_DT                      = NOW()
+        WHERE
+            IL_GOODS_DAILY_MEAL_CONTS_CD = #{ilGoodsDailyMealContsCd}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 식단품목코드 중복체크
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.08    천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="isOverlapMealContsCd" resultType="int">
+        /* mealConts.isOverlapMealContsCd */
+        SELECT
+            COUNT(*)
+        FROM
+            IL_GOODS_DAILY_MEAL_CONTS
+        WHERE
+            IL_GOODS_DAILY_MEAL_CONTS_CD = #{ilGoodsDailyMealContsCd}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 식단 컨텐츠 단건조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.08    천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getMealConts" resultType="kr.co.pulmuone.v1.goods.item.dto.MealContsDto">
+        /* mealConts.getMealConts */
+        SELECT
+            IL_GOODS_DAILY_MEAL_CONTS_CD
+            ,IL_GOODS_DAILY_MEAL_NM
+            ,MALL_DIV
+            ,ALLERGY_YN
+            ,THUMBNAIL_IMG
+            ,TOTAL_CAPACITY
+            ,CALORIE
+            ,RECOMMENDED_AGE
+            ,EATSSLIM_INDEX
+            ,DESCRIPTION
+            ,ALLERGY_EGG
+            ,ALLERGY_MILK
+            ,ALLERGY_SHRIMP
+            ,ALLERGY_MACKEREL
+            ,ALLERGY_SQUID
+            ,ALLERGY_CRAB
+            ,ALLERGY_SHELLFISH
+            ,ALLERGY_PORK
+            ,ALLERGY_BEEF
+            ,ALLERGY_CHICKEN
+            ,ALLERGY_BUCKWHEAT
+            ,ALLERGY_WHEAT
+            ,ALLERGY_SOYBEAN
+            ,ALLERGY_PEANUT
+            ,ALLERGY_WALNUT
+            ,ALLERGY_PINENUT
+            ,ALLERGY_SULFITE
+            ,ALLERGY_PEACH
+            ,ALLERGY_TOMATO
+            ,NUTRITION_TOTAL_CARBOHYDRATE
+            ,NUTRITION_TOTAL_CARBOHYDRATE_RATE
+            ,NUTRITION_FIBER
+            ,NUTRITION_FIBER_RATE
+            ,NUTRITION_SUGARS
+            ,NUTRITION_SUGARS_RATE
+            ,NUTRITION_TOTAL_FAT
+            ,NUTRITION_TOTAL_FAT_RATE
+            ,NUTRITION_SATURATED_FAT
+            ,NUTRITION_SATURATED_FAT_RATE
+            ,NUTRITION_TRANS_FAT
+            ,NUTRITION_TRANS_FAT_RATE
+            ,NUTRITION_PROTEIN
+            ,NUTRITION_PROTEIN_RATE
+            ,NUTRITION_CHOLESTEROL
+            ,NUTRITION_CHOLESTEROL_RATE
+            ,NUTRITION_SODIUM
+            ,NUTRITION_SODIUM_RATE
+            ,SPEC_GOODS_NAME
+            ,SPEC_GOODS_TYPE
+            ,SPEC_PRODUCER_LOCATION
+            ,SPEC_MANUFACTURING_DATE
+            ,SPEC_EXPIRATION_DATE
+            ,SPEC_STORAGE_METHOD
+            ,SPEC_ORIGINAL_MATERIAL
+            ,CREATE_DT
+            ,CONCAT((SELECT LOGIN_ID FROM UR_USER WHERE UR_USER_ID = TBL.CREATE_ID),'/'
+                ,(SELECT FN_DECRYPT(ERP_NM) FROM UR_ERP_EMPLOYEE WHERE UR_ERP_EMPLOYEE_CD = (SELECT UR_EMPLOYEE_CD FROM UR_EMPLOYEE WHERE UR_USER_ID = TBL.CREATE_ID) )) AS CREATE_INFO
+            ,IFNULL(MODIFY_DT,'') AS MODIFY_DT
+            ,CASE WHEN MODIFY_DT IS NOT NULL THEN CONCAT((SELECT LOGIN_ID FROM UR_USER WHERE UR_USER_ID = TBL.MODIFY_ID),'/'
+                ,(SELECT FN_DECRYPT(ERP_NM) FROM UR_ERP_EMPLOYEE WHERE UR_ERP_EMPLOYEE_CD = (SELECT UR_EMPLOYEE_CD FROM UR_EMPLOYEE WHERE UR_USER_ID = TBL.MODIFY_ID)))
+                ELSE ''
+                END AS MODIFY_INFO
+        FROM
+            IL_GOODS_DAILY_MEAL_CONTS TBL
+        WHERE
+            IL_GOODS_DAILY_MEAL_CONTS_CD = #{ilGoodsDailyMealContsCd}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 식단 컨텐츠 삭제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.09.08    천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealConts">
+        /* mealConts.delMealConts */
+        DELETE FROM IL_GOODS_DAILY_MEAL_CONTS
+        WHERE
+            IL_GOODS_DAILY_MEAL_CONTS_CD = #{ilGoodsDailyMealContsCd}
+    </delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 식단컨텐츠 아이콘 등록
+     * @
+     * @ 수정일            수정자             수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.01      천혜현              최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addMealContsIconMapping" parameterType="kr.co.pulmuone.v1.goods.item.dto.MealContsDto">
+        /*  mealConts.addMealContsIconMapping   */
+        INSERT INTO IL_GOODS_DAILY_MEAL_CONTS_ICON_MAPPING (
+            IL_GOODS_DAILY_MEAL_CONTS_CD
+            ,IL_FOODITEM_ICON_ID
+            ,CREATE_ID
+            ,CREATE_DT
+        ) VALUES
+        <foreach item="fooditemIcon" collection="fooditemIconList" open="" separator="," close="">
+            (
+            #{ilGoodsDailyMealContsCd}
+            ,#{fooditemIcon.ilFooditemIconId}
+            ,#{createId}
+            ,NOW()
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 식단 컨텐츠 아이콘 목록 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.01    천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getFooditemIconList" resultType="kr.co.pulmuone.v1.goods.fooditem.dto.vo.FooditemIconVo">
+        /* mealConts.getFooditemIconList */
+        SELECT
+            IFI.IL_FOODITEM_ICON_ID
+             , IFI.FOODITEM_ICON_NM AS FOODITEM_ICON_NAME
+             , IFI.FOODITEM_TYPE
+             , IFI.TITLE_NM
+             , IFI.USE_YN
+             , IFI.DEFAULT_DESC
+             , IFI.IMG_PATH AS IMAGE_PATH
+             , IFI.IMG_NM AS IMAGE_NAME
+             , IFI.IMG_ORIGIN_NM AS IMAGE_ORIGIN_NAME
+        FROM
+            IL_GOODS_DAILY_MEAL_CONTS_ICON_MAPPING IGDMCIM
+                JOIN IL_FOODITEM_ICON IFI ON IFI.IL_FOODITEM_ICON_ID = IGDMCIM .IL_FOODITEM_ICON_ID
+        WHERE
+            IGDMCIM.IL_GOODS_DAILY_MEAL_CONTS_CD = #{ilGoodsDailyMealContsCd}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description : 식단 컨텐츠에 등로된 아이콘 삭제
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.10.01    천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delMealContsIconMapping">
+        /* mealConts.delMealContsIconMapping */
+        DELETE FROM IL_GOODS_DAILY_MEAL_CONTS_ICON_MAPPING
+        WHERE
+            IL_GOODS_DAILY_MEAL_CONTS_CD = #{ilGoodsDailyMealContsCd}
+    </delete>
+
+</mapper>

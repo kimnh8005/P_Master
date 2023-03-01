@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.display.CustomDictionaryMapper">
+
+    <resultMap id="getCustomDictionaryResultMap" type="kr.co.pulmuone.v1.display.dictionary.dto.vo.CustomDictionaryVo">
+        <result column="NO"                   property="no" />
+        <result column="DP_CUSTOMIZE_DIC_ID"  property="dpCustomizeDicId"/>
+        <result column="CUSTOMIZE_WORD"       property="customizeWord"/>
+        <result column="USE_YN"               property="useYn"/>
+        <result column="CREATE_DT"            property="createDate"/>
+    </resultMap>
+
+    <sql id="customDictionaryCondition">
+        <where>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(customizeWord)">
+                AND CW.CUSTOMIZE_WORD LIKE CONCAT('%',#{customizeWord},'%')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+                AND CW.USE_YN = UPPER(#{useYn})
+            </if>
+        </where>
+    </sql>
+
+
+    <select id="getCustomDictionary" resultMap="getCustomDictionaryResultMap" parameterType="kr.co.pulmuone.v1.display.dictionary.dto.CustomDictionarySearchDto">
+        /* searchDictionary.getCustomDictionary */
+        SELECT
+            @rownum := @rownum + 1 AS NO
+            , T.*
+        FROM
+        (
+        SELECT
+        CW.DP_CUSTOMIZE_DIC_ID
+        , CW.CUSTOMIZE_WORD
+        , CW.USE_YN
+        , DATE_FORMAT(CW.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+        FROM
+        DP_CUSTOMIZE_DIC CW
+        <include refid="customDictionaryCondition" />
+        )T,  ( SELECT	@rownum := 0	) R
+        ORDER BY DP_CUSTOMIZE_DIC_ID DESC, NO DESC
+        <if test="ePage gt 0">
+            <include refid="_common.pageLimit"/>
+        </if>
+    </select>
+
+    <select id="getCustomDictionaryCount" resultType="int">
+        /* searchDictionary.getCustomDictionaryCount */
+        SELECT COUNT(*)
+        FROM DP_CUSTOMIZE_DIC CW
+        <include refid="customDictionaryCondition" />
+    </select>
+
+    <select id="checkCustomizeDictionaryDuplicate" resultType="int">
+        /* customDictionary.checkCustomizeDictionaryDuplicate */
+		select count(*) as total FROM DP_CUSTOMIZE_DIC
+		WHERE CUSTOMIZE_WORD = #{customizeWord}
+	</select>
+
+	<select id="checkCustomizeDictionaryDuplicateByUpdate" resultType="int">
+        /* customDictionary.checkCustomizeDictionaryDuplicateByUpdate */
+		select count(*) as total FROM DP_CUSTOMIZE_DIC
+		WHERE
+			<foreach item="customDictionary" index="index" collection="list" open="" separator=" OR " close="">
+                (DP_CUSTOMIZE_DIC_ID != #{customDictionary.dpCustomizeDicId} AND CUSTOMIZE_WORD = #{customDictionary.customizeWord})
+        	</foreach>
+	</select>
+
+    <insert id="addCustomDictionary" >
+        /* customDictionary.addCustomDictionary */
+        INSERT INTO DP_CUSTOMIZE_DIC(
+            CUSTOMIZE_WORD
+            , USE_YN
+            , CREATE_DT
+            , CREATE_ID
+        )
+        VALUES
+        <foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+            (
+                  #{insertData.customizeWord}
+                , #{insertData.useYn}
+                , NOW()
+                , '1'
+                )
+        </foreach>
+    </insert>
+
+    <update id="updateCustomDictionary">
+        /* customDictionary.updateCustomDictionary */
+        <foreach item="updateData" index="index" collection="list"  separator="; ">
+            UPDATE DP_CUSTOMIZE_DIC
+            SET CUSTOMIZE_WORD     = #{updateData.customizeWord}
+                , USE_YN             = #{updateData.useYn}
+                , MODIFY_DT          = CURRENT_TIMESTAMP
+                , MODIFY_ID 	     = #{updateData.userVo.userId}
+            WHERE DP_CUSTOMIZE_DIC_ID = #{updateData.dpCustomizeDicId}
+        </foreach>
+    </update>
+
+    <delete id="deleteCustomDictionary">
+        /* customDictionary.deleteCustomDictionary */
+        DELETE FROM DP_CUSTOMIZE_DIC
+        WHERE DP_CUSTOMIZE_DIC_ID IN (
+        <foreach item="deleteData" index="index" collection="list" open="" separator="," close="">
+            #{deleteData.dpCustomizeDicId}
+        </foreach>
+        )
+    </delete>
+
+
+</mapper>
+
+

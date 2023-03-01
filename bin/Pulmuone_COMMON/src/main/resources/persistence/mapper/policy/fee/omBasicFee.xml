@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.fee.OmBasicFeeMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기본 수수료 관리
+	────────────────────────────────────────────────────────────────────────-->
+
+    <sql id="whereOmBasicFeeRetrieve">
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchSellersGroup)">
+            AND OBF.SELLERS_GROUP_CD = #{searchSellersGroup}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(calcTypeList)">
+            AND OBF.CALC_TYPE IN
+            <foreach collection="calcTypeList" item="calcTypeList" separator="," open="(" close=")">
+                #{calcTypeList}
+            </foreach>
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchOmSellersId)">
+            AND OBF.OM_SELLERS_ID = #{searchOmSellersId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchSupplierId)">
+            AND OBF.UR_SUPPLIER_ID = #{searchSupplierId}
+        </if>
+    </sql>
+
+	<resultMap id="omBasicFeeListDtoMap" type="kr.co.pulmuone.v1.policy.fee.dto.OmBasicFeeListDto">
+        <result column="OM_BASIC_FEE_ID" property="omBasicFeeId" />
+        <result column="SELLERS_GROUP_CD" property="sellersGroupCd" />
+        <result column="SELLERS_GROUP_NM" property="sellersGroupName" />
+        <result column="OM_SELLERS_ID" property="omSellersId" />
+        <result column="SELLERS_NM" property="omSellersName" />
+        <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+        <result column="UR_SUPPLIER_NAME" property="urSupplierName" />
+        <result column="UR_SUPPLIER_CODE" property="urSupplierCode" />
+        <result column="CALC_TYPE" property="calcType" />
+        <result column="FEE" property="fee" />
+        <result column="START_DT" property="startDt" />
+        <result column="CREATE_DT" property="createDt" />
+	</resultMap>
+
+    <!-- 기본 수수료 목록 조회 -->
+	<select id="getOmBasicFeeList" resultMap="omBasicFeeListDtoMap">
+	    /* OmBasicFeeMapper.getOmBasicFeeList */
+	    <![CDATA[
+        SELECT
+            OBF.OM_BASIC_FEE_ID
+            , OBF.UR_SUPPLIER_ID
+            , OBF.SUPPLIER_NM AS UR_SUPPLIER_NAME
+            , OBF.SUPPLIER_CD AS UR_SUPPLIER_CODE
+            , OBF.SELLERS_GROUP_CD
+            , FN_COMN_CODE_DIC(OBF.SELLERS_GROUP_CD) AS SELLERS_GROUP_NM
+            , OBF.OM_SELLERS_ID
+            , OS.SELLERS_NM
+            , OBF.CALC_TYPE
+            , OBF.FEE
+            , OBF.START_DT
+            , DATE_FORMAT(OBF.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DT
+        FROM OM_BASIC_FEE OBF
+        LEFT OUTER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = OBF.UR_SUPPLIER_ID
+        LEFT OUTER JOIN OM_SELLERS OS ON OS.SELLERS_GROUP_CD = OBF.SELLERS_GROUP_CD AND OS.OM_SELLERS_ID = OBF.OM_SELLERS_ID
+        WHERE CONCAT(OBF.UR_SUPPLIER_ID,OBF.OM_SELLERS_ID,OBF.START_DT) IN (
+                /* 미래 시작일자는 모두 조회 */
+        		SELECT CONCAT(UR_SUPPLIER_ID,OM_SELLERS_ID,START_DT)
+	        	FROM OM_BASIC_FEE
+	        	WHERE STR_TO_DATE(START_DT, '%Y-%m-%d') > NOW()
+	        	UNION ALL
+	        	/* 과거 시작일자는 최근 1건 조회 */
+	        	SELECT CONCAT(UR_SUPPLIER_ID,OM_SELLERS_ID,MAX(START_DT))
+	        	FROM OM_BASIC_FEE
+	        	WHERE STR_TO_DATE(START_DT, '%Y-%m-%d') <= NOW()
+	        	GROUP BY UR_SUPPLIER_ID, OM_SELLERS_ID
+              )
+        ]]>
+        <include refid="whereOmBasicFeeRetrieve" />
+        ORDER BY OBF.SUPPLIER_NM DESC, OS.SELLERS_NM, START_DT
+	</select>
+
+    <resultMap id="omBasicFeeVoMap" type="kr.co.pulmuone.v1.policy.fee.dto.OmBasicFeeDto">
+        <result column="OM_BASIC_FEE_ID" property="omBasicFeeId" />
+        <result column="SELLERS_GROUP_CD" property="sellersGroupCd" />
+        <result column="OM_SELLERS_ID" property="omSellersId" />
+        <result column="UR_SUPPLIER_ID" property="urSupplierId" />
+        <result column="CALC_TYPE" property="calcType" />
+        <result column="FEE" property="fee" />
+        <result column="START_DT" property="startDt" />
+        <result column="SUPPLIER_CD" property="supplierCd" />
+    </resultMap>
+
+    <!-- 기본 수수료 상세 조회 -->
+	<select id="getOmBasicFee" resultMap="omBasicFeeVoMap">
+	    /* OmBasicFeeMapper.getOmBasicFee */
+        SELECT
+            OM_BASIC_FEE_ID
+            , SELLERS_GROUP_CD
+            , OM_SELLERS_ID
+            , UR_SUPPLIER_ID
+            , CALC_TYPE
+            , FEE
+            , START_DT
+            , SUPPLIER_CD
+        FROM OM_BASIC_FEE
+        WHERE OM_BASIC_FEE_ID = #{omBasicFeeId}
+	</select>
+
+    <resultMap id="omBasicFeeHistListDto" type="kr.co.pulmuone.v1.policy.fee.dto.OmBasicFeeHistListDto">
+        <result column="OM_BASIC_FEE_HIST_ID" property="omBasicFeeHistId" />
+        <result column="CALC_TYPE" property="calcType" />
+        <result column="FEE" property="fee" />
+        <result column="START_DT" property="startDt" />
+    </resultMap>
+
+    <!-- 기본 수수료 이력 목록 조회 -->
+    <select id="getOmBasicFeeHistList" resultMap="omBasicFeeHistListDto">
+        /* OmBasicFeeMapper.getOmBasicFeeHistList */
+        SELECT
+            OM_BASIC_FEE_HIST_ID
+            , CALC_TYPE
+            , FEE
+            , START_DT
+        FROM OM_BASIC_FEE_HIST
+        WHERE OM_SELLERS_ID = #{omSellersId}
+        AND UR_SUPPLIER_ID = #{urSupplierId}
+        ORDER BY START_DT DESC, CREATE_DT DESC
+    </select>
+
+    <!-- 기본 수수료 등록 -->
+    <insert id="addOmBasicFee">
+        /* OmBasicFeeMapper.addOmBasicFee */
+        INSERT INTO OM_BASIC_FEE
+        (
+            SELLERS_GROUP_CD
+            , OM_SELLERS_ID
+            , UR_SUPPLIER_ID
+            , SUPPLIER_NM
+            , CALC_TYPE
+            , FEE
+            , START_DT
+            , CREATE_ID
+            , CREATE_DT
+            , SUPPLIER_CD
+        )
+        VALUES
+        (
+            #{sellersGroupCd}
+            , #{omSellersId}
+            , #{urSupplierId}
+            , (
+                SELECT
+                    C.COMP_NM
+                FROM UR_SUPPLIER S
+                JOIN UR_COMPANY C
+                ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+                AND C.USE_YN = 'Y'
+                AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+                and S.UR_SUPPLIER_ID = #{urSupplierId}
+              )
+            , #{calcType}
+            , #{fee}
+            , DATE_FORMAT(STR_TO_DATE(REPLACE(#{startDt},'-',''), '%Y%m%d'), '%Y-%m-%d')
+            , #{userVo.userId}
+            , NOW()
+            , #{supplierCd}
+        )
+
+        <selectKey resultType="long" keyProperty="omBasicFeeId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+	</insert>
+
+    <!-- 기본 수수료 수정 -->
+    <update id="putOmBasicFee">
+        /* OmBasicFeeMapper.putOmBasicFee */
+        UPDATE OM_BASIC_FEE
+        SET CALC_TYPE = #{calcType}
+            , FEE = #{fee}
+            , START_DT = DATE_FORMAT(STR_TO_DATE(REPLACE(#{startDt},'-',''), '%Y%m%d'), '%Y-%m-%d')
+            , MODIFY_ID = #{userVo.userId}
+            , MODIFY_DT = NOW()
+        WHERE OM_BASIC_FEE_ID = #{omBasicFeeId}
+    </update>
+
+    <!-- 기본 수수료 이력 등록 -->
+    <insert id="addOmBasicFeeHist">
+        /* OmBasicFeeMapper.addOmBasicFeeHist */
+        INSERT INTO OM_BASIC_FEE_HIST
+        (
+            SELLERS_GROUP_CD
+            , OM_SELLERS_ID
+            , UR_SUPPLIER_ID
+            , SUPPLIER_NM
+            , CALC_TYPE
+            , FEE
+            , START_DT
+            , CREATE_ID
+            , CREATE_DT
+            , SUPPLIER_CD
+        )
+        VALUES
+        (
+            #{sellersGroupCd}
+            , #{omSellersId}
+            , #{urSupplierId}
+            , (
+                SELECT
+                    C.COMP_NM
+                FROM UR_SUPPLIER S
+                JOIN UR_COMPANY C
+                ON C.UR_COMPANY_ID = S.UR_COMPANY_ID
+                AND C.USE_YN = 'Y'
+                AND C.COMP_TP IN ('COMPANY_TYPE.HEADQUARTERS','COMPANY_TYPE.SUPPLIER')
+                and S.UR_SUPPLIER_ID = #{urSupplierId}
+               )
+            , #{calcType}
+            , #{fee}
+            , DATE_FORMAT(STR_TO_DATE(REPLACE(#{startDt},'-',''), '%Y%m%d'), '%Y-%m-%d')
+            , #{userVo.userId}
+            , NOW()
+            , #{supplierCd}
+        )
+
+        <selectKey resultType="long" keyProperty="omBasicFeeHistId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+
+    <!-- 기본 수수료 판매처 그룹수정 -->
+    <update id="putOmBasicFeeSellersGroup">
+        /* OmBasicFeeMapper.putOmBasicFeeSellersGroup */
+        UPDATE OM_BASIC_FEE
+        SET SELLERS_GROUP_CD = #{sellersGroupCd}
+        WHERE OM_BASIC_FEE_ID = #{omBasicFeeId}
+    </update>
+</mapper>

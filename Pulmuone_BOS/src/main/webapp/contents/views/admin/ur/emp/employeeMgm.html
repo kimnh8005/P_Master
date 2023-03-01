@@ -1,0 +1,402 @@
+<div class="fb__sect employeeMgm">
+	<form id="inputForm" name="inputForm" >
+        <div id="tabstrip">
+            <ul>
+                <li id="defaultInfoTab">기본 정보</li>
+                <li id="authSettingTab">권한 설정</li>
+            </ul>
+            <!-- 기본정보 Tab Start -->
+            <div class="tab-cont">
+                <div class="wrap-section col1">
+                    <div class="section">
+                        <div class="input-border">
+                            <h3 class="wrap-tit">BOS 계정 기본정보</h3>
+                            <table class="datatable v-type">
+                                <caption>BOS 계정 기본정보 등록 및 수정</caption>
+                                <colgroup>
+                                    <col style="width:12%">
+                                    <col style="width:38%">
+                                    <col style="width:12%">
+                                    <col style="width:38%">
+                                </colgroup>
+                                <tbody id="headquartersView">
+                                    <tr>
+                                        <th scope="row"><label for="adminType">관리자 유형</label></th>
+                                        <td colspan="3">
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="adminType" name="adminType" class="fb__custom__select left-input"
+	                                                data-bind="value: employeeInfo.adminType, disabled: adminTypeDisabled, events: {change:fnAdminTypeChange}" required>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr id="employeeNumberView">
+                                        <th scope="row"><label for="employeeNumber" class="req-star-front">사번</label></th>
+                                        <td id="employeeNumberViewTd">
+                                        	<div class="fb__multi__tags">
+	                                            <input type="text" id="employeeNumber" name="employeeNumber" class="comm-input middle"
+	                                                data-bind="value: employeeInfo.employeeNumber, disabled: employeeNumberDisabled" maxlength="40" required>
+	                                            <button type="button" class="btn-point btn-s middle"
+	                                                data-bind="click: fnEmployeeNumberSearch, visible: employeeNumberSearchButtonVisible">검색</button>
+	                                        </div>
+                                        </td>
+                                        <th scope="row" id="itsmTh" style="display: none;"><label for="itsmId">ITSM 계정</label></th>
+                                        <td id="itsmTd" style="display: none;">
+                                            <div class="fb__multi__tags">
+                                                <input type="text" id="itsmId" name="itsmId" class="comm-input middle">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr id="clientChoiceView" style="display:none">
+                                        <th scope="row"><label for="clientName" class="req-star-front">거래처 선택</label></th>
+                                        <td id="clientNameTd">
+                                        	<div class="fb__multi__tags">
+	                                            <input type="text" id="clientName" name="clientName" class="comm-input middle"
+	                                                data-bind="value: employeeInfo.clientName" disabled required>
+	                                            <button type="button" class="btn-point btn-s middle"
+	                                                data-bind="click: fnClientSearchPopup">검색</button>
+                                            </div>
+                                        </td>
+                                        <th scope="row" id="clientItsmTh" style="display: none;"><label for="clientItsmId">ITSM 계정</label></th>
+                                        <td id="clientItsmTd" style="display: none;">
+                                            <div class="fb__multi__tags">
+                                                <input type="text" id="clientItsmId" name="clientItsmId" class="comm-input middle">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row"><label for="loginId" class="req-star-front">아이디</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="loginId" name="loginId" class="comm-input middle marginR10" rangelength="5,15"
+	                                                data-bind="value: employeeInfo.loginId, disabled: loginIdDisabled, events: {change:fnLoginIdChange}" required>
+	                                            <button type="button" id="fnLoginIdDuplicateConfirm" class="btn-white btn-s middle" style="width:80px"
+	                                                data-bind="click: fnLoginIdDuplicateConfirm, visible: loginIdDuplicateConfirmVisible">중복확인</button>
+                                            </div>
+                                        </td>
+                                        <th><label for="passwordPush">비밀번호</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <button type="button" id="fnPasswordPush" class="btn-white btn-m" style="width:130px"
+	                                                data-bind="visible: passwordPushVisible, click: fnPasswordPush" auth-remove="RESEND_PW"> 비밀번호 재발송</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            <label for="firstJoinDateAndLastVisitDate">
+                                                <p>최초 가입일시</p>
+                                                <p>최근 접속일시</p>
+                                            </label>
+                                        </th>
+                                        <td>
+                                            <p><span data-bind="text: employeeInfo.firstJoinDate"></span></p>
+                                            <p><span data-bind="text: employeeInfo.lastVisitDate"></span></p>
+                                        </td>
+                                        <th scope="row"><label for="userStatus" class="req-star-front">회원상태</label></th>
+                                        <td>
+                                            <div class="complex-condition">
+                                                <div id="userStatus" class="radios-wrapper fb__custom__radio"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row"><label for="userName" class="req-star-front">이름</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="userName" name="userName" class="comm-input" maxlength="40"
+	                                                data-bind="value: employeeInfo.userName, disabled: userNameDisabled">
+	                                            <button type="button" id="fnUserNameDisabledChange" class="btn-white btn-s" style="width:60px"
+	                                                data-bind="click: fnUserNameDisabledChange, visible: userNameButtonVisible">변경</button>
+                                            </div>
+                                        </td>
+                                        <th scope="row"><label for="email" class="req-star-front">이메일 주소</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="email" name="email" class="comm-input marginR10 middle" maxlength="100"
+	                                                data-bind="value: employeeInfo.email, disabled: emailDisabled, events: {change:fnEmailChange}" required email>
+	                                            <button type="button" id="fnEmailDisabledChange" class="btn-white btn-s boxSizing middle" style="width:60px"
+	                                                data-bind="click: fnEmailDisabledChange, visible: emailButtonVisible">변경</button>
+	                                            <button type="button" id="fnEmailDuplicateConfirm" class="btn-white btn-s boxSizing middle" style="width:80px"
+	                                                data-bind="click: fnEmailDuplicateConfirm, visible: emailDuplicateConfirmButtonVisible">중복검사</button>
+	                                        </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row"><label for="regalName" id="regalNameTh" class="req-star-front">법인 정보</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="regalName" name="regalName" class="comm-input" maxlength="100"
+	                                                data-bind="value: employeeInfo.regalName, disabled: regalNameDisabled" required>
+	                                            <button type="button" id="fnRegalNameDisabledChange" class="btn-white btn-s" style="width:60px"
+	                                                data-bind="click: fnRegalNameDisabledChange, visible: regalNameButtonVisible">변경</button>
+                                            </div>
+                                        </td>
+                                        <th scope="row"><label for="mobile" class="req-star-front">휴대폰 번호</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="mobile" name="mobile" class="comm-input" maxlength="40"
+	                                                data-bind="value: employeeInfo.mobile, disabled: mobileDisabled" required>
+	                                            <button type="button" id="fnMobileDisabledChange" class="btn-white btn-s" style="width:60px"
+	                                                data-bind="visible:mobileButtonVisible, click: fnMobileDisabledChange">변경</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr id="positionView">
+                                        <th scope="row"><label for="positionName">직책 정보</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="positionName" name="positionName" class="comm-input"
+	                                                data-bind="value: employeeInfo.positionName" disabled>
+                                            </div>
+                                        </td>
+                                        <th scope="row"><label for="organizationName" class="req-star-front">조직 정보</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="organizationName" name="organizationName" class="comm-input"
+	                                                data-bind="value: employeeInfo.organizationName" disabled required>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr id="teamLeaderYnView">
+                                        <th scope="row"><label for="teamLeaderYn" class="req-star-front">조직장 여부</label></th>
+                                        <td colspan="3">
+                                            <div class="complex-condition">
+                                                <div id="teamLeaderYn" class="radios-wrapper fb__custom__radio"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <h3 class="wrap-tit mt--20">개인정보 열람권한</h3>
+                            <table class="datatable v-type">
+                                <colgroup>
+                                    <col style="width:12%">
+                                    <col style="width:38%">
+                                    <col style="width:12%">
+                                    <col style="width:38%">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th scope="row"><span class="req-star-front">개인정보<br>열람권한</span></th>
+                                        <td>
+                                            <div class="complex-condition">
+                                                <div id="personalInfoAccessYn" class="radios-wrapper fb__custom__radio"></div>
+                                            </div>
+                                        </td>
+                                        <th><label for="accessAuthGrantDate">열람권한<br>부여일시</label></th>
+                                        <td>
+                                            <span data-bind="text: employeeInfo.accessAuthGrantDate"></span>
+                                        </td>
+                                    </tr>
+                                    <tr id="privacyItsmTr" style="display: none;">
+                                        <th scope="row"><label for="privacyItsmId">ITSM 계정</label></th>
+                                        <td colspan="3">
+                                            <div class="fb__multi__tags">
+                                                <input type="text" id="privacyItsmId" name="privacyItsmId" class="comm-input middle">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div style="text-align: center; margin-top: 5px;">
+								<span style="color: red;">* 개인정보 열람권한이 ‘권한없음’인 계정은 시스템설정 > 권한관리 메뉴에서 접근권한을 직접 설정해야 합니다.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 기본정보 Tab End -->
+
+            <!-- 권한설정 Tab Start -->
+            <div class="tab-cont" style="overflow: visible;">
+                <div class="wrap-section col1">
+                    <div class="section">
+                        <div class="input-border">
+                            <h3 class="wrap-tit">권한 설정</h3>
+                            <table class="datatable v-type">
+                                <caption>역할 추가 및 관리자 권한관리 바로가기</caption>
+                                <colgroup>
+                                    <col style="width:20%">
+                                    <col style="width:80%">
+                                </colgroup>
+                                <tbody>
+                                	<tr>
+	                                    <th scope="row"><label for="roleName">역할명</label></th>
+	                                    <td>
+	                                        <div class="complex-condition clearfix">
+		                                        <input type="text" id="roleName" name="roleName" class="fb__custom__select left-input middle marginR10" style="width:200px;"
+		                                            data-bind="disabled: roleNameDisabled">
+		                                        <button type="button" id="fnRoleAdd" class="btn-point btn-s middle boxSizing" style="width:60px"
+		                                            data-bind="visible: roleAddVisible, click: fnRoleAdd" auth-remove="ADD_AUTH">추가</button>
+		                                        <div style="float:right;">
+		                                            <button type="button" id="fnAdminAuthPageMove" class="btn-point btn-s middle boxSizing" style="width:200px"
+		                                                data-bind="visible: adminAuthPageMoveButtonVisible, click: fnAdminAuthPageMove" auth-remove="ADMIN_AUTH_SHORTCUT">관리자 권한관리 바로가기</button>
+		                                        </div>
+	                                        </div>
+	                                    </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <table class="datatable v-type mt--10">
+                                <caption>역할 그룹정보 리스트</caption>
+                                <thead>
+                                    <tr>
+                                        <th style="width:50%"><label>역할 그룹명</label></th>
+                                        <th style="width:25%"><label>권한부여일자</label></th>
+                                        <th style="width:25%"><label>관리</label></th>
+                                    </tr>
+                                </thead>
+                                <tbody data-template="roleList-row-template" data-bind="source: employeeInfo.roleList">
+                                </tbody>
+                            </table>
+                            <!-- 권한 위임 정보 And 공급업체 권한 설정 Start -->
+                            <div id="grantAuthAndAuthSupplierView">
+                                <h3 class="wrap-tit mt--20">권한 위임 정보</h3>
+                                <table class="datatable v-type">
+                                    <caption>권한 위임 정보 설정</caption>
+                                    <colgroup>
+                                        <col style="width:12%">
+                                        <col style="width:38%">
+                                        <col style="width:12%">
+                                        <col style="width:38%">
+                                    </colgroup>
+                                    <tbody>
+                                        <th scope="row"><label for="grantAuthEmployeeName">담당자 검색</label></th>
+                                        <td>
+                                        	<div class="complex-condition">
+	                                            <input type="text" id="grantAuthEmployeeName" name="grantAuthEmployeeName" class="comm-input middle marginR10" style="width:250px;"
+	                                                data-bind="value: employeeInfo.grantAuthEmployeeName" disabled>
+	                                            <button type="button" id="fnGrantAuthEmployeeSearch" class="btn-point btn-s middle boxSizing" style="width:60px"
+	                                                data-bind="disabled: grantAuthEmployeeSearchButtonDisabled, click: fnGrantAuthEmployeeSearch" auth-remove="SEARCH_MGR">검색</button>
+                                            </div>
+                                        </td>
+                                        <th scope="row"><label for="grantAuthDate">권한 위임기간</label></th>
+                                        <td>
+                                            <div class="fb__multi__tags">
+                                                <div class="datepicker-wrapper startdate-wrapper" style="width: 140px">
+                                                    <input type="text" id="grantAuthDateStart" name="createDateStart" class="datepicker-input"
+                                                        data-bind="disabled: grantAuthDateStartDisabled, value: employeeInfo.grantAuthDateStart">
+                                                </div>
+                                                <div class="datepicker-wrapper marginR10" style="width: 140px">
+                                                    <input type="text" id="grantAuthDateEnd" name="createDateEnd" class="datepicker-input"
+                                                        data-bind="disabled: grantAuthDateEndDisabled, value: employeeInfo.grantAuthDateEnd">
+                                                </div>
+                                                <div id="grantAuthStop" class="checkbox-wrapper fb__custom__checkbox" style="width: 100px"></div>
+                                            </div>
+                                        </td>
+                                    </tbody>
+                                </table>
+                                <h3 class="wrap-tit mt--10">공급업체 권한 설정</h3>
+                                <table class="datatable v-type">
+                                    <caption>공급업체 권한 설정</caption>
+                                    <colgroup>
+                                        <col style="width:12%">
+                                        <col>
+                                    </colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <th scope="row"><label for="authSupplierChoice" >공급업체 선택</label></th>
+                                            <td>
+                                                <div class="complex-condition">
+                                                    <div class="select-row">
+                                                        <div class="fb__custom__select inlineBlock marginR10">
+                                                            <input type="text" id="authSupplier" name="authSupplier" class="fb__custom__select" style="width:200px;"
+                                                                data-value-primitive="true"
+                                                                data-bind="value:employeeInfo.authSupplierId, disabled: authSupplierDisabled" >
+                                                        </div>
+                                                        <button type="button" class="btn-point btn-s" id="fnAddSupplier" name="fnAddSupplier" data-bind="click: fnAddAuthSupplierCard" >추가</button>
+                                                    </div>
+                                                    <div class="select-items">
+                                                        <ul class="select-items__list" id= "selectedSupplierList" data-template="authSupplierIdList-row-template" data-bind="source: employeeInfo.authSupplierIdList">
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <!-- 출고처 선택 -->
+                                        <tr>
+                                            <th scope="row"><label for="authWarehouseChoice" >출고처 선택</label></th>
+                                            <td>
+                                                <div class="complex-condition">
+                                                    <div class="select-row">
+                                                        <div class="fb__custom__select inlineBlock marginR10">
+                                                            <input id="warehouseGroup"  name="warehouseGroup" class="fb__custom__select"  type="text" style="width: 200px;"
+                                                                data-value-primitive="true"
+                                                                data-bind="value:employeeInfo.authWarehouseGroupId, disabled: authWarehouseGroupDisabled" >
+                                                        </div>
+                                                        <div class="fb__custom__select inlineBlock marginR10">
+                                                            <input id="authWarehouse"  name="authWarehouse" class="fb__custom__select"  type="text" style="width: 200px;"
+                                                                data-value-primitive="true"
+                                                                data-bind="value:employeeInfo.authWarehouseId, disabled: authWarehouseDisabled" >
+                                                        </div>
+                                                        <button type="button" class="btn-point btn-s" id="fnAddWarehouse" name="fnAddWarehouse" data-bind="click: fnAddAuthWarehouseCard" >추가</button>
+                                                    </div>
+                                                    <div class="select-items">
+                                                        <ul class="select-items__list" id= "selectedWarehouseList" data-template="authWarehouseIdList-row-template" data-bind="source: employeeInfo.authWarehouseIdList">
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <!-- 상품권한 최근수정 -->
+                                        <tr>
+                                            <th scope="row" style="padding: 0 5px; text-align: center;"><label for="" >상품권한 최근수정</label></th>
+                                            <td>
+                                                <div class="complex-condition">
+                                                    <span id="authSupplierChangeInfo"></span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- 권한 위임 정보 And 공급업체 권한 설정 End -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 권한설정 Tab End -->
+        </div>
+	</form>
+</div>
+<span class="btn-area">
+    <button type="button" id="fnSave" class="btn-point btn-l" onclick="$scope.fnSave()" auth-remove="SAVE">저장</button>
+</span>
+
+<!-- 권한설정 역할 그룹목록 Template -->
+<script id="roleList-row-template" type="text/x-kendo-template">
+    <tr>
+        <td style="text-align:center">
+            <span data-bind="text: roleTypeName"></span>
+        </td>
+        <td style="text-align:center">
+            <span data-bind="text: createDate"></span>
+        </td>
+        <td style="text-align:center">
+        	<button type="button" data-bind="click: fnAuthView"  class="btn-point btn-s viewAuth" >권한 보기</button>
+        	<button type="button" data-bind="click: fnAuthDeleteRow" class="btn-red btn-s deleteAuth">삭제</button>
+        </td>
+    </tr>
+</script>
+
+<!-- 공급업체 권한설정 Template -->
+<script id="authSupplierIdList-row-template" type="text/x-kendo-template">
+	<li class="addedSupplier-conatiner__list__item">
+		<div class="select-items__item">
+			<input type="hidden" name="urSupplierId" class="btn-point btn-s viewAuth" data-bind="value: authId">
+			<input type="text" name="supplierName" data-bind="value: authName" readonly>
+			<button class="select-items__close-btn" type="button" data-bind="value: authId, click: fnDeleteAuthSupplierCard">&times;</button>
+		</div>
+	</li>
+</script>
+
+<!-- 출고처 권한설정 Template -->
+<script id="authWarehouseIdList-row-template" type="text/x-kendo-template">
+	<li class="addedWarehouse-conatiner__list__item">
+		<div class="select-items__item">
+			<input type="hidden" name="urWarehouseId" class="btn-point btn-s viewAuth" data-bind="value: authId">
+			<input type="text" name="warehouseName" data-bind="value: authName" readonly>
+			<button class="select-items__close-btn" type="button" data-bind="value: authId, click: fnDeleteAuthWarehouseCard">&times;</button>
+		</div>
+	</li>
+</script>

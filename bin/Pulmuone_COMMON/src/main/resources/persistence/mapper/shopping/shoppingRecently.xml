@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.shopping.recently.ShoppingRecentlyMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsRecentlyView" resultType="HashMap">
+		/*	shoppingRecently.getGoodsRecentlyView	*/
+		SELECT
+			SP_RECENTLY_VIEW_ID
+			,IL_GOODS_ID
+		FROM
+			SP_RECENTLY_VIEW
+		WHERE
+			IL_GOODS_ID = #{ilGoodsId}
+			AND UR_USER_ID = #{urUserId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 날짜 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putGoodsRecentlyViewLastViewDate">
+		/*	shoppingRecently.putGoodsRecentlyViewLastViewDate	*/
+		UPDATE
+			SP_RECENTLY_VIEW
+		SET
+			LAST_VIEW_DT = SYSDATE()
+		WHERE
+			IL_GOODS_ID = #{ilGoodsId}
+			AND UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addGoodsRecentlyView">
+		/*	shoppingRecently.addGoodsRecentlyView	*/
+		INSERT INTO SP_RECENTLY_VIEW(
+			IL_GOODS_ID
+			,UR_USER_ID
+			,LAST_VIEW_DT
+		)
+		VALUES(
+			#{ilGoodsId}
+			,#{urUserId}
+			,SYSDATE()
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 100개 이상일 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getGoodsRecentlyViewLimit" resultType="Long">
+		/*	shoppingRecently.getGoodsRecentlyViewLimit	*/
+			SELECT
+				TBL.SP_RECENTLY_VIEW_ID
+			FROM
+				(
+				SELECT
+					ROW_NUMBER () OVER () AS RNUM
+					,SRV.SP_RECENTLY_VIEW_ID
+				FROM
+					SP_RECENTLY_VIEW SRV
+				WHERE
+					SRV.UR_USER_ID = #{urUserId}
+				ORDER BY SRV.LAST_VIEW_DT DESC
+				) TBL
+			WHERE
+				TBL.RNUM <![CDATA[ > ]]> 100
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 조회 by urPcidCd
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.shopping.recently.dto.vo.RecentlyViewVo" id="recentlyViewMap">
+		<result column="SP_RECENTLY_VIEW_ID" property="spRecentlyViewId"/>
+		<result column="IL_GOODS_ID" property="ilGoodsId"/>
+	</resultMap>
+	<select id="getGoodsRecentlyViewByUrPcidCd" resultMap="recentlyViewMap">
+		/*	shoppingRecently.getGoodsRecentlyViewByUrPcidCd	*/
+		SELECT SP_RECENTLY_VIEW_ID
+			,IL_GOODS_ID
+		FROM SP_RECENTLY_VIEW
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+			AND UR_PCID_CD = #{urPcidCd}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 날짜 업데이트 by PcidCd
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putRecentlyViewLastViewDateByPcidCd">
+		/*	shoppingRecently.putRecentlyViewLastViewDateByPcidCd	*/
+		UPDATE SP_RECENTLY_VIEW
+		SET LAST_VIEW_DT = SYSDATE()
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+			AND UR_PCID_CD = #{urPcidCd}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 추가 by PcidCd
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addRecentlyViewFromNonMember">
+		/*	shoppingRecently.addRecentlyViewFromNonMember	*/
+		INSERT INTO SP_RECENTLY_VIEW(
+			IL_GOODS_ID
+			,UR_PCID_CD
+			,LAST_VIEW_DT
+		) VALUES (
+			#{ilGoodsId}
+			,#{urPcidCd}
+			,SYSDATE()
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 100개 이상 조회 By PcidCd
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.11		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRecentlyViewLimitByPcidCd" resultType="Long">
+		/*	shoppingRecently.getRecentlyViewLimitByPcidCd	*/
+		SELECT TBL.SP_RECENTLY_VIEW_ID
+		FROM (
+			SELECT ROW_NUMBER () OVER () AS RNUM
+				, SRV.SP_RECENTLY_VIEW_ID
+				FROM SP_RECENTLY_VIEW SRV
+				WHERE SRV.UR_PCID_CD = #{urPcidCd}
+				ORDER BY SRV.LAST_VIEW_DT DESC
+			) TBL
+		WHERE TBL.RNUM <![CDATA[ > ]]> 100
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 회원 반영
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putRecentlyViewUserId">
+		/*	shoppingRecently.putRecentlyViewUserId	*/
+		UPDATE SP_RECENTLY_VIEW
+		SET UR_USER_ID = #{urUserId}
+		WHERE UR_PCID_CD = #{urPcidCd}
+			AND UR_USER_ID IS NULL
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 - 비회원 -> 회원 전환 케이스 - 최종날짜로 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="putRecentlyViewNonMember">
+		/*	shoppingRecently.putRecentlyViewNonMember */
+		UPDATE SP_RECENTLY_VIEW TARGET,
+			(
+			SELECT S2.SP_RECENTLY_VIEW_ID,
+				(CASE WHEN S1.LAST_VIEW_DT > S2.LAST_VIEW_DT THEN S1.LAST_VIEW_DT ELSE S2.LAST_VIEW_DT END) AS LAST_VIEW_DT
+			FROM SP_RECENTLY_VIEW S1
+				INNER JOIN SP_RECENTLY_VIEW S2 ON S1.IL_GOODS_ID = S2.IL_GOODS_ID
+			WHERE S1.UR_PCID_CD = #{urPcidCd}
+				AND S1.UR_USER_ID IS NULL
+				AND S2.UR_USER_ID = #{urUserId}
+			) T
+		SET TARGET.LAST_VIEW_DT = T.LAST_VIEW_DT
+		WHERE TARGET.SP_RECENTLY_VIEW_ID = T.SP_RECENTLY_VIEW_ID
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 - 비회원 -> 회원 전환 케이스 - 겹치는 상품 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRecentlyViewNonMemberOverlap" resultType="Long">
+		/*	shoppingRecently.getRecentlyViewNonMemberOverlap */
+		SELECT G1.SP_RECENTLY_VIEW_ID
+		FROM (
+			SELECT S1.SP_RECENTLY_VIEW_ID
+			FROM SP_RECENTLY_VIEW as S1
+				INNER JOIN SP_RECENTLY_VIEW as S2 ON S1.IL_GOODS_ID = S2.IL_GOODS_ID
+			WHERE S1.UR_PCID_CD = #{urPcidCd}
+				AND S1.UR_USER_ID IS NULL
+				AND S2.UR_USER_ID = #{urUserId}
+		) G1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 유저 기준 조회 List
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.31		이원호          최초생성 - searchIndex.xml 조건문과 동일 해야함
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRecentlyViewListByUser" resultType="Long">
+		/*	shoppingRecently.getRecentlyViewListByUser	*/
+		SELECT T.IL_GOODS_ID
+		FROM  SP_RECENTLY_VIEW T
+			JOIN IL_GOODS A ON T.IL_GOODS_ID = A.IL_GOODS_ID
+			INNER JOIN IL_ITEM B ON A.IL_ITEM_CD = B.IL_ITEM_CD
+			JOIN IL_GOODS_PRICE P ON P.IL_GOODS_ID = A.IL_GOODS_ID AND P.USE_YN = 'Y' AND NOW() BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+			LEFT JOIN IL_GOODS_IMG IMG ON IMG.IL_GOODS_ID = A.IL_GOODS_ID AND IMG.BASIC_YN = 'Y'
+			LEFT JOIN IL_ITEM_IMG ITM_IMG ON ITM_IMG.IL_ITEM_CD = A.IL_ITEM_CD AND ITM_IMG.BASIC_YN = 'Y'
+			JOIN IL_GOODS_CTGRY C ON C.IL_GOODS_ID = A.IL_GOODS_ID
+			JOIN IL_CTGRY CC ON CC.IL_CTGRY_ID = C.IL_CTGRY_ID AND CC.USE_YN = 'Y' AND CC.DISP_YN = 'Y'
+			JOIN IL_CTGRY_PRNTS_INFO_DE PC ON PC.IL_CTGRY_ID = C.IL_CTGRY_ID
+			JOIN (select A.IL_GOODS_ID, B.CTGRY_ID_DEPTH1, C.CTGRY_NM
+			from IL_GOODS_CTGRY A, IL_CTGRY_PRNTS_INFO B, IL_CTGRY C
+			where  A.IL_CTGRY_ID = B.IL_CTGRY_ID
+			AND B.CTGRY_ID_DEPTH1 = C.IL_CTGRY_ID
+			and A.BASIC_YN = 'Y'
+			and A.MALL_DIV = 'MALL_DIV.PULMUONE') MAIN_CTGRY ON MAIN_CTGRY.IL_GOODS_ID = A.IL_GOODS_ID
+			LEFT OUTER JOIN IL_ITEM_CERTIFICATION D ON D.IL_ITEM_CD = A.IL_ITEM_CD
+			LEFT OUTER JOIN IL_CERTIFICATION DD ON DD.IL_CERTIFICATION_ID = D.IL_CERTIFICATION_ID AND DD.USE_YN = 'Y'
+			LEFT OUTER JOIN UR_BRAND G ON G.UR_BRAND_ID = B.UR_BRAND_ID AND G.USE_YN = 'Y'
+			JOIN IL_GOODS_SHIPPING_TEMPLATE H ON H.IL_GOODS_ID = A.IL_GOODS_ID AND H.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID
+			JOIN IL_SHIPPING_TEMPLATE HH ON HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND HH.DEL_YN = 'N'
+		WHERE A.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+			AND A.DISP_YN = 'Y'
+			AND A.DEL_YN = 'N'
+			AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+			AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.GIFT_FOOD_MARKETING')
+			AND T.UR_USER_ID = #{urUserId}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deviceInfo)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'pc')">
+						AND A.DISP_WEB_PC_YN = 'Y'
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(deviceInfo,'mobile')">
+						AND A.DISP_WEB_MOBILE_YN = 'Y'
+					</when>
+				</choose>
+			</if>
+			<if test="isApp">
+				AND A.DISP_APP_YN = 'Y'
+			</if>
+		GROUP BY T.IL_GOODS_ID
+		ORDER BY T.LAST_VIEW_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delRecentlyViewByGoodsId">
+		/*	shoppingRecently.delRecentlyViewByGoodsId	*/
+		DELETE FROM SP_RECENTLY_VIEW
+		WHERE IL_GOODS_ID = #{ilGoodsId}
+			AND UR_USER_ID = #{urUserId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 삭제 by userId
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.22		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delRecentlyViewByUserId">
+		/*	shoppingRecently.delRecentlyViewByUserId	*/
+		DELETE FROM SP_RECENTLY_VIEW
+		WHERE UR_USER_ID = #{urUserId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근 본 상품 삭제 by spRecentlyViewId
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.16		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delRecentlyViewLimitBySpRecentlyViewId">
+		/*	shoppingRecently.delRecentlyViewLimitBySpRecentlyViewId	*/
+		DELETE FROM SP_RECENTLY_VIEW
+		WHERE SP_RECENTLY_VIEW_ID IN
+		<foreach collection="spRecentlyViewIds" item="spRecentlyViewId" separator="," open="(" close=")">
+			#{spRecentlyViewId}
+		</foreach>
+	</delete>
+</mapper>

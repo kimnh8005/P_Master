@@ -1,0 +1,177 @@
+<link rel="stylesheet" href="contents/css/od/order.css" type="text/css" />
+<!-- 수취 정보 변경 -->
+<div class="receiverMgmPopup receiverMgm">
+	<!-- wrap-location -->
+	<!-- <div class="wrap-location">
+	<div class="title">
+	<p class="title__subTitle"></p>
+	</div>
+	</div> -->
+	<!-- wrap-location End-->
+
+	<div class="fb__sect">
+		<!-- 배송 정보/ 배송 목록 선택 탭 -->
+		<div class="labelTabs">
+			<ul class="labelTabs__list">
+				<li class="labelTabs__listItem">
+					<label class="labelTabs__label">
+						<input type="radio" class="js__tab" name="recieverTab" value="shippingInfo" data-tab-content="shippingInfo" checked="true">
+						<span>배송 정보</span>
+					</label>
+				</li>
+				<li class="labelTabs__listItem">
+					<label class="labelTabs__label">
+						<input type="radio" class="js__tab" name="recieverTab" value="shippingList" data-tab-content="shippingList">
+						<span>배송지 목록</span>
+					</label>
+				</li>
+			</ul>
+		</div>
+
+		<form id="inputFormMain" name="inputFormMain">
+			<!-- 섹션 1 배송 정보 -->
+			<div class="recieverTab shippingInfo">
+				<input id="odOrderId" name="odOrderId" type="hidden">
+				<input id="odShppingZoneId" name="odShppingZoneId" type="hidden">
+				<!-- 받는분 -->
+				<div class="form__row">
+					<div class="form__label"><label class="label--required">받는분</label></div>
+					<div class="form__element">
+						<input id="recvNm" name="recvNm" type="text" class="comm-input width100" required>
+					</div>
+				</div>
+
+				<!-- 휴대폰 번호 -->
+				<div class="form__row">
+					<div class="form__label"><label class="label--required">휴대폰번호</label></div>
+					<div class="form__element">
+						<div class="form__phoneNum">
+							<div class="fb__custom__select">
+								<input id="phonePrefix" name="phonePrefix" class="fb__custom__select width100" type="text" data-validate-title="휴대폰번호" required>
+							</div>
+							<span class="hyphen">-</span>
+							<input id="recvHp1" name="recvHp1" type="text"class="comm-input" data-validate-title="휴대폰번호" maxlength="4"required>
+							<span class="hyphen">-</span>
+							<input id="recvHp2" name="recvHp2" type="text"class="comm-input" data-validate-title="휴대폰번호" maxlength="4" required>
+						</div>
+					</div>
+				</div>
+
+				<!-- 주소 찾기 -->
+				<div class="form__row receiver__addr">
+					<div class="form__label">
+						<label class="label--required marginR10">주소</label>
+					</div>
+					<div class="form__element">
+						<div class="receiver__addrRow receiver__addrRow--zipRow">
+							<input type="text" name="recvZipCd" id="recvZipCd" class="comm-input zipCode disabled" data-validate-title="우편번호" readonly required>
+							<button type="button" class="btn-s btn-white" onclick="$scope.fnAddressPopup()">주소 찾기</button>
+						</div>
+						<div class="receiver__addrRow">
+							<input type="text" name="recvAddr1" id="recvAddr1" class="comm-input width100 disabled" data-validate-title="주소" readonly required>
+						</div>
+						<div class="receiver__addrRow">
+							<input type="text" name="recvAddr2" id="recvAddr2" class="comm-input width100" data-validate-title="상세 주소" required>
+						</div>
+					</div>
+				</div>
+
+				<!-- 배송 요청사항 -->
+				<div class="form__row">
+					<div class="form__label">
+						<label class="label--required">배송 요청사항</label>
+					</div>
+					<div class="form__element">
+						<div class="fb__custom__select">
+							<input id="deliveryMsgCd" name="deliveryMsgCd" class="fb__custom__select width100" type="text" data-validate-title="배송 요청사항" required>
+						</div>
+						<div class="deliveryMsgDiv">
+							<input type="text" id="deliveryMsg" name="deliveryMsg" class="comm-input" style="width: 100%; margin-top: 5px;">
+						</div>
+					</div>
+				</div>
+
+				<!-- 배송 출입 정보 -->
+				<div class="form__row">
+					<div class="form__label">
+						<label class="label--required">배송 출입 정보</label>
+					</div>
+					<div class="form__element">
+						<div class="radios-wrapper fb__custom__radio vertical" id="doorMsgCd" data-validate-title="배송 출입 정보" required>
+						<!-- <div class="doorMsgDiv">
+						<input type="text" id="doorMsg" name="doorMsg" class="comm-input" style="width: 100%; margin-top: 5px;">
+						</div> -->
+						</div>
+					</div>
+				</div>
+
+				<div class="btn-area">
+					<button type="button" id="fnSave" class="btn-point btn-l" onclick="$scope.fnSave();">저장</button>
+				</div>
+			</div>
+		</form>
+		<!-- 섹션 1 End -->
+		<!-- 섹션 2 배송 목록 -->
+		<div class="recieverTab shippingList" style="display: none;" id="startShippingListArea">
+			<ul class="shippingList__list"></ul>
+		</div>
+		<!-- 섹션 2 End -->
+	</div>
+</div>
+
+<script id="shippingListItem" type="text/template">
+	<li class="shippingList__listItem">
+		<!-- 이름, 기본 배송지 -->
+		<div class="shippingList__row clearfix">
+			<p class="shippingList__userInfo">
+				<span class="shippingList__userName"></span>
+				<small class="shippingList__isDefaultLocation show"></small>
+			</p>
+			<div class="shippingList__urShippingAddrId" style="visibility:hidden;"></div>
+			<button type="button" onClick="$scope.fnSelect()"class="btn-s btn-white floatRight select" id="select">선택</button>
+		</div>
+		<!-- 상세 주소 -->
+		<div class="shippingList__row">
+			<div class="shippingList__addr">
+				<span class="shippingList__zipCode"></span>
+				<p class="shippingList__detailAddr"></p>
+			</div>
+			<span class="shippingList__detailAddr1" style="display: none;"></span>
+			<span class="shippingList__detailAddr2" style="display: none;"></span>
+			<span class="shippingList__phoneNum"></span>
+			<span class="shippingList__buildingCode" style="display: none;"></span>
+		</div>
+		<!-- 배송 요청사항 & 출입 정보 -->
+		<div class="shippingList__row">
+			<div class="shippingList__shipInfo">
+				<!-- 아이템 1 -->
+				<div class="shipInfo__row">
+					<span class="shipInfo__title"></span>
+					<p class="shipInfo__content__shipping"></p>
+				</div>
+
+				<!-- 아이템 2 -->
+				<div class="shipInfo__row">
+				<span class="shipInfo__title"></span>
+				<p class="shipInfo__content"></p>
+				<span class="shipInfo__password"></span>
+				<span class="shipInfo__type" style="display: none;"></span>
+				</div>
+			</div>
+		</div>
+	</li>
+</script>
+
+<script id="shippingListItemNone" type="text/template">
+	<li class="shippingList__listItem">
+		<!-- 이름, 기본 배송지 -->
+		<div class="shippingList__row clearfix">
+			<p class="shippingList__userInfo">
+				<span class="shippingList__userName">배송지 목록이 존재하지 않습니다.</span>
+				<small class="shippingList__isDefaultLocation show"></small>
+			</p>
+			<div class="shippingList__urShippingAddrId" style="visibility:hidden;"></div>
+		</div>
+	</li>
+</script>
+

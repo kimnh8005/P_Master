@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.policy.PolicyConfigBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 설정 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.15		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getConfigValue" resultType="java.lang.String">
+		/*	policyConfigBatch.getConfigValue	*/
+		SELECT PS_VAL
+		FROM PS_CONFIG
+		WHERE PS_KEY = #{psKey}
+			AND USE_YN = 'Y'
+			AND ST_SHOP_ID = 1
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 공휴일 여부 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.26		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getHolidayYn" resultType="java.lang.String">
+		/*	policyConfigBatch.getHolidayYn	*/
+		SELECT (CASE WHEN COUNT(*) > 0 THEN 'Y' ELSE 'N' END) AS HOLIDAY_YN
+		FROM PS_HOLIDAY
+		WHERE HOLIDAY_DT = #{nowDate}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일관리 - 기존 년월 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.26		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delHolidayYM">
+		/*	policyConfigBatch.delHolidayYM	*/
+		DELETE FROM PS_HOLIDAY
+		WHERE DATE_FORMAT(HOLIDAY_DT, "%Y%m") = #{yearMonth}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴일관리 - 신규 휴일정보 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.26		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addHoliday">
+		/*	policyConfigBatch.addHoliday	*/
+		INSERT INTO PS_HOLIDAY (
+			HOLIDAY_DT, CREATE_ID, CREATE_DT
+		) VALUES (
+			#{holidayDate}, 0, NOW()
+		)
+	</insert>
+
+</mapper>
+
+

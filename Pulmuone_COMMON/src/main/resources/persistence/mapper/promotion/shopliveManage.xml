@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.shoplive.ShopliveManageMapper">
+    <select id="selectShopliveList" resultType="kr.co.pulmuone.v1.promotion.shoplive.dto.vo.ShopliveInfoVo">
+        /* shopliveManage.selectShopliveList */
+        SELECT ES.EV_SHOPLIVE_ID
+            , ES.TITLE
+            , DATE(ES.START_DT) AS START_DATE
+            , DATE(ES.END_DT) AS END_DATE
+          FROM EV_SHOPLIVE ES
+        ORDER BY CREATE_DT DESC
+    </select>
+
+    <select id="selectShopliveInfo" resultType="kr.co.pulmuone.v1.promotion.shoplive.dto.vo.ShopliveInfoVo">
+        /* shopliveManage.selectShopliveInfo */
+        SELECT ES.EV_SHOPLIVE_ID
+             , ES.TITLE
+             , ES.CAMPAIGN_KEY
+             , DATE_FORMAT(ES.START_DT, '%Y-%m-%d %H:%i:%s') AS START_DT
+             , DATE_FORMAT(ES.END_DT, '%Y-%m-%d %H:%i:%s') AS END_DT
+             , DATE(ES.START_DT) AS START_DATE
+             , DATE(ES.END_DT) AS END_DATE
+             , DATE_FORMAT(ES.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DT
+             , ES.CREATE_ID
+             , FN_DECRYPT(UU.USER_NM) AS CREATE_NM
+             , DATE_FORMAT(ES.MODIFY_DT, '%Y-%m-%d %H:%i:%s') AS MODIFY_DT
+             , ES.MODIFY_ID
+             , FN_DECRYPT(UU2.USER_NM) AS MODIFY_NM
+        FROM EV_SHOPLIVE ES
+          LEFT OUTER JOIN UR_USER UU ON ES.CREATE_ID = UU.UR_USER_ID
+          LEFT OUTER JOIN UR_USER UU2 ON ES.MODIFY_ID = UU2.UR_USER_ID
+        WHERE EV_SHOPLIVE_ID = #{evShopliveId}
+        LIMIT 1
+    </select>
+
+    <insert id="addShopliveInfo">
+        /* shopliveManage.addShopliveInfo */
+        INSERT INTO EV_SHOPLIVE(TITLE, CAMPAIGN_KEY, START_DT, END_DT, CREATE_ID)
+        VALUES (
+                    #{title}
+                  , #{campaignKey}
+                  , STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s')
+                  , STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+                  , #{createId}
+        )
+        <selectKey keyProperty="evShopliveId" resultType="Long" order="AFTER">
+            SELECT CONCAT(LAST_INSERT_ID())
+        </selectKey>
+    </insert>
+
+    <update id="putShopliveInfo">
+        /* shopliveManage.putShopliveInfo */
+        UPDATE EV_SHOPLIVE
+            SET TITLE = #{title}
+              , CAMPAIGN_KEY = #{campaignKey}
+              , START_DT = STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s')
+              , END_DT = STR_TO_DATE(#{endDt}, '%Y%m%d%H%i%s')
+              , MODIFY_ID = #{modifyId}
+              , MODIFY_DT = NOW()
+        WHERE EV_SHOPLIVE_ID = #{evShopliveId}
+    </update>
+
+    <delete id="delShopliveInfo">
+        /* shopliveManage.delShopliveInfo */
+        DELETE
+        FROM EV_SHOPLIVE
+        WHERE EV_SHOPLIVE_ID = #{evShopliveId}
+    </delete>
+</mapper>

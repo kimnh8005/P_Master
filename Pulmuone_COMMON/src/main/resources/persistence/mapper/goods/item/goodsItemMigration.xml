@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemMigrationMapper">
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description  : 마스터 품목 데이터 마이그레이션 전용 mapper xml : 마이그레이션 종료 후 삭제 예정
+ * @
+ * @ 수정일            수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2020.10.29        박주형          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : MIGRATION_ITEM 테이블에서 해당 품목코드의 품목 정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.29        박주형          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getMigrationItemMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.MigrationItemVo">
+        <result column="MIGRATION_ITEM_ID" property="migrationItemId" />
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="ITEM_NAME" property="itemName" />
+        <result column="IL_CATEGORY_STANDARD_ID" property="ilCategoryStandardId" />
+        <result column="CATEGORY_STANDARD_FIRST_ID" property="bosCategoryStandardFirstId" />
+        <result column="CATEGORY_STANDARD_SECOND_ID" property="bosCategoryStandardSecondId" />
+        <result column="CATEGORY_STANDARD_THIRD_ID" property="bosCategoryStandardThirdId" />
+        <result column="CATEGORY_STANDARD_FOURTH_ID" property="bosCategoryStandardFourthId" />
+        <result column="IL_SPEC_MASTER_ID" property="ilSpecMasterId" />
+        <result column="STORAGE_METHOD_TYPE" property="storageMethodType" />
+        <result column="ETC_DESCRIPTION" property="etcDescription" />
+        <result column="NUTRITION_QUANTITY_PER_ONCE" property="nutritionQuantityPerOnce" />
+        <result column="NUTRITION_QUANTITY_TOTAL" property="nutritionQuantityTotal" />
+        <result column="NUTRITION_ETC" property="nutritionEtc" />
+
+    </resultMap>
+
+    <select id="getMigrationItem" resultMap="getMigrationItemMap">
+    /* itemMgmMigration.getMigrationItem */
+    WITH RECURSIVE CTE AS ( /* 해당 품목코드의 표준 카테고리 정보를 RECURSIVE 쿼리로 조회 */
+        SELECT
+            IL_CTGRY_STD_ID
+          , CTGRY_STD_NM
+          , PRNTS_CTGRY_ID
+          , DEPTH
+         FROM IL_CTGRY_STD
+        WHERE DEL_YN = 'N'
+          AND IL_CTGRY_STD_ID = (
+                 SELECT IL_CTGRY_STD_ID
+                   FROM MIGRATION_ITEM
+                  WHERE IL_ITEM_CD = #{ilItemCode}
+             )
+        UNION ALL
+        SELECT
+            t.IL_CTGRY_STD_ID
+          , t.CTGRY_STD_NM
+          , t.PRNTS_CTGRY_ID
+          , t.DEPTH
+          FROM IL_CTGRY_STD t
+         INNER JOIN CTE cte
+            ON t.IL_CTGRY_STD_ID = cte.PRNTS_CTGRY_ID
+    )
+    , BOS_CATEGORY_INFO AS (
+        SELECT
+            MAX( CASE WHEN DEPTH = 1 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_FIRST_ID  /* 표준 카테고리 대분류 ID */
+          , MAX( CASE WHEN DEPTH = 2 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_SECOND_ID /* 표준 카테고리 중분류 ID */
+          , MAX( CASE WHEN DEPTH = 3 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_THIRD_ID  /* 표준 카테고리 소분류 ID */
+          , MAX( CASE WHEN DEPTH = 4 THEN CTE.IL_CTGRY_STD_ID END )   AS CATEGORY_STANDARD_FOURTH_ID /* 표준 카테고리 세분류 ID */
+         FROM CTE
+        ORDER BY DEPTH
+    )
+    SELECT  A.MGT_ITEM_ID                                                  AS MIGRATION_ITEM_ID
+          , A.IL_ITEM_CD                                                   AS IL_ITEM_CODE
+          , A.IL_ITEM_NM                                                   AS ITEM_NAME
+          , A.IL_CTGRY_STD_ID                                              AS IL_CATEGORY_STANDARD_ID
+          , ( SELECT CATEGORY_STANDARD_FIRST_ID  FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_FIRST_ID
+          , ( SELECT CATEGORY_STANDARD_SECOND_ID FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_SECOND_ID
+          , ( SELECT CATEGORY_STANDARD_THIRD_ID  FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_THIRD_ID
+          , ( SELECT CATEGORY_STANDARD_FOURTH_ID FROM BOS_CATEGORY_INFO )  AS CATEGORY_STANDARD_FOURTH_ID
+          , A.IL_SPEC_MASTER_ID                                            AS IL_SPEC_MASTER_ID
+          , A.STORAGE_METHOD_TP                                            AS STORAGE_METHOD_TYPE
+          , A.ETC_DESC                                                     AS ETC_DESCRIPTION
+          , A.NUTRITION_QTY_PER_ONCE                                       AS NUTRITION_QUANTITY_PER_ONCE
+          , A.NUTRITION_QTY_TOTAL                                          AS NUTRITION_QUANTITY_TOTAL
+          , A.NUTRITION_ETC                                                AS NUTRITION_ETC
+      FROM  MIGRATION_ITEM  A
+     WHERE  A.IL_ITEM_CD = #{ilItemCode}
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : MIGRATION_ITEM_NUTRITION 테이블에서 해당 품목코드의 영양정보 목록 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.29        박주형          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getMigrationItemNutritionMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.MigrationItemNutritionVo">
+        <result column="MIGRATION_ITEM_NUTRITION_ID" property="migrationItemNutritionId" />
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="IL_NUTRITION_CODE" property="nutritionCode" />
+        <result column="NUTRITION_QUANTITY" property="nutritionQuantity" />
+        <result column="NUTRITION_PERCENT" property="nutritionPercent" />
+        <result column="SORT" property="sort" />
+
+    </resultMap>
+
+    <select id="getMigrationItemNutritionList" resultMap="getMigrationItemNutritionMap">
+    /* itemMgmMigration.getMigrationItemNutritionList */
+    SELECT  A.MGT_ITEM_NUTRITION_ID   AS MIGRATION_ITEM_NUTRITION_ID
+          , A.IL_ITEM_CD              AS IL_ITEM_CODE
+          , A.IL_NUTRITION_CD         AS IL_NUTRITION_CODE
+          , A.NUTRITION_QTY           AS NUTRITION_QUANTITY
+          , A.NUTRITION_PERCENT       AS NUTRITION_PERCENT
+          , A.SORT                    AS SORT
+      FROM  MIGRATION_ITEM_NUTRITION  A
+     WHERE  A.IL_ITEM_CD = #{ilItemCode}
+  ORDER BY  A.SORT
+
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description  : MIGRATION_ITEM_SPEC 테이블에서 해당 품목코드의 상품정보 제공고시 정보 목록 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.10.29        박주형          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getMigrationItemSpecMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.MigrationItemSpecVo">
+        <result column="MIGRATION_ITEM_SPEC_ID" property="migrationItemSpecId" />
+        <result column="IL_ITEM_CODE" property="ilItemCode" />
+        <result column="IL_SPEC_FIELD_ID" property="ilSpecFieldId" />
+        <result column="SPEC_FIELD_VALUE" property="specFieldValue" />
+
+    </resultMap>
+
+    <select id="getMigrationItemSpecList" resultMap="getMigrationItemSpecMap">
+    /* itemMgmMigration.getMigrationItemSpecList */
+    SELECT  A.MGT_ITEM_SPEC_ID   AS MIGRATION_ITEM_SPEC_ID
+          , A.IL_ITEM_CD         AS IL_ITEM_CODE
+          , A.IL_SPEC_FIELD_ID   AS IL_SPEC_FIELD_ID
+          , A.SPEC_FIELD_VAL     AS SPEC_FIELD_VALUE
+      FROM  MIGRATION_ITEM_SPEC  A
+     WHERE  A.IL_ITEM_CD = #{ilItemCode}
+       AND  NOT EXISTS (  /* IL_SPEC_FIELD 테이블에서 SPEC_FIELD_CD 가 존재하는 IL_SPEC_FIELD_ID 는 조회결과에서 제외 */
+          SELECT  1
+            FROM  IL_SPEC_FIELD  ISF
+           WHERE  ISF.SPEC_FIELD_CD IS NOT NULL AND LENGTH(ISF.SPEC_FIELD_CD) > 0
+             AND  A.IL_SPEC_FIELD_ID = ISF.IL_SPEC_FIELD_ID
+       )
+
+    </select>
+
+</mapper>

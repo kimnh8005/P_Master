@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsStoreStockMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 올가매장상품조회 IF 정보 임시테이블에 저장
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.09            천혜현         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addIlItemStoreInfoIfTemp">
+    /* goodsStoreStock.addIlItemStoreInfoIfTemp */
+    INSERT INTO IL_ITEM_STORE_INFO_IF_TEMP
+        (
+            IF_SEQ
+            ,IL_ITEM_CD
+            ,SHOP_CD
+            ,CURRENT_STOCK
+            ,RECOMMENDED_PRICE
+            ,SALE_PRICE
+        )
+        VALUES
+        (
+            #{ifSeq}
+            ,#{ilItemCd}
+            ,#{shopCd}
+            ,#{currentStock}
+            ,#{recommendedPrice}
+            ,#{salePrice}
+        )
+    </insert>
+
+    <delete id="delIlItemStoreInfoIfTemp">
+        /* goodsStoreStock.delIlItemStoreInfoIfTemp */
+       DELETE FROM IL_ITEM_STORE_INFO_IF_TEMP
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description   : 매장품목정보 수정
+    * @
+    * @ 수정일                 수정자          수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.06.09            천혜현         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="putIlItemStoreInfo">
+        /* goodsStoreStock.putIlItemStoreInfo */
+        INSERT INTO IL_ITEM_STORE_INFO(
+            IL_ITEM_CD
+            ,UR_STORE_ID
+            ,STORE_SALE_PRICE
+            ,STORE_IF_STOCK
+            ,IF_UN_ORDER_CNT
+            ,MALL_UN_ORDER_CNT
+            ,STORE_STOCK
+        ) VALUES(
+            #{ilItemCd}
+            ,#{urStoreId}
+            ,IFNULL(#{storeSalePrice},0)
+            ,IFNULL(#{storeIfStock},0)
+            ,#{ifUnOrderCnt}
+            ,#{mallUnOrderCnt}
+            ,IF(IFNULL(#{storeIfStock},0) - #{ifUnOrderCnt} - #{mallUnOrderCnt} <![CDATA[>]]> 0, IFNULL(#{storeIfStock},0) - #{ifUnOrderCnt} - #{mallUnOrderCnt},0)
+        )
+        ON DUPLICATE KEY UPDATE
+            IF_UN_ORDER_CNT = #{ifUnOrderCnt}
+            ,MALL_UN_ORDER_CNT = #{mallUnOrderCnt}
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeIfStock)">
+                ,STORE_IF_STOCK = #{storeIfStock}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeSalePrice)">
+                ,STORE_SALE_PRICE = #{storeSalePrice}
+            </if>
+            ,STORE_STOCK = IF(IFNULL(#{storeIfStock},STORE_IF_STOCK) <![CDATA[>]]> #{ifUnOrderCnt} + #{mallUnOrderCnt}, IFNULL(#{storeIfStock},STORE_IF_STOCK) - #{ifUnOrderCnt} - #{mallUnOrderCnt},0)
+            ,MODIFY_DT = NOW()
+
+        <selectKey resultType="string" keyProperty="beforeStoreSalePrice" order="BEFORE">
+            SELECT IFNULL((SELECT STORE_SALE_PRICE FROM IL_ITEM_STORE_INFO WHERE IL_ITEM_CD =  #{ilItemCd} AND UR_STORE_ID = #{urStoreId}),NULL) FROM DUAL
+        </selectKey>
+    </insert>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : 매장품목가격 로그 추가
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.09            천혜현         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addIlItemStorePriceLog">
+        /* goodsStoreStock.addIlItemStorePriceLog */
+        INSERT INTO IL_ITEM_STORE_PRICE_LOG
+        (
+            IL_ITEM_CD
+            ,UR_STORE_ID
+            ,PRICE_START_DT
+            ,PRICE_END_DT
+            ,STORE_SALE_PRICE
+        )
+        VALUES
+        (
+            #{ilItemCd}
+            ,#{urStoreId}
+            <choose>
+                <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(priceChangeYn,'Y')">
+                    ,NOW()
+                </when>
+                <otherwise>
+                    , CONCAT(CURDATE(),' 00:00:00')
+                </otherwise>
+            </choose>
+            ,'2999-12-31 23:59:59'
+            ,#{storeSalePrice}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description   : 매장품목가격 로그 수정
+    * @
+    * @ 수정일                 수정자          수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.06.09            천혜현         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putIlItemStorePriceLog">
+        /* goodsStoreStock.putIlItemStorePriceLog */
+        UPDATE IL_ITEM_STORE_PRICE_LOG
+            SET PRICE_END_DT = DATE_SUB(NOW(), INTERVAL 1 SECOND)
+                ,MODIFY_DT = NOW()
+        WHERE
+            IL_ITEM_CD = #{ilItemCd}
+            AND UR_STORE_ID = #{urStoreId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+      * description : 미연동된 매장주문수량 조회
+      * @
+      * @ 수정일                수정자   수정내용
+      * @ ──────────────────────────────────────────────────────────────────────
+      * @ 2021.06.10          천혜현   최초생성
+      * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getOrgaShopNonIfOrderCountResultMap" type="kr.co.pulmuone.v1.comm.api.dto.basic.ErpIfOrgaShopOrderSearchResponseDto">
+        <result column="UR_STORE_ID" 	property="shpCd"/>
+        <result column="IL_ITEM_CD" 	property="itmNo" />
+        <result column="ORDER_TOTAL" 	property="ordCnt" />
+    </resultMap>
+    <select id="getOrgaShopNonIfOrderCount" resultMap="getOrgaShopNonIfOrderCountResultMap">
+        /* goodsStoreStock.getOrgaShopNonIfOrderCount */
+        SELECT
+            TBL.UR_STORE_ID
+             ,TBL.IL_ITEM_CD
+             ,SUM(TBL.ORDER_CNT - TBL.CANCEL_CNT) AS ORDER_TOTAL
+        FROM(
+                SELECT
+                    OO.UR_STORE_ID
+                     ,OOD.IL_ITEM_CD
+                     ,OOD.ORDER_CNT
+                     ,OOD.CANCEL_CNT
+                FROM
+                    OD_ORDER_DETL OOD
+                    JOIN OD_ORDER OO ON OO.OD_ORDER_ID = OOD.OD_ORDER_ID
+                WHERE
+                    GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.SHOP'
+                    AND OOD.BATCH_EXEC_FL = 'N'
+                    AND OO.UR_STORE_ID IS NOT NULL
+                    AND OO.ORDER_YN = 'Y'
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+                    	AND OO.UR_STORE_ID = #{urStoreId}
+                    </if>
+                    <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilItemCd)">
+                        AND OOD.IL_ITEM_CD = #{ilItemCd}
+                    </if>
+                    AND OO.CREATE_DT > (NOW() - INTERVAL 15 DAY) -- 데이터가 누적되면 쿼리 속도 지연으로 15일치 조회
+            )TBL
+        GROUP BY TBL.UR_STORE_ID, TBL.IL_ITEM_CD
+    </select>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description   : 매장품목 미연동 재고 수정
+    * @
+    * @ 수정일                 수정자          수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.06.09            천혜현         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putIlItemStoreInfoForStock">
+        /* goodsStoreStock.putIlItemStoreInfoForStock */
+        UPDATE IL_ITEM_STORE_INFO IISI
+            LEFT JOIN (
+                    SELECT
+                        IL_ITEM_STORE_INFO_ID
+                    FROM
+                        IL_ITEM_STORE_INFO
+                    WHERE
+                        <foreach collection="itemStoreInfoList" item="itemStoreInfoVo" index="index" separator="OR" open="(" close=")">
+                            IL_ITEM_CD = #{itemStoreInfoVo.ilItemCd}
+                            AND UR_STORE_ID = #{itemStoreInfoVo.urStoreId}
+                        </foreach>
+            ) TBL ON IISI.IL_ITEM_STORE_INFO_ID = TBL.IL_ITEM_STORE_INFO_ID
+        SET
+            IISI.IF_UN_ORDER_CNT = 0
+            ,IISI.MALL_UN_ORDER_CNT = 0
+        WHERE
+            TBL.IL_ITEM_STORE_INFO_ID IS NULL
+            AND(IF_UN_ORDER_CNT != 0 OR MALL_UN_ORDER_CNT != 0)
+    </update>
+
+
+    <select id="getStockPreOrderWithGoodsId" resultType="int">
+        SELECT COUNT(1)
+          FROM IL_GOODS IG
+         INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = IG.IL_ITEM_CD
+         INNER JOIN IL_ITEM_WAREHOUSE IIW ON IIW.IL_ITEM_CD = II.IL_ITEM_CD
+         INNER JOIN UR_SUPPLIER_WAREHOUSE USW ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID AND USW.UR_WAREHOUSE_ID = IG.UR_WAREHOUSE_ID
+         INNER JOIN UR_SUPPLIER US ON US.UR_SUPPLIER_ID = USW.UR_SUPPLIER_ID
+         WHERE IIW.PRE_ORDER_YN = 'Y' #선주문
+           AND US.SUPPLIER_CD = 'PF' #식품
+           AND IG.IL_GOODS_ID = #{ilGoodsId}
+    </select>
+</mapper>

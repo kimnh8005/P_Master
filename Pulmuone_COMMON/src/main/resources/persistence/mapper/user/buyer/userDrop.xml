@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.buyer.UserDropMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 탈퇴회원
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.12		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserDropListResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.GetUserDropListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="STATUS" property="status" />
+		<result column="REASON_NM" property="dropReasonName" />
+		<result column="COMMENT" property="comment" />
+		<result column="CREATE_DATE" property="createDate" />
+	</resultMap>
+	<select id="getUserDropList" resultMap="getUserDropListResultMap">
+		/*	userDrop.getUserDropList  */
+		SELECT
+			UU.LOGIN_ID
+			,FN_COMN_CODE_DIC(UUD.STATUS) AS STATUS
+			,UMR.REASON_NM
+			,UUD.COMMENT
+			,DATE_FORMAT(UUD.CREATE_DT, '%Y-%m-%d') AS CREATE_DATE
+		FROM
+			UR_USER_DROP UUD
+			JOIN UR_MOVE_REASON UMR ON UUD.UR_MOVE_REASON_ID = UMR.UR_MOVE_REASON_ID
+			LEFT JOIN UR_USER UU ON UUD.UR_USER_ID = UU.UR_USER_ID
+			JOIN (SELECT @ROWNUM := 0) R
+		WHERE 1 = 1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(loginId)">
+			    AND UU.LOGIN_ID LIKE CONCAT(#{loginId}, '%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND UUD.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		ORDER BY UUD.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원탈퇴 진행
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.24		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUserDrop">
+	/*	userDrop.addUserDrop  */
+	INSERT INTO UR_USER_DROP (
+		UR_USER_ID, USER_NM, MAIL, LOWER_MAIL, CI_CD, STATUS, UR_MOVE_REASON_ID, COMMENT, CREATE_ID, CREATE_DT
+	)
+	SELECT UU.UR_USER_ID, UU.USER_NM, UB.MAIL, UB.LOWER_MAIL, IFNULL(UB.CI_CD,''), #{status}, #{code}, #{comment}, #{createId}, CURRENT_TIMESTAMP
+	FROM UR_USER UU
+		INNER JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+	WHERE UU.UR_USER_ID = #{urUserId}
+	<selectKey resultType="Long" keyProperty="urUserDropId" order="AFTER">
+	    SELECT LAST_INSERT_ID()
+	</selectKey>
+	</insert>
+
+	<update id="putUser">
+		/*	userDrop.putUser  */
+		UPDATE UR_USER
+			SET USER_NM = '',
+			USER_STATUS = 0,
+			MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE UR_USER_ID= #{urUserId}
+	</update>
+
+	<delete id="delBuyer">
+		/*	userDrop.delBuyer  */
+		DELETE FROM UR_BUYER
+		WHERE UR_USER_ID= #{urUserId}
+	</delete>
+
+	<update id="delShippingAddr">
+		/*	userDrop.delShippingAddr  */
+		DELETE FROM UR_SHIPPING_ADDR
+		WHERE UR_USER_ID= #{urUserId}
+	</update>
+
+	<update id="delRefundBank">
+		/*	userDrop.refundBank  */
+		DELETE FROM UR_REFUND_BANK
+		WHERE UR_USER_ID= #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원탈퇴 완료 시 결과 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.14		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserDropInfoResultMap" type="kr.co.pulmuone.v1.user.buyer.dto.vo.UserDropResultVo">
+		<result column="UR_USER_DROP_ID" property="urUserDropId" />
+		<result column="UR_USER_ID" property="urUserId" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="MAIL" property="mail" />
+		<result column="CREATE_DT" property="createDate" />
+	</resultMap>
+	<select id="getUserDropInfo" resultMap="getUserDropInfoResultMap">
+	/*	userDrop.getUserDropInfo  */
+	  SELECT
+	         UD.UR_USER_DROP_ID
+			,UD.UR_USER_ID
+			,UU.LOGIN_ID
+    	    ,FN_DECRYPT(UD.MAIL) AS MAIL
+		    ,DATE_FORMAT(UD.CREATE_DT, '%Y-%m-%d %H:%i:%s') AS CREATE_DT
+		FROM UR_USER_DROP UD
+		INNER JOIN UR_USER UU ON UD.UR_USER_ID = UU.UR_USER_ID
+		WHERE UD.UR_USER_DROP_ID = #{urUserDropId}
+	</select>
+</mapper>
+

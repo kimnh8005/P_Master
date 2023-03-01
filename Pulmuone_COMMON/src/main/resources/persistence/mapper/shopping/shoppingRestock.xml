@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.shopping.restock.ShoppingRestockMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재입고 알람 리스트 30일 이전 데이터 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.30		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClearStockIdList" resultType="long">
+		/* shoppingRestockBatch.getClearStockIdList */
+		SELECT SP_RESTOCK_ID
+		FROM SP_RESTOCK_INFO
+		WHERE CREATE_DT <![CDATA[ < ]]> DATE_FORMAT( DATE_ADD(NOW(), INTERVAL-30 DAY), '%Y%m%d')
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재입고 SMS 발송 대상 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.30		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSendGoodsIdList" resultType="kr.co.pulmuone.v1.shopping.restock.dto.vo.ShoppingRestockVo">
+		/*	shoppingRestockBatch.getSendGoodsIdList	*/
+		SELECT RI.SP_RESTOCK_ID
+			 , RI.UR_USER_ID
+			 , REPLACE(FN_DECRYPT(MOBILE),'-','') AS MOBILE
+		 	 , IG.GOODS_NM, RI.IL_GOODS_ID
+		FROM SP_RESTOCK_INFO RI
+		JOIN IL_GOODS IG ON IG.IL_GOODS_ID = RI.IL_GOODS_ID AND IG.SALE_STATUS = 'SALE_STATUS.ON_SALE'
+		LEFT JOIN UR_BUYER UB ON UB.UR_USER_ID = RI.UR_USER_ID
+		WHERE RI.SEND_YN = 'N'
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 재입고 알람 리스트 30일 이전 데이터 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.30		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delRestockIdList">
+		/*	shoppingRestockBatch.delRestockIdList	*/
+		DELETE FROM SP_RESTOCK_INFO
+		WHERE  SP_RESTOCK_ID IN (
+		<foreach item="spRestockId" index="index" collection="spRestockIdList" open="" separator="," close="">
+			#{spRestockId}
+		</foreach>
+		)
+	</delete>
+
+
+	<select id="getDupCnt" resultType="int">
+		/*	shoppingRestockBatch.getDupCnt */
+		SELECT COUNT(*)
+		FROM SP_RESTOCK_INFO
+		WHERE UR_USER_ID = #{urUserId}
+		AND IL_GOODS_ID = #{ilGoodsId}
+		AND SEND_YN = 'N'
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: SMS 발송 후 재입고 발송 상태 변경
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.30		안치열          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putRestockStatus">
+		/*	shoppingRestockBatch.putRestockStatus	*/
+		UPDATE SP_RESTOCK_INFO
+		SET SEND_YN = 'Y',
+		MODIFY_DT = NOW()
+		WHERE SP_RESTOCK_ID IN  (
+		<foreach item="spRestockId" index="index" collection="spRestockIdList" open="" separator="," close="">
+			#{spRestockId}
+		</foreach>
+		)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 재입고 알림 상태 변경
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.06.30		안치열          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<insert id="putRetockInfo">
+		/*	shoppingCart.putRetockInfo	*/
+		INSERT INTO SP_RESTOCK_INFO
+		(
+		UR_USER_ID
+		,IL_GOODS_ID
+		,CREATE_DT
+		)
+		VALUES
+		(
+		#{urUserId}
+		,#{ilGoodsId}
+		,NOW()
+		)
+	</insert>
+
+</mapper>

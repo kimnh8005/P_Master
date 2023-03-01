@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.pointhistory.PointHistoryMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		안치열          최초생성
+	 * @ 2021.06.02		남기승		  올가 적립금 관련 조건 추가
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPointHistoryListResultMap" type="kr.co.pulmuone.v1.promotion.pointhistory.dto.vo.PointHistoryVo">
+		<result column="UR_USER_NAME"  property="urUserName"/>
+		<result column="UR_USER_ID"  property="urUserId"/>
+		<result column="PAYMENT_TP"  property="paymentType"  />
+		<result column="PM_POINT_ID"  property="pmPointId"  />
+		<result column="POINT_NM"  property="pointName" />
+		<result column="PAYMENT_TYPE_NAME"  property="paymentTypeName"  />
+		<result column="ERP_ORGANIZATION_NM"  property="organizationNm"/>
+		<result column="POINT_TP"  property="pointType"  />
+		<result column="POINT_TYPE_NAME"  property="pointTypeName"  />
+		<result column="AMOUNT"  property="amount"  />
+		<result column="USED_AMOUNT"  property="usedAmount"  />
+		<result column="POINT_PROCESS_TP"  property="pointDetailType"  />
+		<result column="POINT_PROCESS_TYPE_NAME"  property="pointDetailTypeName"  />
+		<result column="CREATE_DT"  property="createDate"  />
+		<result column="POINT_USED_MSG"  property="pointUsedMsg"  />
+		<result column="VALIDITY_DAY"  property="validityDay"  />
+		<result column="CAL_DAY"  property="calculateDay"  />
+		<result column="DETAIL_COUNT"  property="detailCount"  />
+		<result column="PM_POINT_USED_ID"  property="pmPointUsedId"  />
+		<result column="EXPIRATION_DT"  property="expirationDt"  />
+		<result column="ORGA_MEMBER_NO"  property="orgaMemberNo"  />
+		<result column="ODID"  property="odid"  />
+		<result column="CREATE_ID"  property="createId"  />
+		<result column="CREATE_NM"  property="createNm"  />
+	</resultMap>
+	<select id="getPointHistoryList" resultMap="getPointHistoryListResultMap">
+		/* pointHistory.getPointHistoryList */
+		SELECT P.PM_POINT_USED_ID
+		, FN_DECRYPT(UU.USER_NM)  AS UR_USER_NAME
+		, UU.LOGIN_ID             AS UR_USER_ID
+		, P.PAYMENT_TP
+		, CASE WHEN P.PM_POINT_ID = 0 THEN PPUD.PM_POINT_ID ELSE P.PM_POINT_ID END PM_POINT_ID
+		, CASE WHEN IFNULL(PP.POINT_NM,'') = '' THEN (SELECT POINT_NM FROM PM_POINT WHERE PM_POINT_ID = PPUD.PM_POINT_ID) ELSE IFNULL(PP.POINT_NM,'') END AS POINT_NM
+		, IFNULL(PO.UR_ERP_ORGANIZATION_NM,
+			IFNULL((SELECT UEE.ERP_ORGANIZATION_NM FROM UR_ERP_EMPLOYEE UEE WHERE UEE.FIN_ORGANIZATION_CD = PPUD.DEPT_CD AND UEE.FIN_ORGANIZATION_CD IS NOT NULL LIMIT 1),'')) AS ERP_ORGANIZATION_NM
+		, IFNULL(DIC_POINT_PAYMENT_TP.DIC_MST_NM, '') AS PAYMENT_TYPE_NAME
+		, CASE WHEN IFNULL(DIC_POINT_TYPE.DIC_MST_NM, '') = '' THEN (SELECT GDM.DIC_MST_NM
+				FROM ST_COMN_CODE SCC
+				INNER JOIN GB_DIC_MST GDM
+				ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+				INNER JOIN PM_POINT PP
+				ON SCC.ST_COMN_CODE_ID = PP.POINT_TP
+				WHERE SCC.ST_COMN_CODE_MST_CD = 'POINT_TYPE'
+				AND PP.PM_POINT_ID = PPUD.PM_POINT_ID LIMIT 1) ELSE IFNULL(DIC_POINT_TYPE.DIC_MST_NM, '') END AS POINT_TYPE_NAME
+		, IFNULL(DIC_POINT_PROCESS_TP.DIC_MST_NM, '') AS POINT_PROCESS_TYPE_NAME
+		, PP.POINT_TP
+		, PPUD.AMOUNT
+		, PPUD.POINT_PROCESS_TP
+		, P.CREATE_DT
+		, IFNULL(PP.VALIDITY_DAY,'') AS VALIDITY_DAY
+		, DATE_ADD(P.CREATE_DT ,INTERVAL PP.VALIDITY_DAY DAY) AS CAL_DAY
+		, (SELECT COUNT(*) FROM PM_POINT_USED_DETL WHERE PM_POINT_USED_ID = P.PM_POINT_USED_ID ) AS DETAIL_COUNT
+		, P.CMNT AS POINT_USED_MSG
+		, PPUD.EXPIRATION_DT
+		, P.REF_NO2 AS ORGA_MEMBER_NO
+		, CASE WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN P.REF_NO1
+			   WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WPPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWNP' THEN P.REF_NO1
+			   WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DVRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDVC' THEN P.REF_NO1
+			   WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWVP' THEN P.REF_NO1
+			   WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPCR' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN P.REF_NO1
+		  	   ELSE ''
+		  END AS ODID
+		, IFNULL(T1.LOGIN_ID,'') AS CREATE_ID
+		, IFNULL(FN_DECRYPT(T1.USER_NM),'') AS CREATE_NM
+		FROM PM_POINT_USED P
+		<!--INNER JOIN (SELECT PM_POINT_USED_ID, POINT_PROCESS_TP, POINT_SETTLEMENT_TP, EXPIRATION_DT FROM PM_POINT_USED_DETL  GROUP BY PM_POINT_USED_ID ) PPUD ON P.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID-->
+		INNER JOIN  PM_POINT_USED_DETL PPUD ON P.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+		LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = P.PM_POINT_ID
+		LEFT OUTER JOIN UR_USER T1 ON T1.UR_USER_ID= PP.CREATE_ID
+		LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = P.UR_USER_ID
+		LEFT OUTER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = PP.PM_POINT_ID
+		LEFT JOIN (
+				SELECT
+				SCC.ST_COMN_CODE_ID	, GDM.DIC_MST_NM
+				FROM ST_COMN_CODE SCC
+				INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+				WHERE SCC.ST_COMN_CODE_MST_CD = 'POINT_PAYMENT_TP'
+				) DIC_POINT_PAYMENT_TP	ON DIC_POINT_PAYMENT_TP.ST_COMN_CODE_ID = P.PAYMENT_TP
+		LEFT JOIN (
+				SELECT
+				SCC.ST_COMN_CODE_ID	, GDM.DIC_MST_NM
+				FROM ST_COMN_CODE SCC
+				INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+				WHERE SCC.ST_COMN_CODE_MST_CD = 'POINT_TYPE'
+				) DIC_POINT_TYPE ON DIC_POINT_TYPE.ST_COMN_CODE_ID = PP.POINT_TP
+		LEFT JOIN (
+				SELECT
+				SCC.ST_COMN_CODE_ID	, GDM.DIC_MST_NM
+				FROM ST_COMN_CODE SCC
+				INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+				WHERE SCC.ST_COMN_CODE_MST_CD = 'POINT_PROCESS_TP'
+				) DIC_POINT_PROCESS_TP ON DIC_POINT_PROCESS_TP.ST_COMN_CODE_ID = PPUD.POINT_PROCESS_TP
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UU.USER_NM) IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND UU.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'orgaMemberNo')">
+					AND P.REF_NO2 IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPaymentType)">
+				AND P.PAYMENT_TP = #{searchPaymentType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+				AND PPUD.POINT_PROCESS_TP = #{searchPointDetailType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+				AND P.CMNT LIKE CONCAT('%',#{pointUsedMsg},'%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND P.CREATE_DT BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</where>
+		ORDER BY P.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getPointDetailHistoryResultMap" type="kr.co.pulmuone.v1.promotion.pointhistory.dto.vo.PointDetailHistoryVo">
+		<result column="PM_POINT_USED_DETL_ID"  property="pmPointUsedDetlId"/>
+		<result column="PM_POINT_USED_ID"  property="pmPointUsedId"/>
+		<result column="CREATE_DT"  property="createDate"/>
+		<result column="PAYMENT_TP"  property="paymentType"  />
+		<result column="PAYMENT_TYPE_NAME"  property="paymentTypeName"  />
+		<result column="POINT_DETAIL_TYPE_NAME"  property="pointDetailTypeName"  />
+		<result column="PROVISION_AMOUNT"  property="provisionAmount"  />
+		<result column="USE_POINT"  property="usePoint"  />
+		<result column="EXPIRATION_DT"  property="expirationDate"  />
+		<result column="CMNT"  property="comment"  />
+	</resultMap>
+	<select id="getPointDetailHistory" resultMap="getPointDetailHistoryResultMap">
+		/* pointHistory.getPointDetailHistory */
+		SELECT PD.PM_POINT_USED_DETL_ID
+			 , PP.CREATE_DT
+			 , PP.PAYMENT_TP
+			 , FN_COMN_CODE_DIC(PP.PAYMENT_TP) AS PAYMENT_TYPE_NAME
+			 , FN_COMN_CODE_DIC(PD.POINT_PROCESS_TP ) AS POINT_DETAIL_TYPE_NAME
+			 , PUR.AMOUNT AS PROVISION_AMOUNT
+			 , PD.AMOUNT AS USE_POINT
+			 , PD.EXPIRATION_DT
+			 , PP.CMNT
+		FROM PM_POINT_USED_DETL PD
+		JOIN PM_POINT_USED PP ON PD.PM_POINT_USED_ID = PP.PM_POINT_USED_ID
+		JOIN PM_POINT_USED_DETL  PUR ON PD.REF_POINT_USED_DETL_ID = PUR.PM_POINT_USED_DETL_ID
+		WHERE PD.PM_POINT_USED_ID = #{pmPointUsedId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원별 적립금 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.14		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.pointhistory.dto.PointAdminInfoResponseDto" id="getLoginInfoResultMap" >
+		<result column="ERP_ORGANIZATION_CD"  property="erpOrganizationCode" />
+		<result column="ERP_ORGANIZATION_NM"  property="erpOrganizationName" />
+		<result column="ERP_REGAL_CODE"  property="erpRegalCode" />
+		<result column="ROLE_NM"  property="roleName" />
+		<result column="AMOUNT"  property="amount"  />
+		<result column="TOTAL_ISSUE_POINT"  property="totalIssuePoint"  />
+		<result column="TOTAL_USE_POINT"  property="totalUsePoint"  />
+		<result column="TOTAL_EXPIRATION_POINT"  property="totalExpirationPoint"  />
+		<result column="TOTAL_MONTH_EXPIRATION_POINT"  property="totalMonthExpirationPoint"  />
+		<result column="ROLE_TOTAL_POINT"  property="roleTotalPoint"  />
+	</resultMap>
+	<select id="getLoginInfo" resultMap="getLoginInfoResultMap">
+		/* pointHistory.getLoginInfo */
+		SELECT C.ERP_ORGANIZATION_CD
+			 , G.ERP_ORGANIZATION_NM
+			 , CASE WHEN H.FIN_ORGANIZATION_CD IS NULL THEN (SELECT C.FIN_ORGANIZATION_CD
+															FROM ST_ROLE_TYPE A
+															JOIN ST_AUTH_USER_MAPPING B ON A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID AND B.UR_USER_ID = #{userVo.userId}
+															JOIN UR_ERP_EMPLOYEE C ON C.ERP_ORGANIZATION_CD = A.ERP_ORGANIZATION_CD
+															LIMIT 1)
+				ELSE  H.FIN_ORGANIZATION_CD
+				END AS ERP_REGAL_CODE
+			 , C.ROLE_NM
+			 , E.AMOUNT
+			 , IFNULL(SUM(F.ISSUE_VAL), 0) AS ROLE_TOTAL_POINT
+		FROM ST_AUTH_USER_MAPPING A
+				 JOIN (
+			SELECT ST_ROLE_TP_ID
+				 , ST_AUTH_USER_MAPPING_ID
+				 , UR_USER_ID
+			FROM ST_AUTH_USER_MAPPING
+			WHERE UR_USER_ID = #{userVo.userId}
+			ORDER BY CREATE_DT, MODIFY_DT LIMIT 1) B ON A.UR_USER_ID = B.UR_USER_ID AND A.ST_ROLE_TP_ID = B.ST_ROLE_TP_ID
+				 JOIN ST_ROLE_TYPE C ON B.ST_ROLE_TP_ID = C.ST_ROLE_TP_ID
+				 JOIN PM_POINT_ADMIN_SETTING_TARGET D ON C.ST_ROLE_TP_ID = D.ST_ROLE_TP_ID
+				 JOIN PM_POINT_ADMIN_SETTING E ON D.PM_POINT_ADMIN_SETTING_ID = E.PM_POINT_ADMIN_SETTING_ID
+				 JOIN PM_POINT F ON F.CREATE_ID = B.UR_USER_ID
+				 JOIN UR_ERP_ORGANIZATION G ON G.ERP_ORGANIZATION_CD = C.ERP_ORGANIZATION_CD
+				 JOIN UR_ERP_EMPLOYEE H ON H.ERP_ORGANIZATION_CD =  G.ERP_ORGANIZATION_CD AND H.FIN_ORGANIZATION_CD IS NOT NULL
+			AND F.APPR_STAT IN ('APPR_STAT.APPROVED', 'APPR_STAT.APPROVED_BY_SYSTEM')
+			AND F.POINT_TP = 'POINT_TYPE.ADMIN'
+			AND ( F.CREATE_DT <![CDATA[>]]>  (LAST_DAY(NOW() - interval 1 month) + interval 1 DAY) AND F.CREATE_DT  <![CDATA[<=]]> LAST_DAY(NOW()) )
+			AND F.PAYMENT_TP  = 'POINT_PAYMENT_TP.PROVISION'
+	</select>
+
+	<select id="getTotalPointHistory" resultMap="getLoginInfoResultMap">
+		/* pointHistory.getTotalPointHistory */
+		WITH HISTORY AS (
+		SELECT
+		P.PAYMENT_TP
+		, P.AMOUNT
+		, PPUD.POINT_PROCESS_TP
+		, PPUD.EXPIRATION_DT
+		FROM PM_POINT_USED P
+		INNER JOIN (SELECT PM_POINT_USED_ID, POINT_PROCESS_TP, EXPIRATION_DT FROM PM_POINT_USED_DETL  GROUP BY PM_POINT_USED_ID ) PPUD ON P.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+		LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = P.PM_POINT_ID
+		LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = P.UR_USER_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UU.USER_NM) IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND UU.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPaymentType)">
+				AND P.PAYMENT_TP = #{searchPaymentType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+				AND PPUD.POINT_PROCESS_TP = #{searchPointDetailType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+				AND P.CMNT LIKE CONCAT('%',#{pointUsedMsg},'%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND P.CREATE_DT BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</where>
+		)
+		SELECT MAX(a) AS TOTAL_ISSUE_POINT
+		, MAX(b) AS TOTAL_USE_POINT
+		, MAX(c) AS TOTAL_EXPIRATION_POINT
+		, MAX(d) AS TOTAL_MONTH_EXPIRATION_POINT
+		FROM (
+		SELECT 'id' AS id, SUM(AMOUNT) AS a, null AS b, null AS c, null AS d
+		FROM HISTORY
+		WHERE PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+		UNION ALL
+		SELECT 'id' AS id, null AS a, SUM(AMOUNT) AS b, null AS c, null AS d
+		FROM HISTORY
+		WHERE PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' AND POINT_PROCESS_TP <![CDATA[<>]]> 'POINT_PROCESS_TP.WPPE' AND POINT_PROCESS_TP <![CDATA[<>]]> 'POINT_PROCESS_TP.WVPE'
+		UNION ALL
+		SELECT 'id' AS id, null AS a, null AS b, SUM(AMOUNT) AS c, null AS d
+		FROM HISTORY
+		WHERE  PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' AND POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPPE' ,'POINT_PROCESS_TP.WVPE')
+		UNION ALL
+		SELECT 'id' AS id, null AS a, null AS b, null AS c,  SUM(AMOUNT) AS d
+		FROM HISTORY
+		WHERE POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPPE' ,'POINT_PROCESS_TP.WVPE')
+		AND EXPIRATION_DT <![CDATA[>]]> LAST_DAY(NOW() - interval 1 month) AND EXPIRATION_DT <![CDATA[<=]]> LAST_DAY(NOW())
+		) AS GP
+		GROUP BY GP.id
+	</select>
+
+	<resultMap type="kr.co.pulmuone.v1.promotion.pointhistory.dto.PointHistoryListResponseDto" id="getTotalPointHistoryResultMap" >
+		<result column="TOTAL_ISSUE_POINT"  property="totalIssuePoint"  />
+		<result column="TOTAL_USE_POINT"  property="totalUsePoint"  />
+		<result column="TOTAL_EXPIRATION_POINT"  property="totalExpirationPoint"  />
+		<result column="TOTAL_MONTH_EXPIRATION_POINT"  property="totalMonthExpirationPoint"  />
+	</resultMap>
+	<select id="getTotalNormalPointHistory" resultMap="getTotalPointHistoryResultMap">
+		/* pointHistory.getTotalNormalPointHistory */
+		WITH HISTORY AS (
+		SELECT
+		  P.PAYMENT_TP
+		, P.AMOUNT
+		, PPUD.POINT_PROCESS_TP
+		, PPUD.EXPIRATION_DT
+		FROM PM_POINT_USED P
+		INNER JOIN (SELECT PM_POINT_USED_ID, POINT_PROCESS_TP, EXPIRATION_DT FROM PM_POINT_USED_DETL  GROUP BY PM_POINT_USED_ID ) PPUD ON P.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+		LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = P.PM_POINT_ID
+		LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = P.UR_USER_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UU.USER_NM) IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND UU.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPaymentType)">
+				AND P.PAYMENT_TP = #{searchPaymentType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+				AND PPUD.POINT_PROCESS_TP = #{searchPointDetailType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+				AND P.CMNT LIKE CONCAT('%',#{pointUsedMsg},'%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND P.CREATE_DT BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</where>
+		)
+		SELECT MAX(a) AS TOTAL_ISSUE_POINT
+		, MAX(b) AS TOTAL_USE_POINT
+		, MAX(c) AS TOTAL_EXPIRATION_POINT
+		, MAX(d) AS TOTAL_MONTH_EXPIRATION_POINT
+		FROM (
+		SELECT 'id' AS id, SUM(AMOUNT) AS a, null AS b, null AS c, null AS d
+		FROM HISTORY
+		WHERE PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION'
+		UNION ALL
+		SELECT 'id' AS id, null AS a, SUM(AMOUNT) AS b, null AS c, null AS d
+		FROM HISTORY
+		WHERE PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' AND POINT_PROCESS_TP <![CDATA[<>]]> 'POINT_PROCESS_TP.WPPE' AND POINT_PROCESS_TP <![CDATA[<>]]> 'POINT_PROCESS_TP.WVPE'
+		UNION ALL
+		SELECT 'id' AS id, null AS a, null AS b, SUM(AMOUNT) AS c, null AS d
+		FROM HISTORY
+		WHERE  PAYMENT_TP = 'POINT_PAYMENT_TP.DEDUCTION' AND POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPPE' ,'POINT_PROCESS_TP.WVPE')
+		UNION ALL
+		SELECT 'id' AS id, null AS a, null AS b, null AS c,  SUM(AMOUNT) AS d
+		FROM HISTORY
+		WHERE POINT_PROCESS_TP IN ('POINT_PROCESS_TP.WPPE' ,'POINT_PROCESS_TP.WVPE')
+		AND EXPIRATION_DT <![CDATA[>]]> LAST_DAY(NOW() - interval 1 month) AND EXPIRATION_DT <![CDATA[<=]]> LAST_DAY(NOW())
+		) AS GP
+		GROUP BY GP.id
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 내역 엑셀 다운로드
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.14		안치열          최초생성
+	 * @ 2021.06.02		남기승		  올가 적립금 관련 조건 추가
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPointHistoryListExportExcel" resultMap="getPointHistoryListResultMap">
+		/* pointHistory.getPointHistoryListExportExcel */
+		SELECT P.PM_POINT_USED_ID
+		, IFNULL(FN_DECRYPT(UU.USER_NM),'')  AS UR_USER_NAME
+		, IFNULL(UU.LOGIN_ID,'')             AS UR_USER_ID
+		, P.PAYMENT_TP
+		, CASE WHEN P.PM_POINT_ID = 0 THEN PPUD.PM_POINT_ID ELSE P.PM_POINT_ID END PM_POINT_ID
+		, CASE WHEN IFNULL(PP.POINT_NM,'') = '' THEN (SELECT POINT_NM FROM PM_POINT WHERE PM_POINT_ID = PPUD.PM_POINT_ID) ELSE IFNULL(PP.POINT_NM,'') END AS POINT_NM
+		, FN_COMN_CODE_DIC(P.PAYMENT_TP) AS PAYMENT_TYPE_NAME
+		, CASE WHEN IFNULL(PP.POINT_TP, '') = ''
+				THEN (SELECT FN_COMN_CODE_DIC(PP.POINT_TP) FROM PM_POINT PP WHERE PP.PM_POINT_ID = PPUD.PM_POINT_ID LIMIT 1)
+				ELSE IFNULL(FN_COMN_CODE_DIC(PP.POINT_TP),'')
+				END AS POINT_TYPE_NAME
+		, PP.POINT_TP
+		, CASE WHEN P.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' AND PP.VALIDITY_DAY IS NULL THEN CONCAT(FORMAT(P.AMOUNT,0), '원')
+		WHEN P.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' AND PP.VALIDITY_DAY IS NOT NULL THEN CONCAT(FORMAT(P.AMOUNT,0), '원 (', PP.VALIDITY_DAY, '일)')
+		ELSE CONCAT(FORMAT(P.AMOUNT,0), '원')
+		END AS AMOUNT
+		, CASE WHEN IFNULL(P.AMOUNT,0) <![CDATA[<]]> 0 THEN IFNULL(P.AMOUNT * -1,0)
+			ELSE IFNULL(P.AMOUNT,0) END AS USED_AMOUNT
+		, PPUD.POINT_PROCESS_TP
+		, CASE WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WPPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWNP' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DVRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDVC' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWVP' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPCR' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN P.REF_NO1
+		ELSE ''
+		END AS ODID
+		, FN_COMN_CODE_DIC(PPUD.POINT_PROCESS_TP) AS POINT_PROCESS_TYPE_NAME
+		, P.CREATE_DT
+		, IFNULL(PP.VALIDITY_DAY,'') AS VALIDITY_DAY
+		, IFNULL(DATE_ADD(P.CREATE_DT ,INTERVAL PP.VALIDITY_DAY DAY),'') AS CAL_DAY
+		, (SELECT COUNT(*) FROM PM_POINT_USED_DETL WHERE PM_POINT_USED_ID = P.PM_POINT_USED_ID ) AS DETAIL_COUNT
+		, IFNULL(P.CMNT,'') AS POINT_USED_MSG
+		, PPUD.EXPIRATION_DT
+		, P.REF_NO2 AS ORGA_MEMBER_NO
+		, IFNULL((select T1.LOGIN_ID from UR_USER T1 where T1.UR_USER_ID = PP.CREATE_ID limit 1),'') AS CREATE_ID
+		, IFNULL((select FN_DECRYPT(T1.USER_NM) from UR_USER T1 where T1.UR_USER_ID = PP.CREATE_ID limit 1),'') AS CREATE_NM
+		, IFNULL(PO.UR_ERP_ORGANIZATION_NM,
+			IFNULL((SELECT UEE.ERP_ORGANIZATION_NM FROM UR_ERP_EMPLOYEE UEE WHERE UEE.FIN_ORGANIZATION_CD = PPUD.DEPT_CD AND UEE.FIN_ORGANIZATION_CD IS NOT NULL LIMIT 1),'')) AS ERP_ORGANIZATION_NM
+		FROM PM_POINT_USED P
+		INNER JOIN (SELECT PM_POINT_USED_ID, PM_POINT_ID, POINT_PROCESS_TP, EXPIRATION_DT, POINT_SETTLEMENT_TP, DEPT_CD FROM PM_POINT_USED_DETL  GROUP BY PM_POINT_USED_ID ) PPUD ON P.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+		LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = P.PM_POINT_ID
+		LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = P.UR_USER_ID
+		LEFT OUTER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = PP.PM_POINT_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UU.USER_NM) IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND UU.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'orgaMemberNo')">
+					AND P.REF_NO2 IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPaymentType)">
+				AND P.PAYMENT_TP = #{searchPaymentType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+				AND PPUD.POINT_PROCESS_TP = #{searchPointDetailType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+				AND P.CMNT LIKE CONCAT('%',#{pointUsedMsg},'%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND P.CREATE_DT BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</where>
+		ORDER BY P.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+ * description 		: 적립금 내역 엑셀 다운로드 ( 분담조직별 내역 )
+ * @
+ * @ 수정일			수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.07.20		문동현          최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getPointHistoryOrgaListExportExcel" resultMap="getPointHistoryListResultMap">
+		/* pointHistory.getPointHistoryOrgaListExportExcel */
+		WITH RECURSIVE PM_POINT_OLD_POINT_ID AS
+		(
+			SELECT PPUD.PM_POINT_USED_DETL_ID AS PM_POINT_USED_DETL_ID, PPUD.POINT_PROCESS_TP AS TOP_POINT_PROCESS_TP
+			  FROM PM_POINT_USED_DETL PPUD
+			 WHERE PPUD.PM_POINT_USED_DETL_ID = PPUD.REF_POINT_USED_DETL_ID
+	  			AND PPUD.REF_DPRO_POINT_USED_DETL_ID IS NULL
+				AND PPUD.PM_POINT_ID = '0'
+				AND POINT_PROCESS_TP IN ('POINT_PROCESS_TP.DPOT','POINT_PROCESS_TP.DPPT')
+			UNION ALL
+			SELECT PPUD.PM_POINT_USED_DETL_ID AS PM_POINT_USED_DETL_ID, t.TOP_POINT_PROCESS_TP AS TOP_POINT_PROCESS_TP
+			  FROM PM_POINT_USED_DETL PPUD
+				JOIN PM_POINT_OLD_POINT_ID t
+					ON t.PM_POINT_USED_DETL_ID = PPUD.REF_POINT_USED_DETL_ID
+					AND t.PM_POINT_USED_DETL_ID <![CDATA[ < ]]> PPUD.PM_POINT_USED_DETL_ID
+		  	 WHERE PPUD.PM_POINT_ID = '0'
+			UNION ALL
+			SELECT PPUD2.PM_POINT_USED_DETL_ID AS PM_POINT_USED_DETL_ID, t2.TOP_POINT_PROCESS_TP AS TOP_POINT_PROCESS_TP
+			  FROM PM_POINT_USED_DETL PPUD2
+				JOIN PM_POINT_OLD_POINT_ID t2
+					ON t2.PM_POINT_USED_DETL_ID = PPUD2.REF_DPRO_POINT_USED_DETL_ID
+					AND t2.PM_POINT_USED_DETL_ID <![CDATA[ < ]]> PPUD2.PM_POINT_USED_DETL_ID
+		   	 WHERE PPUD2.PM_POINT_ID = '0'
+		)
+		SELECT P.PM_POINT_USED_ID
+		, IFNULL(FN_DECRYPT(UU.USER_NM),'')  AS UR_USER_NAME
+		, IFNULL(UU.LOGIN_ID,'')             AS UR_USER_ID
+		, P.PAYMENT_TP
+		, CASE WHEN P.PM_POINT_ID = 0 THEN PPUD.PM_POINT_ID ELSE P.PM_POINT_ID END PM_POINT_ID
+		, CASE WHEN IFNULL(PP.POINT_NM,'') = '' THEN (SELECT POINT_NM FROM PM_POINT WHERE PM_POINT_ID = PPUD.PM_POINT_ID) ELSE IFNULL(PP.POINT_NM,'') END AS POINT_NM
+		, FN_COMN_CODE_DIC(P.PAYMENT_TP) AS PAYMENT_TYPE_NAME
+		, CASE WHEN IFNULL(PP.POINT_TP, '') = ''
+				THEN (SELECT FN_COMN_CODE_DIC(PP.POINT_TP) FROM PM_POINT PP WHERE PP.PM_POINT_ID = PPUD.PM_POINT_ID LIMIT 1)
+				ELSE IFNULL(FN_COMN_CODE_DIC(PP.POINT_TP),'')
+				END AS POINT_TYPE_NAME
+		, PP.POINT_TP
+		, CASE WHEN PPUD.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' AND PP.VALIDITY_DAY IS NULL THEN CONCAT(FORMAT(PPUD.AMOUNT,0), '원')
+		WHEN PPUD.PAYMENT_TP = 'POINT_PAYMENT_TP.PROVISION' AND PP.VALIDITY_DAY IS NOT NULL THEN CONCAT(FORMAT(PPUD.AMOUNT,0), '원 (', PP.VALIDITY_DAY, '일)')
+		ELSE CONCAT(FORMAT(PPUD.AMOUNT,0), '원')
+		END AS AMOUNT
+		, CASE WHEN IFNULL(PPUD.AMOUNT,0)  <![CDATA[<]]> 0 THEN IFNULL(PPUD.AMOUNT * -1,0)
+		ELSE IFNULL(PPUD.AMOUNT,0) END AS USED_AMOUNT
+		, PPUD.POINT_PROCESS_TP
+		, CASE WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WPPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWNP' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DVRO' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDVC' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.WVPA' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SWVP' THEN P.REF_NO1
+		WHEN PPUD.POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPCR' AND  PPUD.POINT_SETTLEMENT_TP = 'POINT_SETTLEMENT_TP.SDNC' THEN P.REF_NO1
+		ELSE ''
+		END AS ODID
+		, FN_COMN_CODE_DIC(PPUD.POINT_PROCESS_TP) AS POINT_PROCESS_TYPE_NAME
+		, P.CREATE_DT
+		, IFNULL(PP.VALIDITY_DAY,'') AS VALIDITY_DAY
+		, IFNULL(DATE_ADD(P.CREATE_DT ,INTERVAL PP.VALIDITY_DAY DAY),'') AS CAL_DAY
+		, (SELECT COUNT(*) FROM PM_POINT_USED_DETL WHERE PM_POINT_USED_ID = P.PM_POINT_USED_ID ) AS DETAIL_COUNT
+		, CONCAT(
+			(CASE WHEN PPOPI.TOP_POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPPT' THEN '[풀무원샵 이관 적립금] '
+				  WHEN PPOPI.TOP_POINT_PROCESS_TP = 'POINT_PROCESS_TP.DPOT' THEN '[올가샵 이관 적립금] '
+				  ELSE '' END)
+			,IFNULL(P.CMNT, '')) AS POINT_USED_MSG
+		, PPUD.EXPIRATION_DT
+		, P.REF_NO2 AS ORGA_MEMBER_NO
+		, IFNULL((select T1.LOGIN_ID from UR_USER T1 where T1.UR_USER_ID = PP.CREATE_ID limit 1),'') AS CREATE_ID
+		, IFNULL((select FN_DECRYPT(T1.USER_NM) from UR_USER T1 where T1.UR_USER_ID = PP.CREATE_ID limit 1),'') AS CREATE_NM
+		, IFNULL(PO.UR_ERP_ORGANIZATION_NM,IFNULL((SELECT UEE.ERP_ORGANIZATION_NM FROM UR_ERP_EMPLOYEE UEE WHERE UEE.FIN_ORGANIZATION_CD = PPUD.DEPT_CD AND UEE.FIN_ORGANIZATION_CD IS NOT NULL LIMIT 1),'')) AS ERP_ORGANIZATION_NM
+		FROM PM_POINT_USED P
+		INNER JOIN PM_POINT_USED_DETL PPUD ON P.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+		LEFT OUTER JOIN PM_POINT PP ON PP.PM_POINT_ID = P.PM_POINT_ID
+		LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = P.UR_USER_ID
+		LEFT OUTER JOIN PM_COUPON_POINT_SHARE_ORGANIZATION PO ON PO.PM_POINT_ID = PPUD.PM_POINT_ID
+		LEFT OUTER JOIN PM_POINT_OLD_POINT_ID PPOPI ON PPOPI.PM_POINT_USED_DETL_ID = PPUD.PM_POINT_USED_DETL_ID
+													AND PPUD.PM_POINT_ID = '0'
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND FN_DECRYPT(UU.USER_NM) IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND UU.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'orgaMemberNo')">
+					AND P.REF_NO2 IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPaymentType)">
+				AND P.PAYMENT_TP = #{searchPaymentType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchPointDetailType)">
+				AND PPUD.POINT_PROCESS_TP = #{searchPointDetailType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pointUsedMsg)">
+				AND P.CMNT LIKE CONCAT('%',#{pointUsedMsg},'%')
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endDate)">
+					AND P.CREATE_DT BETWEEN #{startDate} AND #{endDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</where>
+		ORDER BY P.CREATE_DT DESC
+	</select>
+</mapper>

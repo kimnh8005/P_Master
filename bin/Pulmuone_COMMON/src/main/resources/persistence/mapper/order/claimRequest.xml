@@ -1,0 +1,3411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.claim.ClaimRequestMapper">
+
+	<!-- 사유정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.policy.claim.dto.vo.PolicyClaimMallVo" id="getOrderClaimReasonInfoResultMap" >
+		<result column="PS_CLAIM_MALL_ID" 	property="psClaimMallId" />
+		<result column="PS_CLAIM_BOS_ID" 	property="psClaimBosId" />
+		<result column="REASON_MSG" 		property="reasonMessage" />
+		<result column="REASON_TP" 			property="reasonType" />
+		<result column="TARGET_TP" 			property="targetType" />
+		<result column="L_CLAIM_CTGRY_ID" 	property="lclaimCtgryId" />
+		<result column="M_CLAIM_CTGRY_ID" 	property="mclaimCtgryId" />
+		<result column="S_CLAIM_CTGRY_ID" 	property="sclaimCtgryId" />
+		<result column="PS_CLAIM_BOS_VAL"   property="psClaimBosVal"/>
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청화면에서 클레임정보 고객 사유 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		강상국	  		최초생성
+	 * @ 2021.01.27		최용호	  		성권님 요청으로 이상한 부분 삭제
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimReasonList" resultMap="getOrderClaimReasonInfoResultMap">
+		/*	order.claimRequest.getOrderClaimReasonList  고객 사유 정보 조회 */
+		SELECT *
+		FROM (
+				(
+					SELECT
+						PCM.PS_CLAIM_MALL_ID	/* MALL 클레임 사유 PK */
+						, PCM.PS_CLAIM_BOS_ID	/* 클레임 BOS PK */
+						, PCM.REASON_MSG		/* 사유 */
+						, PCM.REASON_TP			/* 사유구분 A: 취소/반품 C: 취소, R: 반품 */
+						, PCC3.TARGET_TP		/* 귀책구분 B: 구매자, S: 판매자 */
+						, PCC1.PS_CLAIM_CTGRY_ID AS L_CLAIM_CTGRY_ID	/* 클레임사유 대 */
+						, PCC2.PS_CLAIM_CTGRY_ID AS M_CLAIM_CTGRY_ID	/* 클레임사유 중 */
+						, PCC3.PS_CLAIM_CTGRY_ID	AS S_CLAIM_CTGRY_ID/* 클레임사유 소 */
+						, (SELECT PS_VAL FROM PS_CONFIG WHERE PS_GRP_TP = 'BOS_CLAIM' AND PS_KEY = 'PS_CLAIM_BOS_ID') AS PS_CLAIM_BOS_VAL
+					FROM
+						PS_CLAIM_MALL PCM
+					INNER JOIN PS_CLAIM_BOS PCB ON PCB.PS_CLAIM_BOS_ID = PCM.PS_CLAIM_BOS_ID
+					INNER JOIN PS_CLAIM_CTGRY PCC1 ON PCB.L_CLAIM_CTGRY_ID = PCC1.PS_CLAIM_CTGRY_ID
+					INNER JOIN PS_CLAIM_CTGRY PCC2 ON PCB.M_CLAIM_CTGRY_ID = PCC2.PS_CLAIM_CTGRY_ID
+					INNER JOIN PS_CLAIM_CTGRY PCC3 ON PCB.S_CLAIM_CTGRY_ID = PCC3.PS_CLAIM_CTGRY_ID
+					WHERE
+						PCM.PS_CLAIM_MALL_ID = 0
+				)
+				UNION ALL
+				(
+					SELECT
+						  PCM.PS_CLAIM_MALL_ID	/* MALL 클레임 사유 PK */
+						, PCM.PS_CLAIM_BOS_ID	/* 클레임 BOS PK */
+						, PCM.REASON_MSG		/* 사유 */
+						, PCM.REASON_TP			/* 사유구분 A: 취소/반품 C: 취소, R: 반품 */
+						, PCC3.TARGET_TP		/* 귀책구분 B: 구매자, S: 판매자 */
+						, PCC1.PS_CLAIM_CTGRY_ID AS L_CLAIM_CTGRY_ID	/* 클레임사유 대 */
+						, PCC2.PS_CLAIM_CTGRY_ID AS M_CLAIM_CTGRY_ID	/* 클레임사유 중 */
+						, PCC3.PS_CLAIM_CTGRY_ID	AS S_CLAIM_CTGRY_ID/* 클레임사유 소 */
+						, (SELECT PS_VAL FROM PS_CONFIG WHERE PS_GRP_TP = 'BOS_CLAIM' AND PS_KEY = 'PS_CLAIM_BOS_ID') AS PS_CLAIM_BOS_VAL
+					FROM
+						PS_CLAIM_MALL PCM
+					INNER JOIN PS_CLAIM_BOS PCB ON PCB.PS_CLAIM_BOS_ID = PCM.PS_CLAIM_BOS_ID
+					INNER JOIN PS_CLAIM_CTGRY PCC1 ON PCB.L_CLAIM_CTGRY_ID = PCC1.PS_CLAIM_CTGRY_ID
+					INNER JOIN PS_CLAIM_CTGRY PCC2 ON PCB.M_CLAIM_CTGRY_ID = PCC2.PS_CLAIM_CTGRY_ID
+					INNER JOIN PS_CLAIM_CTGRY PCC3 ON PCB.S_CLAIM_CTGRY_ID = PCC3.PS_CLAIM_CTGRY_ID
+					WHERE
+						PCM.DEL_YN = 'N'
+					AND PCM.USE_YN = 'Y'
+					AND PCM.PS_CLAIM_MALL_ID != 0
+					<if test="searchReasonTypeList != null and searchReasonTypeList.size != 0">
+					AND PCM.REASON_TP IN
+						<foreach collection="searchReasonTypeList" item="searchReasonTypeInfo" index="index" separator="," open="(" close=")" >
+							#{searchReasonTypeInfo}
+						</foreach>
+					</if>
+				)
+		)A
+	</select>
+
+
+	<!-- 보스 클레임 사유 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimBosReasonResponseDto" id="getOrderClaimBosReasonInfoResultMap" >
+		<result column="PS_CLAIM_CTGRY_ID"  property="psClaimCtgryId" />
+		<result column="CATE_CD" 			property="cateCd" />
+		<result column="CLAIM_CD" 			property="claimCd" />
+		<result column="CLAIM_NM" 			property="claimNm" />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청화면에서 클레임정보 BOS 사유 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimBosReasonList" resultMap="getOrderClaimBosReasonInfoResultMap">
+		/*	order.claimRequest.getOrderClaimBosReasonList BOS 사유 정보 조회 */
+		SELECT
+			PS_CLAIM_CTGRY_ID 	/* BOS 클레임 사유 카테고리 PK */
+			, CATE_CD 			/* 클레임 사유 카테고리 10: 대, 20: 중, 30: 귀책처 */
+			, CLAIM_CD 			/* 클레임사유 코드 */
+			, CLAIM_NM 			/* 클레임사유명 */
+		FROM
+			PS_CLAIM_CTGRY
+		WHERE
+			DEL_YN = 'N'
+	</select>
+
+	<!-- 공급업체 클레임 사유 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimSupplyReasonResponseDto" id="getOrderClaimSupplyReasonInfoResultMap" >
+		<result column="PS_CLAIM_SUPPLY_CTGRY_ID"  	property="psClaimSupplyCtgryId" />
+		<result column="CATE_CD" 					property="cateCd" />
+		<result column="CLAIM_CD" 					property="claimCd" />
+		<result column="CLAIM_NM" 					property="claimNm" />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청화면에서 클레임정보 공급업체 사유 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.21		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimSupplyReasonList" resultMap="getOrderClaimSupplyReasonInfoResultMap">
+		/*	order.claimRequest.getOrderClaimSupplyReasonList 공급업체 사유 정보 조회 */
+		SELECT
+			PS_CLAIM_SUPPLY_CTGRY_ID 	/* BOS 클레임 공급업체별 사유 카테고리 PK */
+			, CATE_CD 					/* 클레임 사유 카테고리 101: 풀무원식품, 201: 올가, 301: 푸드머스 */
+			, CLAIM_CD 					/* 클레임사유 코드 */
+			, CLAIM_NM 					/* 클레임사유명 */
+		FROM
+			PS_CLAIM_SUPPLY_CTGRY
+		WHERE
+			DEL_YN = 'N'
+	</select>
+
+	<!-- 고객 클레임 사유 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimCustomerReasonResponseDto" id="getOrderClaimCustomerReasonInfoResultMap" >
+		<result column="OD_CLAIM_ID"  		property="odClaimId" />
+		<result column="PS_CLAIM_MALL_ID"  	property="psClaimMallId" />
+		<result column="CLAIM_REASON_MSG" 	property="claimReasonMsg" />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청화면에서 클레임정보 고객 사유 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimCustomerReasonInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimCustomerReasonInfoResultMap">
+		/*	order.claimRequest.getOrderClaimCustomerReasonInfo 고객 사유 정보 조회 */
+		SELECT
+			OD_CLAIM_ID			/* 주문 클레임 PK */
+			, PS_CLAIM_MALL_ID 	/* MALL 클레임 사유 PK PS_CLAIM_MALL.PS_CLAIM_MALL_ID */
+			, CLAIM_REASON_MSG	/* 상세사유 */
+		FROM
+			OD_CLAIM OC
+		<where>
+			<if test="odClaimId != null">
+				AND OD_CLAIM_ID = #{odClaimId}
+			</if>
+		</where>
+	</select>
+
+	<!-- 주문마스터 정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderMasterInfoDto" id="getOrderMasterInfoResultMap" >
+		<result column="ODID"  			property="odid" />
+		<result column="CREATE_DT"  	property="createDt" />
+		<result column="UR_USER_ID"  	property="urUserId" />
+		<result column="UR_EMPLOYEE_CD" property="urEmployeeCd" />
+		<result column="GUEST_CI" 		property="guestCi" />
+		<result column="BUYER_NM" 		property="buyerNm" />
+		<result column="BUYER_HP" 		property="buyerHp" />
+		<result column="BUYER_MAIL" 	property="buyerMail" />
+		<result column="REGULAR_YN" 	property="regularYn" />
+	</resultMap>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청화면에서 고객 정보
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderMasterInfo" parameterType="long" resultMap="getOrderMasterInfoResultMap">
+		/*	order.claimRequest.getOrderMasterInfo 고객 정보 */
+		SELECT
+			ODID				/* 주문번호 */
+			, CREATE_DT			/* 등록일 = 주문일자 */
+			, UR_USER_ID		/* 회원 ID : UR_USER.UR_USER_ID */
+			, UR_EMPLOYEE_CD	/* 임직원사번 : UR_EMPLOYEE.UR_EMPLOYEE_CD */
+			, GUEST_CI			/* 비회원 CI */
+			, FN_DECRYPT(BUYER_NM) AS BUYER_NM		/* 주문자 명 */
+			, FN_DECRYPT(BUYER_HP) AS BUYER_HP		/* 주문자 핸드폰 */
+			, FN_DECRYPT(BUYER_MAIL) AS BUYER_MAIL	/* 주문자 이메일 */
+			, (SELECT IF(COUNT(*) > 0 , 'Y', 'N') FROM OD_ORDER_DETL OOD WHERE OOD.OD_ORDER_ID = OO.OD_ORDER_ID AND OOD.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.REGULAR' LIMIT 1) AS REGULAR_YN
+		FROM
+			OD_ORDER OO
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<!-- 상품정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto" id="getOrderClaimGoodsInfoResultMap" >
+		<result column="ROWNUM"						property="rowNum" />
+		<result column="OD_ORDER_ID"				property="odOrderId" />
+		<result column="OD_ORDER_DETL_ID"			property="odOrderDetlId" />
+		<result column="OD_ORDER_DETL_SEQ"			property="odOrderDetlSeq" />
+		<result column="OD_ORDER_DETL_STEP_ID"		property="odOrderDetlStepId" />
+		<result column="OD_ORDER_DETL_DEPTH_ID"		property="odOrderDetlDepthId"/>
+		<result column="OD_ORDER_DETL_PARENT_ID"	property="odOrderDetlParentId" />
+		<result column="ORDER_STATUS_NM"			property="orderStatusNm" />
+		<result column="ORDER_STATUS_CD"			property="orderStatusCd" />
+		<result column="GOODS_TP_CD"				property="goodsTpCd" />
+		<result column="GOODS_TP_NM"				property="goodsTpNm" />
+		<result column="UR_WAREHOUSE_ID"			property="urWarehouseId" />
+		<result column="WAREHOUSE_NM"				property="warehouseNm" />
+		<result column="IL_ITEM_CD"					property="ilItemCd" />
+		<result column="ITEM_BARCODE"				property="itemBarcode" />
+		<result column="IL_GOODS_ID"				property="ilGoodsId" />
+		<result column="GOODS_NM"					property="goodsNm" />
+		<result column="GOODS_DELIVERY_TYPE"		property="goodsDeliveryType" />
+		<result column="STORAGE_TYPE_CD"			property="storageTypeCd" />
+		<result column="REDELIVERY_YN"				property="redeliveryYn" />
+		<result column="STORAGE_TYPE_NM"			property="storageTypeNm" />
+		<result column="CLAIM_CNT"					property="claimCnt" />
+		<result column="ORDER_CNT"					property="orderCnt" />
+		<result column="ORG_ORDER_CNT"				property="orgOrderCnt" />
+		<result column="CANCEL_CNT"					property="cancelCnt" />
+		<result column="BUYER_TYPE_CD"				property="buyerTypeCd" />
+		<result column="RECOMMENDED_PRICE"			property="recommendedPrice" />
+		<result column="SALE_PRICE"					property="salePrice" />
+		<result column="ORDER_PRICE"				property="orderPrice" />
+		<result column="COUPON_PRICE"				property="couponPrice" />
+		<result column="CART_COUPON_PRICE"			property="cartCouponPrice" />
+		<result column="GOODS_COUPON_PRICE"			property="goodsCouponPrice" />
+		<result column="DIRECT_PRICE"				property="directPrice" />
+		<result column="PAID_PRICE"					property="paidPrice" />
+		<result column="PS_SHIPPING_COMP_ID" 		property="psShippingCompId" />
+		<result column="TRACKING_NO"		 		property="trackingNo" />
+		<result column="GOODS_CYCLE_TP"				property="goodsCycleTp"/>
+		<result column="GOODS_CYCLE_TERM_TP"		property="goodsCycleTermTp"/>
+		<result column="MON_CNT"					property="monCnt"/>
+		<result column="TUE_CNT"					property="tueCnt"/>
+		<result column="WED_CNT"					property="wedCnt"/>
+		<result column="THU_CNT"					property="thuCnt"/>
+		<result column="FRI_CNT"					property="friCnt"/>
+		<result column="SET_CNT"					property="setCnt"/>
+		<result column="ALLERGY_YN"					property="allergyYn"/>
+		<result column="SCHEDULE_YN"				property="scheduleYn"/>
+		<result column="GOODS_DAILY_TP" 			property="goodsDailyTp" />
+		<result column="ORDER_STATUS_DELI_TP" 		property="orderStatusDeliTp" />
+		<result column="OD_CLAIM_DETL_ID" 			property="odClaimDetlId" />
+		<result column="OD_CLAIM_ID" 				property="odClaimId" />
+		<result column="PS_CLAIM_BOS_SUPPLY_ID"		property="psClaimBosSupplyId" />
+		<result column="PS_CLAIM_BOS_ID" 			property="psClaimBosId" />
+		<result column="CLAIM_STATUS_CD" 			property="claimStatusCd" />
+		<result column="REFUND_STATUS_CD" 			property="refundStatusCd" />
+		<result column="GOODS_IMG_NM" 				property="goodsImgNm" />
+		<result column="UR_SUPPLIER_ID"				property="urSupplierId" />
+		<result column="DELIVERY_COUPON_ISSUE_ID"	property="deliveryCouponIssueId" />
+		<result column="PM_COUPON_NM"				property="pmCouponNm" />
+		<result column="PM_COUPON_BENEFIT"			property="pmCouponBenefit" />
+		<result column="SHIPPING_DISCOUNT_PRICE"	property="shippingDiscountPrice" />
+		<result column="SHIPPING_PRICE"				property="shippingPrice"/>
+		<result column="IL_SHIPPING_TMPL_NM"		property="ilShippingTmplNm"/>
+		<result column="IL_SHIPPING_TMPL_ID"		property="ilShippingTmplId"/>
+		<result column="CONDITION_TP"				property="conditionTp"/>
+		<result column="CONDITION_VAL"				property="conditionVal"/>
+		<result column="TEMPLATE_SHIPPING_PRICE"	property="templateShippingPrice"/>
+		<result column="PROMOTION_TP"				property="promotionTp"/>
+		<result column="ORDER_IF_DT"				property="orderIfDt"/>
+		<result column="SHIPPING_DT"				property="shippingDt"/>
+		<result column="DELIVERY_DT"				property="deliveryDt"/>
+		<result column="GRP_WAREHOUSE_SHIPPING_TMPL_ID"	property="grpWarehouseShippingTmplId"/>
+		<result column="STORE_DELIVERY_TP"			property="storeDeliveryTp"/>
+		<result column="GOODS_CYCLE_TP_CODE"		property="goodsCycleTpCode"/>
+		<result column="GOODS_CYCLE_TERM_TP_CODE"	property="goodsCycleTermTpCode"/>
+		<result column="TAX_YN"						property="taxYn"/>
+		<result column="PS_CLAIM_MALL_ID"			property="psClaimMallId"/>
+		<result column="CLAIM_REASON_MSG"			property="claimReasonMsg"/>
+		<result column="CLAIM_REGIST_CNT"			property="claimRegistCnt"/>
+		<result column="BUNDLE_YN"					property="bundleYn"/>
+		<result column="MISS_CNT"					property="missCnt"/>
+		<result column="DAILY_BULK_YN"              property="dailyBulkYn"/>
+		<result column="OD_SHIPPING_PRICE_ID"       property="odShippingPriceId"/>
+		<result column="TOT_SALE_PRICE"       		property="totSalePrice"/>
+		<result column="EMPLOYEE_DISCOUNT_PRICE"    property="employeeDiscountPrice"/>
+		<result column="EV_EXHIBIT_ID"    			property="evExhibitId"/>
+		<result column="DP_BRAND_ID"    			property="dpBrandId"/>
+		<result column="RETURNS_YN"  	  			property="returnsYn"/>
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 상품상세에서 상품정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimGoodsInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimGoodsInfoResultMap">
+		/*	order.claimRequest.getOrderClaimGoodsInfoList 상품상세에서 상품정보 조회 */
+		SELECT
+		    @NUM:=@NUM+1 AS ROWNUM				/*ROW NUMBER*/
+			, OOD.OD_ORDER_ID 					/* 주문 PK */
+			, OOD.OD_ORDER_DETL_ID				/* 주문상세 PK */
+			, OOD.OD_ORDER_DETL_SEQ 			/* 주문상세 순번 주문번호에 대한 순번 */
+			, OOD.OD_ORDER_DETL_STEP_ID			/* 주문상세 정렬 키*/
+			, OOD.OD_ORDER_DETL_DEPTH_ID
+			, OOD.OD_ORDER_DETL_PARENT_ID   	/* 주문상세 부모 ID */
+			, FN_ORDER_DETAIL_STATUS_NM(OOD.ORDER_STATUS_CD) AS ORDER_STATUS_NM		/* 주문상태 명 */
+			, OOD.ORDER_STATUS_CD													/* 주문상태 코드*/
+			, OOD.GOODS_TP_CD														/* 상품유형 코드 */
+			, FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM 						/* 상품유형명 */
+			, OOD.UR_WAREHOUSE_ID 													/*줄고처 ID */
+			, (SELECT WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID) AS WAREHOUSE_NM	/* 출고처 */
+			, OOD.IL_ITEM_CD				/* 마스터품목코드 */
+			, OOD.ITEM_BARCODE				/* 품목바코드 */
+			, OOD.IL_GOODS_ID				/* 상품코드 */
+			, OOD.GOODS_NM					/* 상품명 */
+			, OOD.GOODS_DELIVERY_TYPE		/* 상품배송타입 */
+			, OOD.STORAGE_TYPE_CD			/* 보관방법 */
+			, IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN		/* 재배송여부 */
+			, FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD) AS STORAGE_TYPE_NM	/* 보관방법 */
+			, OOD.ORDER_CNT - OOD.CANCEL_CNT AS CLAIM_CNT	/* 클레임수량 */
+			, OOD.ORDER_CNT					/* 주문수량 */
+			, OOD.ORDER_CNT AS ORG_ORDER_CNT	/* 주문수량 */
+			, OOD.CANCEL_CNT				/* 주문취소수량 */
+			, OOD.RECOMMENDED_PRICE			/* 정상가 */
+			, OOD.SALE_PRICE				/* 판매가 */
+			, (OOD.SALE_PRICE * OOD.ORDER_CNT) AS ORDER_PRICE	/* 주문금액 */
+			, OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE AS COUPON_PRICE	/* 쿠폰할인 */
+			, OOD.CART_COUPON_PRICE			/* 장바구니쿠폰 */
+			, OOD.GOODS_COUPON_PRICE		/* 상품쿠폰 */
+			, OOD.PAID_PRICE				/* 결제금액 */
+			, OTN.PS_SHIPPING_COMP_ID		/* 택배사 설정 PK */
+			, OTN.TRACKING_NO				/* 개별송장번호 */
+			, OSP.IL_SHIPPING_TMPL_ID		/* 배송정책PK */
+			, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TP, '')) AS GOODS_CYCLE_TP /* 배송주기 */
+			, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TERM_TP, '')) AS GOODS_CYCLE_TERM_TP /* 배송기간 */
+			, IFNULL(OODD.MON_CNT, 0) AS MON_CNT
+			, IFNULL(OODD.TUE_CNT, 0) AS TUE_CNT
+			, IFNULL(OODD.WED_CNT, 0) AS WED_CNT
+			, IFNULL(OODD.THU_CNT, 0) AS THU_CNT
+			, IFNULL(OODD.FRI_CNT, 0) AS FRI_CNT
+			, IFNULL(OODD.SET_CNT, 0) AS SET_CNT
+			, IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN /* 알러지 식단 여부 */
+			, IFNULL(OODD.SCHEDULE_YN, 'N') AS SCHEDULE_YN /* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+			, GOODS_DAILY_TP 				/* 일일상품 유형(goodsDailyTp : greenjuice/babymeal/eatsslim ) */
+			, ORDER_STATUS_DELI_TP 			/* 주문상태 배송유형 공통코드: orderStatusDeliTp */
+			, 0 AS OD_CLAIM_DETL_ID			/* 주문클레임 상세 PK */
+			, 0 AS OD_CLAIM_ID 				/* 주문 클레임 PK */
+			, 0 AS PS_CLAIM_BOS_SUPPLY_ID	/* BOS 클레임 사유 공급업체 PK */
+			, 0 AS PS_CLAIM_BOS_ID 			/* BOS 클레임 사유 PK */
+			, '' AS CLAIM_STATUS_CD 		/* 클레임 주문상태 : OD_STATUS.STATUS_CD */
+			, '' AS REFUND_STATUS_CD 		/* 환불상태 : OD_STATUS.STATUS_CD */
+			, FN_GOODS_C_IMG(IFNULL(OOD.IL_GOODS_ID, 0)) AS GOODS_IMG_NM /* 상품이미지 */
+			, IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE /* 배송비 */
+			, (SELECT CONCAT(OSP.SHIPPING_PRICE, ' (', NAME,')') FROM OD_SHIPPING_PRICE OSP INNER JOIN IL_SHIPPING_TEMPLATE IST ON OSP.IL_SHIPPING_TMPL_ID = IST.IL_SHIPPING_TMPL_ID
+				WHERE OSP.OD_SHIPPING_PRICE_ID = OOD.OD_SHIPPING_PRICE_ID) AS DELIVERY_PRICE	/* 배송비 */
+			, OOD.UR_SUPPLIER_ID			/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+			, DATE_FORMAT(OOD.ORDER_IF_DT, '%Y-%m-%d') AS ORDER_IF_DT
+			, DATE_FORMAT(OOD.SHIPPING_DT, '%Y-%m-%d') AS SHIPPING_DT
+			, DATE_FORMAT(OOD.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DT
+			, IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+			, IFNULL(OODD.DAILY_BULK_YN, 'N') AS DAILY_BULK_YN
+		FROM
+			OD_ORDER_DETL OOD
+			LEFT JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID
+			LEFT JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+			LEFT OUTER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+			, (SELECT @NUM:=0) TMP
+		WHERE
+			OOD.OD_ORDER_ID = #{odOrderId}
+			<if test="goodSearchList != null and goodSearchList.size != 0">
+			AND OOD.OD_ORDER_DETL_ID IN
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.odOrderDetlId}
+				</foreach>
+			</if>
+		ORDER BY
+			OOD.OD_ORDER_DETL_SEQ
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 주문클레임상세에서 상품정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimGoodsInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimGoodsInfoResultMap">
+		/*	order.claimRequest.getClaimGoodsInfoList 주문클레임상세에서 상품정보 조회 */
+		SELECT
+			@NUM:=@NUM+1 AS ROWNUM				/*ROW NUMBER*/
+			, OOD.OD_ORDER_ID 					/* 주문 PK */
+			, OOD.OD_ORDER_DETL_ID				/* 주문상세 PK */
+			, OOD.OD_ORDER_DETL_SEQ 			/* 주문상세 순번 주문번호에 대한 순번 */
+			, OOD.OD_ORDER_DETL_STEP_ID			/* 주문상세 정렬 키*/
+			, OOD.OD_ORDER_DETL_DEPTH_ID
+			, OOD.OD_ORDER_DETL_PARENT_ID   	/* 주문상세 부모 ID */
+			, FN_ORDER_DETAIL_STATUS_NM(OCD.ORDER_STATUS_CD) AS ORDER_STATUS_NM		/* 주문상태 명 */
+			, OCD.ORDER_STATUS_CD													/* 주문상태 코드*/
+			, OOD.GOODS_TP_CD														/* 상품유형 코드 */
+			, FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM 						/* 상품유형명 */
+			, OOD.UR_WAREHOUSE_ID 													/*줄고처 ID */
+			, (SELECT WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID) AS WAREHOUSE_NM	/* 출고처 */
+			, OOD.IL_ITEM_CD				/* 마스터품목코드 */
+			, OOD.ITEM_BARCODE				/* 품목바코드 */
+			, OOD.IL_GOODS_ID				/* 상품코드 */
+			, OOD.GOODS_NM					/* 상품명 */
+			, OOD.GOODS_DELIVERY_TYPE		/* 상품배송타입 */
+			, OOD.STORAGE_TYPE_CD			/* 보관방법 */
+			, IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN		/* 재배송여부 */
+			, FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD) AS STORAGE_TYPE_NM	/* 보관방법 */
+			, OCD.CLAIM_CNT					/* 클레임수량 */
+			, OOD.ORDER_CNT					/* 주문수량 */
+			, OOD.CANCEL_CNT				/* 주문취소수량 */
+			, OOD.RECOMMENDED_PRICE			/* 정상가 */
+			, OCD.CLAIM_CNT * OOD.RECOMMENDED_PRICE AS SALE_PRICE	/* 판매가 */
+			, OOD.SALE_PRICE AS ORDER_PRICE	/* 주문금액 */
+			, OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE AS COUPON_PRICE	/* 쿠폰할인 */
+			, OOD.CART_COUPON_PRICE			/* 장바구니쿠폰 */
+			, OOD.GOODS_COUPON_PRICE		/* 상품쿠폰 */
+			, OOD.PAID_PRICE				/* 결제금액 */
+			, OTN.PS_SHIPPING_COMP_ID		/* 택배사 설정 PK */
+			, OTN.TRACKING_NO				/* 개별송장번호 */
+			, OSP.IL_SHIPPING_TMPL_ID		/* 배송정책PK */
+			, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TP, '')) AS GOODS_CYCLE_TP /* 배송주기 */
+			, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TERM_TP, '')) AS GOODS_CYCLE_TERM_TP /* 배송기간 */
+			, IFNULL(OODD.MON_CNT, 0) AS MON_CNT
+			, IFNULL(OODD.TUE_CNT, 0) AS TUE_CNT
+			, IFNULL(OODD.WED_CNT, 0) AS WED_CNT
+			, IFNULL(OODD.THU_CNT, 0) AS THU_CNT
+			, IFNULL(OODD.FRI_CNT, 0) AS FRI_CNT
+			, IFNULL(OODD.SET_CNT, 0) AS SET_CNT
+			, IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN /* 알러지 식단 여부 */
+			, IFNULL(OODD.SCHEDULE_YN, 'N') AS SCHEDULE_YN /* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+			, GOODS_DAILY_TP 				/* 일일상품 유형(goodsDailyTp : greenjuice/babymeal/eatsslim ) */
+			, ORDER_STATUS_DELI_TP 			/* 주문상태 배송유형 공통코드: orderStatusDeliTp */
+			, OCD.OD_CLAIM_DETL_ID 			/* 주문클레임 상세 PK */
+			, OCD.OD_CLAIM_ID 				/* 주문 클레임 PK */
+			, OCD.PS_CLAIM_BOS_SUPPLY_ID	/* BOS 클레임 사유 공급업체 PK */
+			, OCD.PS_CLAIM_BOS_ID 			/* BOS 클레임 사유 PK */
+			, OCD.CLAIM_STATUS_CD 			/* 클레임 주문상태 : OD_STATUS.STATUS_CD */
+			, OCD.REFUND_STATUS_CD 			/* 환불상태 : OD_STATUS.STATUS_CD */
+			, FN_GOODS_C_IMG(IFNULL(OOD.IL_GOODS_ID, 0)) AS GOODS_IMG_NM	/* 상품 이미지 */
+			, (SELECT CONCAT(OSP.SHIPPING_PRICE, ' (', NAME,')') FROM OD_SHIPPING_PRICE OSP INNER JOIN IL_SHIPPING_TEMPLATE IST ON OSP.IL_SHIPPING_TMPL_ID = IST.IL_SHIPPING_TMPL_ID
+				WHERE OSP.OD_SHIPPING_PRICE_ID = OOD.OD_SHIPPING_PRICE_ID) AS DELIVERY_PRICE	/* 배송비 */
+			, OOD.UR_SUPPLIER_ID			/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+			, DATE_FORMAT(OOD.ORDER_IF_DT, '%Y-%m-%d') AS ORDER_IF_DT
+			, DATE_FORMAT(OOD.SHIPPING_DT, '%Y-%m-%d') AS SHIPPING_DT
+			, DATE_FORMAT(OOD.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DT
+			, IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+			, IFNULL(OODD.DAILY_BULK_YN, 'N') AS DAILY_BULK_YN
+		FROM
+			OD_CLAIM_DETL OCD
+			INNER JOIN OD_ORDER_DETL OOD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+			LEFT JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID
+			LEFT JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+			LEFT OUTER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+			, (SELECT @NUM:=0) TMP
+		WHERE
+			OCD.OD_CLAIM_ID = #{odClaimId}
+		ORDER BY
+			OCD.OD_CLAIM_DETL_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 신청 상품 목록 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimReqGoodsInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimGoodsInfoResultMap">
+		/*	order.claimRequest.getClaimReqGoodsInfoList 클레임 신청 상품 목록 조회 */
+		SELECT
+			@NUM:=@NUM+1 AS ROWNUM			/*ROW NUMBER*/
+			, TT.*
+		FROM
+		(
+			SELECT
+				OOD.OD_ORDER_ID														/* 주문 PK */
+				, OOD.OD_ORDER_DETL_ID  											/* 주문상세PK */
+				, OOD.OD_ORDER_DETL_SEQ 											/* 주문상세순번 */
+				, OOD.OD_ORDER_DETL_STEP_ID											/* 주문상세 정렬 키*/
+				, OOD.OD_ORDER_DETL_DEPTH_ID
+				, OOD.OD_ORDER_DETL_PARENT_ID										/* 주문상세 부모 ID */
+				, OC.OD_CLAIM_ID 													/* 주문 클레임 PK */
+		  		, OC.OD_CLAIM_DETL_ID												/* 클레임 상세 PK */
+				, OC.PS_CLAIM_MALL_ID												/* MALL 클레임 사유 PK */
+				, OC.CLAIM_REASON_MSG												/* 상세사유 */
+				, OC.BOS_CLAIM_LARGE_ID												/* BOS 클레임 대분류 ID */
+				, OC.BOS_CLAIM_MIDDLE_ID											/* BOS 클레임 중분류 ID */
+				, OC.BOS_CLAIM_SMALL_ID												/* BOS 클레임 소분류 ID */
+				, OC.BOS_CLAIM_LARGE_NM												/* BOS 클레임 대분류 명 */
+				, OC.BOS_CLAIM_MIDDLE_NM											/* BOS 클레임 중분류 명 */
+				, OC.BOS_CLAIM_SMALL_NM												/* BOS 클레임 소분류 명 */
+				, OC.PS_CLAIM_BOS_ID												/* BOS 클레임 사유 PK */
+				, OC.PS_CLAIM_BOS_SUPPLY_ID											/* BOS 클레임 사유 공급업체 PK */
+				, FN_ORDER_DETAIL_STATUS_NM(OOD.ORDER_STATUS_CD) AS ORDER_STATUS_NM	/* 정상주문상태명 */
+				, OOD.ORDER_STATUS_CD												/* 정상주문상태 */
+				, OOD.GOODS_TP_CD													/* 상품유형 */
+				, FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM 					/* 상품유형명 */
+				, OOD.UR_WAREHOUSE_ID												/*줄고처 ID */
+				, (SELECT WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID) AS WAREHOUSE_NM	/* 출고처 */
+				, OOD.TAX_YN														/* 과세여부 */
+				, OOD.IL_ITEM_CD													/* 마스터품목코드 */
+				, OOD.ITEM_BARCODE													/* 품목바코드 */
+				, OOD.IL_GOODS_ID													/* 상품 PK */
+				, OOD.GOODS_NM 														/* 상품명 */
+				, OOD.GOODS_DELIVERY_TYPE											/* 상품배송타입 */
+				, OOD.STORAGE_TYPE_CD												/* 보관방법 코드 */
+				, IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN		/* 재배송여부 */
+				, FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD) AS STORAGE_TYPE_NM			/* 보관방법 명 */
+				, IFNULL(OC.CLAIM_CNT, 0) AS CLAIM_CNT
+				, IFNULL(OOD.ORDER_CNT, 0) AS ORDER_CNT								/* 주문수량 */
+		  		, IFNULL(OOD.ORDER_CNT, 0) AS ORG_ORDER_CNT							/* 상품 실제 주문 수량 */
+				, (IFNULL(OOD.CANCEL_CNT, 0) - IFNULL(OC.CLAIM_CNT, 0)) AS CANCEL_CNT	/* 주문취소수량 */
+		  		, OD.BUYER_TYPE_CD
+				, OOD.RECOMMENDED_PRICE												/* 정상가 */
+				, OOD.TOT_SALE_PRICE 												/* 판매가총합 */
+				, OOD.SALE_PRICE 													/* 판매가 */
+				, OOD.SALE_PRICE * OOD.ORDER_CNT AS ORDER_PRICE												/* 주문금액 */
+				, OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE AS COUPON_PRICE	/* 쿠폰할인 */
+				, OOD.CART_COUPON_PRICE			/* 장바구니쿠폰 */
+				, OOD.GOODS_COUPON_PRICE		/* 상품쿠폰 */
+		  		, OOD.DIRECT_PRICE - IFNULL(T1.DISCOUNT_PRICE, 0) AS DIRECT_PRICE				/* 즉시할인 */
+				, OOD.PAID_PRICE				/* 결제금액 */
+				, OTN.PS_SHIPPING_COMP_ID		/* 택배사 설정 PK */
+				, OTN.TRACKING_NO				/* 개별송장번호 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TP, '')) AS GOODS_CYCLE_TP /* 배송주기 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TERM_TP, '')) AS GOODS_CYCLE_TERM_TP /* 배송기간 */
+				, IFNULL(OODD.GOODS_CYCLE_TP, '') AS GOODS_CYCLE_TP_CODE /* 배송주기 */
+				, IFNULL(OODD.GOODS_CYCLE_TERM_TP, '') AS GOODS_CYCLE_TERM_TP_CODE /* 배송기간 */
+				, IFNULL(OODD.MON_CNT, 0) AS MON_CNT
+				, IFNULL(OODD.TUE_CNT, 0) AS TUE_CNT
+				, IFNULL(OODD.WED_CNT, 0) AS WED_CNT
+				, IFNULL(OODD.THU_CNT, 0) AS THU_CNT
+				, IFNULL(OODD.FRI_CNT, 0) AS FRI_CNT
+				, IFNULL(OODD.SET_CNT, 0) AS SET_CNT
+				, IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN /* 알러지 식단 여부 */
+				, IFNULL(OODD.SCHEDULE_YN, 'N') AS SCHEDULE_YN /* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+				, GOODS_DAILY_TP 				/* 일일상품 유형(GOODSDAILYTP : GREENJUICE/BABYMEAL/EATSSLIM ) */
+				, ORDER_STATUS_DELI_TP 			/* 주문상태 배송유형 공통코드: ORDERSTATUSDELITP */
+				, '' AS CLAIM_STATUS_CD 		/* 클레임 주문상태 : OD_STATUS.STATUS_CD */
+				, '' AS REFUND_STATUS_CD 		/* 환불상태 : OD_STATUS.STATUS_CD */
+				, FN_GOODS_C_IMG(IFNULL(OOD.IL_GOODS_ID, 0)) AS GOODS_IMG_NM		/* 대표 상품 이미지 */
+				, OOD.UR_SUPPLIER_ID			/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+				, OSP.OD_SHIPPING_PRICE_ID
+				, OSP.PM_COUPON_ISSUE_ID AS DELIVERY_COUPON_ISSUE_ID		/* 배송비쿠폰발급 PK */
+				, IFNULL((
+							SELECT
+								CASE PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+									WHEN 0 THEN '전체 할인'
+									ELSE CONCAT('최대', PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,'원')
+								END
+							FROM
+								PM_COUPON_ISSUE PCI
+							INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+							WHERE
+								PCI.PM_COUPON_ISSUE_ID = OSP.PM_COUPON_ISSUE_ID
+							), '') AS PM_COUPON_BENEFIT							/* 배송비 쿠폰 혜택 */
+				, OSP.PM_COUPON_NM											/* 배송비쿠폰명 */
+				, OSP.SHIPPING_DISCOUNT_PRICE								/* 배송비할인금액 */
+				, IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE
+				, IFNULL(GST.NAME, '') AS IL_SHIPPING_TMPL_NM
+				, IFNULL(OSP.IL_SHIPPING_TMPL_ID, 0) AS IL_SHIPPING_TMPL_ID
+				, IFNULL(GST.CONDITION_TP, '') AS CONDITION_TP
+				, IFNULL(ISC.CONDITION_VAL, '') AS CONDITION_VAL
+				, IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+				, DATE_FORMAT(OOD.ORDER_IF_DT, '%Y-%m-%d') AS ORDER_IF_DT
+				, DATE_FORMAT(OOD.SHIPPING_DT, '%Y-%m-%d') AS SHIPPING_DT
+				, DATE_FORMAT(OOD.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DT
+				, CONCAT(OOD.UR_WAREHOUSE_ID, '∀', IFNULL(OSP.IL_SHIPPING_TMPL_ID, 0)) AS GRP_WAREHOUSE_SHIPPING_TMPL_ID
+				, OS.BOS_JSON
+				, IFNULL(OODD.DAILY_BULK_YN, 'N') AS DAILY_BULK_YN
+				, IFNULL(T2.EMPLOYEE_DISCOUNT_PRICE, 0) AS EMPLOYEE_DISCOUNT_PRICE
+			FROM
+				OD_ORDER OD
+				INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID											/* 주문상세 */
+				INNER JOIN OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD												/* 주문 상태 */
+				LEFT OUTER JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID /* 주문상세 송장번호 */
+				LEFT OUTER JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+				LEFT OUTER JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+				LEFT OUTER JOIN IL_SHIPPING_TEMPLATE GST ON OSP.IL_SHIPPING_TMPL_ID = GST.IL_SHIPPING_TMPL_ID
+				LEFT OUTER JOIN IL_SHIPPING_CONDITION ISC ON GST.IL_SHIPPING_TMPL_ID = ISC.IL_SHIPPING_TMPL_ID
+				LEFT OUTER JOIN IF_UNRELEASED_INFO IUI ON OOD.ODID = IUI.ODID AND OOD.OD_ORDER_DETL_SEQ = IUI.OD_ORDER_DETL_SEQ
+				LEFT OUTER JOIN
+				(
+				SELECT
+					OD_ORDER_DETL_ID,
+					SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+				FROM
+					OD_ORDER_DETL_DISCOUNT
+				WHERE
+					DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.EMPLOYEE','GOODS_DISCOUNT_TP.GOODS_COUPON')
+				AND
+					OD_ORDER_ID = #{odOrderId}
+				GROUP BY OD_ORDER_DETL_ID
+				) T1 ON T1.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_DETL_ID,
+						SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE /* 임직원 지원금 */
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+					AND
+						OD_ORDER_ID = #{odOrderId}
+					GROUP BY OD_ORDER_DETL_ID
+				) T2 ON T2.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN
+				(
+					SELECT
+						OC.OD_ORDER_ID,
+		  				OC.OD_CLAIM_ID,
+						OCD.OD_CLAIM_DETL_ID,
+						OCD.OD_ORDER_DETL_ID,
+						OCD.CLAIM_CNT,
+						OC.PS_CLAIM_MALL_ID,
+						OC.CLAIM_REASON_MSG,
+						OCD.BOS_CLAIM_LARGE_ID,
+						OCD.BOS_CLAIM_MIDDLE_ID,
+						OCD.BOS_CLAIM_SMALL_ID,
+						IFNULL(FN_CLAIM_BOS_ID(OCD.BOS_CLAIM_LARGE_ID, 10), '') AS BOS_CLAIM_LARGE_NM,
+						IFNULL(FN_CLAIM_BOS_ID(OCD.BOS_CLAIM_MIDDLE_ID , 20), '') AS BOS_CLAIM_MIDDLE_NM,
+						IFNULL(FN_CLAIM_BOS_ID(OCD.BOS_CLAIM_SMALL_ID, 30), '') AS BOS_CLAIM_SMALL_NM,
+						OCD.PS_CLAIM_BOS_ID,
+						OCD.PS_CLAIM_BOS_SUPPLY_ID
+					FROM
+						OD_CLAIM OC
+					INNER JOIN
+						OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+					WHERE
+						OC.OD_CLAIM_ID = #{odClaimId}
+					AND
+						OC.OD_ORDER_ID = #{odOrderId}
+					AND
+						OC.CLAIM_YN = 'Y'
+					<if test="goodSearchList != null and goodSearchList.size != 0">
+						AND OCD.OD_CLAIM_DETL_ID IN
+						<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+							#{goodsInfo.odClaimDetlId}
+						</foreach>
+					</if>
+				) OC ON OOD.OD_ORDER_ID = OC.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OC.OD_ORDER_DETL_ID
+			WHERE
+				OOD.OD_ORDER_ID = #{odOrderId}
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.CANCEL' ">
+					AND OOD.ORDER_STATUS_CD IN ('IR', 'IC', 'DR')
+				</if>
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.RETURN' ">
+					AND OOD.ORDER_STATUS_CD IN ('DI', 'DC', 'BF')
+				</if>
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+				AND OOD.OD_ORDER_DETL_ID IN
+					<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+						#{goodsInfo.odOrderDetlId}
+					</foreach>
+				</if>
+		) TT
+ 		, (SELECT @NUM:=0) TMP
+		ORDER BY OD_ORDER_DETL_STEP_ID DESC
+	</select>
+
+	<select id="getUndeliveredInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimGoodsInfoResultMap">
+		/*	order.claimRequest.getUndeliveredInfoList BOS 화면에서 클레임 탭 상품 대상 목록 조회 */
+		SELECT
+			@NUM:=@NUM+1 AS ROWNUM			/*ROW NUMBER*/
+			, TT.*
+		FROM
+		(
+			SELECT
+				OOD.OD_ORDER_ID														/* 주문 PK */
+				, OOD.OD_ORDER_DETL_ID  											/* 주문상세PK */
+				, OOD.OD_ORDER_DETL_SEQ 											/* 주문상세순번 */
+				, OOD.OD_ORDER_DETL_STEP_ID											/* 주문상세 정렬 키*/
+				, OOD.OD_ORDER_DETL_DEPTH_ID
+				, OOD.OD_ORDER_DETL_PARENT_ID										/* 주문상세 부모 ID */
+				, FN_ORDER_DETAIL_STATUS_NM(OOD.ORDER_STATUS_CD) AS ORDER_STATUS_NM	/* 정상주문상태명 */
+				, OOD.ORDER_STATUS_CD												/* 정상주문상태 */
+				, OOD.GOODS_TP_CD													/* 상품유형 */
+				, FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM 					/* 상품유형명 */
+				, OOD.UR_WAREHOUSE_ID												/*줄고처 ID */
+				, (SELECT WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID) AS WAREHOUSE_NM	/* 출고처 */
+				, OOD.IL_ITEM_CD													/* 마스터품목코드 */
+				, OOD.ITEM_BARCODE													/* 품목바코드 */
+				, OOD.IL_GOODS_ID													/* 상품 PK */
+				, OOD.GOODS_NM 														/* 상품명 */
+				, IUI.MISS_CNT
+				, OOD.RECOMMENDED_PRICE												/* 정상가 */
+				, OOD.SALE_PRICE 													/* 판매가 */
+				, OOD.SALE_PRICE * OOD.ORDER_CNT AS ORDER_PRICE												/* 주문금액 */
+				, OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE AS COUPON_PRICE	/* 쿠폰할인 */
+				, OOD.PAID_PRICE				/* 결제금액 */
+				, OOD.STORAGE_TYPE_CD												/* 보관방법 코드 */
+				, FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD) AS STORAGE_TYPE_NM			/* 보관방법 명 */
+			FROM OD_ORDER OD
+			INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID											/* 주문상세 */
+			INNER JOIN IF_UNRELEASED_INFO IUI ON OD.ODID = IUI.ODID AND OOD.OD_ORDER_DETL_SEQ = IUI.OD_ORDER_DETL_SEQ   /* 미출상세 */
+			INNER JOIN OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD												/* 주문 상태 */
+			WHERE OOD.OD_ORDER_ID = #{odOrderId}
+			<if test="claimStatusTp == 'CLAIM_STATUS_TP.CANCEL' ">
+				AND OOD.ORDER_STATUS_CD IN ('IR', 'IC', 'DR')
+			</if>
+			<if test="claimStatusTp == 'CLAIM_STATUS_TP.RETURN' ">
+				AND OOD.ORDER_STATUS_CD IN ('DI', 'DC', 'BF')
+			</if>
+			<if test="goodSearchList != null and goodSearchList.size != 0">
+				AND OOD.OD_ORDER_DETL_ID IN
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.odOrderDetlId}
+				</foreach>
+			</if>
+		) TT
+		, (SELECT @NUM:=0) TMP
+		ORDER BY OD_ORDER_DETL_STEP_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 상세 상품 목록 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDetlClaimGoodsInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimGoodsInfoResultMap">
+		/*	order.claimRequest.getOrderDetlClaimGoodsInfoList 주문 상세 상품 목록 조회 */
+		SELECT
+			@NUM:=@NUM+1 AS ROWNUM			/*ROW NUMBER*/
+			, TT.*
+		FROM
+		(
+			SELECT
+				OOD.OD_ORDER_ID														/* 주문 PK */
+				, OOD.OD_ORDER_DETL_ID  											/* 주문상세PK */
+				, OOD.OD_ORDER_DETL_SEQ 											/* 주문상세순번 */
+				, OOD.OD_ORDER_DETL_STEP_ID											/* 주문상세 정렬 키*/
+				, OOD.OD_ORDER_DETL_DEPTH_ID
+				, OOD.OD_ORDER_DETL_PARENT_ID										/* 주문상세 부모 ID */
+				, FN_ORDER_DETAIL_STATUS_NM(OOD.ORDER_STATUS_CD) AS ORDER_STATUS_NM	/* 정상주문상태명 */
+				, OOD.ORDER_STATUS_CD												/* 정상주문상태 */
+				, OOD.GOODS_TP_CD													/* 상품유형 */
+				, FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM 					/* 상품유형명 */
+				, OOD.UR_WAREHOUSE_ID												/*줄고처 ID */
+				, (SELECT WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID) AS WAREHOUSE_NM	/* 출고처 */
+				, OOD.TAX_YN														/* 과세여부 */
+				, OOD.IL_ITEM_CD													/* 마스터품목코드 */
+				, OOD.ITEM_BARCODE													/* 품목바코드 */
+				, OOD.IL_GOODS_ID													/* 상품 PK */
+				, OOD.GOODS_NM 														/* 상품명 */
+				, OOD.GOODS_DELIVERY_TYPE											/* 상품배송타입 */
+				, OOD.STORAGE_TYPE_CD												/* 보관방법 코드 */
+				, IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN		/* 재배송여부 */
+				, FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD) AS STORAGE_TYPE_NM			/* 보관방법 명 */
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(undeliveredClaimYn, "Y")'> <!-- 미출 클레임 처리여부 -->
+						, IFNULL(IUI.MISS_CNT, 0) - IFNULL(OCD.CLAIM_CNT, 0) AS CLAIM_CNT
+					</when>
+					<otherwise>
+						, CASE
+							WHEN OOD.ORDER_CNT - OOD.CANCEL_CNT = 0 THEN 0
+							WHEN IFNULL(IUI.MISS_CNT, 0) = 0 THEN OOD.ORDER_CNT - OOD.CANCEL_CNT
+							WHEN OOD.ORDER_CNT - (OOD.CANCEL_CNT - IFNULL(OCD.CLAIM_CNT,0) - IFNULL(OCD.MISS_CLAIM_CNT, 0)) - IFNULL(IUI.MISS_CNT, 0) <![CDATA[<=]]> 0 THEN OOD.ORDER_CNT - OOD.CANCEL_CNT
+							ELSE OOD.ORDER_CNT - (OOD.CANCEL_CNT - IFNULL(OCD.CLAIM_CNT,0) - IFNULL(OCD.MISS_CLAIM_CNT, 0)) - IFNULL(IUI.MISS_CNT, 0)
+						 END AS CLAIM_CNT
+					</otherwise>
+				</choose>
+				, CASE  WHEN OOD.GOODS_DELIVERY_TYPE = 'GOODS_DELIVERY_TYPE.DAILY' AND OODD.DAILY_BULK_YN = 'N'
+						THEN IFNULL(OODD.ORDER_CNT, OOD.ORDER_CNT)
+						ELSE IFNULL(OOD.ORDER_CNT, OODD.ORDER_CNT)
+				  END AS ORDER_CNT														/* 주문수량 */
+		  		, OOD.ORDER_CNT AS ORG_ORDER_CNT									/* 상품 실제 주문 수량 */
+				, OOD.CANCEL_CNT													/* 주문취소수량 */
+		  		, OD.BUYER_TYPE_CD
+				, OOD.RECOMMENDED_PRICE												/* 정상가 */
+				, OOD.TOT_SALE_PRICE 												/* 판매가총합 */
+				, OOD.SALE_PRICE 													/* 판매가 */
+				, OOD.SALE_PRICE * OOD.ORDER_CNT AS ORDER_PRICE										/* 주문금액 */
+				, OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE AS COUPON_PRICE	/* 쿠폰할인 */
+				, OOD.CART_COUPON_PRICE			/* 장바구니쿠폰 */
+				, OOD.GOODS_COUPON_PRICE		/* 상품쿠폰 */
+				, OOD.DIRECT_PRICE - IFNULL(T1.DISCOUNT_PRICE, 0) AS DIRECT_PRICE	/* 즉시할인 */
+				, CASE  WHEN OOD.PAID_PRICE - IFNULL(T2.REFUND_PRICE, 0) <![CDATA[<]]> 0
+						THEN 0
+						ELSE OOD.PAID_PRICE - IFNULL(T2.REFUND_PRICE, 0)
+				  END AS PAID_PRICE			/* 결제금액 */
+				, OTN.PS_SHIPPING_COMP_ID		/* 택배사 설정 PK */
+				, OTN.TRACKING_NO				/* 개별송장번호 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TP, '')) AS GOODS_CYCLE_TP /* 배송주기 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TERM_TP, '')) AS GOODS_CYCLE_TERM_TP /* 배송기간 */
+				, IFNULL(OODD.MON_CNT, 0) AS MON_CNT
+				, IFNULL(OODD.TUE_CNT, 0) AS TUE_CNT
+				, IFNULL(OODD.WED_CNT, 0) AS WED_CNT
+				, IFNULL(OODD.THU_CNT, 0) AS THU_CNT
+				, IFNULL(OODD.FRI_CNT, 0) AS FRI_CNT
+				, IFNULL(OODD.SET_CNT, 0) AS SET_CNT
+				, IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN /* 알러지 식단 여부 */
+				, IFNULL(OODD.SCHEDULE_YN, 'N') AS SCHEDULE_YN /* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+				, GOODS_DAILY_TP 				/* 일일상품 유형(GOODSDAILYTP : GREENJUICE/BABYMEAL/EATSSLIM ) */
+				, ORDER_STATUS_DELI_TP 			/* 주문상태 배송유형 공통코드: ORDERSTATUSDELITP */
+				, 0 AS OD_CLAIM_DETL_ID			/* 주문클레임 상세 PK */
+				, 0 AS OD_CLAIM_ID 				/* 주문 클레임 PK */
+				, 0 AS PS_CLAIM_BOS_SUPPLY_ID	/* BOS 클레임 사유 공급업체 PK */
+				, 0 AS PS_CLAIM_BOS_ID 			/* BOS 클레임 사유 PK */
+				, '' AS CLAIM_STATUS_CD 		/* 클레임 주문상태 : OD_STATUS.STATUS_CD */
+				, '' AS REFUND_STATUS_CD 		/* 환불상태 : OD_STATUS.STATUS_CD */
+				, FN_GOODS_C_IMG(IFNULL(OOD.IL_GOODS_ID, 0)) AS GOODS_IMG_NM		/* 대표 상품 이미지 */
+				, OOD.UR_SUPPLIER_ID			/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+		  		, OSP.OD_SHIPPING_PRICE_ID
+				, OSP.PM_COUPON_ISSUE_ID AS DELIVERY_COUPON_ISSUE_ID		/* 배송비쿠폰발급 PK */
+				, OSP.PM_COUPON_NM											/* 배송비쿠폰명 */
+				, IFNULL((
+							SELECT
+								CASE PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+									WHEN 0 THEN '전체 할인'
+									ELSE CONCAT('최대', PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,'원')
+								END
+							FROM
+								PM_COUPON_ISSUE PCI
+							INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+							WHERE
+								PCI.PM_COUPON_ISSUE_ID = OSP.PM_COUPON_ISSUE_ID
+							), '') AS PM_COUPON_BENEFIT							/* 배송비 쿠폰 혜택 */
+				, OSP.SHIPPING_DISCOUNT_PRICE								/* 배송비할인금액 */
+				, IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE
+				, IFNULL(GST.NAME, '') AS IL_SHIPPING_TMPL_NM
+				, IFNULL(OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, 0) AS IL_SHIPPING_TMPL_ID
+				, IFNULL(GST.CONDITION_TP, '') AS CONDITION_TP
+				, IFNULL(ISC.CONDITION_VAL, '') AS CONDITION_VAL
+				, IFNULL(GST.SHIPPING_PRICE , '') AS TEMPLATE_SHIPPING_PRICE
+				, IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+				, DATE_FORMAT(OOD.ORDER_IF_DT, '%Y-%m-%d') AS ORDER_IF_DT
+				, DATE_FORMAT(OOD.SHIPPING_DT, '%Y-%m-%d') AS SHIPPING_DT
+				, DATE_FORMAT(OOD.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DT
+				, CONCAT(OOD.UR_WAREHOUSE_ID, '∀', IFNULL(OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, 0), '∀', CASE WHEN IFNULL(GST.BUNDLE_YN, 'Y') = 'N' THEN OOD.OD_ORDER_DETL_ID ELSE IFNULL(GST.BUNDLE_YN, 'Y') END) AS GRP_WAREHOUSE_SHIPPING_TMPL_ID
+				, OS.BOS_JSON
+				, OODD.STORE_DELIVERY_TP /* 배송장소코드 */
+				, IFNULL(OODD.GOODS_CYCLE_TP, '') AS GOODS_CYCLE_TP_CODE /* 배송주기 */
+				, IFNULL(OODD.GOODS_CYCLE_TERM_TP, '') AS GOODS_CYCLE_TERM_TP_CODE /* 배송기간 */
+				, IFNULL(T2.CLAIM_REGIST_CNT, 0) AS CLAIM_REGIST_CNT
+				, IFNULL(GST.BUNDLE_YN, 'Y') AS BUNDLE_YN
+				, IFNULL(OODD.DAILY_BULK_YN, 'N') AS DAILY_BULK_YN
+				, IFNULL(T3.EMPLOYEE_DISCOUNT_PRICE, 0) AS EMPLOYEE_DISCOUNT_PRICE
+				, IFNULL(OOD.EV_EXHIBIT_ID, 0) AS EV_EXHIBIT_ID
+				, IFNULL(II.DP_BRAND_ID, 0) AS DP_BRAND_ID
+			FROM
+				OD_ORDER OD
+				INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID											/* 주문상세 */
+				INNER JOIN OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD												/* 주문 상태 */
+				LEFT OUTER JOIN IL_ITEM II ON II.IL_ITEM_CD = OOD.IL_ITEM_CD
+				LEFT OUTER JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID /* 주문상세 송장번호 */
+				LEFT OUTER JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+				LEFT OUTER JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+				LEFT OUTER JOIN IL_SHIPPING_TEMPLATE GST ON OSP.IL_SHIPPING_TMPL_ID = GST.IL_SHIPPING_TMPL_ID
+				LEFT OUTER JOIN (
+					SELECT
+						SUM(IIUI.MISS_CNT) AS MISS_CNT
+						, IIUI.ODID
+						, IIUI.OD_ORDER_DETL_SEQ
+					FROM IF_UNRELEASED_INFO IIUI
+					INNER JOIN OD_ORDER_DETL IOOD ON IOOD.ODID = IIUI.ODID AND IOOD.OD_ORDER_DETL_SEQ = IIUI.OD_ORDER_DETL_SEQ
+
+					WHERE IOOD.OD_ORDER_ID = #{odOrderId}
+					GROUP BY IIUI.ODID, IIUI.OD_ORDER_DETL_SEQ
+				) IUI ON OOD.ODID = IUI.ODID AND OOD.OD_ORDER_DETL_SEQ = IUI.OD_ORDER_DETL_SEQ
+				LEFT OUTER JOIN (
+					SELECT
+						SUM(IF(IOCD.PRIORITY_UNDELIVERED_YN = 'Y', IOCD.CLAIM_CNT, 0)) AS CLAIM_CNT
+						, SUM(IF(IOCD.IF_UNRELEASED_INFO_ID > 0, IOCD.CLAIM_CNT, 0)) AS MISS_CLAIM_CNT
+						, IOCD.OD_ORDER_DETL_ID
+					FROM OD_CLAIM IOC
+					INNER JOIN OD_CLAIM_DETL IOCD ON IOC.OD_CLAIM_ID = IOCD.OD_CLAIM_ID
+					WHERE IOC.OD_ORDER_ID = #{odOrderId}
+					AND IOC.CLAIM_YN = 'Y'
+					GROUP BY IOCD.OD_ORDER_DETL_ID
+				) OCD ON OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_DETL_ID,
+						SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.EMPLOYEE','GOODS_DISCOUNT_TP.GOODS_COUPON')
+					AND
+						OD_ORDER_ID = #{odOrderId}
+					GROUP BY OD_ORDER_DETL_ID
+				) T1 ON T1.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN
+				(
+					SELECT
+						OC.OD_ORDER_ID,
+						OCD.OD_ORDER_DETL_ID,
+						SUM(OCD.PAID_PRICE) AS REFUND_PRICE,
+						COUNT(1) AS CLAIM_REGIST_CNT
+					FROM
+						OD_CLAIM OC
+					INNER JOIN
+						OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+					WHERE
+						OC.OD_ORDER_ID = #{odOrderId}
+					AND
+						OC.CLAIM_YN = 'Y'
+					AND
+						OCD.CLAIM_STATUS_CD != 'CS'
+					GROUP BY OC.OD_ORDER_ID, OCD.OD_ORDER_DETL_ID
+				) T2 ON OOD.OD_ORDER_ID = T2.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = T2.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_DETL_ID,
+						SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE /* 임직원 지원금 */
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+					AND
+						OD_ORDER_ID = #{odOrderId}
+					GROUP BY OD_ORDER_DETL_ID
+				) T3 ON T3.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN IL_SHIPPING_CONDITION ISC ON GST.IL_SHIPPING_TMPL_ID = ISC.IL_SHIPPING_TMPL_ID
+			WHERE
+				OOD.OD_ORDER_ID = #{odOrderId}
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.CANCEL' ">
+					AND OOD.ORDER_STATUS_CD IN ('IR', 'IC', 'DR')
+				</if>
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.RETURN' ">
+					AND OOD.ORDER_STATUS_CD IN ('DI', 'DC', 'BF')
+				</if>
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+				AND OOD.OD_ORDER_DETL_ID IN
+					<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+						#{goodsInfo.odOrderDetlId}
+					</foreach>
+				</if>
+			UNION ALL
+			(
+			SELECT
+				  OOD.OD_ORDER_ID													/* 주문 PK */
+				, OODP.OD_ORDER_DETL_ID  											/* 주문상세PK */
+				, 0 AS OD_ORDER_DETL_SEQ 											/* 주문상세순번 */
+				, OODP.OD_ORDER_DETL_STEP_ID										/* 주문상세 정렬 키*/
+				, 1 AS OD_ORDER_DETL_DEPTH_ID
+				, OODP.OD_ORDER_DETL_ID AS OD_ORDER_DETL_PARENT_ID					/* 주문상세 부모 ID */
+				, FN_ORDER_PACK_STATUS_NM(OODP.OD_ORDER_DETL_ID) AS ORDER_STATUS_NM	/* 정상주문상태명 */
+				, FN_ORDER_PACK_STATUS_CD(OODP.OD_ORDER_DETL_ID) AS ORDER_STATUS_CD	/* 정상주문상태 */
+				, OODP.GOODS_TP_CD													/* 상품유형 */
+				, FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM 					/* 상품유형명 */
+				, 0 AS UR_WAREHOUSE_ID												/* 줄고처 ID */
+				, '' AS WAREHOUSE_NM												/* 출고처 */
+				, '' AS TAX_YN														/* 과세여부 */
+				, '' AS IL_ITEM_CD													/* 마스터품목코드 */
+				, '' AS ITEM_BARCODE												/* 품목바코드 */
+				, OODP.IL_GOODS_ID													/* 상품 PK */
+				, OODP.GOODS_NM 													/* 상품명 */
+				, OOD.GOODS_DELIVERY_TYPE											/* 상품배송타입 */
+				, OOD.STORAGE_TYPE_CD												/* 보관방법 코드 */
+				, 'N' AS REDELIVERY_YN												/* 재배송여부 */
+				, FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD) AS STORAGE_TYPE_NM			/* 보관방법 명 */
+				, OODP.ORDER_CNT * (OOD.CANCEL_CNT / OOD.ORDER_CNT) AS CLAIM_CNT	/* 클레임수량 */
+				, OODP.ORDER_CNT 													/* 주문수량 = (주문 수량 - 주문 취소 수량) */
+		  		, OODP.ORDER_CNT AS ORG_ORDER_CNT									/* 상품 실제 주문 수량 */
+				, OODP.ORDER_CNT * (OOD.CANCEL_CNT / OOD.ORDER_CNT) AS CANCEL_CNT	/* 주문취소수량 */
+		  		, OD.BUYER_TYPE_CD
+				, OOD.RECOMMENDED_PRICE												/* 정상가 */
+				, 0 AS TOT_SALE_PRICE 												/* 판매가총합 */
+				, OOD.SALE_PRICE	 												/* 판매가 */
+				, OOD.SALE_PRICE * OOD.ORDER_CNT AS ORDER_PRICE						/* 주문금액 */
+				, OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE AS COUPON_PRICE	/* 쿠폰할인 */
+				, OOD.CART_COUPON_PRICE			/* 장바구니쿠폰 */
+				, OOD.GOODS_COUPON_PRICE		/* 상품쿠폰 */
+				, OOD.DIRECT_PRICE - IFNULL(T1.DISCOUNT_PRICE, 0) AS DIRECT_PRICE				/* 즉시할인 */
+				, OODP.PAID_PRICE				/* 결제금액 */
+				, OTN.PS_SHIPPING_COMP_ID		/* 택배사 설정 PK */
+				, OTN.TRACKING_NO				/* 개별송장번호 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TP, '')) AS GOODS_CYCLE_TP /* 배송주기 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TERM_TP, '')) AS GOODS_CYCLE_TERM_TP /* 배송기간 */
+				, IFNULL(OODD.MON_CNT, 0) AS MON_CNT
+				, IFNULL(OODD.TUE_CNT, 0) AS TUE_CNT
+				, IFNULL(OODD.WED_CNT, 0) AS WED_CNT
+				, IFNULL(OODD.THU_CNT, 0) AS THU_CNT
+				, IFNULL(OODD.FRI_CNT, 0) AS FRI_CNT
+				, IFNULL(OODD.SET_CNT, 0) AS SET_CNT
+				, IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN /* 알러지 식단 여부 */
+				, IFNULL(OODD.SCHEDULE_YN, 'N') AS SCHEDULE_YN /* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+				, GOODS_DAILY_TP 				/* 일일상품 유형(GOODSDAILYTP : GREENJUICE/BABYMEAL/EATSSLIM ) */
+				, ORDER_STATUS_DELI_TP 			/* 주문상태 배송유형 공통코드: ORDERSTATUSDELITP */
+				, 0 AS OD_CLAIM_DETL_ID			/* 주문클레임 상세 PK */
+				, 0 AS OD_CLAIM_ID 				/* 주문 클레임 PK */
+				, 0 AS PS_CLAIM_BOS_SUPPLY_ID	/* BOS 클레임 사유 공급업체 PK */
+				, 0 AS PS_CLAIM_BOS_ID 			/* BOS 클레임 사유 PK */
+				, '' AS CLAIM_STATUS_CD 		/* 클레임 주문상태 : OD_STATUS.STATUS_CD */
+				, '' AS REFUND_STATUS_CD 		/* 환불상태 : OD_STATUS.STATUS_CD */
+				, FN_GOODS_C_IMG(IFNULL(OODP.IL_GOODS_ID, 0)) AS GOODS_IMG_NM		/* 대표 상품 이미지 */
+				, OOD.UR_SUPPLIER_ID			/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+		  		, OSP.OD_SHIPPING_PRICE_ID
+				, OSP.PM_COUPON_ISSUE_ID AS DELIVERY_COUPON_ISSUE_ID		/* 배송비쿠폰발급 PK */
+				, OSP.PM_COUPON_NM											/* 배송비쿠폰명 */
+		  		, IFNULL((
+		  					SELECT
+								CASE PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+									WHEN 0 THEN '전체 할인'
+									ELSE CONCAT('최대', PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,'원')
+								END
+							FROM
+								PM_COUPON_ISSUE PCI
+							INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+							WHERE
+								PCI.PM_COUPON_ISSUE_ID = OSP.PM_COUPON_ISSUE_ID
+						), '') AS PM_COUPON_BENEFIT							/* 배송비 쿠폰 혜택 */
+				, OSP.SHIPPING_DISCOUNT_PRICE								/* 배송비할인금액 */
+				, IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE
+				, IFNULL(GST.NAME, '') AS IL_SHIPPING_TMPL_NM
+				, IFNULL(OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, 0) AS IL_SHIPPING_TMPL_ID
+				, IFNULL(GST.CONDITION_TP, '') AS CONDITION_TP
+				, IFNULL(ISC.CONDITION_VAL, '') AS CONDITION_VAL
+				, IFNULL(GST.SHIPPING_PRICE , '') AS TEMPLATE_SHIPPING_PRICE
+				, IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+				, DATE_FORMAT(OOD.ORDER_IF_DT, '%Y-%m-%d') AS ORDER_IF_DT
+				, DATE_FORMAT(OOD.SHIPPING_DT, '%Y-%m-%d') AS SHIPPING_DT
+				, DATE_FORMAT(OOD.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DT
+				, CONCAT('0∀', IFNULL(OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, 0), '∀', CASE WHEN IFNULL(GST.BUNDLE_YN, 'Y') = 'N' THEN OODP.OD_ORDER_DETL_ID ELSE IFNULL(GST.BUNDLE_YN, 'Y') END) AS GRP_WAREHOUSE_SHIPPING_TMPL_ID
+				, '' AS BOS_JSON
+				, OODD.STORE_DELIVERY_TP /* 배송장소코드 */
+				, IFNULL(OODD.GOODS_CYCLE_TP, '') AS GOODS_CYCLE_TP_CODE /* 배송주기 */
+				, IFNULL(OODD.GOODS_CYCLE_TERM_TP, '') AS GOODS_CYCLE_TERM_TP_CODE /* 배송기간 */
+				, 0 AS CLAIM_REGIST_CNT
+				, IFNULL(GST.BUNDLE_YN, 'Y') AS BUNDLE_YN
+				, IFNULL(OODD.DAILY_BULK_YN, 'N') AS DAILY_BULK_YN
+				, IFNULL(T2.EMPLOYEE_DISCOUNT_PRICE, 0) AS EMPLOYEE_DISCOUNT_PRICE
+				, 0 AS EV_EXHIBIT_ID
+				, 0 AS DP_BRAND_ID
+			FROM
+				OD_ORDER OD
+				INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+				INNER JOIN OD_ORDER_DETL_PACK OODP ON OOD.OD_ORDER_DETL_PARENT_ID = OODP.OD_ORDER_DETL_ID
+				LEFT JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID
+				LEFT JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_ID = OODP.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = OODP.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+				LEFT OUTER JOIN IL_SHIPPING_TEMPLATE GST ON OSP.IL_SHIPPING_TMPL_ID = GST.IL_SHIPPING_TMPL_ID
+				LEFT OUTER JOIN IL_SHIPPING_CONDITION ISC ON GST.IL_SHIPPING_TMPL_ID = ISC.IL_SHIPPING_TMPL_ID
+				LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_DETL_ID,
+						SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.EMPLOYEE','GOODS_DISCOUNT_TP.GOODS_COUPON')
+					AND
+						OD_ORDER_ID = #{odOrderId}
+					GROUP BY OD_ORDER_DETL_ID
+				) T1 ON T1.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_DETL_ID,
+						SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE /*임직원 지원금*/
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+					AND
+						OD_ORDER_ID = #{odOrderId}
+					GROUP BY OD_ORDER_DETL_ID
+				) T2 ON T2.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+			WHERE
+				OOD.OD_ORDER_ID = #{odOrderId}
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.CANCEL' ">
+					AND OOD.ORDER_STATUS_CD IN ('IR', 'IC', 'DR')
+				</if>
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.RETURN' ">
+					AND OOD.ORDER_STATUS_CD IN ('DI', 'DC', 'BF')
+				</if>
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+				AND OOD.OD_ORDER_DETL_ID IN
+					<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+						#{goodsInfo.odOrderDetlId}
+					</foreach>
+				</if>
+			GROUP BY OODP.OD_ORDER_DETL_ID
+			ORDER BY OD_ORDER_DETL_STEP_ID DESC
+			)
+		) TT
+ 		, (SELECT @NUM:=0) TMP
+		ORDER BY OD_ORDER_DETL_STEP_ID DESC
+	</select>
+
+	<!-- 결제정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimPaymentInfoDto" id="getOrderClaimPaymentInfoResultMap">
+		<result column="PAID_PRICE" 			property="paidPrice" />
+		<result column="PAY_TP"					property="payTp" />
+		<result column="PAY_TP_NM"				property="payTpNm" />
+		<result column="REFUND_PAY_TP_NM"		property="refundPayTpNm" />
+		<result column="PAYMENT_PRICE"			property="paymentPrice" />
+		<result column="POINT_PRICE"			property="pointPrice" />
+		<result column="OD_PAYMENT_MASTER_ID"	property="odPaymentMasterId" />
+		<result column="PART_CANCEL_YN"			property="partCancelYn" />
+		<result column="TAXABLE_PRICE"			property="taxablePrice" />
+		<result column="NON_TAXABLE_PRICE"		property="nonTaxablePrice" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 결제정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimPaymentInfo" parameterType="long" resultMap="getOrderClaimPaymentInfoResultMap">
+		/*	order.claimRequest.getOrderClaimPaymentInfo 결제정보 조회 */
+		SELECT
+			SUM(T.PAID_PRICE - T.RETURN_PAYMENT_PRICE - T.RETURN_POINT_PRICE) AS PAID_PRICE	/* 주문금액 */
+		    , PAY_TP
+			, FN_COMN_CODE_DIC(PAY_TP) AS REFUND_PAY_TP_NM 							/* 결제수단 */
+		    , PAY_TP_NM
+			, SUM(T.TAXABLE_PRICE) - SUM(T.RETURN_TAXABLE_PRICE) - IFNULL(T2.TAXABLE_PRICE, 0) AS TAXABLE_PRICE
+			, SUM(T.NON_TAXABLE_PRICE) - SUM(T.RETURN_NON_TAXABLE_PRICE) - IFNULL(T2.NON_TAXABLE_PRICE, 0) AS NON_TAXABLE_PRICE
+			, IF(SUM(T.PAYMENT_PRICE) - SUM(RETURN_PAYMENT_PRICE) - IFNULL(T2.PAYMENT_PRICE, 0) <![CDATA[<]]> 0, 0, SUM(T.PAYMENT_PRICE) - SUM(RETURN_PAYMENT_PRICE) - IFNULL(T2.PAYMENT_PRICE, 0)) AS PAYMENT_PRICE /* 결제금액 */
+			, SUM(T.POINT_PRICE) - SUM(RETURN_POINT_PRICE) - IFNULL(T2.POINT_PRICE, 0) AS POINT_PRICE 		/* 적립금 */
+			, T.OD_PAYMENT_MASTER_ID
+			, T.PART_CANCEL_YN 		/* 부분취소 가능여부 */
+		FROM (
+			SELECT
+				OP.OD_ORDER_ID
+				, OP.OD_CLAIM_ID
+				, OP.OD_PAYMENT_MASTER_ID
+				, OPM.TYPE
+				/*, IFNULL(OPM.PAYMENT_PRICE, 0) + IFNULL(OPM.POINT_PRICE, 0) AS PAID_PRICE */
+				/*, IFNULL(OPM.PAYMENT_PRICE, 0) AS PAYMENT_PRICE */
+				/*, IFNULL(OPM.POINT_PRICE, 0) AS POINT_PRICE */
+				/*, IFNULL(SUM(T1.PAYMENT_PRICE), 0) AS RETURN_PAYMENT_PRICE */
+				/*, IFNULL(SUM(T1.POINT_PRICE), 0) AS RETURN_POINT_PRICE */
+				/*, IFNULL(OPM.TAXABLE_PRICE, 0) AS TAXABLE_PRICE */
+				/*, IFNULL(OPM.NON_TAXABLE_PRICE , 0) AS NON_TAXABLE_PRICE */
+				/*, IFNULL(SUM(T1.TAXABLE_PRICE), 0) AS RETURN_TAXABLE_PRICE */
+				/*, IFNULL(SUM(T1.NON_TAXABLE_PRICE), 0) AS RETURN_NON_TAXABLE_PRICE */
+				, CASE WHEN OPM.TYPE = 'G' THEN IFNULL(OPM.PAYMENT_PRICE, 0) + IFNULL(OPM.POINT_PRICE, 0) ELSE 0 END AS PAID_PRICE	/* 주문금액 */
+				, CASE WHEN OPM.TYPE = 'G' THEN IFNULL(OPM.PAYMENT_PRICE, 0) ELSE 0 END AS PAYMENT_PRICE				/* 결제금액 */
+				, CASE WHEN OPM.TYPE = 'G' THEN IFNULL(OPM.POINT_PRICE, 0) ELSE 0 END AS POINT_PRICE					/* 사용적립금액 */
+				, CASE WHEN OPM.TYPE = 'G' THEN IFNULL(OPM.TAXABLE_PRICE, 0) ELSE 0 END AS TAXABLE_PRICE				/* 과세금액 */
+				, CASE WHEN OPM.TYPE = 'G' THEN IFNULL(OPM.NON_TAXABLE_PRICE, 0) ELSE 0 END AS NON_TAXABLE_PRICE		/* 비과세금액 */
+				, CASE WHEN OPM.TYPE = 'F' THEN IFNULL(OPM.PAYMENT_PRICE, 0) ELSE 0 END AS RETURN_PAYMENT_PRICE		/* 환불결제금액 */
+				, CASE WHEN OPM.TYPE = 'F' THEN IFNULL(OPM.POINT_PRICE, 0) ELSE 0 END AS RETURN_POINT_PRICE			/* 환불적립금액 */
+				, CASE WHEN OPM.TYPE = 'F' THEN IFNULL(OPM.TAXABLE_PRICE, 0) ELSE 0 END AS RETURN_TAXABLE_PRICE			/* 환불과세금액 */
+				, CASE WHEN OPM.TYPE = 'F' THEN IFNULL(OPM.NON_TAXABLE_PRICE, 0) ELSE 0 END AS RETURN_NON_TAXABLE_PRICE			/* 환불비과세금액 */
+			    , OPM.PAY_TP
+				, CASE WHEN OPM.PAY_TP = 'PAY_TP.FREE' THEN '적립금 환불'
+					   ELSE(CASE WHEN OPM.POINT_PRICE = 0 THEN ( CASE OPM.PAY_TP WHEN 'PAY_TP.CARD' THEN '신용카드 취소'
+																				 WHEN 'PAY_TP.VIRTUAL_BANK' THEN '본인계좌환불'
+																				 WHEN 'PAY_TP.BANK' THEN '계좌이체 취소'
+																				 WHEN 'PAY_TP.COLLECTION' THEN  '외부몰 결제'
+																				 ELSE CONCAT(FN_COMN_CODE_DIC(OPM.PAY_TP),'취소') END)
+								 ELSE CONCAT(CASE OPM.PAY_TP WHEN 'PAY_TP.CARD' THEN '신용카드 취소'
+															 WHEN 'PAY_TP.VIRTUAL_BANK' THEN '본인계좌환불'
+															 WHEN 'PAY_TP.BANK' THEN '계좌이체 취소'
+															 WHEN 'PAY_TP.COLLECTION' THEN  '외부몰 결제'
+															 ELSE CONCAT(FN_COMN_CODE_DIC(OPM.PAY_TP),'취소') END,' / 적립금 취소')
+						   		 END)
+					   END AS PAY_TP_NM	/* 결제수단 */
+				,OPM.PART_CANCEL_YN
+			FROM
+				OD_PAYMENT OP
+			INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+			WHERE
+				OP.OD_ORDER_ID = #{odOrderId}
+			AND
+				NOT EXISTS (
+						SELECT
+							B.TID
+						FROM
+							OD_PAYMENT A
+						INNER JOIN OD_PAYMENT_MASTER B ON A.OD_PAYMENT_MASTER_ID = B.OD_PAYMENT_MASTER_ID
+						WHERE
+							A.OD_ORDER_ID = OP.OD_ORDER_ID
+						AND
+							B.TID = OPM.TID
+						AND
+							B.TYPE = 'A'
+			)
+			ORDER BY OP.OD_CLAIM_ID
+		) T
+		LEFT OUTER JOIN (
+			SELECT
+				#{odOrderId} AS OD_ORDER_ID,
+				SUM(B.TAXABLE_PRICE) AS TAXABLE_PRICE,
+				SUM(B.NON_TAXABLE_PRICE) AS NON_TAXABLE_PRICE,
+				SUM(B.PAYMENT_PRICE) AS PAYMENT_PRICE,
+				SUM(B.POINT_PRICE) AS POINT_PRICE
+			FROM
+				OD_PAYMENT A
+					INNER JOIN OD_PAYMENT_MASTER B ON A.OD_PAYMENT_MASTER_ID = B.OD_PAYMENT_MASTER_ID
+			WHERE B.TYPE = 'F'
+			  AND STATUS = 'IC'
+			  AND A.OD_ORDER_ID IN (
+				SELECT OD_ORDER_ID
+				FROM OD_PAYMENT T1
+				WHERE T1.OD_PAYMENT_MASTER_ID = (SELECT OD_PAYMENT_MASTER_ID FROM OD_PAYMENT T2 WHERE T2.OD_ORDER_ID =#{odOrderId} AND T2.OD_CLAIM_ID = 0)
+				  AND T1.OD_ORDER_ID != #{odOrderId}
+				)
+				AND NOT EXISTS (
+					SELECT
+						OPM.TID
+					FROM
+						OD_PAYMENT_MASTER OPM
+					WHERE
+						B.TID = OPM.TID
+					  AND
+						OPM.TYPE = 'A'
+				)
+		) T2 ON T.OD_ORDER_ID = T2.OD_ORDER_ID
+	</select>
+
+	<!-- 전체 상품 금액 환불 정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimPriceInfoDto" id="getOrderClaimPriceInfoResultMap">
+		<result column="GOODS_PRICE" 			property="goodsPrice" />
+		<result column="GOODS_COUPON_PRICE"		property="goodsCouponPrice" />
+		<result column="CART_COUPON_PRICE"		property="cartCouponPrice" />
+		<result column="ORDER_SHIPPING_PRICE"	property="orderShippingPrice" />
+		<result column="REFUND_REG_PRICE"		property="refundRegPrice" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 전체 상품 금액 환불 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimPriceInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimPriceInfoResultMap">
+		/*	order.claimRequest.getOrderClaimPriceInfo 환불 정보 조회 */
+		SELECT
+			SUM(SALE_PRICE * ORDER_CNT)	AS GOODS_PRICE 		/* 주문상품금액(판매가합계) */
+			, SUM(GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE	/* 상품쿠폰 */
+			, SUM(CART_COUPON_PRICE) AS CART_COUPON_PRICE	/* 장바구니쿠폰 */
+			, SUM(SHIPPING_PRICE) AS ORDER_SHIPPING_PRICE	/* 주문시 부과된 배송비 */
+			, SUM(PAID_PRICE + SHIPPING_PRICE) AS REFUND_REG_PRICE	/* 환불신청금액 */
+		FROM
+			OD_ORDER_DETL OOD
+			LEFT JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+
+			<if test="goodSearchList != null and goodSearchList.size != 0">
+			AND OOD.OD_ORDER_DETL_ID IN
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.odOrderDetlId}
+				</foreach>
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 전체 상품 금액 주문클레임 정보에서 환불 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimPriceInfo" parameterType="long" resultMap="getOrderClaimPriceInfoResultMap">
+		/*	order.claimRequest.getClaimPriceInfo 주문클레임 정보에서 환불 정보 조회 */
+		SELECT
+			GOODS_PRICE 			/* 주문상품금액(판매가합계) */
+			, GOODS_COUPON_PRICE	/* 상품쿠폰 */
+			, CART_COUPON_PRICE		/* 장바구니쿠폰 */
+			, SHIPPING_PRICE AS ORDER_SHIPPING_PRICE		/* 배송비 */
+		FROM
+			OD_CLAIM
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 상품 수량 변경 환불 정보
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimGoodsChangePriceInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimPriceInfoResultMap">
+		/*	order.claimRequest.getOrderClaimGoodsChangePriceInfo 상품 수량 변경 환불 정보 */
+		SELECT
+			SUM(T.GOODS_PRICE) AS GOODS_PRICE
+			, SUM(T.GOODS_COUPON_PRICE) AS GOODS_COUPON_PRICE
+			, SUM(T.CART_COUPON_PRICE) AS CART_COUPON_PRICE
+			, SUM(T.SHIPPING_PRICE) AS ORDER_SHIPPING_PRICE
+		FROM (
+		<if test="goodSearchList !=null and goodSearchList.size != 0">
+			<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="UNION ALL" >
+				<if test="goodsInfo.orderCnt != 0 and claimGoodsYn = 'Y'">
+				SELECT
+					#{goodsInfo.claimCnt} * RECOMMENDED_PRICE AS GOODS_PRICE  													/* 주문상품금액 */
+					, CASE WHEN #{goodsInfo.orderCnt} - #{goodsInfo.claimCnt} - #{goodsInfo.cancelCnt} = 0 THEN GOODS_COUPON_PRICE ELSE 0 END AS GOODS_COUPON_PRICE	/* 상품쿠폰 */
+					, FLOOR(CART_COUPON_PRICE * (#{goodsInfo.claimCnt} / #{goodsInfo.orderCnt})) AS CART_COUPON_PRICE			/* 장바구니쿠폰 */
+					, OSP.SHIPPING_PRICE
+				FROM
+					OD_ORDER_DETL OOD
+				INNER JOIN
+					OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+				WHERE
+					OD_ORDER_ID = #{odOrderId}
+					AND OD_ORDER_DETL_ID = #{goodsInfo.odOrderDetlId}
+				</if>
+			</foreach>
+		</if>
+		) T
+	</select>
+
+	<!-- 전체 상품 쿠폰 정보 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimCouponInfoDto" id="getOrderClaimCouponInfoResultMap">
+		<result column="OD_ORDER_DETL_DISCOUNT_ID" 	property="odOrderDetlDiscountId" />
+		<result column="OD_ORDER_DETL_ID" 			property="odOrderDetlId" />
+		<result column="DISCOUNT_TP" 				property="discountTp" />
+		<result column="PM_COUPON_ISSUE_ID" 		property="pmCouponIssueId" />
+		<result column="PM_COUPON_NM" 				property="pmCouponNm" />
+		<result column="DISCOUNT_DETL" 				property="discountDetl" />
+		<result column="DISCOUNT_PRICE" 			property="discountPrice" />
+		<result column="PS_EMPL_DISC_MASTER_ID" 	property="psEmplDiscMasterId" />
+		<result column="UR_BRAND_ID" 				property="urBrandId" />
+		<result column="OD_CLAIM_DETL_DISCOUNT_ID" 	property="odClaimDetlDiscountId" />
+		<result column="OD_ORDER_ID" 				property="odOrderId" />
+		<result column="OD_CLAIM_ID" 				property="odClaimId" />
+		<result column="OD_CLAIM_DETL_ID" 			property="odClaimDetlId" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 주문상세 할인금액 정보에서 전체 상품 또는 장바구니 쿠폰 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimCouponInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimCouponInfoResultMap">
+		/*	order.claimRequest.getOrderClaimCouponInfoList 주문상세 할인금액 정보에서 전체 상품 또는 장바구니 쿠폰 정보 조회 */
+		SELECT
+			OODD.OD_ORDER_DETL_DISCOUNT_ID		/* 주문상세 할인 PK */
+			, OODD.OD_ORDER_DETL_ID				/* 주문상세 PK */
+			, OODD.DISCOUNT_TP					/* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인) */
+			, OODD.PM_COUPON_ISSUE_ID			/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+			, OODD.PM_COUPON_NM					/* 쿠폰명 */
+			, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+				WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,' 원')
+				WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+					THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT ,'원')
+				    		ELSE CONCAT(PC.DISCOUNT_VAL,' 원')
+						END
+				END AS DISCOUNT_DETL			/* 할인상세 */
+			, OODD.DISCOUNT_PRICE				/* 할인금액 */
+			, OODD.PS_EMPL_DISC_MASTER_ID		/* 임직원 혜택그룹 : PS_EMPL_DISC_MASTER.PS_EMPL_DISC_MASTER_ID */
+			, OODD.UR_BRAND_ID					/* 임직원 혜택 표준 브랜드 : UR_BRAND.UR_BRAND_ID */
+			, 0 AS OD_CLAIM_DETL_DISCOUNT_ID 	/* 주문클레임 상세 할인 PK */
+			, OODD.OD_ORDER_ID					/* 주문 PK */
+			, 0 AS OD_CLAIM_ID					/* 주문 클레임 PK */
+			, 0 AS OD_CLAIM_DETL_ID 			/* 주문클레임 상세 PK */
+		FROM
+			OD_ORDER_DETL_DISCOUNT OODD
+			INNER JOIN PM_COUPON_ISSUE PCI ON OODD.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+			INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+
+			<if test='couponTp.equals("G")'>
+				AND PC.COUPON_TP IN ('COUPON_TYPE.GOODS', 'COUPON_TYPE.SALEPRICE_APPPOINT')
+			</if>
+			<if test='couponTp.equals("C")'>
+				AND PC.COUPON_TP = 'COUPON_TYPE.CART'
+			</if>
+
+			<if test="goodSearchList != null and goodSearchList.size != 0">
+				AND OODD.OD_ORDER_DETL_ID IN
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.odOrderDetlId}
+				</foreach>
+			</if>
+		ORDER BY OODD.PM_COUPON_ISSUE_ID ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 주문클레임 상세 할인금액 정보 에서 전체 상품 또는 장바구니 쿠폰 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimCouponInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimCouponInfoResultMap">
+		/*	order.claimRequest.getClaimCouponInfoList 주문클레임 상세 할인금액 정보 에서 전체 상품 또는 장바구니 쿠폰 정보 조회 */
+		SELECT
+			0 AS OD_ORDER_DETL_DISCOUNT_ID		/* 주문상세 할인 PK */
+			, 0 AS OD_ORDER_DETL_ID				/* 주문상세 PK */
+			, OCDD.DISCOUNT_TP					/* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인) */
+			, OCDD.PM_COUPON_ISSUE_ID			/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+			, OCDD.PM_COUPON_NM					/* 쿠폰명 */
+			, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+				WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,' 원')
+				WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+					THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT ,'원')
+				    		ELSE CONCAT(PC.DISCOUNT_VAL,' 원')
+						END
+				END AS DISCOUNT_DETL			/* 할인상세 */
+			, OCDD.DISCOUNT_PRICE				/* 할인금액 */
+			, OCDD.PS_EMPL_DISC_MASTER_ID		/* 임직원 혜택그룹 : PS_EMPL_DISC_MASTER.PS_EMPL_DISC_MASTER_ID */
+			, OCDD.UR_BRAND_ID					/* 임직원 혜택 표준 브랜드 : UR_BRAND.UR_BRAND_ID */
+			, OCDD.OD_CLAIM_DETL_DISCOUNT_ID 	/* 주문클레임 상세 할인 PK */
+			, OCDD.OD_ORDER_ID					/* 주문 PK */
+			, OCDD.OD_CLAIM_ID					/* 주문 클레임 PK */
+			, OCDD.OD_CLAIM_DETL_ID 			/* 주문클레임 상세 PK */
+		FROM
+			OD_CLAIM_DETL_DISCOUNT OCDD
+			INNER JOIN PM_COUPON_ISSUE PCI ON OCDD.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+			INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+
+			<if test='couponTp.equals("G")'>
+				AND PC.COUPON_TP IN ('COUPON_TYPE.GOODS', 'COUPON_TYPE.SALEPRICE_APPPOINT')
+			</if>
+			<if test='couponTp.equals("C")'>
+				AND PC.COUPON_TP = 'COUPON_TYPE.CART'
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 상품 클레임수량 변경시 주문상세 할인금액정보에서 장바구니 또는 상품 쿠폰 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimGoodsChangeCouponInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimCouponInfoResultMap">
+		/*	order.claimRequest.getOrderClaimGoodsChangeCouponInfoList 주문상세 할인금액정보에서 장바구니 또는 상품 쿠폰 정보 조회 */
+		SELECT
+			T.OD_ORDER_DETL_DISCOUNT_ID
+			, T.OD_ORDER_DETL_ID
+			, T.DISCOUNT_TP
+			, T.PM_COUPON_ISSUE_ID
+			, T.PM_COUPON_NM
+			, T.DISCOUNT_DETL
+			, T.DISCOUNT_PRICE
+			, T.PS_EMPL_DISC_MASTER_ID
+			, T.UR_BRAND_ID
+			, T.OD_CLAIM_DETL_DISCOUNT_ID
+			, T.OD_ORDER_ID
+			, T.OD_CLAIM_ID
+			, T.OD_CLAIM_DETL_ID
+		FROM (
+			<if test="goodSearchList !=null and goodSearchList.size != 0">
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="UNION ALL" >
+					<if test="goodsInfo.orderCnt != 0 and claimGoodsYn = 'Y'">
+					SELECT
+						OODD.OD_ORDER_DETL_DISCOUNT_ID		/* 주문상세 할인 PK */
+						, OODD.OD_ORDER_DETL_ID				/* 주문상세 PK */
+						, OODD.DISCOUNT_TP					/* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인) */
+						, OODD.PM_COUPON_ISSUE_ID			/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+						, OODD.PM_COUPON_NM					/* 쿠폰명 */
+						, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+							WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,' 원')
+							WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+								THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT ,'원')
+							    		ELSE CONCAT(PC.DISCOUNT_VAL,' 원')
+									END
+							END AS DISCOUNT_DETL			/* 할인상세 */
+						<if test='couponTp.equals("G")'>
+						, CASE WHEN #{goodsInfo.orderCnt} - #{goodsInfo.claimCnt} - #{goodsInfo.cancelCnt} = 0 THEN OODD.DISCOUNT_PRICE ELSE 0 END DISCOUNT_PRICE	/* 상품 할인금액 */
+						</if>
+						<if test='couponTp.equals("C")'>
+						, FLOOR(OODD.DISCOUNT_PRICE * (#{goodsInfo.claimCnt} / #{goodsInfo.orderCnt})) AS DISCOUNT_PRICE				/* 장바구니 할인금액 */
+						</if>
+						, OODD.PS_EMPL_DISC_MASTER_ID		/* 임직원 혜택그룹 : PS_EMPL_DISC_MASTER.PS_EMPL_DISC_MASTER_ID */
+						, OODD.UR_BRAND_ID					/* 임직원 혜택 표준 브랜드 : UR_BRAND.UR_BRAND_ID */
+						, 0 AS OD_CLAIM_DETL_DISCOUNT_ID 	/* 주문클레임 상세 할인 PK */
+						, OODD.OD_ORDER_ID					/* 주문 PK */
+						, 0 AS OD_CLAIM_ID					/* 주문 클레임 PK */
+						, 0 AS OD_CLAIM_DETL_ID 			/* 주문클레임 상세 PK */
+					FROM
+						OD_ORDER_DETL_DISCOUNT OODD
+						INNER JOIN PM_COUPON_ISSUE PCI ON OODD.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+						INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+					WHERE
+						OD_ORDER_ID = #{odOrderId}
+						AND OD_ORDER_DETL_ID =	#{goodsInfo.odOrderDetlId}
+						<if test='couponTp.equals("G")'>
+							AND PC.COUPON_TP IN ('COUPON_TYPE.GOODS', 'COUPON_TYPE.SALEPRICE_APPPOINT')
+						</if>
+						<if test='couponTp.equals("C")'>
+							AND PC.COUPON_TP = 'COUPON_TYPE.CART'
+						</if>
+					</if>
+				</foreach>
+			</if>
+			) T
+		WHERE DISCOUNT_PRICE  != 0
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 화면에서 상품 클레임수량 변경시 주문클레임 할인금액에서 장바구니 또는 상품 쿠폰 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimGoodsChangeCouponInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimCouponInfoResultMap">
+		/*	order.claimRequest.getClaimGoodsChangeCouponInfoList 주문클레임 할인금액에서 장바구니 또는 상품 쿠폰 정보 조회 */
+		SELECT
+			T.OD_ORDER_DETL_DISCOUNT_ID
+			, T.OD_ORDER_DETL_ID
+			, T.DISCOUNT_TP
+			, T.PM_COUPON_ISSUE_ID
+			, T.PM_COUPON_NM
+			, T.DISCOUNT_DETL
+			, T.DISCOUNT_PRICE
+			, T.PS_EMPL_DISC_MASTER_ID
+			, T.UR_BRAND_ID
+			, T.OD_CLAIM_DETL_DISCOUNT_ID
+			, T.OD_ORDER_ID
+			, T.OD_CLAIM_ID
+			, T.OD_CLAIM_DETL_ID
+		FROM (
+			<if test="goodSearchList !=null and goodSearchList.size != 0">
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="UNION ALL" >
+					<if test="goodsInfo.orderCnt != 0 and claimGoodsYn = 'Y'">
+					SELECT
+						0 AS OD_ORDER_DETL_DISCOUNT_ID		/* 주문상세 할인 PK */
+						, 0 AS OD_ORDER_DETL_ID				/* 주문상세 PK */
+						, OCDD.DISCOUNT_TP					/* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인) */
+						, OCDD.PM_COUPON_ISSUE_ID			/* 쿠폰 PK : PM_COUPON_ISSUE.PM_COUPON_ISSUE_ID */
+						, OCDD.PM_COUPON_NM					/* 쿠폰명 */
+						, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+							WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,' 원')
+							WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+								THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT ,'원')
+							    		ELSE CONCAT(PC.DISCOUNT_VAL,' 원')
+									END
+							END AS DISCOUNT_DETL			/* 할인상세 */
+						<if test='couponTp.equals("G")'>
+						,  CASE WHEN #{goodsInfo.orderCnt} - #{goodsInfo.claimCnt} - #{goodsInfo.cancelCnt} = 0 THEN OCDD.DISCOUNT_PRICE ELSE 0 END DISCOUNT_PRICE	/* 상품 할인금액 */
+						</if>
+						<if test='couponTp.equals("C")'>
+						, FLOOR(OCDD.DISCOUNT_PRICE * (#{goodsInfo.claimCnt} / #{goodsInfo.orderCnt})) AS DISCOUNT_PRICE				/* 장바구니 할인금액 */
+						</if>
+						, OCDD.PS_EMPL_DISC_MASTER_ID		/* 임직원 혜택그룹 : PS_EMPL_DISC_MASTER.PS_EMPL_DISC_MASTER_ID */
+						, OCDD.UR_BRAND_ID					/* 임직원 혜택 표준 브랜드 : UR_BRAND.UR_BRAND_ID */
+						, OCDD.OD_CLAIM_DETL_DISCOUNT_ID 	/* 주문클레임 상세 할인 PK */
+						, OCDD.OD_ORDER_ID					/* 주문 PK */
+						, OCDD.OD_CLAIM_ID					/* 주문 클레임 PK */
+						, OCDD.OD_CLAIM_DETL_ID 			/* 주문클레임 상세 PK */
+					FROM
+						OD_CLAIM_DETL_DISCOUNT OCDD
+						INNER JOIN PM_COUPON_ISSUE PCI ON OCDD.PM_COUPON_ISSUE_ID = PCI.PM_COUPON_ISSUE_ID
+						INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+					WHERE
+						OD_ORDER_ID = #{odOrderId}
+						AND OD_CLAIM_ID = #{odClaimId}
+						AND OD_CLAIM_DETL_ID =	#{goodsInfo.odClaimDetlId}
+						<if test='couponTp.equals("G")'>
+							AND PC.COUPON_TP IN ('COUPON_TYPE.GOODS', 'COUPON_TYPE.SALEPRICE_APPPOINT')
+						</if>
+						<if test='couponTp.equals("C")'>
+							AND PC.COUPON_TP = 'COUPON_TYPE.CART'
+						</if>
+					</if>
+				</foreach>
+			</if>
+			) T
+		WHERE DISCOUNT_PRICE  != 0
+	</select>
+
+	<!-- 환불계좌 정보 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimAccountInfoDto" id="getOrderClaimAccountInfoResultMap">
+		<result column="OD_CLAIM_ACCOUNT_ID"	property="odClaimAccountId" />
+		<result column="OD_CLAIM_ID"   			property="odClaimId" />
+		<result column="BANK_CD"   				property="bankCd" />
+		<result column="ACCOUNT_HOLDER"   		property="accountHolder" />
+		<result column="ACCOUNT_NUMBER"   		property="accountNumber" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청 또는 상세화면에서 환불계좌 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimAccountInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimAccountInfoResultMap">
+		/*	order.claimRequest.getOrderClaimAccountInfo 환불계좌 정보 조회 */
+		SELECT
+			OD_CLAIM_ACCOUNT_ID /* 주문클레임 환불계좌 PK */
+			, OD_CLAIM_ID 		/* 주문 클레임 PK */
+			, BANK_CD 			/* 은행코드 */
+			, FN_DECRYPT(ACCOUNT_HOLDER) AS ACCOUNT_HOLDER	/* 예금주 */
+			, FN_DECRYPT(ACCOUNT_NUMBER) AS ACCOUNT_NUMBER 	/* 계좌번호 */
+		FROM
+			OD_CLAIM_ACCOUNT
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!-- 첨부파일 정보 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimAttcInfoDto" id="getOrderClaimAttcInfoResultMap">
+		<result column="OD_CLAIM_ATTC_ID"  	property="odClaimAttcId" />
+		<result column="OD_CLAIM_ID" 		property="odClaimId" />
+		<result column="ORIGIN_NM"   		property="originNm" />
+		<result column="UPLOAD_NM"   		property="uploadNm" />
+		<result column="UPLOAD_PATH" 		property="uploadPath" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 첨부파일 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimAttcInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimAttcInfoResultMap">
+		/*	order.claimRequest.getOrderClaimAttcInfoList 첨부파일 정보 조회 */
+		SELECT
+			OD_CLAIM_ATTC_ID							/** 주문클레임파일 PK */
+			, OD_CLAIM_ID 								/** 주문 클레임 PK */
+			, ORIGIN_NM									/** 업로드 원본 파일명 */
+			, UPLOAD_NM									/** 업로드 파일명 */
+			, UPLOAD_PATH								/** 업로드 경로 */
+		FROM
+			OD_CLAIM_ATTC
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!-- 주문클레임 보내는 배송지 정보 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimSendShippingInfoDto" id="getOrderClaimSendShippingInfoResultMap">
+		<result column="OD_CLAIM_SEND_SHIPPING_ZONE_ID"	property="odClaimSendShippingZoneId" />
+		<result column="OD_CLAIM_ID"   					property="odClaimId" />
+		<result column="RECV_NM"   						property="recvNm" />
+		<result column="RECV_HP"   						property="recvHp" />
+		<result column="RECV_TEL"   					property="recvTel" />
+		<result column="RECV_ZIP_CD"   					property="recvZipCd" />
+		<result column="RECV_ADDR1"   					property="recvAddr1" />
+		<result column="RECV_ADDR2"   					property="recvAddr2" />
+		<result column="RECV_BLD_NO"   					property="recvBldNo" />
+		<result column="DELIVERY_MSG"   				property="deliveryMsg" />
+		<result column="DOOR_MSG_CD"   					property="doorMsgCd" />
+		<result column="DOOR_MSG"   					property="doorMsg" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 보내는 배송지 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimSendShippingInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimSendShippingInfoResultMap">
+		/*	order.claimRequest.getOrderClaimSendShippingInfo 보내는 배송지 정보 조회 */
+		SELECT
+			OD_CLAIM_SEND_SHIPPING_ZONE_ID 									/** 주문 클레임 보내는 배송지 PK	 */
+			, OD_CLAIM_ID 													/** 주문 클레임 PK */
+			, FN_DECRYPT(RECV_NM) AS RECV_NM								/** 수령인 명 */
+			, FN_DECRYPT(RECV_HP) AS RECV_HP								/** 수령인 핸드폰 */
+			, FN_DECRYPT(RECV_TEL) AS RECV_TEL								/** 수령인 연락처 */
+			, FN_DECRYPT(RECV_ZIP_CD) AS RECV_ZIP_CD						/** 수령인 우편번호 */
+			, FN_DECRYPT(RECV_ADDR1) AS RECV_ADDR1							/** 수령인 주소 1 */
+			, FN_DECRYPT(RECV_ADDR2) AS RECV_ADDR2							/** 수령인 주소 2 */
+			, RECV_BLD_NO 													/** 건물번호 */
+			, DELIVERY_MSG 													/** 배송요청사항 */
+			, FN_COMN_CODE_DIC(DOOR_MSG_CD) AS DOOR_MSG_CD		/** 출입정보타입 공통코드(DOOR_MSG_CD) */
+			, FN_DECRYPT(DOOR_MSG) AS DOOR_MSG								/** 배송출입 현관 비밀번호 */
+		FROM
+			OD_CLAIM_SEND_SHIPPING_ZONE
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+		ORDER BY OD_CLAIM_SEND_SHIPPING_ZONE_ID DESC
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청을 할 때 보내는 배송지 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getSendShippingInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimSendShippingInfoResultMap">
+		/*	order.claimRequest.getSendShippingInfo 주문클레임 신청을 할 때 보내는 배송지 정보 조회 */
+		SELECT
+			0 AS OD_CLAIM_SEND_SHIPPING_ZONE_ID 							/** 주문 클레임 보내는 배송지 PK	 */
+			, 0 AS OD_CLAIM_ID 												/** 주문 클레임 PK */
+			, FN_DECRYPT(RECV_NM) AS RECV_NM								/** 수령인 명 */
+			, FN_DECRYPT(RECV_HP) AS RECV_HP								/** 수령인 핸드폰 */
+			, FN_DECRYPT(RECV_TEL) AS RECV_TEL								/** 수령인 연락처 */
+			, FN_DECRYPT(RECV_ZIP_CD) AS RECV_ZIP_CD						/** 수령인 우편번호 */
+			, FN_DECRYPT(RECV_ADDR1) AS RECV_ADDR1							/** 수령인 주소 1 */
+			, FN_DECRYPT(RECV_ADDR2) AS RECV_ADDR2							/** 수령인 주소 2 */
+			, RECV_BLD_NO													/** 건물번호 */
+			, DELIVERY_MSG 													/** 배송요청사항 */
+			, FN_COMN_CODE_DIC(DOOR_MSG_CD) AS DOOR_MSG_CD		/** 출입정보타입 공통코드(DOOR_MSG_CD) */
+			, FN_DECRYPT(DOOR_MSG) AS DOOR_MSG								/** 배송출입 현관 비밀번호 */
+		FROM
+			OD_SHIPPING_ZONE
+		<where>
+			<if test="odOrderId != null and odOrderId != 0">
+				OD_ORDER_ID = #{odOrderId}
+			</if>
+		</where>
+		LIMIT 1
+	</select>
+
+	<!-- 주문클레임 받는 배송지 정보 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimShippingInfoDto" id="getOrderClaimShippingInfoResultMap">
+		<result column="UR_WAREHOUSE_ID"   				property="urWarehouseId" />
+		<result column="OD_CLAIM_SHIPPING_ZONE_ID"		property="odClaimShippingZoneId" />
+		<result column="OD_CLAIM_ID"   					property="odClaimId" />
+		<result column="RECV_NM"   						property="recvNm" />
+		<result column="RECV_HP"   						property="recvHp" />
+		<result column="RECV_TEL"   					property="recvTel" />
+		<result column="RECV_ZIP_CD"   					property="recvZipCd" />
+		<result column="RECV_ADDR1"   					property="recvAddr1" />
+		<result column="RECV_ADDR2"   					property="recvAddr2" />
+		<result column="RECV_BLD_NO"   					property="recvBldNo" />
+		<result column="DELIVERY_MSG"   				property="deliveryMsg" />
+		<result column="DOOR_MSG_CD"   					property="doorMsgCd" />
+		<result column="DOOR_MSG"   					property="doorMsg" />
+		<result column="OD_CLAIM_DETL_ID"   			property="odClaimDetlId" />
+		<result column="STORE_YN"   					property="storeYn" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 받는 배송지 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimShippingInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimShippingInfoResultMap">
+		/*	order.claimRequest.getOrderClaimShippingInfoList 주문클레임 받는 배송지 정보 조회 */
+		SELECT
+			UR_WAREHOUSE_ID AS UR_WAREHOUSE_ID				/** 출고처 PK : UR_WAREHOUSE.UR_WAREHOUSE_ID */
+			, OD_CLAIM_SHIPPING_ZONE_ID 					/** 주문 클레임 보내는 배송지 PK	 */
+			, OD_CLAIM_ID 									/** 주문 클레임 PK */
+			, FN_DECRYPT(RECV_NM) AS RECV_NM				/** 수령인 명 */
+			, FN_DECRYPT(RECV_HP) AS RECV_HP				/** 수령인 핸드폰 */
+			, FN_DECRYPT(RECV_TEL) AS RECV_TEL				/** 수령인 연락처 */
+			, FN_DECRYPT(RECV_ZIP_CD) AS RECV_ZIP_CD		/** 수령인 우편번호 */
+			, FN_DECRYPT(RECV_ADDR1) AS RECV_ADDR1			/** 수령인 주소 1 */
+			, FN_DECRYPT(RECV_ADDR2) AS RECV_ADDR2			/** 수령인 주소 2 */
+			, RECV_BLD_NO 									/** 건물번호 */
+			, DELIVERY_MSG 									/** 배송요청사항 */
+		 	, FN_COMN_CODE_DIC(DOOR_MSG_CD) AS DOOR_MSG_CD	/** 출입정보타입 공통코드(DOOR_MSG_CD) */
+			, FN_DECRYPT(DOOR_MSG) 							/** 배송출입 현관 비밀번호 */
+			, OD_CLAIM_DETL_ID								/** 주문 클레임 상세 PK */
+			, (SELECT STORE_YN FROM UR_WAREHOUSE UW WHERE UW.UR_WAREHOUSE_ID = OCSZ.UR_WAREHOUSE_ID) AS STORE_YN	/** 가맹점여부 */
+		FROM
+			OD_CLAIM_SHIPPING_ZONE OCSZ
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청을 할 때 받는 배송지 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getReceiveShippingInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimShippingInfoResultMap">
+		/*	order.claimRequest.getReceiveShippingInfoList 주문클레임 신청을 할 때 받는 배송지 정보 조회 */
+		SELECT
+			UR_WAREHOUSE_ID						/** 출고처 PK : UR_WAREHOUSE.UR_WAREHOUSE_ID */
+			, 0 AS OD_CLAIM_SHIPPING_ZONE_ID 	/** 주문 클레임 보내는 배송지 PK	 */
+			, 0 AS OD_CLAIM_ID 					/** 주문 클레임 PK */
+			, WAREHOUSE_NM AS RECV_NM 			/** 수령인 명 */
+			, WAREHOUSE_TEL AS RECV_HP 			/** 수령인 핸드폰 */
+			, '' AS RECV_TEL 					/** 수령인 연락처 */
+			, ZIP_CD AS RECV_ZIP_CD 			/** 수령인 우편번호 */
+			, ADDRESS1 AS RECV_ADDR1 			/** 수령인 주소 1 (암호화필요?)*/
+			, ADDRESS2 AS RECV_ADDR2 			/** 수령인 주소 2 (암호화필요?)*/
+			, '' AS RECV_BLD_NO 				/** 건물번호 */
+			, '' AS DELIVERY_MSG 				/** 배송요청사항 */
+			, '' AS DOOR_MSG_CD 				/** 출입정보타입 공통코드(DOOR_MSG_CD) */
+			, '' AS DOOR_MSG 					/** 배송출입 현관 비밀번호 */
+			, 0 AS OD_CLAIM_DETL_ID				/** 주문 클레임 상세 PK */
+			, STORE_YN							/** 가맹점여부 */
+		FROM
+			UR_WAREHOUSE
+		<where>
+			<if test="goodSearchList != null and goodSearchList.size != 0">
+			AND UR_WAREHOUSE_ID IN
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.urWarehouseId}
+				</foreach>
+			</if>
+		</where>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 신청을 할 때 매장 주소 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOdClaimShopPickupInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimShippingInfoResultMap">
+		/*	order.claimRequest.getOdClaimShopPickupInfo 주문클레임 신청을 할 때 매장 주소 정보 조회 */
+		SELECT
+			OOD.UR_WAREHOUSE_ID AS UR_WAREHOUSE_ID	/** 출고처 PK : UR_WAREHOUSE.UR_WAREHOUSE_ID */
+			 , 0 AS OD_CLAIM_SHIPPING_ZONE_ID 		/** 주문 클레임 보내는 배송지 PK	 */
+			 , 0 AS OD_CLAIM_ID 					/** 주문 클레임 PK */
+			 , NM AS RECV_NM 						/** 수령인 명 */
+			 , TEL AS RECV_HP 						/** 수령인 핸드폰 */
+			 , TEL AS RECV_TEL 						/** 수령인 연락처 */
+			 , ZIP_CD AS RECV_ZIP_CD 				/** 수령인 우편번호 */
+			 , ADDRESS1 AS RECV_ADDR1 				/** 수령인 주소 1 (암호화필요52525)*/
+			 , NM AS RECV_ADDR2 					/** 수령인 주소 2 (암호화필요?)*/
+			 , '' AS RECV_BLD_NO 					/** 건물번호 */
+			 , '' AS DELIVERY_MSG 					/** 배송요청사항 */
+			 , '' AS DOOR_MSG_CD 					/** 출입정보타입 공통코드(DOOR_MSG_CD) */
+			 , '' AS DOOR_MSG 						/** 배송출입 현관 비밀번호 */
+			 , 0 AS OD_CLAIM_DETL_ID				/** 주문 클레임 상세 PK */
+			 , '' AS STORE_YN						/** 가맹점여부 */
+		FROM
+			OD_ORDER OD
+		INNER JOIN
+			(
+				SELECT T1.OD_ORDER_ID
+					 , T1.UR_WAREHOUSE_ID
+				FROM OD_ORDER_DETL T1
+				GROUP BY T1.OD_ORDER_ID
+			) OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN
+			UR_STORE US ON OD.UR_STORE_ID = US.UR_STORE_ID
+		WHERE
+			OD.OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<!-- 주문클레임 상세 상태일자 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimDetlDtInfoDto" id="getOrderClaimDetlDtInfoResultMap">
+		<result column="OD_CLAIM_DETL_ID"	property="odClaimDetlId" />
+		<result column="OD_CLAIM_ID"   		property="odClaimId" />
+		<result column="SHIPPING_DT"   		property="shippingDt" />
+		<result column="DELIVERY_DT"   		property="deliveryDt" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 상세 상태일자 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimDetlDtInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimDetlDtInfoResultMap">
+		/*	order.claimRequest.getOrderClaimDetlDtInfoList 주문클레임 상세 상태일자 정보 조회 */
+		SELECT
+			OD_CLAIM_DETL_ID 		/** 주문 클레임 상세 PK	 */
+			, OD_CLAIM_ID 			/** 주문 클레임 PK */
+			, SHIPPING_DT 			/** 출고예정일자 */
+			, DELIVERY_DT 			/** 도착예정일자 */
+		FROM
+			OD_CLAIM_DETL_DT
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!-- 주문클레임 마스터 조회 resultMap -->
+	<resultMap type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimMasterInfoDto" id="getOrderClaimMasterInfoResultMap">
+		<result column="OD_CLAIM_ID" 			property="odClaimId" />
+		<result column="OD_ORDER_ID" 			property="odOrderId" />
+		<result column="ORDER_STATUS_CD" 		property="orderStatusCd" />
+		<result column="CLAIM_STATUS_CD" 		property="claimStatusCd" />
+		<result column="REDELIVERY_TYPE" 		property="redeliveryType" />
+		<result column="PS_CLAIM_MALL_ID"  		property="psClaimMallId" />
+		<result column="CLAIM_REASON_MSG" 		property="claimReasonMsg" />
+		<result column="REJECT_REASON_MSG"   	property="rejectReasonMsg" />
+		<result column="RETURNS_YN"   			property="returnsYn" />
+		<result column="REFUND_TYPE" 			property="refundType" />
+		<result column="GOODS_NM var" 			property="goodsNm var" />
+		<result column="GOODS_PRICE" 			property="goodsPrice" />
+		<result column="GOODS_COUPON_PRICE"   	property="goodsCouponPrice" />
+		<result column="CART_COUPON_PRICE"   	property="cartCouponPrice" />
+		<result column="SHIPPING_PRICE"  	 	property="shippingPrice" />
+		<result column="REFUND_PRICE" 			property="refundPrice" />
+		<result column="REFUND_POINT_PRICE"   	property="refundPointPrice" />
+		<result column="OD_PAYMENT_MASTER_ID"  	property="odPaymentMasterId" />
+		<result column="TARGET_TP"   			property="targetTp" />
+		<result column="CREATE_ID"   			property="createId" />
+		<result column="CREATE_DT"   			property="createDt" />
+		<result column="MODIFY_ID"   			property="modifyId" />
+		<result column="MODIFY_DT"   			property="modifyDt" />
+		<result column="APPROVAL_ID" 			property="approvalId" />
+		<result column="APPROVAL_DT" 			property="approvalDt" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문클레임 마스터 정보 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimMasterInfo" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimMasterInfoResultMap">
+		/*	order.claimRequest.getOrderClaimMasterInfo 주문클레임 마스터 정보 조회 */
+		SELECT
+			OD_CLAIM_ID 			/** 주문 클레임 PK */
+			, OD_ORDER_ID 			/** 주문 PK */
+			, ORDER_STATUS_CD 		/** 주문 상태 OD_ORDER에 있는 상태 : OD_STATUS.STATUS_CD */
+			, CLAIM_STATUS_CD 		/** 클레임 주문상태 : OD_STATUS.STATUS_CD */
+			, REDELIVERY_TYPE 		/** 재배송구분 재배송 : R, 대체상품 : S */
+			, PS_CLAIM_MALL_ID 		/* MALL 클레임 사유 PK PS_CLAIM_MALL.PS_CLAIM_MALL_ID */
+			, CLAIM_REASON_MSG 		/** 상세사유 */
+			, REJECT_REASON_MSG 	/** 거부사유 */
+			, RETURNS_YN 			/** 반품회수여부 */
+			, REFUND_TYPE 			/** D: 원결제 내역 C : 무통장입금 */
+			, GOODS_NM var			/** 대표 상품명 */
+			, GOODS_PRICE 			/** 상품금액 */
+			, GOODS_COUPON_PRICE 	/** 상품쿠폰 금액 */
+			, CART_COUPON_PRICE 	/** 장바구니쿠폰금액 */
+			, SHIPPING_PRICE 		/** 배송비 */
+			, REFUND_PRICE 			/** 환불금액 (주문상품금액 - 상품쿠폰 - 장바구니 쿠폰 +- 배송비) */
+			, REFUND_POINT_PRICE 	/** 환불적립금 */
+			, OD_PAYMENT_MASTER_ID 	/** 추가결제 결제마스터 PK */
+			, TARGET_TP 			/** 귀책구분 B: 구매자, S: 판매자 */
+			, CREATE_ID 			/** 등록자 UR_USER.UR_USER_ID */
+			, CREATE_DT 			/** 등록일 */
+			, MODIFY_ID 			/** 수정자 UR_USER.UR_USER_ID */ㅊ
+			, MODIFY_DT 			/** 수정일 */
+			, APPROVAL_ID 			/** 승인자 */
+			, APPROVAL_DT 			/** 승인일 */
+		FROM
+			OD_CLAIM
+		WHERE
+			OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!--  취소완료 또는 반품 완료 대상 조회  -->
+	<resultMap id="getCancelCompleteTargetListMap" type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimDetlDtInfoDto" >
+		<result column="OD_CLAIM_DETL_ID" 	property="odClaimDetlId"  />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 취소완료 또는 반품 완료 대상 조회.
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCancelCompleteTargetList" parameterType= "kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto"  resultMap="getCancelCompleteTargetListMap">
+		/*	order.claimRequest.getCancelCompleteTargetList 취소완료 또는 반품 완료 대상 조회  */
+		SELECT
+			OD_CLAIM_DETL_ID
+		FROM
+			OD_CLAIM_DETL OCD
+		WHERE
+			CLAIM_STATUS_CD != #{claimStatusCd}
+
+			<if test="odClaimDetlIdList != null and odClaimDetlIdList.size != 0">
+			AND OD_CLAIM_DETL_ID IN
+				<foreach collection="odClaimDetlIdList" item="odClaimDetlId" index="index" separator="," open="(" close=")" >
+					#{odClaimDetlId}
+				</foreach>
+			</if>
+	</select>
+
+	<!--  취소완료 또는 반품 완료에서 적립금 환불 , 환불금액 환불 대상 주문클레임 조회  -->
+	<resultMap id="getRefundMasterTargetListMap" type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRefundMaseterTargetDto" >
+		<result column="OD_CLAIM_ID" 		property="odClaimId" />
+		<result column="OD_ORDER_ID" 		property="odOrderId" />
+		<result column="TARGET_TP" 			property="targetTp" />
+		<result column="GOODS_PRICE" 		property="goodsPrice" />
+		<result column="CART_COUPON_PRICE" 	property="cartCouponPrice" />
+		<result column="GOODS_COUPON_PRICE" property="goodsCouponPrice" />
+		<result column="SHIPPING_PRICE" 	property="shippingPrice" />
+		<result column="REFUND_PRICE" 		property="refundPrice" />
+		<result column="REFUND_POINT_PRICE" property="refundPointPrice" />
+		<result column="UR_USER_ID" 		property="urUserId" />
+		<result column="OD_ORDER_DETL_ID" 	property="odOrderDetlId" />
+		<result column="CLAIM_CNT" 			property="claimCnt" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 취소완료 또는 반품 완료에서 적립금 환불 , 환불금액 환불 대상 주문클레임 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRefundMasterTargetList" parameterType= "kr.co.pulmuone.v1.order.claim.dto.OrderClaimRegisterRequestDto"  resultMap="getRefundMasterTargetListMap">
+		/*	order.claimRequest.getRefundMasterTargetList 취소완료 또는 반품 완료에서 적립금 환불 , 환불금액 환불 대상 주문클레임 조회  */
+		SELECT
+			OC.OD_CLAIM_ID 				/* 주문 클레임 PK */
+			, OC.OD_ORDER_ID 			/* 주문번호 */
+			, OC.TARGET_TP 				/* 귀책구분 B: 구매자, S: 판매자 */
+			, OC.GOODS_PRICE 			/* 판매가 */
+			, OC.CART_COUPON_PRICE 		/* 장바구니 할인금액 */
+			, OC.GOODS_COUPON_PRICE 	/* 상품쿠폰 할인금액 */
+			, OC.SHIPPING_PRICE 		/* 배송비 */
+			, OC.REFUND_PRICE 			/* 환불금액 */
+			, OC.REFUND_POINT_PRICE 	/* 환불적립금액 */
+			, OO.UR_USER_ID 			/* 회원ID */
+		FROM
+			OD_CLAIM OC
+			INNER JOIN OD_ORDER OO ON OC.OD_ORDER_ID = OO.OD_ORDER_ID
+			INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+		WHERE
+			OCD.CLAIM_STATUS_CD != #{claimStatusCd}
+
+			<if test="goodsInfoList !=null and goodsInfoList.size != 0">
+			AND OD_CLAIM_DETL_ID IN
+				<foreach collection="goodsInfoList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.odClaimDetlId}
+				</foreach>
+			</if>
+	</select>
+
+	<!--  취소완료 또는 반품 완료에서 적립금 환불 , 환불금액 환불 대상 주문클레임상세 조회  -->
+	<resultMap id="getRefundDetailTargetListMap" type="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRefundDetailTargetDto" >
+		<result column="OD_CLAIM_ID" 			property="odClaimId" />
+		<result column="OCDOD_CLAIM_DETL_ID" 	property="odClaimDetlId" />
+		<result column="OD_ORDER_DETL_ID" 		property="odOrderDetlId" />
+		<result column="CLAIM_CNT" 				property="claimCnt" />
+		<result column="ORDER_CNT" 				property="orderCnt" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 취소완료 또는 반품 완료에서 적립금 환불 , 환불금액 환불 대상 주문클레임상세 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.22		강상국	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getRefundDetailTargetList" parameterType= "kr.co.pulmuone.v1.order.claim.dto.OrderClaimRegisterRequestDto"  resultMap="getRefundDetailTargetListMap">
+		/*	order.claimRequest.getRefundDetailTargetList 취소완료 또는 반품 완료에서 적립금 환불 , 환불금액 환불 대상 주문클레임상세 조회  */
+		SELECT
+			OC.OD_CLAIM_ID 				/* 주문 클레임 PK */
+			, OCD.OD_CLAIM_DETL_ID		/* 주문 클레임상세 PK */
+			, OCD.OD_ORDER_DETL_ID 		/* 주문상세 PK */
+			, OCD.CLAIM_CNT 			/* 클레임 수량 */
+			, OOD.ORDER_CNT - OOD.CANCEL_CNT AS ORDER_CNT	/* 남은 주문수량 */
+		FROM
+			OD_CLAIM OC
+			INNER JOIN OD_ORDER OO ON OC.OD_ORDER_ID = OO.OD_ORDER_ID
+			INNER JOIN OD_ORDER_DETL OOD ON OC.OD_ORDER_ID = OOD.OD_ORDER_ID
+			INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+		WHERE
+			OCD.CLAIM_STATUS_CD != #{claimStatusCd}
+
+			<if test="goodsInfoList !=null and goodsInfoList.size != 0">
+			AND OD_CLAIM_DETL_ID IN
+				<foreach collection="goodsInfoList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.odClaimDetlId}
+				</foreach>
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 주문 상품 결제 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.18		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimGoodsPaymentInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimReShippingPaymentInfoDto">
+		/*	order.claimRequest.getOrderClaimGoodsPaymentInfo  */
+		SELECT T1.OD_ORDER_DETL_ID,
+			   T1.AGENT_TYPE_CD,
+			   T1.RECOMMENDED_PRICE,
+			   T1.SALE_PRICE,
+			   T1.ORDER_PRICE,
+			   (T1.GOODS_COUPON_PRICE + T1.CART_COUPON_PRICE)                    AS DISCOUNT_PRICE,
+			   (T1.ORDER_PRICE - (T1.GOODS_COUPON_PRICE + T1.CART_COUPON_PRICE)) AS PAID_PRICE,
+			   T1.GOODS_COUPON_PRICE,
+			   T1.CART_COUPON_PRICE,
+			   T1.EMPLOYEE_DISCOUNT_PRICE
+		FROM (
+				 SELECT OOD.OD_ORDER_DETL_ID,
+						OD.AGENT_TYPE_CD,
+						OOD.RECOMMENDED_PRICE,
+						OOD.SALE_PRICE,
+						IF(
+							(OOD.ORDER_CNT - OOD.CANCEL_CNT) = #{claimCnt},
+							OOD.SALE_PRICE * (OOD.ORDER_CNT - OOD.CANCEL_CNT),
+							OOD.SALE_PRICE * #{claimCnt}
+						) AS ORDER_PRICE,
+						IF(
+							(OOD.ORDER_CNT - OOD.CANCEL_CNT) = #{claimCnt},
+							OOD.GOODS_COUPON_PRICE,
+							0
+						) AS GOODS_COUPON_PRICE,
+						IF(
+							(OOD.ORDER_CNT - OOD.CANCEL_CNT) = #{claimCnt},
+							OOD.CART_COUPON_PRICE - (OOD.CANCEL_CNT * FLOOR(OOD.CART_COUPON_PRICE / OOD.ORDER_CNT)),
+							(#{claimCnt} * FLOOR(OOD.CART_COUPON_PRICE / OOD.ORDER_CNT))
+						) AS CART_COUPON_PRICE,
+						IF(
+							(OOD.ORDER_CNT - OOD.CANCEL_CNT) = #{claimCnt},
+							IFNULL(OODD.EMPLOYEE_DISCOUNT_PRICE, 0) - (OOD.CANCEL_CNT * FLOOR(IFNULL(OODD.EMPLOYEE_DISCOUNT_PRICE, 0) / OOD.ORDER_CNT)),
+							(#{claimCnt} * FLOOR(IFNULL(OODD.EMPLOYEE_DISCOUNT_PRICE, 0) / OOD.ORDER_CNT))
+						) AS EMPLOYEE_DISCOUNT_PRICE,
+						OOD.PAID_PRICE
+				FROM OD_ORDER OD
+				INNER JOIN
+					  OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+				LEFT OUTER JOIN
+					  (
+						  SELECT OD_ORDER_ID,
+								 OD_ORDER_DETL_ID,
+								 SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE
+						  FROM OD_ORDER_DETL_DISCOUNT
+						  WHERE DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+							AND OD_ORDER_ID = #{odOrderId}
+						  GROUP BY OD_ORDER_ID, OD_ORDER_DETL_ID
+					  ) OODD ON OOD.OD_ORDER_ID = OODD.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+				 WHERE OD.OD_ORDER_ID = #{odOrderId}
+				   AND OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+			 ) T1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 주문 재배송 상품 결제 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.18		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimReShippingGoodsPaymentInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimReShippingPaymentInfoDto">
+		/*	order.claimRequest.getOrderClaimReShippingGoodsPaymentInfo  */
+		SELECT
+			T1.OD_ORDER_DETL_ID,
+			T1.AGENT_TYPE_CD,
+			T1.RECOMMENDED_PRICE,
+			T1.SALE_PRICE,
+			T1.ORDER_PRICE,
+			(T1.GOODS_COUPON_PRICE + T1.CART_COUPON_PRICE) AS DISCOUNT_PRICE,
+			(T1.ORDER_PRICE - (T1.GOODS_COUPON_PRICE + T1.CART_COUPON_PRICE)) AS PAID_PRICE,
+			T1.GOODS_COUPON_PRICE,
+			T1.CART_COUPON_PRICE,
+			T1.EMPLOYEE_DISCOUNT_PRICE,
+			T1.TOT_SALE_PRICE
+		FROM
+			(
+				SELECT
+					OOD.OD_ORDER_DETL_ID,
+					OD.AGENT_TYPE_CD,
+					OOD.RECOMMENDED_PRICE,
+					OOD.SALE_PRICE,
+					IF(
+						 (OOD.ORDER_CNT - OOD.CANCEL_CNT) = 0,
+						 OOD.SALE_PRICE * (OOD.ORDER_CNT - (OOD.CANCEL_CNT - #{claimCnt})),
+						 OOD.SALE_PRICE * #{claimCnt}
+					) AS ORDER_PRICE,
+					IF(
+						 (OOD.ORDER_CNT - OOD.CANCEL_CNT) = 0,
+						 OOD.GOODS_COUPON_PRICE,
+						 0
+					) AS GOODS_COUPON_PRICE,
+					IF(
+						 (OOD.ORDER_CNT - OOD.CANCEL_CNT) = 0,
+						 OOD.CART_COUPON_PRICE - ((OOD.CANCEL_CNT - #{claimCnt}) * FLOOR(OOD.CART_COUPON_PRICE / OOD.ORDER_CNT)),
+						 (#{claimCnt} * FLOOR(OOD.CART_COUPON_PRICE / OOD.ORDER_CNT))
+					) AS CART_COUPON_PRICE,
+					IF(
+						 (OOD.ORDER_CNT - OOD.CANCEL_CNT) = 0,
+						 IFNULL(OODD.EMPLOYEE_DISCOUNT_PRICE, 0) - ((OOD.CANCEL_CNT - #{claimCnt}) * FLOOR(IFNULL(OODD.EMPLOYEE_DISCOUNT_PRICE, 0) / OOD.ORDER_CNT)),
+						 (#{claimCnt} * FLOOR(IFNULL(OODD.EMPLOYEE_DISCOUNT_PRICE, 0) / OOD.ORDER_CNT))
+					) AS EMPLOYEE_DISCOUNT_PRICE,
+					OOD.PAID_PRICE,
+					OOD.TOT_SALE_PRICE
+				FROM
+					OD_ORDER OD
+						INNER JOIN
+					OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+						LEFT OUTER JOIN
+					(
+						SELECT
+							OD_ORDER_ID,
+							OD_ORDER_DETL_ID,
+							SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE
+						FROM
+							OD_ORDER_DETL_DISCOUNT
+						WHERE
+							DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+						  AND
+							OD_ORDER_ID = #{odOrderId}
+						GROUP BY OD_ORDER_ID, OD_ORDER_DETL_ID
+					) OODD ON OOD.OD_ORDER_ID = OODD.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+				WHERE
+					OD.OD_ORDER_ID = #{odOrderId}
+				  AND
+					OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+			) T1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 대상 상품 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.20		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimTargetClaimGoodsList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimTargetGoodsListDto">
+		/*	order.claimRequest.getOrderClaimTargetClaimGoodsList  */
+		SELECT
+			OD.OD_ORDER_ID,
+			OOD.OD_ORDER_DETL_ID,
+			OOD.UR_WAREHOUSE_ID,
+			OOD.OD_ORDER_DETL_DEPTH_ID,
+		    OOD.OD_ORDER_DETL_PARENT_ID,
+			OSP.OD_SHIPPING_PRICE_ID,
+			OD.BUYER_TYPE_CD,
+			IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN,
+			OSP.IL_SHIPPING_TMPL_ID,
+			OOD.IL_GOODS_SHIPPING_TEMPLATE_ID AS SHIPPING_TMPL_ID,
+			OOD.IL_GOODS_ID,
+			OOD.GOODS_NM,
+			OOD.GOODS_TP_CD,
+			OC.CLAIM_STATUS_CD,
+			OOD.ORDER_CNT,
+			OOD.ORDER_CNT AS ORG_ORDER_CNT,
+			OOD.CANCEL_CNT - IFNULL(OC.CLAIM_CNT, 0) AS CANCEL_CNT,
+			IFNULL(OC.CLAIM_CNT, 0) AS CLAIM_CNT,
+			CASE WHEN OOD.ORDER_CNT - OOD.CANCEL_CNT - IFNULL(OC.CLAIM_CNT, 0) = 0 THEN 'Y' ELSE 'N' END AS CANCEL_YN,
+			OOD.TAX_YN,
+			OOD.RECOMMENDED_PRICE,
+			OOD.TOT_SALE_PRICE,
+			OOD.SALE_PRICE,
+			OOD.GOODS_COUPON_PRICE,
+			OOD.CART_COUPON_PRICE,
+			OOD.DIRECT_PRICE - IFNULL(T1.DISCOUNT_PRICE, 0) AS DIRECT_PRICE,
+			OOD.PAID_PRICE,
+			IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE,
+			IFNULL(OSP.ORDER_SHIPPING_PRICE, 0) AS ORDER_SHIPPING_PRICE,
+			IFNULL(OSP.JEJU_ISLAND_SHIPPING_PRICE, 0) AS JEJU_ISLAND_SHIPPING_PRICE,
+			IFNULL(IGST.CLAIM_SHIPPING_PRICE, 0) AS CLAIM_SHIPPING_PRICE,
+			FN_DECRYPT(RECV_ZIP_CD) AS RECV_ZIP_CD,
+			IFNULL((
+				SELECT
+					SUM(OCD.ADD_PAYMENT_SHIPPING_PRICE)
+				FROM
+					OD_CLAIM OC
+				INNER JOIN
+					OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+				WHERE
+					OC.OD_ORDER_ID = #{odOrderId}
+				AND
+				    OC.CLAIM_STATUS_TP = #{claimStatusTp}
+				AND
+					OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				AND
+					OC.CLAIM_YN = 'Y'
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(claimStatusTp, "CLAIM_STATUS_TP.CANCEL")'>
+				AND
+					OC.OD_CLAIM_ID = #{odClaimId}
+				</if>
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(claimStatusTp, "CLAIM_STATUS_TP.RETURN")'>
+				AND
+					OCD.CLAIM_STATUS_CD IN ('RI', 'RC')
+				</if>
+			), 0) AS ADD_PAYMENT_SHIPPING_PRICE,
+			/* CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OSP.IL_SHIPPING_TMPL_ID, '∀', IGST.BUNDLE_YN) AS SHIPPING_ZONE */
+			CASE	IGST.BUNDLE_YN
+					WHEN 'Y'	THEN CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN)
+					ELSE CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN, '∀', OOD.OD_ORDER_DETL_PARENT_ID)
+			END AS SHIPPING_ZONE,
+			IGST.CONDITION_TP,
+			OSP.PM_COUPON_ISSUE_ID AS DELIVERY_COUPON_ISSUE_ID,
+			OSP.PM_COUPON_NM,											/* 배송비쿠폰명 */
+			IFNULL((
+				SELECT
+					CASE PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+					WHEN 0 THEN '전체 할인'
+					ELSE CONCAT('최대', PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,'원')
+					END
+				FROM
+					PM_COUPON_ISSUE PCI
+				INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+				WHERE
+					PCI.PM_COUPON_ISSUE_ID = OSP.PM_COUPON_ISSUE_ID
+			), '') AS PM_COUPON_BENEFIT,							/* 배송비 쿠폰 혜택 */
+		    IFNULL(T2.EMPLOYEE_DISCOUNT_PRICE, 0) AS EMPLOYEE_DISCOUNT_PRICE
+		FROM
+			OD_ORDER OD
+		INNER JOIN
+			OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN
+			OD_SHIPPING_ZONE OSZ ON OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID AND OOD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		LEFT OUTER JOIN
+			OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		LEFT OUTER JOIN
+			IL_SHIPPING_TEMPLATE IGST ON OSP.IL_SHIPPING_TMPL_ID = IGST.IL_SHIPPING_TMPL_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					OD_ORDER_DETL_ID,
+					SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+				FROM
+					OD_ORDER_DETL_DISCOUNT
+				WHERE
+					DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.EMPLOYEE','GOODS_DISCOUNT_TP.GOODS_COUPON')
+				AND
+					OD_ORDER_ID = #{odOrderId}
+				GROUP BY OD_ORDER_DETL_ID
+			) T1 ON T1.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_DETL_ID,
+						SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE /* 임직원 지원금 */
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+					AND
+						OD_ORDER_ID = #{odOrderId}
+					GROUP BY OD_ORDER_DETL_ID
+				) T2 ON T2.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					OC.OD_ORDER_ID,
+					OCD.OD_CLAIM_DETL_ID,
+					OCD.CLAIM_STATUS_CD,
+					OCD.OD_ORDER_DETL_ID,
+					OCD.CLAIM_CNT
+				FROM
+					OD_CLAIM OC
+				INNER JOIN
+					OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+				WHERE
+					OC.OD_CLAIM_ID = #{odClaimId}
+				AND
+					OC.OD_ORDER_ID = #{odOrderId}
+				AND
+					OC.CLAIM_YN = 'Y'
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+					AND OCD.OD_CLAIM_DETL_ID IN
+					<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+						#{goodsInfo.odClaimDetlId}
+					</foreach>
+				</if>
+				UNION ALL
+				SELECT
+					OC.OD_ORDER_ID,
+					OCD.OD_CLAIM_DETL_ID,
+					OCD.CLAIM_STATUS_CD,
+					OCD.OD_ORDER_DETL_ID,
+					OCD.CLAIM_CNT
+				FROM
+					OD_CLAIM OC
+				INNER JOIN
+					OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+				WHERE
+					OC.OD_CLAIM_ID = #{odClaimId}
+				AND
+					OC.OD_ORDER_ID = #{odOrderId}
+				AND
+					OC.CLAIM_YN = 'Y'
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+					AND OCD.OD_CLAIM_DETL_ID NOT IN
+					<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+						#{goodsInfo.odClaimDetlId}
+					</foreach>
+				</if>
+				AND OCD.CLAIM_STATUS_CD NOT IN ('CC', 'RC')
+			) OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OC.OD_ORDER_DETL_ID
+		WHERE
+			OD.OD_ORDER_ID = #{odOrderId}
+		AND
+			OD.ORDER_YN = 'Y'
+		ORDER BY
+			OOD.UR_WAREHOUSE_ID, OOD.IL_GOODS_SHIPPING_TEMPLATE_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 대상 상품 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.20		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimTargetGoodsList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimTargetGoodsListDto">
+		/*	order.claimRequest.getOrderClaimTargetGoodsList  */
+		SELECT
+			OD.OD_ORDER_ID,
+			OOD.OD_ORDER_DETL_ID,
+			OOD.UR_WAREHOUSE_ID,
+			OOD.OD_ORDER_DETL_DEPTH_ID,
+			OOD.OD_ORDER_DETL_PARENT_ID,
+			OSP.OD_SHIPPING_PRICE_ID,
+		    OD.BUYER_TYPE_CD,
+			IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN,
+			OOD.IL_GOODS_SHIPPING_TEMPLATE_ID,
+			OOD.IL_GOODS_SHIPPING_TEMPLATE_ID AS SHIPPING_TMPL_ID,
+			OOD.IL_GOODS_ID,
+			OOD.GOODS_TP_CD,
+			OOD.GOODS_NM,
+			OOD.ORDER_CNT,
+			OOD.ORDER_CNT AS ORG_ORDER_CNT,
+			OOD.CANCEL_CNT,
+			CASE WHEN OOD.ORDER_CNT - OOD.CANCEL_CNT = 0 THEN 'Y' ELSE 'N' END AS CANCEL_YN,
+			OOD.TAX_YN,
+			OOD.RECOMMENDED_PRICE,
+			OOD.TOT_SALE_PRICE, /* 판매가총합 */
+			OOD.SALE_PRICE, /* 판매가 */
+			OOD.GOODS_COUPON_PRICE,
+			OOD.CART_COUPON_PRICE,
+			OOD.DIRECT_PRICE - IFNULL(T1.DISCOUNT_PRICE, 0) AS DIRECT_PRICE,
+			IFNULL(T2.EMPLOYEE_DISCOUNT_PRICE, 0) AS EMPLOYEE_DISCOUNT_PRICE,
+			OOD.PAID_PRICE,
+			IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE,
+			IFNULL(OSP.ORDER_SHIPPING_PRICE, 0) AS ORDER_SHIPPING_PRICE,
+			IFNULL(OSP.JEJU_ISLAND_SHIPPING_PRICE, 0) AS JEJU_ISLAND_SHIPPING_PRICE,
+			IFNULL(IGST.CLAIM_SHIPPING_PRICE, 0) AS CLAIM_SHIPPING_PRICE,
+			FN_DECRYPT(RECV_ZIP_CD) AS RECV_ZIP_CD,
+			IFNULL((
+				SELECT
+					SUM(OCD.ADD_PAYMENT_SHIPPING_PRICE)
+				FROM
+					OD_CLAIM OC
+				INNER JOIN
+					OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+				WHERE
+					OC.OD_ORDER_ID = #{odOrderId}
+				AND
+					OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+				AND
+					OC.CLAIM_YN = 'Y'
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(claimStatusTp, "CLAIM_STATUS_TP.RETURN")'>
+				AND
+				    OCD.CLAIM_STATUS_CD IN ('RI', 'RC')
+				</if>
+			), 0) AS ADD_PAYMENT_SHIPPING_PRICE,
+			OSP.PM_COUPON_ISSUE_ID AS DELIVERY_COUPON_ISSUE_ID,
+			OSP.PM_COUPON_NM,											/* 배송비쿠폰명 */
+			IFNULL((
+					 SELECT
+						CASE PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+							WHEN 0 THEN '전체 할인'
+							ELSE CONCAT('최대', PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,'원')
+						END
+					 FROM
+						 PM_COUPON_ISSUE PCI
+							 INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+					 WHERE
+						 PCI.PM_COUPON_ISSUE_ID = OSP.PM_COUPON_ISSUE_ID
+				 ), '') AS PM_COUPON_BENEFIT,							/* 배송비 쿠폰 혜택 */
+			OSP.SHIPPING_DISCOUNT_PRICE,								/* 배송비할인금액 */
+			CASE	IGST.BUNDLE_YN
+			    	WHEN 'Y'	THEN CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN)
+					ELSE CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN, '∀', OOD.OD_ORDER_DETL_PARENT_ID)
+			END AS SHIPPING_ZONE,
+			/* CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN) AS SHIPPING_ZONE, */
+			IGST.BUNDLE_YN,
+			OOD.ORDER_STATUS_CD,
+			OS.BOS_JSON,
+			IGST.CONDITION_TP
+		FROM
+			OD_ORDER OD
+		INNER JOIN
+			OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN
+			OD_SHIPPING_ZONE OSZ ON OOD.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID AND OOD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		/*
+		LEFT OUTER JOIN
+			OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		 */
+		INNER JOIN
+			(
+				SELECT
+					OSP.OD_SHIPPING_PRICE_ID,
+					OSP.IL_SHIPPING_TMPL_ID,
+					OSP.SHIPPING_PRICE,
+					OSP.ORDER_SHIPPING_PRICE,
+					OSP.JEJU_ISLAND_SHIPPING_PRICE,
+					OSP.PM_COUPON_ISSUE_ID,
+					OSP.PM_COUPON_NM,
+					OSP.SHIPPING_DISCOUNT_PRICE
+				FROM
+					OD_SHIPPING_PRICE OSP
+				INNER JOIN
+					OD_ORDER_DETL OOD ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+				WHERE
+					1 = 1
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+					AND OOD.OD_ORDER_DETL_ID IN
+					<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+						#{goodsInfo.odOrderDetlId}
+					</foreach>
+				</if>
+				GROUP BY OSP.OD_SHIPPING_PRICE_ID
+			) OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		LEFT OUTER JOIN
+			IL_SHIPPING_TEMPLATE IGST ON OSP.IL_SHIPPING_TMPL_ID = IGST.IL_SHIPPING_TMPL_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					OD_ORDER_DETL_ID,
+					SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+				FROM
+					OD_ORDER_DETL_DISCOUNT
+				WHERE
+					DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.EMPLOYEE','GOODS_DISCOUNT_TP.GOODS_COUPON', 'GOODS_DISCOUNT_TP.REGULAR_DEFAULT', 'GOODS_DISCOUNT_TP.REGULAR_ADD')
+				AND
+					OD_ORDER_ID = #{odOrderId}
+				GROUP BY OD_ORDER_DETL_ID
+			) T1 ON T1.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					OD_ORDER_DETL_ID,
+					SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE /* 임직원 지원금 */
+				FROM
+					OD_ORDER_DETL_DISCOUNT
+				WHERE
+					DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+				AND
+					OD_ORDER_ID = #{odOrderId}
+				GROUP BY OD_ORDER_DETL_ID
+			) T2 ON T2.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		INNER JOIN
+			OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD
+		WHERE
+			OD.OD_ORDER_ID = #{odOrderId}
+		AND
+			OD.ORDER_YN = 'Y'
+		ORDER BY OOD.UR_WAREHOUSE_ID, OOD.IL_GOODS_SHIPPING_TEMPLATE_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 회원 PK 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.27		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderUrUserId" resultType="long">
+		/*	order.claimRequest.getOrderUrUserId  */
+		SELECT
+			UR_USER_ID
+		FROM
+			OD_ORDER
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 주문 클레임 CS환불 금액정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.10		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimCsRefundPriceInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimCSRefundResponseDto">
+		/*	order.claimRequest.getOrderClaimCsRefundPriceInfo  */
+		SELECT
+			OD_ORDER_ID,
+			REFUND_PRICE,
+			REFUND_POINT_PRICE,
+			CS_REFUND_APPROVE_CD
+		FROM
+			OD_CLAIM
+		WHERE
+			OD_ORDER_ID = #{odOrderId}
+		<if test="odClaimId > 0">
+		AND
+		    OD_CLAIM_ID = #{odClaimId}
+		</if>
+		AND
+			CLAIM_STATUS_TP = #{claimStatusTp}
+		AND
+			CS_REFUND_APPROVE_CD IN
+		<foreach collection="csRefundAproveCdList" item="csRefundAproveCd" index="index" separator="," open="(" close=")" >
+			#{csRefundAproveCd}
+		</foreach>
+	</select>
+
+	<select id="getClaimRefundInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimPriceInfoDto">
+		/*	order.claimRequest.getClaimRefundInfo  */
+		SELECT
+			OC.TARGET_TP,
+			OC.RETURNS_YN,
+			OC.DIRECT_PAYMENT_YN,
+		    OC.ADD_PAYMENT_TP,
+			OC.GOODS_PRICE,
+			OC.GOODS_PRICE AS GOODS_SALE_PRICE_SUM,
+			OC.REFUND_GOODS_PRICE,
+			OC.GOODS_COUPON_PRICE,
+			OC.CART_COUPON_PRICE,
+		    OCD.DIRECT_PRICE,
+			OC.SHIPPING_PRICE,
+			OC.ORDER_SHIPPING_PRICE,
+			OC.REFUND_PRICE,
+			OC.REFUND_PRICE AS REFUND_REG_PRICE,
+			OC.REFUND_PRICE AS PAYMENT_REFUND_PRICE,
+			OC.REFUND_POINT_PRICE,
+			OC.REFUND_PRICE + OC.REFUND_POINT_PRICE AS REFUND_TOTAL_PRICE,
+		    OCD.CLAIM_DETL_CNT,
+			CASE WHEN OC.REFUND_GOODS_PRICE <![CDATA[<]]> OCD.ADD_PAYMENT_SHIPPING_PRICE THEN 'Y'
+				ELSE 'N'
+			END AS ADD_PAYMENT_SHIPPING_PRICE_YN,
+			IFNULL(OCD.ADD_PAYMENT_SHIPPING_PRICE, 0) AS ADD_PAYMENT_SHIPPING_PRICE,
+			IFNULL(OCD.ADD_PAYMENT_SHIPPING_PRICE, 0) AS PREV_ADD_PAYMENT_SHIPPING_PRICE,
+			IFNULL(T2.ADD_PAYMENT_CNT, 0) AS ADD_PAYMENT_CNT
+		FROM
+			OD_CLAIM OC
+		INNER JOIN
+			(
+				SELECT
+					OCD.OD_CLAIM_ID,
+				    COUNT(1) AS CLAIM_DETL_CNT,
+					SUM(OCD.DIRECT_PRICE) AS DIRECT_PRICE,
+					SUM(ADD_PAYMENT_SHIPPING_PRICE) AS ADD_PAYMENT_SHIPPING_PRICE
+				FROM
+					OD_CLAIM_DETL OCD
+				WHERE
+					OCD.OD_CLAIM_ID = #{odClaimId}
+				GROUP BY OCD.OD_CLAIM_ID
+			) OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					A.OD_CLAIM_ID,
+					COUNT(1) AS ADD_PAYMENT_CNT
+				FROM
+					OD_PAYMENT A
+				INNER JOIN
+					OD_PAYMENT_MASTER B ON A.OD_PAYMENT_MASTER_ID = B.OD_PAYMENT_MASTER_ID
+				WHERE
+					A.OD_CLAIM_ID = #{odClaimId}
+				  AND
+					B.TYPE = 'A'
+				  AND
+				    B.STATUS = 'IC'
+				  AND NOT EXISTS (
+						SELECT
+							OPM.TID
+						FROM
+							OD_PAYMENT OP
+						INNER JOIN OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+						WHERE
+							OP.OD_CLAIM_ID = A.OD_CLAIM_ID
+						  AND OPM.TYPE = 'F'
+					)
+			) T2 ON OC.OD_CLAIM_ID = T2.OD_CLAIM_ID
+		WHERE
+			OC.OD_CLAIM_ID = #{odClaimId}
+		  AND
+			OC.CLAIM_YN = 'Y'
+	</select>
+
+	<select id="getClaimDetlRefundList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsPriceInfoDto">
+		/*	order.claimRequest.getClaimDetlRefundList  */
+		SELECT
+			OOD.IL_GOODS_ID,
+			OCD.SALE_PRICE,
+			OCD.CART_COUPON_PRICE,
+			OCD.GOODS_COUPON_PRICE,
+			OCD.DIRECT_PRICE,
+			OCD.PAID_PRICE
+		FROM
+			OD_CLAIM OC
+				INNER JOIN
+			OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+				INNER JOIN
+			OD_ORDER_DETL OOD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		WHERE
+			OC.OD_CLAIM_ID = #{odClaimId}
+		  AND
+			OC.CLAIM_YN = 'Y'
+	</select>
+
+	<select id="getSelfOrderCnt" resultType="int">
+		/*	order.claimRequest.getSelfOrderCnt  */
+		SELECT
+			COUNT(1)
+		FROM
+			OD_ORDER OD
+		WHERE
+		    OD.OD_ORDER_ID = #{odOrderId}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(guestCi)">
+		AND
+		    OD.GUEST_CI	= #{guestCi}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+		AND
+		    OD.UR_USER_ID	= #{urUserId}
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 녹즙 대상 상품 전체 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.30		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimTargetGreenJuiceGoodsList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimTargetGoodsListDto">
+		/*	order.claimRequest.getOrderClaimTargetGreenJuiceGoodsList  */
+		SELECT
+			OD.OD_ORDER_ID,
+			OOD.OD_ORDER_DETL_ID,
+			OOD.UR_WAREHOUSE_ID,
+			OD.BUYER_TYPE_CD,
+			IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN,
+			OOD.IL_GOODS_SHIPPING_TEMPLATE_ID,
+			OOD.IL_GOODS_SHIPPING_TEMPLATE_ID AS SHIPPING_TMPL_ID,
+			OOD.IL_GOODS_ID,
+			OOD.GOODS_TP_CD,
+			OOD.GOODS_NM,
+			IFNULL(SCH.ORDER_CNT, 0) AS ORDER_CNT,
+			IFNULL(SCH.ORDER_CNT, 0) AS ORG_ORDER_CNT,
+			IFNULL(SCH.CANCEL_CNT, 0) AS CANCEL_CNT,
+			CASE WHEN IFNULL(SCH.ORDER_CNT, 0) - IFNULL(SCH.CANCEL_CNT, 0) = 0 THEN 'Y' ELSE 'N' END AS CANCEL_YN,
+			OOD.TAX_YN,
+			OOD.RECOMMENDED_PRICE,
+			OOD.SALE_PRICE, /* 판매가 */
+			OOD.GOODS_COUPON_PRICE,
+			OOD.CART_COUPON_PRICE,
+			OOD.DIRECT_PRICE - IFNULL(T1.DISCOUNT_PRICE, 0) AS DIRECT_PRICE,
+			OOD.PAID_PRICE,
+			OSP.OD_SHIPPING_PRICE_ID,
+			IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE,
+			IFNULL(OSP.ORDER_SHIPPING_PRICE, 0) AS ORDER_SHIPPING_PRICE,
+			IFNULL(OSP.JEJU_ISLAND_SHIPPING_PRICE, 0) AS JEJU_ISLAND_SHIPPING_PRICE,
+			IFNULL(IGST.CLAIM_SHIPPING_PRICE, 0) AS CLAIM_SHIPPING_PRICE,
+			FN_DECRYPT(
+					(SELECT RECV_ZIP_CD
+					 FROM OD_SHIPPING_ZONE
+					 WHERE OD_SHIPPING_ZONE_ID = (
+						 SELECT
+							 OD_SHIPPING_ZONE_ID
+						 FROM
+							 OD_ORDER_DETL_DAILY_ZONE
+						 WHERE
+								 OD_ORDER_DETL_DAILY_ZONE_ID = (
+								 SELECT
+									 MIN(OD_ORDER_DETL_DAILY_ZONE_ID)
+								 FROM
+									 OD_ORDER_DETL_DAILY_ZONE
+								 WHERE
+									 OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+								 GROUP BY OD_ORDER_DETL_ID
+							 )
+					 )
+			)) AS RECV_ZIP_CD,
+			IFNULL((
+					   SELECT
+						   SUM(OCD.ADD_PAYMENT_SHIPPING_PRICE)
+					   FROM
+						   OD_CLAIM OC
+					   INNER JOIN
+						   OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+					   WHERE
+						   OC.OD_ORDER_ID = #{odOrderId}
+						AND
+						   OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+						AND
+						   OC.CLAIM_YN = 'Y'
+				   ), 0) AS ADD_PAYMENT_SHIPPING_PRICE,
+			OSP.PM_COUPON_ISSUE_ID AS DELIVERY_COUPON_ISSUE_ID,
+			OSP.PM_COUPON_NM,											/* 배송비쿠폰명 */
+			IFNULL((
+					   SELECT
+						   CASE PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+							   WHEN 0 THEN '전체 할인'
+							   ELSE CONCAT('최대', PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,'원')
+							END
+					   FROM
+						   PM_COUPON_ISSUE PCI
+							   INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+					   WHERE
+						   PCI.PM_COUPON_ISSUE_ID = OSP.PM_COUPON_ISSUE_ID
+				   ), '') AS PM_COUPON_BENEFIT,							/* 배송비 쿠폰 혜택 */
+			OSP.SHIPPING_DISCOUNT_PRICE,								/* 배송비할인금액 */
+			/* CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN) AS SHIPPING_ZONE, */
+			CASE IGST.BUNDLE_YN WHEN 'Y'
+			    				THEN CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN)
+								ELSE CONCAT(OOD.UR_WAREHOUSE_ID, '∀', OOD.IL_GOODS_SHIPPING_TEMPLATE_ID, '∀', IGST.BUNDLE_YN, '∀', OOD.OD_ORDER_DETL_ID)
+			END AS SHIPPING_ZONE,
+			IGST.BUNDLE_YN,
+			OOD.ORDER_STATUS_CD,
+			OS.BOS_JSON,
+			IGST.CONDITION_TP
+		FROM
+			OD_ORDER OD
+		INNER JOIN
+			OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN
+			OD_ORDER_DETL_DAILY OODD ON OOD.OD_ORDER_ID = OODD.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+		INNER JOIN (
+				SELECT
+					OD_ORDER_DETL_DAILY_ID,
+					SUM(ORDER_CNT) AS ORDER_CNT,
+					SUM(CANCEL_CNT) AS CANCEL_CNT
+				FROM
+					OD_ORDER_DETL_DAILY_SCH
+				WHERE
+					ORDER_SCH_STATUS = 1
+				AND
+					USE_YN = 'Y'
+				GROUP BY OD_ORDER_DETL_DAILY_ID
+			) SCH ON OODD.OD_ORDER_DETL_DAILY_ID = SCH.OD_ORDER_DETL_DAILY_ID
+		LEFT OUTER JOIN
+			OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		LEFT OUTER JOIN
+			IL_SHIPPING_TEMPLATE IGST ON OOD.IL_GOODS_SHIPPING_TEMPLATE_ID = IGST.IL_SHIPPING_TMPL_ID
+		LEFT OUTER JOIN
+			(
+				SELECT
+					OD_ORDER_DETL_ID,
+					SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+				FROM
+					OD_ORDER_DETL_DISCOUNT
+				WHERE
+					DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.EMPLOYEE','GOODS_DISCOUNT_TP.GOODS_COUPON')
+				AND
+					OD_ORDER_ID = #{odOrderId}
+				GROUP BY OD_ORDER_DETL_ID
+			) T1 ON T1.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		INNER JOIN
+			OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD
+		WHERE
+			OD.OD_ORDER_ID = #{odOrderId}
+		AND
+			OD.ORDER_YN = 'Y'
+		ORDER BY OOD.UR_WAREHOUSE_ID, OOD.IL_GOODS_SHIPPING_TEMPLATE_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 녹즙 대상 상품 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.30		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimGreenJuiceGoodsInfoList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+		/*	order.claimRequest.getClaimGreenJuiceGoodsInfoList  */
+		SELECT OOD.OD_ORDER_DETL_ID
+			 , OOD.OD_ORDER_DETL_SEQ
+			 , OD_ORDER_DETL_STEP_ID
+			 , OOD.OD_ORDER_DETL_DEPTH_ID
+			 , OOD.OD_ORDER_DETL_PARENT_ID
+			 , OOD.IL_ITEM_CD
+			 , OOD.ITEM_BARCODE
+			 , OOD.IL_GOODS_ID
+			 , OOD.GOODS_NM
+			 , IFNULL(FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD), '') AS STORAGE_TYPE_NM
+			 , FN_STATUS_NM(OOD.ORDER_STATUS_CD) AS ORDER_STATUS_NM
+			 , OOD.ORDER_STATUS_CD AS ORDER_STATUS_CODE
+			 , IFNULL(SCH.ORDER_CNT, 0) AS ORDER_CNT
+			 , IFNULL(SCH.ORDER_CNT, 0) AS ORG_ORDER_CNT
+			 , IFNULL(SCH.CANCEL_CNT, 0) AS CANCEL_CNT
+			 , (IFNULL(SCH.ORDER_CNT, 0)-IFNULL(SCH.CANCEL_CNT, 0)) AS CLAIM_CNT
+			 , CONCAT(DATE_FORMAT(OOD.ORDER_IF_DT,'%Y-%m-%d')) AS ORDER_IF_DT
+			 , CONCAT(DATE_FORMAT(OOD.SHIPPING_DT,'%Y-%m-%d')) AS SHIPPING_DT
+			 , CONCAT(DATE_FORMAT(OOD.DELIVERY_DT,'%Y-%m-%d')) AS DELIVERY_DT
+			 , OOD.GOODS_TP_CD
+			 , FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM
+			 , UW.WAREHOUSE_NM
+			 , OOD.UR_WAREHOUSE_ID
+			 , OOD.IL_GOODS_SHIPPING_TEMPLATE_ID AS IL_SHIPPING_TMPL_ID
+			 , OOD.OD_SHIPPING_ZONE_ID
+			 , OSP.SHIPPING_PRICE
+			 , ST.NAME AS SHIPPING_NM
+			 , CASE OD.BUYER_TYPE_CD WHEN 'BUYER_TYPE.EMPLOYEE'
+				 THEN OOD.RECOMMENDED_PRICE * (IFNULL(SCH.ORDER_CNT, 0)-IFNULL(SCH.CANCEL_CNT, 0))
+				 ELSE OOD.SALE_PRICE * (IFNULL(SCH.ORDER_CNT, 0)-IFNULL(SCH.CANCEL_CNT, 0))
+				 END AS ORDER_PRICE
+			 , OOD.PAID_PRICE
+			 , OOD.RECOMMENDED_PRICE
+			 , OOD.SALE_PRICE
+			 , CASE	WHEN IFNULL(OOD.EC_DT, 'N') = 'N'
+				 THEN ROUND(IFNULL(IFNULL(OOD.SALE_PRICE, 0) * IFNULL(OOD.ORDER_CNT, 0), 0))
+				 ELSE OOD.SALE_PRICE
+				 END AS TOTAL_GOODS_PRICE
+			 , OOD.CART_COUPON_PRICE
+			 , OOD.GOODS_COUPON_PRICE
+			 , (IFNULL(OOD.CART_COUPON_PRICE, 0) + IFNULL(OOD.GOODS_COUPON_PRICE, 0)) AS COUPON_PRICE
+			 , (OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE + OOD.DIRECT_PRICE) AS DISCOUNT_PRICE
+			 , OOD.COLLECTION_MALL_DETAIL_ID
+			 , OOD.OUTMALL_DETAIL_ID
+			 , IFNULL(OOD.EV_EXHIBIT_ID, 0) AS EV_EXHIBIT_ID
+			 , IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+			 , OODD.GOODS_CYCLE_TP AS GOODS_CYCLE_TP_CD /* 배송주기 코드 */
+			 , FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TP, '')) AS GOODS_CYCLE_TP /* 배송주기 */
+			 , FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TERM_TP, '')) AS GOODS_CYCLE_TERM_TP /* 배송기간 */
+			 , IFNULL(OODD.MON_CNT, 0) AS MON_CNT
+			 , IFNULL(OODD.TUE_CNT, 0) AS TUE_CNT
+			 , IFNULL(OODD.WED_CNT, 0) AS WED_CNT
+			 , IFNULL(OODD.THU_CNT, 0) AS THU_CNT
+			 , IFNULL(OODD.FRI_CNT, 0) AS FRI_CNT
+			 , IFNULL(OODD.SET_CNT, 0) AS SET_CNT /* 세트수량 : 일괄배송 해당 */
+			 , IFNULL(OODD.DAILY_BULK_YN, 'N') AS DAILY_BULK_YN /* 일괄배송 여부 */
+			 , IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN /* 알러지 식단 여부 */
+			 , IFNULL(OODD.SCHEDULE_YN, 'N') AS SCHEDULE_YN /* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+			 , OOD.GOODS_DAILY_TP
+			 , OS.BOS_JSON
+			 , IFNULL(OODT.EMPLOYEE_DISCOUNT_PRICE, 0) AS EMPLOYEE_DISCOUNT_PRICE
+		FROM
+			OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN UR_WAREHOUSE UW ON OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+		INNER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		INNER JOIN OD_STATUS OS ON OS.STATUS_CD = OOD.ORDER_STATUS_CD
+		INNER JOIN OD_ORDER_DETL_DAILY OODD ON OOD.OD_ORDER_ID = OODD.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+		INNER JOIN (
+			SELECT
+				OD_ORDER_DETL_DAILY_ID,
+				SUM(ORDER_CNT) AS ORDER_CNT,
+				SUM(CANCEL_CNT) AS CANCEL_CNT
+			FROM
+				OD_ORDER_DETL_DAILY_SCH
+			WHERE
+				ORDER_SCH_STATUS = 1
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(undeliveredClaimYn, "Y")'>
+			AND
+				DELIVERY_YN = #{deliveryYn}
+			</if>
+			AND
+				USE_YN = 'Y'
+			GROUP BY OD_ORDER_DETL_DAILY_ID
+		) SCH ON OODD.OD_ORDER_DETL_DAILY_ID = SCH.OD_ORDER_DETL_DAILY_ID
+		LEFT OUTER JOIN
+				(
+					SELECT
+						OD_ORDER_DETL_ID,
+						SUM(DISCOUNT_PRICE) AS EMPLOYEE_DISCOUNT_PRICE /* 임직원 지원금 */
+					FROM
+						OD_ORDER_DETL_DISCOUNT
+					WHERE
+						DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+					AND
+					    OD_ORDER_ID = #{odOrderId}
+					GROUP BY OD_ORDER_DETL_ID
+				) OODT ON OODT.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		LEFT OUTER JOIN IL_SHIPPING_TEMPLATE ST ON OOD.IL_GOODS_SHIPPING_TEMPLATE_ID = ST.IL_SHIPPING_TMPL_ID
+		LEFT OUTER JOIN IL_ITEM II ON OOD.IL_ITEM_CD = II.IL_ITEM_CD
+		WHERE
+			OOD.OD_ORDER_ID = #{odOrderId}
+		<if test="goodSearchList != null and goodSearchList.size != 0">
+		AND
+		    OOD.OD_ORDER_DETL_ID IN
+			<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+				#{goodsInfo.odOrderDetlId}
+			</foreach>
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 녹즙 클레임 반품 스케쥴 배송정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.30		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderGreenJuiceClaimReturnsScheduleView" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+		/*	order.claimRequest.getOrderGreenJuiceClaimReturnsScheduleView  */
+		SELECT
+			SCH.OD_ORDER_DETL_DAILY_SCH_ID,
+			OOD.OD_ORDER_DETL_ID,
+		    OOD.OD_ORDER_DETL_SEQ,
+			OOD.IL_GOODS_ID,
+			OOD.UR_WAREHOUSE_ID,
+			OOD.GOODS_DELIVERY_TYPE,
+			OODD.GOODS_CYCLE_TP,
+			OOD.GOODS_NM,
+			SCH.ORDER_CNT,
+			SCH.CANCEL_CNT,
+			SCH.ORDER_CNT - SCH.CANCEL_CNT AS CLAIM_CNT,
+			DATE_FORMAT(SCH.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DT,
+			DATE_FORMAT(SCH.DELIVERY_DT, '%Y년 %m월 %d일') AS DELIVERY_DT_NM,
+			CASE WEEKDAY(SCH.DELIVERY_DT)	WHEN '0' THEN '월'
+											WHEN '1' THEN '화'
+											WHEN '2' THEN '수'
+											WHEN '3' THEN '목'
+											WHEN '4' THEN '금'
+											WHEN '5' THEN '토'
+											WHEN '6' THEN '일'
+			END AS WEEK_DAY_NM,
+			CASE WEEKDAY(SCH.DELIVERY_DT)	WHEN '0' THEN 'WEEK_CD.MON'
+											WHEN '1' THEN 'WEEK_CD.TUE'
+											WHEN '2' THEN 'WEEK_CD.WED'
+											WHEN '3' THEN 'WEEK_CD.THU'
+											WHEN '4' THEN 'WEEK_CD.FRI'
+											WHEN '5' THEN 'WEEK_CD.SAT'
+											WHEN '6' THEN 'WEEK_CD.SUN'
+			END AS WEEK_DAY_CD
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN OD_ORDER_DETL_DAILY OODD ON OOD.OD_ORDER_ID = OODD.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+		INNER JOIN OD_ORDER_DETL_DAILY_SCH SCH ON OODD.OD_ORDER_DETL_DAILY_ID = SCH.OD_ORDER_DETL_DAILY_ID
+		WHERE
+			ORDER_SCH_STATUS = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(odOrderDetlDailySchSeq)">
+				AND SCH.OD_ORDER_DETL_DAILY_SCH_SEQ = #{odOrderDetlDailySchSeq}
+			</when>
+			<otherwise>
+				AND DELIVERY_YN = #{deliveryYn}
+			</otherwise>
+		</choose>
+		AND
+			USE_YN = 'Y'
+		AND
+			(SCH.ORDER_CNT - SCH.CANCEL_CNT) <![CDATA[>]]> 0
+		AND
+			OD.OD_ORDER_ID = #{odOrderId}
+		<if test="goodSearchList != null and goodSearchList.size != 0">
+			AND
+			OOD.OD_ORDER_DETL_ID IN
+			<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+				#{goodsInfo.odOrderDetlId}
+			</foreach>
+		</if>
+		ORDER BY SCH.DELIVERY_DT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 화면에서 BOS클레임사유 상품조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.18		최윤지	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBosCalimReasonGoodsInfoList" parameterType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimViewRequestDto" resultMap="getOrderClaimGoodsInfoResultMap">
+		/*	order.claimRequest.getBosCalimReasonGoodsInfoList BOS 화면에서 BOS클레임사유 상품조회*/
+		SELECT
+				@NUM:=@NUM+1 AS ROWNUM			/*ROW NUMBER*/
+				, TT.*
+		FROM
+		(
+		SELECT
+				  OOD.OD_ORDER_ID														/* 주문 PK */
+				, OOD.OD_ORDER_DETL_ID  											/* 주문상세PK */
+				, OOD.OD_ORDER_DETL_SEQ 											/* 주문상세순번 */
+				, OOD.OD_ORDER_DETL_STEP_ID											/* 주문상세 정렬 키*/
+				, OOD.OD_ORDER_DETL_DEPTH_ID
+				, OOD.OD_ORDER_DETL_PARENT_ID										/* 주문상세 부모 ID */
+				, OC.OD_CLAIM_ID 													/* 주문 클레임 PK */
+				, OC.OD_CLAIM_DETL_ID												/* 클레임 상세 PK */
+				, OC.PS_CLAIM_MALL_ID												/* MALL 클레임 사유 PK */
+				, OC.CLAIM_REASON_MSG												/* 상세사유 */
+				, OC.BOS_CLAIM_LARGE_ID												/* BOS 클레임 대분류 ID */
+				, OC.BOS_CLAIM_MIDDLE_ID											/* BOS 클레임 중분류 ID */
+				, OC.BOS_CLAIM_SMALL_ID												/* BOS 클레임 소분류 ID */
+				, OC.BOS_CLAIM_LARGE_NM												/* BOS 클레임 대분류 명 */
+				, OC.BOS_CLAIM_MIDDLE_NM											/* BOS 클레임 중분류 명 */
+				, OC.BOS_CLAIM_SMALL_NM												/* BOS 클레임 소분류 명 */
+				, OC.PS_CLAIM_BOS_ID												/* BOS 클레임 사유 PK */
+				, OC.PS_CLAIM_BOS_SUPPLY_ID											/* BOS 클레임 사유 공급업체 PK */
+				, FN_ORDER_DETAIL_STATUS_NM(OOD.ORDER_STATUS_CD) AS ORDER_STATUS_NM	/* 정상주문상태명 */
+				, OOD.ORDER_STATUS_CD												/* 정상주문상태 */
+				, OOD.GOODS_TP_CD													/* 상품유형 */
+				, FN_COMN_CODE_DIC(OOD.GOODS_TP_CD) AS GOODS_TP_NM 					/* 상품유형명 */
+				, OOD.UR_WAREHOUSE_ID												/*줄고처 ID */
+				, (SELECT WAREHOUSE_NM FROM UR_WAREHOUSE UW WHERE OOD.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID) AS WAREHOUSE_NM	/* 출고처 */
+				, OOD.TAX_YN														/* 과세여부 */
+				, OOD.IL_ITEM_CD													/* 마스터품목코드 */
+				, OOD.ITEM_BARCODE													/* 품목바코드 */
+				, OOD.IL_GOODS_ID													/* 상품 PK */
+				, OOD.GOODS_NM 														/* 상품명 */
+				, OOD.GOODS_DELIVERY_TYPE											/* 상품배송타입 */
+				, OOD.STORAGE_TYPE_CD												/* 보관방법 코드 */
+				, IF(IFNULL(OOD.EC_DT, 'N') != 'N', 'Y', 'N') AS REDELIVERY_YN		/* 재배송여부 */
+				, FN_COMN_CODE_DIC(OOD.STORAGE_TYPE_CD) AS STORAGE_TYPE_NM			/* 보관방법 명 */
+				, IFNULL(OC.CLAIM_CNT, 0) AS CLAIM_CNT
+				, IFNULL(OOD.ORDER_CNT, 0) AS ORDER_CNT								/* 주문수량 */
+				, IFNULL(OOD.ORDER_CNT, 0) AS ORG_ORDER_CNT							/* 상품 실제 주문 수량 */
+				, (IFNULL(OOD.CANCEL_CNT, 0) - IFNULL(OC.CLAIM_CNT, 0)) AS CANCEL_CNT	/* 주문취소수량 */
+				, OD.BUYER_TYPE_CD
+				, OOD.RECOMMENDED_PRICE												/* 정상가 */
+				, OOD.SALE_PRICE 													/* 판매가 */
+				, OOD.SALE_PRICE * OOD.ORDER_CNT AS ORDER_PRICE												/* 주문금액 */
+				, OOD.CART_COUPON_PRICE + OOD.GOODS_COUPON_PRICE AS COUPON_PRICE	/* 쿠폰할인 */
+				, OOD.CART_COUPON_PRICE			/* 장바구니쿠폰 */
+				, OOD.GOODS_COUPON_PRICE		/* 상품쿠폰 */
+				, OOD.DIRECT_PRICE - IFNULL(T1.DISCOUNT_PRICE, 0) AS DIRECT_PRICE				/* 즉시할인 */
+				, OOD.PAID_PRICE				/* 결제금액 */
+				, OTN.PS_SHIPPING_COMP_ID		/* 택배사 설정 PK */
+				, OTN.TRACKING_NO				/* 개별송장번호 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TP, '')) AS GOODS_CYCLE_TP /* 배송주기 */
+				, FN_COMN_CODE_DIC(IFNULL(OODD.GOODS_CYCLE_TERM_TP, '')) AS GOODS_CYCLE_TERM_TP /* 배송기간 */
+				, IFNULL(OODD.GOODS_CYCLE_TP, '') AS GOODS_CYCLE_TP_CODE /* 배송주기 */
+				, IFNULL(OODD.GOODS_CYCLE_TERM_TP, '') AS GOODS_CYCLE_TERM_TP_CODE /* 배송기간 */
+				, IFNULL(OODD.MON_CNT, 0) AS MON_CNT
+				, IFNULL(OODD.TUE_CNT, 0) AS TUE_CNT
+				, IFNULL(OODD.WED_CNT, 0) AS WED_CNT
+				, IFNULL(OODD.THU_CNT, 0) AS THU_CNT
+				, IFNULL(OODD.FRI_CNT, 0) AS FRI_CNT
+				, IFNULL(OODD.SET_CNT, 0) AS SET_CNT
+				, IFNULL(OODD.ALLERGY_YN, 'N') AS ALLERGY_YN /* 알러지 식단 여부 */
+				, IFNULL(OODD.SCHEDULE_YN, 'N') AS SCHEDULE_YN /* 스케쥴 생성 여부 / 베이비밀은 I/F여부 */
+				, GOODS_DAILY_TP 				/* 일일상품 유형(GOODSDAILYTP : GREENJUICE/BABYMEAL/EATSSLIM ) */
+				, ORDER_STATUS_DELI_TP 			/* 주문상태 배송유형 공통코드: ORDERSTATUSDELITP */
+				, '' AS CLAIM_STATUS_CD 		/* 클레임 주문상태 : OD_STATUS.STATUS_CD */
+				, '' AS REFUND_STATUS_CD 		/* 환불상태 : OD_STATUS.STATUS_CD */
+				, FN_GOODS_C_IMG(IFNULL(OOD.IL_GOODS_ID, 0)) AS GOODS_IMG_NM		/* 대표 상품 이미지 */
+				, OOD.UR_SUPPLIER_ID			/* 공급업체 PK : IL_ITEM.UR_SUPPLIER_ID */
+				, OSP.PM_COUPON_ISSUE_ID AS DELIVERY_COUPON_ISSUE_ID		/* 배송비쿠폰발급 PK */
+				, IFNULL((
+							SELECT
+									CASE PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT
+										WHEN 0 THEN '전체 할인'
+										ELSE CONCAT('최대', PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,'원')
+									END
+							FROM PM_COUPON_ISSUE PCI
+							INNER JOIN PM_COUPON PC ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID
+							WHERE PCI.PM_COUPON_ISSUE_ID = OSP.PM_COUPON_ISSUE_ID
+						  ), '') AS PM_COUPON_BENEFIT							/* 배송비 쿠폰 혜택 */
+				, OSP.PM_COUPON_NM											/* 배송비쿠폰명 */
+				, OSP.SHIPPING_DISCOUNT_PRICE								/* 배송비할인금액 */
+				, IFNULL(OSP.SHIPPING_PRICE, 0) AS SHIPPING_PRICE
+				, IFNULL(GST.NAME, '') AS IL_SHIPPING_TMPL_NM
+				, IFNULL(OSP.IL_SHIPPING_TMPL_ID, 0) AS IL_SHIPPING_TMPL_ID
+				, IFNULL(GST.CONDITION_TP, '') AS CONDITION_TP
+				, IFNULL(ISC.CONDITION_VAL, '') AS CONDITION_VAL
+				, IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+				, DATE_FORMAT(OOD.ORDER_IF_DT, '%Y-%m-%d') AS ORDER_IF_DT
+				, DATE_FORMAT(OOD.SHIPPING_DT, '%Y-%m-%d') AS SHIPPING_DT
+				, DATE_FORMAT(OOD.DELIVERY_DT, '%Y-%m-%d') AS DELIVERY_DT
+				, CONCAT(OOD.UR_WAREHOUSE_ID, '∀', IFNULL(OSP.IL_SHIPPING_TMPL_ID, 0)) AS GRP_WAREHOUSE_SHIPPING_TMPL_ID
+				, OS.BOS_JSON
+				, IFNULL(OODD.DAILY_BULK_YN, 'N') AS DAILY_BULK_YN
+				, OC.RETURNS_YN
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID											/* 주문상세 */
+		INNER JOIN OD_STATUS OS ON OOD.ORDER_STATUS_CD = OS.STATUS_CD												/* 주문 상태 */
+		LEFT OUTER JOIN OD_TRACKING_NUMBER OTN ON OOD.OD_ORDER_DETL_ID = OTN.OD_ORDER_DETL_ID /* 주문상세 송장번호 */
+		LEFT OUTER JOIN PS_SHIPPING_COMP PSC ON OTN.PS_SHIPPING_COMP_ID = PSC.PS_SHIPPING_COMP_ID
+		LEFT OUTER JOIN OD_ORDER_DETL_DAILY OODD ON OODD.OD_ORDER_ID = OOD.OD_ORDER_ID AND OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		LEFT OUTER JOIN OD_SHIPPING_PRICE OSP ON OOD.OD_SHIPPING_PRICE_ID = OSP.OD_SHIPPING_PRICE_ID
+		LEFT OUTER JOIN IL_SHIPPING_TEMPLATE GST ON OSP.IL_SHIPPING_TMPL_ID = GST.IL_SHIPPING_TMPL_ID
+		LEFT OUTER JOIN IL_SHIPPING_CONDITION ISC ON GST.IL_SHIPPING_TMPL_ID = ISC.IL_SHIPPING_TMPL_ID
+		LEFT OUTER JOIN IF_UNRELEASED_INFO IUI ON OOD.ODID = IUI.ODID AND OOD.OD_ORDER_DETL_SEQ = IUI.OD_ORDER_DETL_SEQ
+		LEFT OUTER JOIN
+		(
+			SELECT
+					OD_ORDER_DETL_ID,
+					SUM(DISCOUNT_PRICE) AS DISCOUNT_PRICE
+			FROM OD_ORDER_DETL_DISCOUNT
+			WHERE
+				DISCOUNT_TP NOT IN ('GOODS_DISCOUNT_TP.CART_COUPON','GOODS_DISCOUNT_TP.EMPLOYEE','GOODS_DISCOUNT_TP.GOODS_COUPON')
+			AND
+				OD_ORDER_ID = #{odOrderId}
+			GROUP BY OD_ORDER_DETL_ID
+		) T1 ON T1.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+		LEFT OUTER JOIN
+		(
+			SELECT
+					  OC.OD_ORDER_ID
+				    , OC.OD_CLAIM_ID
+					, OCD.OD_CLAIM_DETL_ID
+					, OCD.OD_ORDER_DETL_ID
+					, OCD.CLAIM_CNT
+		  			, CASE WHEN OC.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.RETURN' THEN OC.RETURNS_YN
+		  				   ELSE 'N'
+		  			  END AS RETURNS_YN
+					, OC.PS_CLAIM_MALL_ID
+					, OC.CLAIM_REASON_MSG
+					, OCD.BOS_CLAIM_LARGE_ID
+					, OCD.BOS_CLAIM_MIDDLE_ID
+					, OCD.BOS_CLAIM_SMALL_ID
+					, IFNULL(FN_CLAIM_BOS_ID(OCD.BOS_CLAIM_LARGE_ID, 10), '') AS BOS_CLAIM_LARGE_NM
+					, IFNULL(FN_CLAIM_BOS_ID(OCD.BOS_CLAIM_MIDDLE_ID , 20), '') AS BOS_CLAIM_MIDDLE_NM
+					, IFNULL(FN_CLAIM_BOS_ID(OCD.BOS_CLAIM_SMALL_ID, 30), '') AS BOS_CLAIM_SMALL_NM
+					, OCD.PS_CLAIM_BOS_ID
+					, OCD.PS_CLAIM_BOS_SUPPLY_ID
+			FROM OD_CLAIM OC
+			INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+			WHERE
+				 	OC.OD_CLAIM_ID = #{odClaimId}
+			  AND   OC.OD_ORDER_ID = #{odOrderId}
+			<if test="goodSearchList != null and goodSearchList.size != 0">
+				AND OCD.OD_CLAIM_DETL_ID IN
+				<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+					#{goodsInfo.odClaimDetlId}
+				</foreach>
+			</if>
+		) OC ON OOD.OD_ORDER_ID = OC.OD_ORDER_ID AND OOD.OD_ORDER_DETL_ID = OC.OD_ORDER_DETL_ID
+		WHERE
+				OOD.OD_ORDER_ID = #{odOrderId}
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.CANCEL' ">
+					AND OOD.ORDER_STATUS_CD IN ('IR', 'IC', 'DR')
+				</if>
+				<if test="claimStatusTp == 'CLAIM_STATUS_TP.RETURN' ">
+					AND OOD.ORDER_STATUS_CD IN ('DI', 'DC', 'BF')
+				</if>
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+					AND OOD.OD_ORDER_DETL_ID IN
+					<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+						#{goodsInfo.odOrderDetlId}
+					</foreach>
+				</if>
+		) TT
+			, (SELECT @NUM:=0) TMP
+		ORDER BY OD_ORDER_DETL_STEP_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 추가 배송비 결제 금액 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.05.14		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimAddShippingPrice" resultType="kr.co.pulmuone.v1.order.claim.dto.MallOrderClaimAddPaymentResult">
+		/*	order.claimRequest.getOrderClaimAddShippingPrice  */
+		SELECT
+			OC.OD_ORDER_ID,
+			OD.ODID,
+			OC.OD_CLAIM_ID,
+			OC.GOODS_NM,
+		    OC.CLAIM_STATUS_TP,
+		    OC.RETURNS_YN,
+			FN_DECRYPT(OD.BUYER_NM) AS BUYER_NM,
+			FN_DECRYPT(OD.BUYER_HP) AS BUYER_HP,
+			FN_DECRYPT(OD.BUYER_MAIL) AS BUYER_MAIL,
+			OC.DIRECT_PAYMENT_YN,
+			IFNULL(OCD.ADD_PAYMENT_SHIPPING_PRICE, 0) AS ADD_PAYMENT_SHIPPING_PRICE
+		FROM
+			OD_CLAIM OC
+		INNER JOIN
+			(
+				SELECT
+					OD_CLAIM_ID,
+					SUM(ADD_PAYMENT_SHIPPING_PRICE) AS ADD_PAYMENT_SHIPPING_PRICE
+				FROM
+					OD_CLAIM_DETL
+				GROUP BY OD_CLAIM_ID
+			) OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+		INNER JOIN
+			OD_ORDER OD ON OC.OD_ORDER_ID = OD.OD_ORDER_ID
+		WHERE
+			OC.CLAIM_YN = 'Y'
+		AND
+			OC.OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 반품 추가 배송비 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.01		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderReturnsShippingPrice" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimAddShippingPaymentInfoDto">
+		/*	order.claimRequest.getOrderReturnsShippingPrice  */
+		SELECT
+			T.*
+		FROM
+			(
+				SELECT OP.OD_PAYMENT_ID
+				     , OP.OD_PAYMENT_MASTER_ID
+					 , OP.OD_ORDER_ID
+					 , OP.OD_CLAIM_ID
+				     , OPM.PAY_TP
+					 , OPM.PG_SERVICE
+					 , OPM.TID
+					 , OPM.ESCROW_YN
+					 , OPM.PART_CANCEL_YN
+					 , OPM.PAYMENT_PRICE
+					 , OPM.PAYMENT_PRICE - IFNULL(T1.REFUND_PAYMENT, 0) AS REFUND_SHIPPING_PRICE
+				FROM
+				    OD_CLAIM OC
+				INNER JOIN
+					OD_PAYMENT OP ON OC.OD_CLAIM_ID = OP.OD_CLAIM_ID
+				INNER JOIN
+					OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+				LEFT OUTER JOIN
+					(
+						SELECT
+							A.OD_ORDER_ID,
+							A.OD_CLAIM_ID,
+							B.TID,
+							SUM(B.PAYMENT_PRICE) AS REFUND_PAYMENT
+						FROM	OD_PAYMENT A
+						INNER JOIN
+								OD_PAYMENT_MASTER B ON A.OD_PAYMENT_MASTER_ID = B.OD_PAYMENT_MASTER_ID
+						WHERE
+							B.TYPE = 'F'
+						  AND
+							A.OD_CLAIM_ID = #{odClaimId}
+						GROUP BY A.OD_ORDER_ID, A.OD_CLAIM_ID, B.TID
+					) T1 ON OP.OD_ORDER_ID = T1.OD_ORDER_ID AND OP.OD_CLAIM_ID = T1.OD_CLAIM_ID
+				WHERE
+					OC.OD_CLAIM_ID = #{odClaimId}
+				  AND
+				    OC.CLAIM_YN = 'Y'
+				  AND
+					OPM.TYPE = 'A'
+			      AND
+				    OPM.STATUS = 'IC'
+			) T
+		WHERE
+			T.REFUND_SHIPPING_PRICE > 0
+		ORDER BY T.OD_PAYMENT_MASTER_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 추가 배송비 결제 정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.01		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderClaimAddPaymentShippingPrice" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimPriceInfoDto">
+		/*	order.claimRequest.getOrderClaimAddPaymentShippingPrice  */
+		SELECT
+			IFNULL(A.PAYMENT_PRICE, 0) AS PREV_ADD_PAYMENT_SHIPPING_PRICE
+		FROM
+			(
+				SELECT
+					SUM(OPM.PAYMENT_PRICE) AS PAYMENT_PRICE
+				FROM
+					OD_ORDER OD
+				INNER JOIN
+					OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+				INNER JOIN
+					OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+				INNER JOIN
+					OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID AND OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+				INNER JOIN
+					OD_PAYMENT OP ON OC.OD_ORDER_ID = OP.OD_ORDER_ID AND OC.OD_CLAIM_ID = OP.OD_CLAIM_ID
+				INNER JOIN
+					OD_PAYMENT_MASTER OPM ON OP.OD_PAYMENT_MASTER_ID = OPM.OD_PAYMENT_MASTER_ID
+				WHERE
+					OD.OD_ORDER_ID = #{odOrderId}
+				<if test="goodSearchList != null and goodSearchList.size != 0">
+				AND OOD.OD_ORDER_DETL_ID IN
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(claimStatusTp, "CLAIM_STATUS_TP.RETURN")'>
+							<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+								<choose>
+									<when test="(goodsInfo.orderCnt - goodsInfo.cancelCnt - goodsInfo.claimCnt) == 0 or goodsInfo.orderCnt == 0">
+										#{goodsInfo.odOrderDetlId}
+									</when>
+									<otherwise>
+										''
+									</otherwise>
+								</choose>
+							</foreach>
+						</when>
+				    	<otherwise>
+							<foreach collection="goodSearchList" item="goodsInfo" index="index" separator="," open="(" close=")" >
+								#{goodsInfo.odOrderDetlId}
+							</foreach>
+						</otherwise>
+					</choose>
+				</if>
+				AND
+				    OC.CLAIM_YN = 'Y'
+				AND
+					OPM.TYPE = 'A'
+				AND
+					NOT EXISTS (
+							SELECT
+								B.TID
+							FROM
+								OD_PAYMENT A
+							INNER JOIN OD_PAYMENT_MASTER B ON A.OD_PAYMENT_MASTER_ID = B.OD_PAYMENT_MASTER_ID
+							WHERE
+								A.OD_ORDER_ID = OP.OD_ORDER_ID
+							AND
+								B.TID = OPM.TID
+							AND
+								B.TYPE = 'F'
+						)
+			) A
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 상세 추가배송비 목록 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.01		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimRefundAddPaymentList" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimAddPaymentShippingPriceDto">
+		/*	order.claimRequest.getClaimRefundAddPaymentList  */
+		SELECT
+			OCD.IL_GOODS_SHIPPING_TEMPLATE_ID AS IL_SHIPPING_TMPL_ID,
+		    OCD.UR_WAREHOUSE_ID,
+		    OCD.ADD_PAYMENT_SHIPPING_PRICE
+		FROM
+		    OD_CLAIM OC
+		INNER JOIN
+		    OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID
+		WHERE
+		    OC.OD_CLAIM_ID = #{odClaimId}
+		GROUP BY OCD.IL_GOODS_SHIPPING_TEMPLATE_ID, OCD.UR_WAREHOUSE_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 신청 상품 정보로 클레임 귀책 구분 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.27		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOdClaimTargetTpByOrderClaimGoodsInfo" resultType="String">
+		/*	order.claimRequest.getOdClaimTargetTpByOrderClaimGoodsInfo  */
+		SELECT
+			PCC3.TARGET_TP
+		FROM PS_CLAIM_BOS PCB
+		LEFT JOIN PS_CLAIM_CTGRY PCC3 ON PCB.S_CLAIM_CTGRY_ID = PCC3.PS_CLAIM_CTGRY_ID
+		WHERE
+			PCB.DEL_YN = 'N'
+		AND PCB.USE_YN = 'Y'
+		AND PCB.L_CLAIM_CTGRY_ID = #{bosClaimLargeId}
+		AND PCB.M_CLAIM_CTGRY_ID = #{bosClaimMiddleId}
+		AND PCB.S_CLAIM_CTGRY_ID = #{bosClaimSmallId}
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 클레임 신청 증정품 기획전 상품정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.26		김명진	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOdClaimTargetEvExhibitInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGiftGoodsInfoDto">
+		/*	order.claimRequest.getOdClaimTargetEvExhibitInfo  */
+		SELECT EEG.GIFT_TP
+			 , EEG.OVER_PRICE
+			 , EEG.GIFT_RANGE_TP
+			 , EEG.GIFT_TARGET_TP
+			 , EEGTG.IL_GOODS_ID AS TARGET_IL_GOODS_ID
+			 , EEGTB.BRAND_ID AS TARGET_BRAND_ID
+		FROM EV_EXHIBIT EE
+		INNER JOIN EV_EXHIBIT_GIFT EEG ON EE.EV_EXHIBIT_ID = EEG.EV_EXHIBIT_ID
+		LEFT OUTER JOIN EV_EXHIBIT_GIFT_TARGET_GOODS EEGTG ON EE.EV_EXHIBIT_ID = EEGTG.EV_EXHIBIT_ID
+		LEFT OUTER JOIN EV_EXHIBIT_GIFT_TARGET_BRAND EEGTB ON EE.EV_EXHIBIT_ID = EEGTB.EV_EXHIBIT_ID
+		WHERE
+			EE.EV_EXHIBIT_ID = #{evExhibitId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 대체배송 상품 조회시 본상품 배송정보 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.11.04		천혜현	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOdOrderDetlGoodsDeliveryType" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+		/*	order.claimRequest.getOdOrderDetlGoodsDeliveryType  */
+		SELECT
+			ORDER_STATUS_DELI_TP
+			,GOODS_DELIVERY_TYPE
+		FROM
+			OD_ORDER_DETL
+		WHERE
+			OD_ORDER_DETL_ID = #{odOrderDetlId}
+	</select>
+
+</mapper>

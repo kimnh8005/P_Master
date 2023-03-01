@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.log.IllegalDetectLogMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정거래 탐지 로그
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.23		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIllegalDetectLogList" resultType="kr.co.pulmuone.v1.system.log.dto.vo.IllegalDetectLogResultVo">
+		/* illegalDetectLog.getIllegalDetectLogList */
+		SELECT IL.ST_ILLEGAL_LOG_ID
+			, IL.ILLEGAL_STATUS_TYPE
+			, FN_COMN_CODE_DIC(IL.ILLEGAL_STATUS_TYPE) AS ILLEGAL_STATUS_TYPE_NAME
+			, IL.ILLEGAL_TYPE
+			, FN_COMN_CODE_DIC(IL.ILLEGAL_TYPE) AS ILLEGAL_TYPE_NAME
+			, IL.ILLEGAL_DETAIL_TYPE
+			, FN_COMN_CODE_DIC(IL.ILLEGAL_DETAIL_TYPE) AS ILLEGAL_DETAIL_TYPE_NAME
+			, IL.ILLEGAL_DETECT
+			, CASE  WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.STOLEN_LOST_CARD' THEN '도난분실카드'
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.TRANSACTION_NOT_CARD' THEN '거래불가카드'
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_COUNT' THEN '동일한 IP에서 60분 이내에 '
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_PRICE' THEN '동일한 IP에서 60분 이내에 '
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.USER_JOIN' THEN '동일한 IP에서 60분 이내에 '
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.LOGIN_FAIL' THEN '동일한 IP에서 60분 이내에 '
+			ELSE ''
+			END AS ILLEGAL_DETECT_FRONT_CMT
+			, CASE	WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.STOLEN_LOST_CARD' THEN '로 결제 시도'
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.TRANSACTION_NOT_CARD' THEN '로 결제 시도'
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_COUNT' THEN ' 회 결제 완료'
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_PRICE' THEN ' 원 결제 완료'
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.USER_JOIN' THEN ' 회 회원가입 시도'
+					WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.LOGIN_FAIL' THEN ' 회 로그인 진행'
+			ELSE ''
+			END AS ILLEGAL_DETECT_END_CMT
+			, IL.UR_PCID_CD
+		, CASE  WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 0 THEN '-'
+				WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 1 THEN
+				(
+				SELECT U1.LOGIN_ID
+				FROM ST_ILLEGAL_LOG I1
+				INNER JOIN ST_ILLEGAL_LOG_USER IU1 ON I1.ST_ILLEGAL_LOG_ID = IU1.ST_ILLEGAL_LOG_ID
+				INNER JOIN UR_USER U1 ON U1.UR_USER_ID = IU1.UR_USER_ID
+				WHERE I1.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+				LIMIT 1
+				)
+				ELSE CONCAT((SELECT U2.LOGIN_ID
+							FROM ST_ILLEGAL_LOG I2
+							INNER JOIN ST_ILLEGAL_LOG_USER IU2 ON I2.ST_ILLEGAL_LOG_ID = IU2.ST_ILLEGAL_LOG_ID
+							INNER JOIN UR_USER U2 ON U2.UR_USER_ID = IU2.UR_USER_ID
+							WHERE I2.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+							LIMIT 1),' 외',
+							(SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID )-1 ,'건')
+			END AS LOGIN_ID
+		, LOGIN_INFO.LOGIN_ID_GROUP
+		, CASE  WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 0 THEN '-'
+				WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 1 THEN
+				(
+				SELECT OO1.ODID
+				FROM ST_ILLEGAL_LOG I1
+				INNER JOIN ST_ILLEGAL_LOG_ORDER ILO1 ON I1.ST_ILLEGAL_LOG_ID = ILO1.ST_ILLEGAL_LOG_ID
+				INNER JOIN OD_ORDER OO1 ON OO1.OD_ORDER_ID = ILO1.OD_ORDER_ID
+				WHERE I1.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+				LIMIT 1
+				)
+				ELSE CONCAT((SELECT OO2.ODID
+							FROM ST_ILLEGAL_LOG I2
+							INNER JOIN ST_ILLEGAL_LOG_ORDER ILO2 ON I2.ST_ILLEGAL_LOG_ID = ILO2.ST_ILLEGAL_LOG_ID
+							INNER JOIN OD_ORDER OO2 ON OO2.OD_ORDER_ID = ILO2.OD_ORDER_ID
+							WHERE I2.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+							LIMIT 1),' 외',
+							(SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID )-1 ,'건')
+			END AS ODID
+		, ORDER_INFO.ODID_GROUP
+		, IL.DETECT_END_DT
+		, IL.CREATE_DT
+		FROM ST_ILLEGAL_LOG IL
+		LEFT JOIN (SELECT GROUP_CONCAT(U1.LOGIN_ID) AS LOGIN_ID_GROUP , I1.ST_ILLEGAL_LOG_ID
+					FROM ST_ILLEGAL_LOG I1
+					INNER JOIN ST_ILLEGAL_LOG_USER I2
+					ON I1.ST_ILLEGAL_LOG_ID = I2.ST_ILLEGAL_LOG_ID
+					INNER JOIN UR_USER U1
+					ON U1.UR_USER_ID = I2.UR_USER_ID  GROUP BY I1.ST_ILLEGAL_LOG_ID
+					) AS LOGIN_INFO ON LOGIN_INFO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+		LEFT JOIN (SELECT GROUP_CONCAT(O1.ODID) AS ODID_GROUP , I1.ST_ILLEGAL_LOG_ID
+					FROM ST_ILLEGAL_LOG I1
+					INNER JOIN ST_ILLEGAL_LOG_ORDER I2
+					ON I1.ST_ILLEGAL_LOG_ID = I2.ST_ILLEGAL_LOG_ID
+					INNER JOIN OD_ORDER O1
+					ON O1.OD_ORDER_ID = I2.OD_ORDER_ID  GROUP BY I1.ST_ILLEGAL_LOG_ID
+					) AS ORDER_INFO ON ORDER_INFO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIillegalType)">
+			    AND IL.ILLEGAL_TYPE = #{searchIillegalType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIllegalDetailType)">
+				AND IL.ILLEGAL_DETAIL_TYPE = #{searchIllegalDetailType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIllegalStatusTypeList)">
+				<if test="searchIllegalStatusTypeList.size() > 0"> <!-- 처리상태 -->
+					AND   IL.ILLEGAL_STATUS_TYPE IN
+					<foreach collection="searchIllegalStatusTypeList" item="searchIllegalStatusType" index="index" separator="," open="(" close=")">
+						#{searchIllegalStatusType}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND IL.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+			    </if>
+			</if>
+		</where>
+		ORDER BY IL.DETECT_END_DT DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정거래 탐지 상세조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.24		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIllegalDetectLogDetail" resultType="kr.co.pulmuone.v1.system.log.dto.vo.IllegalDetectLogResultVo">
+		/* illegalDetectLog.getIllegalDetectLogDetail */
+		SELECT IL.ST_ILLEGAL_LOG_ID
+		, IL.ILLEGAL_STATUS_TYPE
+		, IL.ILLEGAL_TYPE
+		, FN_COMN_CODE_DIC(IL.ILLEGAL_TYPE) AS ILLEGAL_TYPE_NAME
+		, IL.ILLEGAL_DETAIL_TYPE
+		, FN_COMN_CODE_DIC(IL.ILLEGAL_DETAIL_TYPE) AS ILLEGAL_DETAIL_TYPE_NAME
+		, IL.ILLEGAL_DETECT
+		, IL.UR_PCID_CD
+		, IL.DETECT_END_DT
+		, IL.DETECT_START_DT
+		, CASE WHEN IL.DETECT_START_DT IS NULL AND IL.DETECT_END_DT IS NULL THEN IL.CREATE_DT
+			   WHEN IL.DETECT_START_DT IS NOT NULL AND IL.DETECT_END_DT IS NOT NULL THEN CONCAT(IL.CREATE_DT, ' (', IL.DETECT_START_DT ,'~', IL.DETECT_END_DT ,')')
+		  END AS DETECT_DATE
+		, IL.ADMIN_MESSAGE
+		, IL.MODIFY_DT
+		, FN_ENCRYPT(UU.USER_NM) AS USER_NAME
+		, UU.LOGIN_ID
+		, CONCAT(IL.MODIFY_DT, '(', FN_DECRYPT(UU.USER_NM), '/', UU.LOGIN_ID,')') AS MODIFY_INFO
+		, (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) AS USER_CNT
+		, (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) AS ORDER_CNT
+		, CASE WHEN  (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 0 THEN 'N'
+		       ELSE 'Y'
+		  END AS USER_YN
+		, CASE  WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 0 THEN '-'
+				WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 1 THEN
+					(
+					SELECT U1.LOGIN_ID
+					FROM ST_ILLEGAL_LOG I1
+					INNER JOIN ST_ILLEGAL_LOG_USER IU1
+					ON I1.ST_ILLEGAL_LOG_ID = IU1.ST_ILLEGAL_LOG_ID
+					INNER JOIN UR_USER U1
+					ON U1.UR_USER_ID = IU1.UR_USER_ID
+					WHERE I1.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+					LIMIT 1
+					)
+				ELSE CONCAT((SELECT U2.LOGIN_ID
+				FROM ST_ILLEGAL_LOG I2
+				INNER JOIN ST_ILLEGAL_LOG_USER IU2
+				ON I2.ST_ILLEGAL_LOG_ID = IU2.ST_ILLEGAL_LOG_ID
+				INNER JOIN UR_USER U2
+				ON U2.UR_USER_ID = IU2.UR_USER_ID
+				WHERE I2.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+				LIMIT 1),' 외',
+				(SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID )-1 ,'건')
+		END AS USER_ID
+		, LOGIN_INFO.LOGIN_ID_GROUP
+		, CASE  WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 0 THEN '-'
+				WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 1 THEN
+				(
+				SELECT OO1.ODID
+				FROM ST_ILLEGAL_LOG I1
+				INNER JOIN ST_ILLEGAL_LOG_ORDER ILO1 ON I1.ST_ILLEGAL_LOG_ID = ILO1.ST_ILLEGAL_LOG_ID
+				INNER JOIN OD_ORDER OO1 ON OO1.OD_ORDER_ID = ILO1.OD_ORDER_ID
+				WHERE I1.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+				LIMIT 1
+				)
+		  ELSE CONCAT((SELECT OO2.ODID
+					FROM ST_ILLEGAL_LOG I2
+					INNER JOIN ST_ILLEGAL_LOG_ORDER ILO2 ON I2.ST_ILLEGAL_LOG_ID = ILO2.ST_ILLEGAL_LOG_ID
+					INNER JOIN OD_ORDER OO2 ON OO2.OD_ORDER_ID = ILO2.OD_ORDER_ID
+					WHERE I2.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+					LIMIT 1),' 외',
+					(SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID )-1 ,'건')
+		  END AS ODID
+		, ORDER_INFO.ODID_GROUP
+		FROM ST_ILLEGAL_LOG IL
+		LEFT JOIN UR_USER UU ON UU.UR_USER_ID = IL.MODIFY_ID
+		LEFT JOIN (SELECT GROUP_CONCAT(U1.LOGIN_ID) AS LOGIN_ID_GROUP , I1.ST_ILLEGAL_LOG_ID
+					FROM ST_ILLEGAL_LOG I1
+					INNER JOIN ST_ILLEGAL_LOG_USER I2
+					ON I1.ST_ILLEGAL_LOG_ID = I2.ST_ILLEGAL_LOG_ID
+					INNER JOIN UR_USER U1
+					ON U1.UR_USER_ID = I2.UR_USER_ID  GROUP BY I1.ST_ILLEGAL_LOG_ID
+					) AS LOGIN_INFO ON LOGIN_INFO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+		LEFT JOIN (SELECT GROUP_CONCAT(O1.ODID) AS ODID_GROUP , I1.ST_ILLEGAL_LOG_ID
+					FROM ST_ILLEGAL_LOG I1
+					INNER JOIN ST_ILLEGAL_LOG_ORDER I2
+					ON I1.ST_ILLEGAL_LOG_ID = I2.ST_ILLEGAL_LOG_ID
+					INNER JOIN OD_ORDER O1
+					ON O1.OD_ORDER_ID = I2.OD_ORDER_ID  GROUP BY I1.ST_ILLEGAL_LOG_ID
+					) AS ORDER_INFO ON ORDER_INFO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+		WHERE  IL.ST_ILLEGAL_LOG_ID = #{stIllegalLogId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		:  부정거래 탐지 내용 수정
+     * @
+     * @ 수정일			 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.24      안치열         최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putIllegalDetectDetailInfo">
+		/* illegalDetectLog.putIllegalDetectDetailInfo */
+		UPDATE 	ST_ILLEGAL_LOG
+		SET 	ILLEGAL_STATUS_TYPE = #{illegalStatusType}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminMessage)">
+				, ADMIN_MESSAGE     = #{adminMessage}
+			</if>
+				, MODIFY_ID		    = #{userVo.userId}
+				, MODIFY_DT		    = NOW()
+		WHERE  	ST_ILLEGAL_LOG_ID  = #{stIllegalLogId}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정거래 탐지 로그
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.23		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="illegalDetectListExportExcel" resultType="kr.co.pulmuone.v1.system.log.dto.vo.IllegalDetectLogResultVo">
+		/* illegalDetectLog.illegalDetectListExportExcel */
+		SELECT IL.ST_ILLEGAL_LOG_ID
+				, IL.ILLEGAL_STATUS_TYPE
+				, FN_COMN_CODE_DIC(IL.ILLEGAL_STATUS_TYPE) AS ILLEGAL_STATUS_TYPE_NAME
+				, IL.ILLEGAL_TYPE
+				, FN_COMN_CODE_DIC(IL.ILLEGAL_TYPE) AS ILLEGAL_TYPE_NAME
+				, IL.ILLEGAL_DETAIL_TYPE
+				, FN_COMN_CODE_DIC(IL.ILLEGAL_DETAIL_TYPE) AS ILLEGAL_DETAIL_TYPE_NAME
+				, CASE  WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.STOLEN_LOST_CARD' THEN '도난분실카드로 결제 시도'
+						WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.TRANSACTION_NOT_CARD' THEN '거래불가카드로 결제 시도'
+						WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_COUNT' THEN CONCAT('동일한 IP에서 60분 이내에 ', IL.ILLEGAL_DETECT ,' 회 결제 완료')
+						WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.ORDER_PRICE' THEN CONCAT('동일한 IP에서 60분 이내에 ', IL.ILLEGAL_DETECT ,' 원 결제 완료')
+						WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.USER_JOIN' THEN CONCAT('동일한 IP에서 60분 이내에 ', IL.ILLEGAL_DETECT ,' 회 회원가입 시도')
+						WHEN IL.ILLEGAL_DETAIL_TYPE = 'ILLEGAL_DETAIL_TYPE.LOGIN_FAIL' THEN CONCAT('동일한 IP에서 60분 이내에 ', IL.ILLEGAL_DETECT ,' 회 로그인 진행')
+						ELSE ''
+						END AS ILLEGAL_DETECT_CMT
+				, IL.UR_PCID_CD
+				, CASE  WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 0 THEN '-'
+						WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 1 THEN
+						(
+						SELECT U1.LOGIN_ID
+						FROM ST_ILLEGAL_LOG I1
+						INNER JOIN ST_ILLEGAL_LOG_USER IU1 ON I1.ST_ILLEGAL_LOG_ID = IU1.ST_ILLEGAL_LOG_ID
+						INNER JOIN UR_USER U1 ON U1.UR_USER_ID = IU1.UR_USER_ID
+						WHERE I1.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+						LIMIT 1
+						)
+						ELSE CONCAT((SELECT U2.LOGIN_ID
+									FROM ST_ILLEGAL_LOG I2
+									INNER JOIN ST_ILLEGAL_LOG_USER IU2 ON I2.ST_ILLEGAL_LOG_ID = IU2.ST_ILLEGAL_LOG_ID
+									INNER JOIN UR_USER U2 ON U2.UR_USER_ID = IU2.UR_USER_ID
+									WHERE I2.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+									LIMIT 1),' 외',
+									(SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_USER ILU WHERE ILU.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID )-1 ,'건')
+				 END AS LOGIN_ID
+				, LOGIN_INFO.LOGIN_ID_GROUP
+				, CASE  WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 0 THEN '-'
+						WHEN (SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID ) = 1 THEN
+							(
+							SELECT OO1.ODID
+							FROM ST_ILLEGAL_LOG I1
+							INNER JOIN ST_ILLEGAL_LOG_ORDER ILO1 ON I1.ST_ILLEGAL_LOG_ID = ILO1.ST_ILLEGAL_LOG_ID
+							INNER JOIN OD_ORDER OO1 ON OO1.OD_ORDER_ID = ILO1.OD_ORDER_ID
+							WHERE I1.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+							LIMIT 1
+							)
+						ELSE CONCAT((SELECT OO2.ODID
+									FROM ST_ILLEGAL_LOG I2
+									INNER JOIN ST_ILLEGAL_LOG_ORDER ILO2 ON I2.ST_ILLEGAL_LOG_ID = ILO2.ST_ILLEGAL_LOG_ID
+									INNER JOIN OD_ORDER OO2 ON OO2.OD_ORDER_ID = ILO2.OD_ORDER_ID
+									WHERE I2.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+									LIMIT 1),' 외',
+									(SELECT COUNT(*)CNT FROM ST_ILLEGAL_LOG_ORDER ILO WHERE ILO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID )-1 ,'건')
+				END AS ODID
+				, ORDER_INFO.ODID_GROUP
+				, IL.DETECT_END_DT
+				, IL.CREATE_DT
+		FROM ST_ILLEGAL_LOG IL
+		LEFT JOIN (SELECT GROUP_CONCAT(U1.LOGIN_ID) AS LOGIN_ID_GROUP , I1.ST_ILLEGAL_LOG_ID
+		FROM ST_ILLEGAL_LOG I1
+		INNER JOIN ST_ILLEGAL_LOG_USER I2
+		ON I1.ST_ILLEGAL_LOG_ID = I2.ST_ILLEGAL_LOG_ID
+		INNER JOIN UR_USER U1
+		ON U1.UR_USER_ID = I2.UR_USER_ID  GROUP BY I1.ST_ILLEGAL_LOG_ID
+		) AS LOGIN_INFO ON LOGIN_INFO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+		LEFT JOIN (SELECT GROUP_CONCAT(O1.ODID) AS ODID_GROUP , I1.ST_ILLEGAL_LOG_ID
+		FROM ST_ILLEGAL_LOG I1
+		INNER JOIN ST_ILLEGAL_LOG_ORDER I2
+		ON I1.ST_ILLEGAL_LOG_ID = I2.ST_ILLEGAL_LOG_ID
+		INNER JOIN OD_ORDER O1
+		ON O1.OD_ORDER_ID = I2.OD_ORDER_ID  GROUP BY I1.ST_ILLEGAL_LOG_ID
+		) AS ORDER_INFO ON ORDER_INFO.ST_ILLEGAL_LOG_ID = IL.ST_ILLEGAL_LOG_ID
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIillegalType)">
+				AND IL.ILLEGAL_TYPE = #{searchIillegalType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIllegalDetailType)">
+				AND IL.ILLEGAL_DETAIL_TYPE = #{searchIllegalDetailType}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchIllegalStatusTypeList)">
+				<if test="searchIllegalStatusTypeList.size() > 0"> <!-- 처리상태 -->
+					AND   IL.ILLEGAL_STATUS_TYPE IN
+					<foreach collection="searchIllegalStatusTypeList" item="searchIllegalStatusType" index="index" separator="," open="(" close=")">
+						#{searchIllegalStatusType}
+					</foreach>
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND IL.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</where>
+		ORDER BY IL.DETECT_END_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정거래 탐지 회원ID
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.25		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="illegalDetectUserIdxportExcel" resultType="kr.co.pulmuone.v1.system.log.dto.vo.IllegalDetectLogResultVo">
+		/* illegalDetectLog.illegalDetectUserIdxportExcel */
+		SELECT U1.LOGIN_ID
+		FROM ST_ILLEGAL_LOG I1
+		INNER JOIN ST_ILLEGAL_LOG_USER IU1
+		ON I1.ST_ILLEGAL_LOG_ID = IU1.ST_ILLEGAL_LOG_ID
+		INNER JOIN UR_USER U1
+		ON U1.UR_USER_ID = IU1.UR_USER_ID
+		WHERE I1.ST_ILLEGAL_LOG_ID = #{stIllegalLogId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부정거래 탐지 주문번호
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.25		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="illegalDetectOrderExportExcel" resultType="kr.co.pulmuone.v1.system.log.dto.vo.IllegalDetectLogResultVo">
+		/* illegalDetectLog.illegalDetectOrderExportExcel */
+		SELECT OO1.ODID
+		FROM ST_ILLEGAL_LOG I1
+		INNER JOIN ST_ILLEGAL_LOG_ORDER ILO1 ON I1.ST_ILLEGAL_LOG_ID = ILO1.ST_ILLEGAL_LOG_ID
+		INNER JOIN OD_ORDER OO1 ON OO1.OD_ORDER_ID = ILO1.OD_ORDER_ID
+		WHERE I1.ST_ILLEGAL_LOG_ID = #{stIllegalLogId}
+	</select>
+</mapper>
+

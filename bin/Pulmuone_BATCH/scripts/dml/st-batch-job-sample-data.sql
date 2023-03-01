@@ -1,0 +1,5 @@
+INSERT INTO ST_BATCH_JOB_SAMPLE (TITLE, CONTENT, CREATE_DATE, UPDATE_DATE)
+VALUES ('테스트1 제목입니다.', '테스트1 내용입니다.', now(), now());
+
+INSERT INTO ST_BATCH_JOB_SAMPLE (TITLE, CONTENT, CREATE_DATE, UPDATE_DATE)
+VALUES ('테스트2 제목입니다.', '테스트2 내용입니다.', now(), now());

@@ -1,0 +1,540 @@
+<style>
+	table tr.hover{
+		background: #F4F9FE;
+	}
+	.k-state-selected,
+	.k-state-selected:link,
+	.k-state-selected:visited {
+		color: #2e2e2e;
+		background-color: #fff !important;
+		border-color: #f85a00;
+	}
+	table tr{
+		padding:0;
+		margin:0;
+	}
+
+	.trDisabled{
+		background: #fee8ef;
+	}
+</style>
+<div class="orderMgm">
+	<div class="wrap-location">
+		<h1 class="title"></h1>
+		<span class="location"></span>
+	</div>
+
+	<!--- Kendo TabStrip div  ------------------------------------------------------->
+	<div class="fb__sect">
+		<div class="table-wrapper">
+			<table class="datatable v-type ">
+				<caption>주문자 정보</caption>
+				<tbody>
+				<tr>
+					<th scope="row" class="active"><label style="font-size: 20px;">주문자 정보</label>
+						<button class="k-icon k-i-arrow-chevron-up table-toggleBtn"></button></th>
+				</tr>
+				<tr class="toggleRow">
+					<td>
+						<div class="complex-condition">
+							<table class="datatable v-type infoTable left">
+								<colgroup>
+									<col style="width: 16%;">
+									<col style="width: 34%;">
+									<col style="width: 16%;">
+									<col style="width: 34%;">
+								</colgroup>
+								<tbody>
+								<!-- 행1 -->
+								<tr>
+									<th>
+										<div class="orderBuyer_info">주문번호</div>
+									</th>
+									<td>
+										<div class="orderBuyer_info_result" id="odidText"></div>
+										<input type="hidden" name="odid" value="" id="odid" />
+									</td>
+									<th>
+										<div class="orderBuyer_info">외부몰 주문번호 (수집몰 주문번호)</div>
+									</th>
+									<td>
+										<div id="btnOutMallAdmin"></div>
+										<div class="orderBuyer_info_result" id="outmallId"></div>
+									</td>
+								</tr>
+								<!-- 행2 -->
+								<tr>
+									<th>
+										<div class="orderBuyer_info">주문자정보</div>
+									</th>
+									<td>
+										<div class="orderBuyer_info_result" id="buyerNm"></div>
+										<span id="urUserId" style="display:none;"></span>
+									</td>
+									<th>
+										<div class="orderBuyer_info">판매처 / 유형</div>
+									</th>
+									<td>
+										<div class="orderBuyer_info_result" id="sellersGroupNm"></div>
+									</td>
+								</tr>
+								<!-- 행3 -->
+								<tr>
+									<th>
+										<div class="orderBuyer_info">주문자 휴대폰</div>
+									</th>
+									<td>
+										<div class="orderBuyer_info_result" id="buyerHp"></div>
+									</td>
+									<th>
+										<div class="orderBuyer_info">주문일시 / 결제일시</div>
+									</th>
+									<td>
+										<div class="orderBuyer_info_result" id="createDt"></div>
+									</td>
+								</tr>
+								<!-- 행4-->
+								<tr>
+									<th>
+										<div class="orderBuyer_info">주문자 이메일</div>
+									</th>
+									<td>
+										<div class="orderBuyer_info_result" id="buyerMail"></div>
+									</td>
+									<th>
+										<div class="orderBuyer_info">결제정보</div>
+									</th>
+									<td>
+										<div class="orderBuyer_info_result" id="buyerPayment"></div>
+									</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+					</td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+		<div id="tabstrip">
+			<ul>
+				<li id="defaultTab" class="tab__class">상품/결제 정보</li>
+				<li id="claimTab" class="tab__class">클레임정보</li>
+			</ul>
+
+			<!-- 상품/결제 정보 Tab Start -->
+			<div class="tab-cont">
+				<!-- tab-cont__inner Start -->
+				<div class="tab-cont__inner">
+					<!-- tab-cont__header Start -->
+					<div class="tab-cont__header">
+						<div class="tab-cont__btnCont"></div>
+					</div>
+					<!-- tab-cont__header End -->
+
+					<!-- tab-cont__body Start -->
+					<div class="tab-cont__body">
+						<!-- 상품정보 -->
+						<div class="table-wrapper">
+							<table class="datatable v-type ">
+								<caption>주문 상품 정보</caption>
+								<tbody>
+								<tr>
+									<th scope="row" class="active"><label style="font-size: 20px;">주문 상품 정보</label></th>
+								</tr>
+								<tr>
+									<td>
+										<div id="orderGoodsGrid" class="orderGoodsGrid"></div>
+									</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+
+						<!-- 선물 정보 -->
+						<form id="presentForm" name="presentForm" style="display: none;">
+							<div class="table-wrapper">
+								<table class="datatable v-type">
+									<caption>선물 정보</caption>
+									<tbody>
+									<tr>
+										<th scope="row" class="active"><label style="font-size: 20px;">선물 정보</label>
+									</tr>
+									<tr class="toggleRow">
+										<td>
+											<div class="complex-condition">
+												<table class="datatable v-type infoTable">
+													<tbody>
+														<tr>
+															<th><div class="firstDiv" style="padding: 10px; text-align: center;">수신자</div></th>
+															<th><div class="secondDiv"  style="padding: 10px; text-align: center;">연락처</div></th>
+															<th><div class="thirdDiv"  style="padding: 10px; text-align: center;">메세지</div></th>
+															<th><div class="fourthDiv"  style="padding: 10px; text-align: center;">관리</div></th>
+														</tr>
+														<tr>
+															<td>
+																<div class="present_info_result"><!--수신자-->
+																	<input type="text" id="presentReceiveNm" name="presentReceiveNm" class="comm-input" style="text-align: center;"/>
+																</div>
+															</td>
+															<td>
+																<div class="present_info_result"><!--연락처-->
+																	<input id="presentReceiveHp_prefix" type="text" name="presentReceiveHp_prefix" class="comm-input" maxlength="4" style="width:100px; text-align: center;"> <span class="hyphen">-</span>
+																	<input id="presentReceiveHp_phone1" type="text" name="presentReceiveHp_phone1" class="comm-input" maxlength="4"style="width: 100px; text-align: center;"> <span class="hyphen">-</span>
+																	<input id="presentReceiveHp_phone2" type="text" name="presentReceiveHp_phone2" class="comm-input" maxlength="4" style="width: 100px; text-align: center;">
+																</div>
+															</td>
+															<td>
+																<div class="present_info_result"><!--메세지-->
+																	<input type="text" id="presentCardMsg" name="presentCardMsg" class="comm-input" style="text-align: center;"/>
+																</div>
+															</td>
+															<td>
+																<div class="btn-area present_info_result"><!--관리-->
+																	<button id="fnPresentSave" class="btn-point btn-m" type="button" onclick="$scope.fnPresentSave();">저장</button>
+																	<button id="fnPresentMsgSend" class="btn-point btn-m" type="button" onclick="$scope.fnPresentMsgSend();"></button>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</td>
+									</tr>
+									</tbody>
+								</table>
+							</div>
+						</form>
+
+						<div class="table-wrapper" style="margin-top: 20px;">
+							<table class="datatable v-type ">
+								<caption>배송정보</caption>
+								<tbody>
+								<tr>
+									<th scope="row" class="active"><label style="font-size: 20px;">배송정보</label>
+										<button class="k-icon k-i-arrow-chevron-up table-toggleBtn"></button></th>
+								</tr>
+								<tr class="toggleRow">
+									<td>
+										<div id="shippingGrid"></div>
+									</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+						<!-- 결제 정보 -->
+						<form id="payForm" name="payForm">
+							<div class="table-wrapper">
+								<table class="datatable v-type">
+									<caption>결제 정보</caption>
+									<tbody>
+									<tr>
+										<th scope="row" class="active"><label style="font-size: 20px;">결제 정보</label>
+											<button id='immediateDiscountBtn' type='button' class='btn-s btn-point'>즉시 할인 내역</button>
+											<button class="k-icon k-i-arrow-chevron-up table-toggleBtn"></button></th>
+									</tr>
+									<tr class="toggleRow">
+										<td>
+											<div class="complex-condition">
+												<table class="datatable v-type infoTable">
+													<tbody id="tbodyPaymentArea">
+													<!-- 결제상세정보 -->
+													<!-- 환불 정보 End -->
+													</tbody>
+												</table>
+											</div>
+										</td>
+									</tr>
+									</tbody>
+								</table>
+							</div>
+						</form>
+
+
+
+						<!-- 쿠폰 할인 정보 -->
+						<div class="table-wrapper" style="margin-top: 20px;">
+							<table class="datatable v-type">
+								<caption>쿠폰 할인 정보</caption>
+								<tbody>
+								<tr>
+									<th scope="row" class="active"><label style="font-size: 20px;">쿠폰 할인 정보</label></th>
+								</tr>
+								<tr>
+									<td>
+										<div id="couponDiscountGrid"></div>
+									</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+
+
+
+					</div>
+					<!-- tab-cont__body End -->
+				</div>
+				<!-- tab-cont__inner Emd -->
+			</div>
+			<!-- 상품/결제 정보 Tab End -->
+
+			<!-- 클레임정보  Tab Start -->
+			<div class="tab-cont">
+				<div class="tab-cont__inner">
+					<!-- tab-cont__header Start -->
+					<div class="tab-cont__header">
+						<div class="tab-cont__btnCont"></div>
+					</div>
+					<!-- tab-cont__header End -->
+					<!-- tab-cont__header Start -->
+					<div class="tab-cont__header"></div>
+					<!-- tab-cont__header End -->
+
+					<!-- tab-cont__body Start -->
+					<div class="tab-cont__body">
+
+						<!-- 클레임 상품 정보 -->
+						<div class="table-wrapper">
+							<table class="datatable v-type ">
+								<caption>클레임 상품 정보</caption>
+								<tbody>
+								<tr>
+									<th scope="row" class="active"><label style="font-size: 20px;">클레임 상품 정보</label>
+										<button class="k-icon k-i-arrow-chevron-up table-toggleBtn"></button></th>
+								</tr>
+								<tr class="toggleRow">
+									<td>
+										<div id="claimGoodsGrid"></div>
+									</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+
+						<div class="table-wrapper">
+							<table class="datatable v-type ">
+								<caption>클레임 회수 정보</caption>
+								<tbody>
+								<tr>
+									<th scope="row" class="active"><label style="font-size: 20px;">클레임 회수 정보</label>
+										<button class="k-icon k-i-arrow-chevron-up table-toggleBtn"></button></th>
+								</tr>
+								<tr class="toggleRow">
+									<td>
+										<div id="claimReturnShippingGrid"></div>
+									</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+
+					</div>
+					<!-- tab-cont__body End -->
+				</div>
+			</div>
+			<!-- 클레임정보 Tab End -->
+		</div>
+
+		<!--  탭별 공통 내용 -->
+		<div>
+			<div class="tab-cont__inner common">
+				<!-- 주문 상담 내용 -->
+				<form id="inputConsultForm" name="inputConsultForm" enctype="multipart/form-data">
+					<div class="table-wrapper">
+						<table class="datatable v-type">
+							<caption>주문 상담 내용</caption>
+							<tbody>
+							<tr>
+								<th scope="row" class="active"><label style="font-size: 20px;">주문 상담 내용</label>
+									<button class="k-icon k-i-arrow-chevron-up table-toggleBtn"></button></th>
+							</tr>
+							<tr class="toggleRow">
+								<td>
+									<div class="consult-container" style="padding-left: 5px; padding-right: 5px;">
+										<!-- 주문 상담 입력 영역 -->
+										<div class="consult newConsult">
+											<div class="consult__left">
+												<p class="consult__manager">
+													<span class="consult__manager__name" id="modifyNm">{관리자명}</span> <span class="consult__manager__id" id="modifyId">{관리자아이디}</span>
+												</p>
+												<div class="btn-area">
+													<button id="fnSave" type="button" class="btn-m btn-point" onclick="$scope.fnSave()">저장</button>
+												</div>
+											</div>
+											<div class="consult__right">
+												<div class="textarea-wrapper">
+													<textarea id="odConsultMsg" name="odConsultMsg" class="comm-textarea" style="min-height: 70px;"></textarea>
+												</div>
+											</div>
+										</div>
+										<!-- 추가되는 주문 상담 내용 (임시) -->
+										<div class="consult" id="consultInfo">
+										</div>
+									</div>
+								</td>
+							</tr>
+							</tbody>
+						</table>
+					</div>
+				</form>
+			</div>
+
+			<!-- 처리이력 -->
+			<div class="table-wrapper" style="margin-top: 20px;">
+				<table class="datatable v-type">
+					<caption>처리이력</caption>
+					<tbody>
+					<tr>
+						<th scope="row" class="active"><label style="font-size: 20px;">처리이력</label></th>
+					</tr>
+					<tr>
+						<td>
+							<div id="orderHistoryGrid"></div>
+						</td>
+					</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+<div id="divPaymentArea">
+	<table>
+		<tr>
+			<th style="width: 190px;"><div class="firstDiv"></div></th>
+			<th><div class="secondDiv"></div></th>
+			<th><div class="thirdDiv"></div></th>
+			<th><div class="fourthDiv"></div></th>
+			<th><div class="fifthDiv"></div></th>
+			<th><div class="sixthDiv"></div></th>
+			<th><div class="seventhDiv"></div></th>
+			<th><div class="eighthDiv"></div></th>
+			<th><div class="ninthDiv"></div></th>
+			<th><div class="tenthDiv"></div></th>
+			<th><div class="eleventhDiv"></div></th>
+			<th><div class="twelfthDiv"></div></th>
+			<th style="width: 190px;"><div class="thirteenthDiv"></div></th>
+		</tr>
+		<tr>
+			<td>
+				<div class="payment_info_result"><!--주문/결제일자-->
+					<span id="dateFirst" class="dateFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--총 주문금액-->
+					<span id="totalOrderPriceFirst" class="totalOrderPriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--총 상품금액-->
+					<span id="salePriceFirst" class="salePriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--배송비-->
+					<span id="shippingPriceFirst" class="shippingPriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--쿠폰할인-->
+					<span id="discountCouponPriceFirst" class="discountCouponPriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--즉시할인-->
+					<span id="directPriceFirst" class="directPriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--임직원 지원금-->
+					<span id="discountEmployeePriceFirst" class="discountEmployeePriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--결제대상금액-->
+					<span id="paymentTargetPriceFirst" class="paymentTargetPriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--적립금사용-->
+					<span id="pointPriceFirst" class="pointPriceFirst"></span>
+				</div>
+			</td>
+
+			<td>
+				<div class="payment_info_result"><!--최종결제금액-->
+					<span id="paymentPriceFirst" class="paymentPriceFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--결제상태-->
+					<span id="statusFirst" class="statusFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--결제방법-->
+					<span id="payTypeFirst" class="payTypeFirst"></span>
+				</div>
+			</td>
+			<td>
+				<div class="payment_info_result"><!--결제기관(PG)-->
+					<span id="payInfoFirst" class="payInfoFirst"></span>
+				</div>
+			</td>
+		</tr>
+		<!-- 결제상세정보 End -->
+	</table>
+</div>
+<!--상품/결제 정보 > 결제정보 템플릿 END-->
+<!--
+<script id="outmallLinkButton-template" type="text/template">
+	<div class="btn-area" id="divOutmallAdminLinkArea" name="divOutmallAdminLinkArea" style="text-align: left">
+		<div class="btn-area" id="divOutmallAdminLink" name="divOutmallAdminLink" style="text-align: left;">
+			<button type="button" id="btnOutmallAdminLink" name="btnOutmallAdminLink" value="IB" class="btn-point btn-m btnOutmallAdminLink" type="button" onclick="" ></button>
+		</div>
+	</div>
+</script>
+-->
+<script id="orderButton-template" type="text/template">
+	<div class="btn-area" id="putOrderStatusBtnArea" name="putOrderStatusBtnArea" style="text-align: right;">
+		<input type="button" id="orderShopStore" style="display:none; border: 1px solid green; color:green; background-color:white; float: left;"  />
+		<!--<button type="button" name="putOrderStatusIB" value="IB" class="btn-point btn-m" type="button" onclick="" disabled>입금전취소</button>-->
+		<button type="button" name="putOrderStatusDR" value="DR" class="btn-point btn-m" type="button" data-claimCntCheck="N" disabled data-msg="배송준비중으로" data-stat="DR">배송준비중</button>
+		<button type="button" name="putOrderStatusDI" value="DI" class="btn-point btn-m" type="button" data-claimCntCheck="N" onclick="" disabled>배송중</button>
+		<button type="button" name="putOrderStatusBF" value="BF" class="btn-point btn-m" type="button" data-claimCntCheck="N" onclick="" disabled>구매확정</button>
+		<button type="button" name="putOrderStatusC"  value="C" class="btn-point btn-m" type="button" data-claimCntCheck="Y" onclick="" disabled>취소</button>
+		<button type="button" name="putOrderStatusEC" value="EC" class="btn-point btn-m" type="button" data-claimCntCheck="Y" onclick="" disabled>재배송</button>
+		<button type="button" name="putOrderStatusCS" value="CS" class="btn-point btn-m" type="button" data-claimCntCheck="N" onclick="" disabled>CS환불</button>
+		<button type="button" name="putOrderStatusR" value="R" class="btn-point btn-m" type="button" data-claimCntCheck="Y" onclick="" disabled>반품</button>
+		<!--<button type="button" name="putOrderStatusR1" value="R1" class="btn-point btn-m" type="button" onclick="" disabled>반품거부</button>
+		<button type="button" name="putOrderStatusC2" value="C2" class="btn-point btn-m" type="button" onclick="" disabled>취소거부</button>-->
+		<!--<button type="button" name="putOrderStatusC1" value="C1" class="btn-point btn-m" type="button" data-claimCntCheck="N" onclick="" disabled>취소승인</button>-->
+		<!-- <button type="button" class="btn-point btn-m" type="button" onclick="" disabled>
+			취소철회
+		</button> -->
+	</div>
+</script>
+
+<script id="templateConsult" type="text/template">
+	<div id="divConsultArea" class="consult">
+		<div class="consult__left">
+			<p class="consult__manager">
+				<span class="consult__manager__name">{modifyNm}</span> <span class="consult__manager__id__list" name="{modifyIdList1}">{modifyId}</span>
+			</p>
+			<p class="consult__regTime">{modifyDt}</p>
+			<div>
+				<button id="fnSave_list_{odConsultIdSave2}" name={modifyIdList4} type="button" class="btn-m btn-point" onclick="$scope.fnSaveList({odConsultIdSave1})" style="display: none;">저장</button>
+				<button id="fnUpdate_{odConsultIdUpdate2}" name={modifyIdList2} type="button" class="btn-s btn-white" onclick="$scope.fnUpdate({odConsultIdUpdate1}, '{odConsultMsgUpdate}');">수정</button>
+				<button id="fnDel_{odConsultIdDel2}" name={modifyIdList3} type="button"  class="btn-s btn-red" onclick="$scope.fnDel({odConsultIdDel1})">삭제</button>
+			</div>
+		</div>
+		<div class="consult__right">
+			<div class="textarea-wrapper">
+				<textarea id="odConsultMsg_{odConsultIdText}"class="comm-textarea" style="background-color : #f5f5f5; min-height: 70px;" disabled>{odConsultMsgTextArea}</textarea>
+			</div>
+		</div>
+	</div>
+</script>

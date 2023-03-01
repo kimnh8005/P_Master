@@ -1,0 +1,389 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.statics.claim.ClaimStaticsMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 클레임 현황 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.22   이원호    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.statics.claim.dto.vo.ClaimStaticsVo" id="getClaimStaticsResultMap">
+        <result column="UR_SUPPLIER_NM"  property="urSupplierName"  />
+        <result column="SELLERS_GROUP_NM"  property="sellersGroupName"  />
+        <result column="SELLERS_NM"  property="sellersName" />
+        <result column="ORDER_GOODS_CNT"  property="orderGoodsCount" />
+        <result column="DIRECT_CANCEL_COMPLETE_CNT"  property="directCancelCompleteCount"  />
+        <result column="CANCEL_APPLY_CNT"  property="cancelApplyCount"  />
+        <result column="CANCEL_WITHDRAWAL_CNT"  property="cancelWithdrawalCount"  />
+        <result column="CANCEL_DENY_DEFE_CNT"  property="cancelDenyCount"  />
+        <result column="APPLY_CANCEL_COMPLETE_CNT"  property="applyCancelCompleteCount"  />
+        <result column="RETURN_APPLY_CNT"  property="returnApplyCount"  />
+        <result column="RETURN_ING_CNT"  property="returnIngCount"  />
+        <result column="RETURN_WITHDRAWAL_CNT"  property="returnWithdrawalCount"  />
+        <result column="RETURN_DENY_DEFER_CNT"  property="returnDenyCount"  />
+        <result column="RETURN_COMPLETE_CNT"  property="returnCompleteCount"  />
+        <result column="EXCHANGE_COMPLETE_CNT"  property="exchangeCompleteCount"  />
+    </resultMap>
+
+    <select id="getClaimStaticsList" resultMap="getClaimStaticsResultMap">
+        /* claimStatics.getClaimStaticsList */
+        WITH CLAIM_STAT_TEMP AS (
+            SELECT
+                ood.UR_SUPPLIER_ID
+                , uc.COMP_NM AS UR_SUPPLIER_NM
+                , oo.SELLERS_GROUP_CD
+                , FN_COMN_CODE_DIC(oo.SELLERS_GROUP_CD) AS SELLERS_GROUP_NM
+                , oo.OM_SELLERS_ID
+                , os.SELLERS_NM
+                , COUNT(ood.OD_ORDER_DETL_ID) AS ORDER_GOODS_CNT
+                , SUM(IF(IFNULL(ocd.ORDER_STATUS_CD, 'IC') = 'IC' AND ocd.CLAIM_STATUS_CD = 'CC', 1, 0)) AS DIRECT_CANCEL_COMPLETE_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'CA', 1, 0)) AS CANCEL_APPLY_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'CW', 1, 0)) AS CANCEL_WITHDRAWAL_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'CE', 1, 0)) AS CANCEL_DENY_DEFE_CNT
+                , SUM(IF(ocd.ORDER_STATUS_CD != 'IC' AND ocd.CLAIM_STATUS_CD = 'CC', 1, 0)) AS APPLY_CANCEL_COMPLETE_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'RA', 1, 0)) AS RETURN_APPLY_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'RI', 1, 0)) AS RETURN_ING_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'RW', 1, 0)) AS RETURN_WITHDRAWAL_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'RE', 1, 0)) AS RETURN_DENY_DEFER_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'RC', 1, 0)) AS RETURN_COMPLETE_CNT
+                , SUM(IF(ocd.CLAIM_STATUS_CD = 'EC', 1, 0)) AS EXCHANGE_COMPLETE_CNT
+            FROM OD_ORDER oo
+                INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+                INNER JOIN OD_ORDER_DT oot ON oo.OD_ORDER_ID = oot.OD_ORDER_ID
+                INNER JOIN OM_SELLERS os ON oo.OM_SELLERS_ID = os.OM_SELLERS_ID
+                INNER JOIN UR_SUPPLIER us ON ood.UR_SUPPLIER_ID = us.UR_SUPPLIER_ID
+                INNER JOIN UR_COMPANY uc ON us.UR_COMPANY_ID = uc.UR_COMPANY_ID
+                LEFT OUTER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID
+                LEFT OUTER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+                LEFT OUTER JOIN IL_ITEM ii ON ii.IL_ITEM_CD = ood.IL_ITEM_CD
+                LEFT OUTER JOIN IL_CTGRY_STD_PRNTS_INFO icspi  ON (icspi.IL_CTGRY_STD_ID = ood.IL_CTGRY_STD_ID)
+                LEFT OUTER JOIN IL_CTGRY_PRNTS_INFO icpi       ON (icpi.IL_CTGRY_ID = ood.IL_CTGRY_DISPLAY_ID)
+            WHERE oo.ORDER_YN = 'Y'
+                /* 기간검색 */
+                AND oo.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)'>
+                    AND   ood.UR_SUPPLIER_ID  = #{urSupplierId} <!-- 공급업체 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseGrpCd)'>
+                    AND   ood.UR_WAREHOUSE_GRP_CD   = #{urWarehouseGrpCd}     <!-- 출고처 그룹 코드 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)'>
+                    AND   ood.UR_WAREHOUSE_ID       = #{urWarehouseId}        <!-- 출고처 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd)'>
+                    AND   oo.SELLERS_GROUP_CD       = #{sellersGroupCd}       <!-- 판매처그룹 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)'>
+                    AND   oo.OM_SELLERS_ID          = #{omSellersId}          <!-- 판매처 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(brandTp)'>
+                    <choose>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandTp, "GIFT_TARGET_BRAND_TP.STANDARD")'>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBrandId)'>
+                                AND   ii.UR_BRAND_ID            = #{urBrandId}            <!-- 표준 브랜드 -->
+                            </if>
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandTp, "GIFT_TARGET_BRAND_TP.DISPLAY")'>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)'>
+                                AND   ii.DP_BRAND_ID            = #{dpBrandId}            <!-- 전시 브랜드 -->
+                            </if>
+                        </when>
+                    </choose>
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                    <!-- 판매채널 유형 -->
+                    AND   oo.AGENT_TYPE_CD IN
+                    <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                        #{agentTypeCd}
+                    </foreach>
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(buyerTypeCdList) and buyerTypeCdList.size() > 0'>
+                    <!-- 회원유형 -->
+                    AND   oo.BUYER_TYPE_CD IN
+                    <foreach collection="buyerTypeCdList" item="buyerTypeCd" index="index" separator="," open="(" close=")">
+                        #{buyerTypeCd}
+                    </foreach>
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storageMethodTp)'>
+                    AND   ii.STORAGE_METHOD_TP      = #{storageMethodTp}      <!-- 보관방법 -->
+                </if>
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "S")'>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth1)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH1   = #{categoryStandardDepth1}   <!-- 표준카테고리 1댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth2)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH2   = #{categoryStandardDepth2}   <!-- 표준카테고리 2댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth3)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH3   = #{categoryStandardDepth3}   <!-- 표준카테고리 3댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth4)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH4   = #{categoryStandardDepth4}   <!-- 표준카테고리 4댑스 -->
+                        </if>
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "D")'>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth1)'>
+                            AND   icpi.CTGRY_ID_DEPTH1        = #{categoryDepth1}      <!-- 전시카테고리 1댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth2)'>
+                            AND   icpi.CTGRY_ID_DEPTH2        = #{categoryDepth2}      <!-- 전시카테고리 2댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth3)'>
+                            AND   icpi.CTGRY_ID_DEPTH3        = #{categoryDepth3}      <!-- 전시카테고리 3댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth4)'>
+                            AND   icpi.CTGRY_ID_DEPTH4        = #{categoryDepth4}      <!-- 전시카테고리 4댑스 -->
+                        </if>
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "E")'>
+                        AND ii.ERP_IF_YN = 'Y'
+                    </when>
+                </choose>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsTpCdList) and goodsTpCdList.size() > 0'>
+                    AND   ood.GOODS_TP_CD IN
+                    <foreach collection="goodsTpCdList" item="goodsTpCd" index="index" separator="," open="(" close=")">
+                        #{goodsTpCd}
+                    </foreach>                      <!-- 상품유형 -->
+                </if>
+            GROUP BY ood.UR_SUPPLIER_ID, oo.SELLERS_GROUP_CD, oo.OM_SELLERS_ID
+        )
+        SELECT
+            y.UR_SUPPLIER_NM /* 공급업체 */
+            , y.SELLERS_GROUP_NM /* 판매처그룹 */
+            , y.SELLERS_NM /* 판매처 */
+            , y.ORDER_GOODS_CNT /* 총주문상품수 */
+            , y.DIRECT_CANCEL_COMPLETE_CNT /* 즉시취소 */
+            , y.CANCEL_APPLY_CNT /* 취소요청 */
+            , y.CANCEL_WITHDRAWAL_CNT /* 취소철회 */
+            , y.CANCEL_DENY_DEFE_CNT /* 취소거부 */
+            , y.APPLY_CANCEL_COMPLETE_CNT /* 취소완료 */
+            , y.RETURN_APPLY_CNT /* 반품요청 */
+            , y.RETURN_ING_CNT /* 반품승인 */
+            , y.RETURN_WITHDRAWAL_CNT /* 반품철회 */
+            , y.RETURN_DENY_DEFER_CNT /* 반품거부 */
+            , y.RETURN_COMPLETE_CNT /* 반품완료 */
+            , y.EXCHANGE_COMPLETE_CNT /* 재배송 */
+        FROM
+        (
+            SELECT
+                x.UR_SUPPLIER_NM /* 공급업체 */
+                , x.SELLERS_GROUP_NM /* 판매처그룹 */
+                , x.SELLERS_NM /* 판매처 */
+                , x.ORDER_GOODS_CNT /* 총주문상품수 */
+                , x.DIRECT_CANCEL_COMPLETE_CNT /* 즉시취소 */
+                , x.CANCEL_APPLY_CNT /* 취소요청 */
+                , x.CANCEL_WITHDRAWAL_CNT /* 취소철회 */
+                , x.CANCEL_DENY_DEFE_CNT /* 취소거부 */
+                , x.APPLY_CANCEL_COMPLETE_CNT /* 취소완료 */
+                , x.RETURN_APPLY_CNT /* 반품요청 */
+                , x.RETURN_ING_CNT /* 반품승인 */
+                , x.RETURN_WITHDRAWAL_CNT /* 반품철회 */
+                , x.RETURN_DENY_DEFER_CNT /* 반품거부 */
+                , x.RETURN_COMPLETE_CNT /* 반품완료 */
+                , x.EXCHANGE_COMPLETE_CNT /* 재배송 */
+                , x.UR_SUPPLIER_ID
+                , x.SELLERS_GROUP_CD
+                , x.OM_SELLERS_ID
+            FROM CLAIM_STAT_TEMP x
+            UNION ALL
+            (
+                SELECT
+                    '총계' /* 공급업체 */
+                    , '' /* 판매처그룹 */
+                    , '' /* 판매처 */
+                    , SUM(x.ORDER_GOODS_CNT) OVER() AS ORDER_GOODS_CNT /* 총계 총주문상품수 */
+                    , SUM(x.DIRECT_CANCEL_COMPLETE_CNT) OVER() AS DIRECT_CANCEL_COMPLETE_CNT /* 총계 즉시취소 */
+                    , SUM(x.CANCEL_APPLY_CNT) OVER() AS CANCEL_APPLY_CNT /* 총계 취소요청 */
+                    , SUM(x.CANCEL_WITHDRAWAL_CNT) OVER() AS CANCEL_WITHDRAWAL_CNT /* 총계 취소철회 */
+                    , SUM(x.CANCEL_DENY_DEFE_CNT) OVER() AS CANCEL_DENY_DEFE_CNT /* 총계 취소거부 */
+                    , SUM(x.APPLY_CANCEL_COMPLETE_CNT) OVER() AS APPLY_CANCEL_COMPLETE_CNT /* 총계 취소완료 */
+                    , SUM(x.RETURN_APPLY_CNT) OVER() AS RETURN_APPLY_CNT /* 총계 반품요청 */
+                    , SUM(x.RETURN_ING_CNT) OVER() AS RETURN_ING_CNT /* 총계 반품승인 */
+                    , SUM(x.RETURN_WITHDRAWAL_CNT) OVER() AS RETURN_WITHDRAWAL_CNT /* 총계 반품철회 */
+                    , SUM(x.RETURN_DENY_DEFER_CNT) OVER() AS RETURN_DENY_DEFER_CNT /* 총계 반품거부 */
+                    , SUM(x.RETURN_COMPLETE_CNT) OVER() AS RETURN_COMPLETE_CNT /* 총계 반품완료 */
+                    , SUM(x.EXCHANGE_COMPLETE_CNT) OVER() AS EXCHANGE_COMPLETE_CNT /* 총계 재배송 */
+                    , 99999999 AS UR_SUPPLIER_ID
+                    , '' AS SELLERS_GROUP_CD
+                    , '' AS OM_SELLERS_ID
+                FROM CLAIM_STAT_TEMP x
+                LIMIT 1
+            )
+        ) y
+        ORDER BY y.UR_SUPPLIER_ID, y.SELLERS_GROUP_CD, y.OM_SELLERS_ID
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 클레임 사유별 현황 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.27   이원호    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.statics.claim.dto.vo.ClaimReasonStaticsVo" id="getClaimReasonStaticsResultMap">
+        <result column="BOS_CLAIM_LARGE_NM"  property="bosClaimLargeName"  />
+        <result column="BOS_CLAIM_MIDDLE_NM"  property="bosClaimMiddleName"  />
+        <result column="BOS_CLAIM_SMALL_NM"  property="bosClaimSmallName" />
+        <result column="TARGET_NM"  property="targetName" />
+        <result column="CANCEL_COMPLETE_PRICE"  property="cancelCompletePrice"  />
+        <result column="CANCEL_COMPLETE_CNT"  property="cancelCompleteCount"  />
+        <result column="CANCEL_CLAIM_CNT"  property="cancelClaimCount"  />
+        <result column="RETURN_COMPLETE_PRICE"  property="returnCompletePrice"  />
+        <result column="RETURN_COMPLETE_CNT"  property="returnCompleteCount"  />
+        <result column="RETURN_CLAIM_CNT"  property="returnClaimCount"  />
+        <result column="EXCHANGE_COMPLETE_PRICE"  property="exchangeCompletePrice"  />
+        <result column="EXCHANGE_COMPLETE_CNT"  property="exchangeCompleteCount"  />
+        <result column="EXCHANGE_CLAIM_CNT"  property="exchangeClaimCount"  />
+    </resultMap>
+
+    <select id="getClaimReasonStaticsList" resultMap="getClaimReasonStaticsResultMap">
+        /* claimStatics.getClaimReasonStaticsList */
+        SELECT
+            x.BOS_CLAIM_LARGE_NM /* 취소사유(대) */
+            , x.BOS_CLAIM_MIDDLE_NM /* 취소사유(중) */
+            , x.BOS_CLAIM_SMALL_NM /* 귀책처 */
+            , x.TARGET_NM /* 귀책구분 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'CC', x.SALE_PRICE, 0)) AS CANCEL_COMPLETE_PRICE /* 취소금액 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'CC', 1, 0)) AS CANCEL_COMPLETE_CNT /* 취소건수 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'CC', x.CLAIM_CNT, 0)) AS CANCEL_CLAIM_CNT /* 취소수량 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'RC', x.SALE_PRICE, 0)) AS RETURN_COMPLETE_PRICE /* 반품금액 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'RC', 1, 0)) AS RETURN_COMPLETE_CNT /* 반품건수 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'RC', x.CLAIM_CNT, 0)) AS RETURN_CLAIM_CNT /* 반품수량 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'EC', x.SALE_PRICE, 0)) AS EXCHANGE_COMPLETE_PRICE /* 재배송금액 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'EC', 1, 0)) AS EXCHANGE_COMPLETE_CNT /* 재배송건수 */
+            , SUM(IF(x.CLAIM_STATUS_CD = 'EC', x.CLAIM_CNT, 0)) AS EXCHANGE_CLAIM_CNT /* 재배송수량 */
+        FROM
+        (
+            SELECT
+                pccl.CLAIM_NM AS BOS_CLAIM_LARGE_NM
+                , pccm.CLAIM_NM AS BOS_CLAIM_MIDDLE_NM
+                , pccs.CLAIM_NM AS BOS_CLAIM_SMALL_NM
+                , IF(oc.TARGET_TP = 'S', '판매자', '구매자') AS TARGET_NM
+                , CASE
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND((ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT) * 10 / 11)
+                    WHEN ood.TAX_YN = 'Y' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND((ood.SALE_PRICE * ocd.CLAIM_CNT) * 10 / 11)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT)
+                    WHEN ood.TAX_YN = 'N' AND oo.BUYER_TYPE_CD != 'BUYER_TYPE.EMPLOYEE' THEN ROUND(ood.SALE_PRICE * ocd.CLAIM_CNT)
+                    ELSE 0
+                    END AS SALE_PRICE
+                , ocd.CLAIM_CNT
+                , ocd.BOS_CLAIM_LARGE_ID
+                , ocd.BOS_CLAIM_MIDDLE_ID
+                , ocd.BOS_CLAIM_SMALL_ID
+                , oc.TARGET_TP
+                , ocd.CLAIM_STATUS_CD
+            FROM OD_ORDER oo
+                INNER JOIN OD_ORDER_DETL ood ON oo.OD_ORDER_ID = ood.OD_ORDER_ID
+                INNER JOIN OD_ORDER_DT oot ON oo.OD_ORDER_ID = oot.OD_ORDER_ID
+                INNER JOIN OD_CLAIM oc ON oo.OD_ORDER_ID = oc.OD_ORDER_ID
+                INNER JOIN OD_CLAIM_DETL ocd ON oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID AND ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID
+                INNER JOIN PS_CLAIM_BOS pcb ON ocd.PS_CLAIM_BOS_ID = pcb.PS_CLAIM_BOS_ID
+                INNER JOIN PS_CLAIM_CTGRY pccl ON ocd.BOS_CLAIM_LARGE_ID = pccl.PS_CLAIM_CTGRY_ID
+                INNER JOIN PS_CLAIM_CTGRY pccm ON ocd.BOS_CLAIM_MIDDLE_ID = pccm.PS_CLAIM_CTGRY_ID
+                INNER JOIN PS_CLAIM_CTGRY pccs ON ocd.BOS_CLAIM_SMALL_ID = pccs.PS_CLAIM_CTGRY_ID
+                LEFT OUTER JOIN IL_ITEM ii ON ii.IL_ITEM_CD = ood.IL_ITEM_CD
+                LEFT OUTER JOIN IL_CTGRY_STD_PRNTS_INFO icspi  ON (icspi.IL_CTGRY_STD_ID = ood.IL_CTGRY_STD_ID)
+                LEFT OUTER JOIN IL_CTGRY_PRNTS_INFO icpi       ON (icpi.IL_CTGRY_ID = ood.IL_CTGRY_DISPLAY_ID)
+            WHERE oo.ORDER_YN = 'Y'
+                AND oc.CLAIM_YN = 'Y'
+                AND ocd.CLAIM_STATUS_CD IN ('CC', 'RC', 'EC')
+                AND pcb.DEL_YN = 'N'
+                AND pcb.USE_YN = 'Y'
+
+                /* 기간검색 */
+                AND oo.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urSupplierId)'>
+                    AND   ood.UR_SUPPLIER_ID  = #{urSupplierId} <!-- 공급업체 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseGrpCd)'>
+                    AND   ood.UR_WAREHOUSE_GRP_CD   = #{urWarehouseGrpCd}     <!-- 출고처 그룹 코드 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)'>
+                    AND   ood.UR_WAREHOUSE_ID       = #{urWarehouseId}        <!-- 출고처 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroupCd)'>
+                    AND   oo.SELLERS_GROUP_CD       = #{sellersGroupCd}       <!-- 판매처그룹 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(omSellersId)'>
+                    AND   oo.OM_SELLERS_ID          = #{omSellersId}          <!-- 판매처 -->
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(brandTp)'>
+                    <choose>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandTp, "GIFT_TARGET_BRAND_TP.STANDARD")'>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urBrandId)'>
+                                AND   ii.UR_BRAND_ID            = #{urBrandId}            <!-- 표준 브랜드 -->
+                            </if>
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandTp, "GIFT_TARGET_BRAND_TP.DISPLAY")'>
+                            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dpBrandId)'>
+                                AND   ii.DP_BRAND_ID            = #{dpBrandId}            <!-- 전시 브랜드 -->
+                            </if>
+                        </when>
+                    </choose>
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                    <!-- 판매채널 유형 -->
+                    AND   oo.AGENT_TYPE_CD IN
+                    <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                        #{agentTypeCd}
+                    </foreach>
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(buyerTypeCdList) and buyerTypeCdList.size() > 0'>
+                    <!-- 회원유형 -->
+                    AND   oo.BUYER_TYPE_CD IN
+                    <foreach collection="buyerTypeCdList" item="buyerTypeCd" index="index" separator="," open="(" close=")">
+                        #{buyerTypeCd}
+                    </foreach>
+                </if>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storageMethodTp)'>
+                    AND   ii.STORAGE_METHOD_TP      = #{storageMethodTp}      <!-- 보관방법 -->
+                </if>
+                <choose>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "S")'>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth1)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH1   = #{categoryStandardDepth1}   <!-- 표준카테고리 1댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth2)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH2   = #{categoryStandardDepth2}   <!-- 표준카테고리 2댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth3)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH3   = #{categoryStandardDepth3}   <!-- 표준카테고리 3댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryStandardDepth4)'>
+                            AND   icspi.CTGRY_STD_ID_DEPTH4   = #{categoryStandardDepth4}   <!-- 표준카테고리 4댑스 -->
+                        </if>
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "D")'>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth1)'>
+                            AND   icpi.CTGRY_ID_DEPTH1        = #{categoryDepth1}      <!-- 전시카테고리 1댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth2)'>
+                            AND   icpi.CTGRY_ID_DEPTH2        = #{categoryDepth2}      <!-- 전시카테고리 2댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth3)'>
+                            AND   icpi.CTGRY_ID_DEPTH3        = #{categoryDepth3}      <!-- 전시카테고리 3댑스 -->
+                        </if>
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(categoryDepth4)'>
+                            AND   icpi.CTGRY_ID_DEPTH4        = #{categoryDepth4}      <!-- 전시카테고리 4댑스 -->
+                        </if>
+                    </when>
+                    <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(ctgryTp, "E")'>
+                        AND ii.ERP_IF_YN = 'Y'
+                    </when>
+                </choose>
+                <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsTpCdList) and goodsTpCdList.size() > 0'>
+                    AND   ood.GOODS_TP_CD IN
+                    <foreach collection="goodsTpCdList" item="goodsTpCd" index="index" separator="," open="(" close=")">
+                        #{goodsTpCd}
+                    </foreach>                      <!-- 상품유형 -->
+                </if>
+        ) x
+        GROUP BY x.BOS_CLAIM_LARGE_ID, x.BOS_CLAIM_MIDDLE_ID, x.BOS_CLAIM_SMALL_ID, x.TARGET_TP
+        ORDER BY x.BOS_CLAIM_LARGE_ID, x.BOS_CLAIM_MIDDLE_ID, x.BOS_CLAIM_SMALL_ID, x.TARGET_TP
+    </select>
+</mapper>

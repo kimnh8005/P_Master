@@ -1,0 +1,189 @@
+import  groovy.json.*
+
+// ---------- pipeline Start ----------
+
+def pipeline(profile) {
+
+    // ---------- pipeline 내 전역 변수 선언 Start ----------
+
+    def ACTIVE_PROFILE = profile
+
+    def GRADLE_EXECUTE_COMMAND_ON_UNIX = "./Pulmuone_Master/gradlew --settings-file ./Pulmuone_Master/settings.gradle "
+
+    /*
+     * DEPLOY_ALL_MODULE_FLAG : 해당 flag 값이 true 인 경우 해당 모듈 build 후 새로 배포함
+     */
+    def DEPLOY_ALL_MODULE_FLAG = false
+
+    /*
+     * DEPLOY_${MODULE_NAME}_MODULE_FLAG : 해당 flag 값이 true 인 경우 해당 모듈 build 후 새로 배포함
+     */
+    def DEPLOY_BOS_MODULE_FLAG  = true
+    def DEPLOY_MALL_MODULE_FLAG = false
+
+    /*
+     * 전체 모듈 빌드 / 배포하는 Gradle Task
+     */
+    def DEPLOY_ALL_MODULE_BUILD_TASK = \
+        "clean" + \
+        " test" + \
+        " build -Pprofile=${ACTIVE_PROFILE}" + \
+        " publish" + \
+        " :Pulmuone_BOS:dockerBuild" + \
+        " :Pulmuone_MALL:dockerBuild" + \
+        ""
+
+    /*
+     * 공통 모듈이 아닌 각 하위 모듈 정보 Map
+     *
+     */
+    def SUB_MODULE_INFO_MAP = [
+
+        "Pulmuone_BOS"   : [
+            "BUILD_TASK_LIST" : \
+                ":Pulmuone_BOS:clean" + \
+                " :Pulmuone_BOS:test" + \
+                " :Pulmuone_BOS:build -Pprofile=${ACTIVE_PROFILE}" + \
+                " :Pulmuone_BOS:publish" + \
+                " :Pulmuone_COMMON:publish" + \
+                " :Pulmuone_BOS:dockerBuild" \
+                + ""
+         ] ,
+        "Pulmuone_MALL"  : [
+            "BUILD_TASK_LIST" : \
+                ":Pulmuone_MALL:clean" + \
+                " :Pulmuone_MALL:test" + \
+                " :Pulmuone_MALL:build -Pprofile=${ACTIVE_PROFILE}" + \
+                " :Pulmuone_MALL:publish" + \
+                " :Pulmuone_COMMON:publish" + \
+                " :Pulmuone_MALL:dockerBuild" \
+                + ""
+         ]
+
+    ]
+
+    // ---------- pipeline 내 전역 변수 선언 End ----------
+
+    /*
+    properties([
+      parameters([
+         string(name: 'Greeting', defaultValue: 'Hello Hello', description : '테스트')
+      ])
+    ])
+    */
+
+    /*
+     * Pre-Build Stage : 빌드 실행 전처리
+     *
+     */
+    stage('Pre-Build') {
+
+        checkout scm                                // Bitbucket 소스 Checkout
+
+        sh "chmod +x ./Pulmuone_Master/gradlew"     // Gradle Wrapper 실행 가능 권한 추가
+
+    }   // end of stage('Pre-Build')
+
+    /*
+     * Build Stage : 모듈별 빌드 실행
+     *
+     */
+    stage('Build') {
+
+        println "----------------------------------------"
+        println "[ INFO ]  전체 모듈 배포 여부 : " + DEPLOY_ALL_MODULE_FLAG
+
+        if( DEPLOY_ALL_MODULE_FLAG == true ) {   // 전체 모듈 배포
+
+            println "----------------------------------------"
+            sh GRADLE_EXECUTE_COMMAND_ON_UNIX + DEPLOY_ALL_MODULE_BUILD_TASK
+
+        } else {
+
+            println "[ INFO ]  BOS  모듈 배포 여부 : " + DEPLOY_BOS_MODULE_FLAG
+            println "[ INFO ]  MALL 모듈 배포 여부 : " + DEPLOY_MALL_MODULE_FLAG
+            println "----------------------------------------"
+
+            if( DEPLOY_BOS_MODULE_FLAG == true ) {
+
+                def buildTaskList = SUB_MODULE_INFO_MAP[ "Pulmuone_BOS" ][ "BUILD_TASK_LIST" ]
+
+                sh GRADLE_EXECUTE_COMMAND_ON_UNIX + buildTaskList
+
+            } else if ( DEPLOY_MALL_MODULE_FLAG == true  ) {
+
+                def buildTaskList = SUB_MODULE_INFO_MAP[ "Pulmuone_MALL" ][ "BUILD_TASK_LIST" ]
+
+                sh GRADLE_EXECUTE_COMMAND_ON_UNIX + buildTaskList
+
+            }
+        }
+
+        /*
+         * Build 마지막 단계에서 모든 latest 태그 이미지 삭제
+         */
+        println "[ INFO ] CI 서버내 기존 빌드된 latest 태그 이미지 삭제 시작"
+
+        try {
+
+            sh "docker rmi -f \$( docker images | grep 'latest' | tr -s ' ' | cut -d ' ' -f 3 )"
+
+        } catch (Exception e) {  // CI 서버내 latest 태그 이미지가 없는 경우 hudson.AbortException 발생
+
+            println "[ INFO ] CI 서버 내 기존 latest 태그 이미지 없음 : 삭제 실행되지 않음"
+            println e
+
+        }
+
+        println "----------------------------------------"
+        println "[ INFO ] Build / Deploy Completed"
+        println "----------------------------------------"
+
+    } // end of stage('Build')
+
+}
+
+// ---------- pipeline End ----------
+
+// ---------- pipeline(), postFailure(e), postAlways() 선언 Start ----------
+
+def postFailure(e) {
+
+    println "----------------------------------------"
+    println "[ ERROR ]  에러 발생 : \n${e}"
+    println "----------------------------------------"
+
+}   // end of postFailure
+
+def postAlways() {
+
+    /*
+     * postAlways() : pipeline 실행 성공 / 실패와 관계없이 마지막에 항상 실행
+     */
+
+    def postAlwaysDescription = \
+        "    (1) 현재 로직 없음 \n" + \
+        ""
+
+    println "----------------------------------------"
+    println "[ INFO ]  postAlways 실행 \n" + postAlwaysDescription
+    println "----------------------------------------"
+
+}   // end of postAlways
+
+// ---------- pipeline(), postFailure(e), postAlways() 선언 End ----------
+
+/*
+ * 젠킨스 Scripted Pipeline 구성
+ */
+node {
+    try {
+        println "pipeline profile ${PROFILE}"
+        pipeline("${PROFILE}")
+    } catch (e) {
+        postFailure(e)
+        throw e
+    } finally {
+        postAlways()
+    }
+}

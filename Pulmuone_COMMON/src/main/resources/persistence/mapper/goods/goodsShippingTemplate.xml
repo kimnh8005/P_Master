@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.goods.GoodsShippingTemplateMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.04		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap  id="getShippingInfoResultMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.ShippingDataResultVo">
+		<result column="IL_SHIPPING_TMPL_ID" property="ilShippingTmplId" />
+		<result column="SHIPPING_PRICE" property="shippingPrice" />
+		<result column="CONDITION_VALUE" property="conditionValue" />
+		<result column="CONDITION_TP" property="conditionType" />
+		<result column="UNDELIVERABLE_AREA_TP" property="undeliverableAreaType" />
+		<result column="AREA_SHIPPING_YN" property="areaShippingYn" />
+		<result column="JEJU_SHIPPING_PRICE" property="jejuShippingPrice" />
+		<result column="ISLAND_SHIPPING_PRICE" property="islandShippingPrice" />
+	</resultMap>
+	<select id="getShippingInfo" resultMap="getShippingInfoResultMap">
+		/*	goodsShippingTemplate.getShippingInfo	*/
+		SELECT
+			ST.IL_SHIPPING_TMPL_ID
+		    , CASE WHEN ST.CONDITION_TP = 'CONDITION_TYPE.3'
+		    	   THEN IFNULL(( LAG(SC.SHIPPING_PRICE, 1) OVER(PARTITION BY SC.IL_SHIPPING_TMPL_ID ORDER BY SC.CONDITION_VAL) ), ST.SHIPPING_PRICE)
+		    	   ELSE ST.SHIPPING_PRICE
+		    	   END AS SHIPPING_PRICE
+		    , SC.CONDITION_VAL AS CONDITION_VALUE
+		    , ST.CONDITION_TP
+		    , ST.UNDELIVERABLE_AREA_TP
+		    , ST.AREA_SHIPPING_YN
+			, ST.JEJU_SHIPPING_PRICE
+			, ST.ISLAND_SHIPPING_PRICE
+		FROM
+			IL_GOODS_SHIPPING_TEMPLATE GST
+			JOIN IL_SHIPPING_TEMPLATE ST ON GST.ORIG_IL_SHIPPING_TMPL_ID = ST.ORIG_IL_SHIPPING_TMPL_ID AND ST.DEL_YN = 'N'
+			LEFT JOIN IL_SHIPPING_CONDITION SC ON SC.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID
+		WHERE
+		 	GST.IL_GOODS_ID = #{ilGoodsId}
+		 	AND GST.UR_WAREHOUSE_ID = #{urWareHouseId}
+		ORDER BY ST.IL_SHIPPING_TMPL_ID DESC
+		LIMIT 1
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.08		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap  id="getShippingInfoByShippingTmplIdMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.ShippingDataResultVo">
+		<result column="IL_SHIPPING_TMPL_ID" property="ilShippingTmplId" />
+		<result column="SHIPPING_PRICE" property="shippingPrice" />
+		<result column="CONDITION_VALUE" property="conditionValue" />
+		<result column="CONDITION_TP" property="conditionType" />
+		<result column="UNDELIVERABLE_AREA_TP" property="undeliverableAreaType" />
+		<result column="AREA_SHIPPING_YN" property="areaShippingYn" />
+		<result column="JEJU_SHIPPING_PRICE" property="jejuShippingPrice" />
+		<result column="ISLAND_SHIPPING_PRICE" property="islandShippingPrice" />
+	</resultMap>
+	<select id="getShippingInfoByShippingTmplId" resultMap="getShippingInfoByShippingTmplIdMap">
+		/*	goodsShippingTemplate.getShippingInfoByilShippingTmplId	*/
+		SELECT
+			ST.IL_SHIPPING_TMPL_ID
+		    , CASE WHEN ST.CONDITION_TP = 'CONDITION_TYPE.3'
+		    	   THEN IFNULL(( LAG(SC.SHIPPING_PRICE, 1) OVER(PARTITION BY SC.IL_SHIPPING_TMPL_ID ORDER BY SC.CONDITION_VAL) ), ST.SHIPPING_PRICE)
+		    	   ELSE ST.SHIPPING_PRICE
+		    	   END AS SHIPPING_PRICE
+		    , SC.CONDITION_VAL AS CONDITION_VALUE
+		    , ST.CONDITION_TP
+		    , ST.UNDELIVERABLE_AREA_TP
+		    , ST.AREA_SHIPPING_YN
+		    , ST.JEJU_SHIPPING_PRICE
+		    , ST.ISLAND_SHIPPING_PRICE
+		FROM
+			IL_SHIPPING_TEMPLATE ST
+			LEFT JOIN IL_SHIPPING_CONDITION SC ON SC.IL_SHIPPING_TMPL_ID = ST.IL_SHIPPING_TMPL_ID
+		WHERE
+		 	ST.IL_SHIPPING_TMPL_ID = #{ilShippingTmplId}
+		ORDER BY ST.IL_SHIPPING_TMPL_ID DESC
+		LIMIT 1
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 우편번호에 대한 추가 배송비 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.08		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap  id="getShippingAreaMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.ShippingAreaVo">
+		<result column="ZIP_CD" property="zipCode" />
+		<result column="JEJU_YN" property="jejuYn" />
+		<result column="ISLAND_YN" property="islandYn" />
+	</resultMap>
+	<select id="getShippingArea" resultMap="getShippingAreaMap">
+		/*	goodsGoods.getShippingArea	*/
+		SELECT
+			ZIP_CD
+			,JEJU_YN
+			,ISLAND_YN
+		FROM
+			IL_SHIPPING_AREA
+		WHERE
+			ZIP_CD = #{receiverZipCode}
+			AND (JEJU_YN = 'Y' OR ISLAND_YN ='Y')
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 우편번호에 대한 추가 배송비 권역 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.15		정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getAdditionalShippingAmountArea" resultType="kr.co.pulmuone.v1.goods.goods.dto.vo.ShippingAreaVo">
+		/*	goodsGoods.getAdditionalShippingAmountArea	*/
+		SELECT IFNULL(A.ZIP_CD,#{zipCode}) AS ZIP_CODE,
+            IF(SUM(CASE WHEN UNDELIVERABLE_TP = 'UNDELIVERABLE_TP.JEJU' THEN 1 ELSE 0 END)>0,'Y','N') JEJU_YN,
+            IF(SUM(CASE WHEN UNDELIVERABLE_TP = 'UNDELIVERABLE_TP.ISLAND' THEN 1 ELSE 0 END)>0,'Y','N') ISLAND_YN
+        FROM PS_SHIPPING_AREA A
+		WHERE A.ZIP_CD = #{zipCode}
+			AND A.UNDELIVERABLE_TP IN ('UNDELIVERABLE_TP.JEJU', 'UNDELIVERABLE_TP.ISLAND')
+            AND ALTERNATE_DELIVERY_TP = ''
+	</select>
+</mapper>

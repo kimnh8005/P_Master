@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.batch.cj.infra.mapper.send.BatchSendTemplateMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: psKey값으로 psValue 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.29		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getPsValue" resultType="String">
+        /* sendTemplateBatch.getPsValue */
+        SELECT PS_VAL
+        FROM PS_CONFIG
+        WHERE PS_KEY = #{psKey}
+            AND USE_YN = 'Y'
+            AND ST_SHOP_ID = 1
+        LIMIT 1
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: sms 발송대상 등록
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.06.29		이원호          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addSmsIssue">
+        /* sendTemplateBatch.addSmsIssue */
+        INSERT INTO SN_SMS_SEND (
+            UR_USER_ID, MOBILE, SEND_YN, RESERVE_YN, RESERVE_DT
+            , CONTENT, SENDER_TEL
+        ) VALUES
+        <foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+        (
+            #{insertData.urUserId}
+            ,#{insertData.mobile}
+            ,'N'
+            ,'N'
+            ,NOW()
+            ,#{insertData.content}
+            ,#{insertData.senderTelephone}
+        )
+        </foreach>
+    </insert>
+
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: Batch 전송 대상자 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.29		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.batch.cj.domain.service.send.template.dto.vo.BatchSmsTargetVo" id="smsTargetResultMap">
+        <result column="UR_USER_ID"  property="urUserId"  />
+        <result column="MOBILE"  property="mobile"  />
+    </resultMap>
+    <select id="getSmsTargetList" resultMap="smsTargetResultMap">
+        /* sendTemplateBatch.getSmsTargetList */
+        SELECT UE.UR_USER_ID
+            , FN_DECRYPT(MOBILE) AS MOBILE
+        FROM ST_BATCH_NOTI_EMPLOYEE_LIST SB
+            INNER JOIN UR_EMPLOYEE UE ON SB.UR_EMPLOYEE_CD = UE.UR_EMPLOYEE_CD
+        WHERE SB.USE_YN = 'Y'
+            AND SB.BATCH_NO = #{batchNo}
+            AND UE.STATUS_TP = 'EMPLOYEE_STATUS.NORMAL'
+    </select>
+
+</mapper>

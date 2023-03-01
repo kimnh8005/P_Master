@@ -1,0 +1,884 @@
+<section class="fb__section" style="width : 1280px;">
+	<section id="view" class="fb__benefitGroup">
+		<!-- <section id="view" class="fb__benefitGroup"> -->
+		<h2 class="hidden-title">임직원 혜택 관리</h2>
+		<h2 class="font--bold">임직원 혜택 관리</h2>
+		<div class="fb__benefitGroup__header">
+			<p class="fb__benefitGroup__updated-wrapper">
+				최근 업데이트 일자 : <span class="font--bold" data-bind="text : recentUpdated"></span>
+			</p>
+			<button id="button-create" class="btn-point btn-l" data-bind="disabled : isNewData, click : onAddRow">&plus;혜택그룹
+				신규생성</button>
+		</div>
+		<div class="fb__benefitGroup__tableWrapper">
+			<table class="datatable v-type" data-role="grid" data-scrollable="false">
+				<colgroup>
+					<col style="width: 8%">
+					<col style="width: 25%">
+					<col style="width: 35%">
+					<col style="width: 15%">
+					<col style="width: 12%">
+					<col style="width: 5%">
+				</colgroup>
+				<thead>
+					<tr>
+						<th style="text-align: center;">
+							<label style="font-size: 14px;">Seq</label>
+						</th>
+						<th style="text-align: center;">
+							<label style="font-size: 14px;" class="req-star-th">혜택별 법인 그룹</label>
+						</th>
+						<th style="text-align: center;">
+							<label style="font-size: 14px;" class="req-star-th">임직원 할인 그룹/할인율</label>
+						</th>
+						<th style="text-align: center;">
+							<label style="font-size: 14px;" class="req-star-th">한도액</label>
+						</th>
+						<th style="text-align: center;">
+							<label style="font-size: 14px;" class="req-star-th">한도액 주기</label>
+						</th>
+						<th style="text-align: center;">
+							<label style="font-size: 14px;">관리</label>
+						</th>
+					</tr>
+				</thead>
+				<tbody data-template="benefit-row-template" data-bind="source : apiData"></tbody>
+			</table>
+			<div id="grid-norecords" class="k-grid-norecords">
+				조회 결과가 없습니다.
+			</div>
+			<div class="btn-area">
+				<button id="button-save" class="btn-point btn-l" data-bind="click : onSave">저장</button>
+			</div>
+		</div>
+	</section>
+</section>
+
+<!-- 할인그룹 row 템플릿 -->
+<script id="benefit-row-template" type="text/x-kendo-template">
+	# var rowIndex = window.viewModel.get("apiData").indexOf(data); console.log(rowIndex, window.viewModel.list().length, window.viewModel.brandDs); #
+	# console.log(">> line : 57 ", data); #
+	<tr data-row-index="#= rowIndex#" class="outer-row">
+		<td colspan="6">
+			<table class="inner__table">
+				<colgroup>
+					<col style="width: 8%">
+					<col style="width: 25%">
+					<col style="width: 35%">
+					<col style="width: 15%">
+					<col style="width: 12%">
+					<col style="width: 5%">
+				</colgroup>
+				<tbody>
+					<!-- ***첫번째 행*** -->
+					<tr>
+						<!-- 순번 -->
+						# console.log(">> line : 73 data.groupData.length : " + data.groupData.length); #
+						# var ROW_SPAN = data.groupData.length ? data.groupData.length + 2 : 2; #
+						# console.log(">> line : 75 ROW_SPAN : " + ROW_SPAN); #
+						<td rowspan="#= ROW_SPAN #">
+							<div class="cell-inner textCenter font--bold">
+								<span>혜택그룹#=rowIndex+1#</span>
+								<a href="" class="removeRow-btn" data-bind="click : onRemoveRow">&times;</a>
+							</div>
+						</td>
+						<!-- 법인 추가 버튼 -->
+						<td class="top" rowspan="#= ROW_SPAN #">
+							<div class="cell-inner textLeft">
+								<div class="company__item">
+									<input data-role="dropdownlist"
+										data-auto-bind="false"
+										data-text-field="erpRegalName"
+										data-value-field="erpRegalCode"
+										data-option-label="선택해주세요"
+										data-bind="source: regalDs, events : { change : onChange }"
+										style="margin-right:5px;" 
+										id="regalList#=rowIndex#"
+										name="regalList#=rowIndex#"
+									/>
+									<button class="btn-s btn-sw add-regalItem-btn" data-bind="click : onAddRegal">추가</button>
+								</div>
+								<!-- 법인 추가 템플릿 Loop -->
+								# console.log(">> line : 99 companyList : " + JSON.stringify(data.companyList)); #
+								# if( data.companyList ) { #
+								<div class="compant__item-wrapper" data-template="regal-item-template" data-bind="source : companyList"></div>
+								# } #
+							</div>
+						</td>
+						<!-- 할인그룹 추가 버튼 -->
+						<td colspan="4" style="height:40px;">
+							<div class="cell-inner textLeft">
+								<button class="btn-s btn-sw marginR5" data-bind="click : onAddGroupData">&plus; 할인그룹 추가</button>
+							</div>
+						</td>
+					</tr>
+					<!-- ***첫번째 행 끝*** -->
+					<!-- ***두번째 행*** -->
+					<tr class="groupData-row" data-groupdata-idx="0">
+						<!-- NOTE groupData가 없을 경우 빈 테이블 셀 렌더링 -->
+							# var currentData = data.groupData; console.log(">> line : 114 groupData : " + JSON.stringify(currentData)); #
+
+							# if( !currentData.length ) { #
+
+								<td colspan="4">할인그룹을 추가해주세요.</td>
+
+							<!-- NOTE groupData가 있을 경우 템플릿을 통해 화면 렌더링 -->
+
+								# } else { #
+
+									# for ( var i = 0; i < groupData.length; i++) { #
+									# /*var groupdataIdx = window.viewModel.list()[rowIndex].groupData.indexOf(groupData[i]); console.log("groupdataIdx rowIndex", groupdataIdx, rowIndex);*/ #
+									# var groupdataIdx = i; console.log("groupdataIdx rowIndex", groupdataIdx, rowIndex); #
+									# var currentGroupData = currentData[i]; console.log(">> line : 127 currentGroupData : " + JSON.stringify(currentGroupData)); #
+									<tr class="groupData-row" data-groupdata-idx="#= groupdataIdx #"> 
+										<td class="top">
+											<div class="list-table__inner group__item__content">
+												<div class="group__item__select">
+													<input data-role="dropdownlist"
+														id="brandList_#=rowIndex#-#= groupdataIdx #"
+														class="fb__custom__select"
+														data-auto-bind="false"
+														data-text-field="brandName"
+														data-value-field="urBrandId"
+														data-option-label="선택해주세요"
+														data-bind="source: brandDs, events : { change : onChange } "
+														style="width: 150px; margin-right:5px;" 
+														name="brandList_#=rowIndex#-#= groupdataIdx #"
+													/>
+													<!-- <select data-role="dropdownlist" data-bind="source : brandDs" data-text-field="brandName" data-value-field="urBrandId" data-auto-bind="false"></select> -->
+													<button type="buttom" class="btn-s btn-point add-groupItem-btn" data-bind="click : onAddGroupItem">추가</button>
+												</div>
+												<!-- 할인 그룹 추가 템플릿 -->
+
+												# if( currentGroupData.groupList && currentGroupData.groupList.length ) { #
+												# var GROUP_LIST = currentGroupData.groupList; #
+
+												# console.log(">> line : 149 GROUP_LIST : " + JSON.stringify(GROUP_LIST)); #
+														<div class="group__item__wrapper" data-template="group-item-template" data-bind="source : groupData[#=i#].groupList " data-groupdata-idx="#= i #"></div>
+
+												# } else { #
+
+												# console.log(">> line : 152 groupList가 없습니다."); #
+
+												# } #
+											</div>
+										</td>
+										<!-- 한도액 -->
+										<td>
+											<div class="cell-inner">
+
+												# var MAX_AMMOUNT = currentGroupData.maxAmmount ? currentGroupData.maxAmmount : 0; #
+												# console.log(">> line : 160 MAX_AMMOUNT : " + JSON.stringify(MAX_AMMOUNT)); #
+												
+												<input type="text" class="comm-input" data-bind="value : groupData[#=i#].maxAmmount, events : { keyup : onCheckAmmount }">
+												<span>원</span>
+											</div>
+										</td>
+										<!-- 한도액 주기 -->
+										<td>
+											<div class="cell-inner textCenter">
+												<!-- <input type="text" class="fb__custom__select" value="주기 선택"> -->
+												<input data-role="dropdownlist"
+														id="cycleList_#=rowIndex#-#= groupdataIdx #"
+														class="fb__custom__select"
+														data-auto-bind="false"
+														data-text-field="name"
+														data-value-field="value"
+														data-option-label="주기 선택"
+														data-bind="value : groupData[#=i#].cycle ,source: cycleData"
+														style="width: 130px; margin-right:5px;" 
+														name="cycleList_#=rowIndex#-#= groupdataIdx #"
+													/>
+											</div>
+										</td>
+										<!-- 삭제 버튼 -->
+										<td>
+											<div class="cell-inner">
+												<button class="btn-s btn-sw" data-groupdata-idx="#= groupdataIdx #" data-bind="click : onRemoveGroupData">삭제</button>
+											</div>
+										</td>
+									</tr>
+								# } #
+							# } #
+					</tr>
+					<!-- ***두번째 행 끝*** -->
+				</tbody>
+			</table>
+		</td>
+	</tr>
+</script>
+
+<!-- 할인 그룹 템플릿 -->
+<script id="group-item-template" type="text/x-kendo-template">
+# console.log(">> line : 217 data : " + JSON.stringify(data)); #
+<div class="group__item__select" data-brand-id="#= urBrandId #">
+	<input type="text" class="comm-input disabled" value="#= brandName #" style="width : 150px;">
+	<input type="text" class="comm-input disabled" value="#= discountRate #" name="discountRate" style="width:70px;">
+	<button type="buttom" class="btn-s btn-red remove-groupItem-btn" data-bind="click : onRemoveGroupItem">삭제</button>
+</div>
+</script>
+
+<script id="regal-item-template" type="text/x-kendo-template">
+	<div class="company__item">
+		<input type="text" class="comm-input" style="width:140px;" data-bind="value : name" name="regalName" data-regal-code="#= erpRegalCode #">
+		<button class="btn-red btn-s remove-regalItem-btn" data-bind="click : onRemoveRegal">삭제</button>
+	</div>
+</script>
+
+
+<script type="text/javascript">
+	"use strict";
+
+	var FULL_DATE_FORMAT = "yyyy-MM-dd hh:mm:ss";
+	var ApiItem = kendo.data.Model.define({
+		fields: {
+			companyList: {
+				editable: true
+			},
+			groupData: {
+				editable: true,
+			}
+		}
+	});
+	var cycleData = [
+		{
+			name: "하루",
+			value: "1"
+		},
+		{
+			name: "일주일",
+			value: "7"
+		},
+	]
+
+	$(document).ready(function () {
+		var $document = $(document);
+		var $noRecords = $("#grid-norecords");
+
+		function init() {
+			setDefault();
+		}
+
+		init();
+		/************************** functions **************************/
+		function getData() {
+			// apiData한 행이 혜택 그룹 한 행과 매치
+			var apiData = [
+				{
+					// 법인 그룹 데이터
+					companyList: [
+						// {
+						// 	name: "법인1",
+						// 	erpRegalCode: 1
+						// },
+					],
+					// 할인그룹 데이터
+					groupData: [
+						{
+							// 그룹, 할인율 데이터
+							groupList: [
+								// {
+								// 	urBrandId: 1,
+								// 	brandName: "그룹1",
+								// 	discountRate: 10,
+								// }
+							],
+							// 한도액
+							maxAmmount: 123,
+							cycle: null,
+						},
+					],
+				},
+			]
+
+
+			var apiItem = new ApiItem({
+				companyList: [],
+				groupData: [],
+			})
+
+			// return [apiItem];
+			return [];
+		}
+
+		function setDefault() {
+			var DS = setDataSource();
+
+			var apiData = getData();
+			var viewModelOption = setViewModel({
+				apiData: apiData,
+				regalDs: DS.regal,
+				brandDs: DS.brand,
+			})
+
+			showNorecord(apiData.length);
+
+			var viewModel = kendo.observable(viewModelOption);
+			window.viewModel = viewModel;
+			bindViewModel("#view", viewModel);
+		}
+
+		// 뷰모델 설정
+		function setViewModel(option) {
+			return {
+				recentUpdated: kendo.toString(new Date(), FULL_DATE_FORMAT),
+				apiData: option.apiData || [],
+				cycleData: cycleData,
+				regalDs: option.regalDs,
+				brandDs: option.brandDs,
+				list: function () {
+					return this.get("apiData");
+				},
+				onAddRegal: onAddRegal,
+				onRemoveRegal: onRemoveRegal,
+				onAddGroupItem: onAddGroupItem,
+				onRemoveGroupItem: onRemoveGroupItem,
+				onAddGroupData: onAddGroupData,
+				onRemoveGroupData: onRemoveGroupData,
+				onAddRow: onAddRow,
+				onRemoveRow: onRemoveRow,
+				onSave: onSave,
+				onCheckAmmount: onCheckAmmount,
+				setUpdateDate: setUpdateDate,
+				onChange: function (e) {
+					console.log(e.sender);
+				},
+				isNewData: false,
+			}
+		}
+
+		// Viewmodel 화면에 바인딩
+		function bindViewModel(target, viewModel) {
+			var $target = $(target);
+			kendo.bind(target, viewModel);
+		}
+
+		// 켄도 datasource 세팅
+		function setDataSource() {
+			var brandQuery = { "page": 1, "pageSize": 100, "filterLength": 6, "filter": { "filters": [{ "field": "rtnValid", "value": true }, { "field": "rootPath", "value": "http://localhost:8280/pulmuone/public/" }, { "field": "brandSearchType", "value": "BRAND_NAME" }, { "field": "brandSearchValue", "value": "" }, { "field": "searchUseYn", "value": "" }, { "field": "searchUrSupplierId", "value": "" }] } }
+
+			var regalQuery = { "page": 1, "pageSize": 100, "filterLength": 4, "filter": { "filters": [{ "field": "rtnValid", "value": true }, { "field": "searchCondition", "value": "" }, { "field": "findKeyword", "value": "" }, { "field": "employeeBenefitsApply", "value": "" }] } }
+
+			var brandDs = new kendo.data.DataSource({
+				transport: {
+					read: {
+						url: "http://localhost:8280/admin/ur/brand/getBrandList",
+						type: "POST",
+						dataType: "json",
+						data: brandQuery,
+					}
+				},
+				schema: {
+					data: function (response) {
+						return response.rows;
+					}
+				}
+			})
+
+			// 법인 데이터소스
+			var regalDs = new kendo.data.DataSource({
+				transport: {
+					read: {
+						url: "http://localhost:8280/admin/user/employee/getPulmuoneRegalList",
+						type: "POST",
+						dataType: "json",
+						data: regalQuery,
+					}
+				},
+				schema: {
+					data: function (response) {
+						return response.data.rows;
+					}
+				}
+			})
+
+			var DATA_SOURCE = {
+				brand: brandDs,
+				regal: regalDs,
+			}
+			return DATA_SOURCE;
+		}
+
+		function onSave(e) {
+			var data = this.list();
+
+			if (!data) {
+				fnKendoMessage({ message: "데이터가 없습니다." });
+				return;
+			}
+
+			var check = isEmptyData(data.toJSON());
+
+			if (check.isEmpty) {
+				fnKendoMessage({ message: "\"" + check.field + "\"을 입력해주세요." });
+				return;
+			}
+
+			console.log(data.toJSON());
+			fnKendoMessage({ message: "저장되었습니다." });
+			return;
+		}
+		// 법인 추가 버튼 이벤트
+		function onAddRegal(e) {
+			// 현재 포함되어있는 tr 태그의 인덱스
+
+			var rowIndex = $(e.target).closest(".outer-row").index();
+
+			var $input = $(e.target).parent().find("input[data-role='dropdownlist']");
+
+			if (!$input.length || typeof rowIndex == "undefined") {
+				console.error("no dropdownlist or rowIndex");
+				return;
+			}
+
+			var $kendoList = $input.data("kendoDropDownList");
+
+			var _erpRegalName = $kendoList.text();
+			var _erpRegalCode = $kendoList.value();
+
+			var rowData = this.list()[rowIndex];
+
+			// companyList 존재 여부 체크
+			var companyList = rowData.companyList ? rowData.companyList.toJSON().slice() : [];
+
+			if (!_erpRegalName || !_erpRegalCode) {
+				fnKendoMessage({ message: "법인을 선택해주세요." });
+				return;
+			}
+
+			// var check = companyList.every(function (value) { return value.name == _erpRegalName ? false : true })
+
+			// if (!check) {
+			// 	alert("이미 존재하는 법인입니다.");
+			// 	$kendoList.select(-1);
+			// 	return;
+			// }
+
+			var _isCompany = findInObject(this.list().toJSON(), _erpRegalCode, "erpRegalCode");
+
+			if (_isCompany) {
+				fnKendoMessage({
+					message: "이미 존재하는 법인입니다.",
+				});
+				return false;
+			}
+
+			var newData = {
+				name: _erpRegalName,
+				erpRegalCode: _erpRegalCode,
+			};
+
+			companyList.push(newData);
+			rowData.set("companyList", companyList);
+
+			this.trigger("change", {
+				field: "apiData[" + rowIndex + "]",
+			})
+
+			this.setUpdateDate();
+			$kendoList.text("");
+			$kendoList.select(-1);
+		}
+
+		// 법인 삭제 버튼 이벤트
+		function onRemoveRegal(e) {
+			var self = this;
+			fnKendoMessage({
+				message: "할인그룹을 삭제하시겠습니까?",
+				type: "confirm",
+				ok: function (event) {
+					removeRegal.call(self, e);
+					return true;
+				},
+				cancel: function (event) {
+					return false;
+				}
+			})
+		}
+
+		function removeRegal(e) {
+			// 현재 포함되어있는 tr 태그의 인덱스
+			var rowIndex = $(e.target).closest(".outer-row").index();
+
+			var $input = $(e.target).parent().find("input[name^='regalName']");
+
+			var _code = $input.data().regalCode;
+
+			var companyList = this.list()[rowIndex].companyList.slice();
+
+			let _index = "";
+
+			companyList.some(function (c, index) {
+				if (c.erpRegalCode == _code) {
+					_index = index;
+				}
+				return (c.erpRegalCode == _code);
+			})
+
+			companyList.splice(_index, 1);
+			this.list()[rowIndex].set("companyList", companyList);
+
+			this.setUpdateDate();
+			this.trigger("change", {
+				field: "apiData[" + rowIndex + "].companyList",
+			})
+		}
+
+		// 할인 그룹 아이템 추가 이벤트
+		function onAddGroupItem(e) {
+			// 가장 바깥의 행을 통해서 배열의 인덱스를 가져온다.
+			var rowIndex = $(e.target).closest("tr.outer-row").index();
+
+			var _data = this.list()[rowIndex];
+
+			// apiData[index].groupData[index].groupList ==> 데이터 추가
+			// 각 groupData는 table내의 한 행에 매칭되므로  "tr.groupData-row"의 데이터셋을 통해 인덱스를 가져온다.
+			var _groupDataIdx = $(e.target).closest("tr.groupData-row").data().groupdataIdx;
+
+			var _groupData = _data.groupData[_groupDataIdx];
+
+			// 데이터를 추가할 리스트
+			var newGroupList = _groupData.groupList.toJSON().slice();
+
+			// 중복 체크, 선택되었는지 체크
+			var $input = $(e.target).parent().find("input[data-role='dropdownlist']");
+			var $kendoList = $input.data("kendoDropDownList");
+
+			var _brandName = $kendoList.text();
+			var _urBrandId = $kendoList.value();
+
+			if (!_urBrandId || !_brandName) {
+				fnKendoMessage({ message: "브랜드를 선택해주세요." });
+				return;
+			}
+
+			var isBrand = findInObject(this.list().toJSON(), _urBrandId, "urBrandId");
+
+			if (isBrand) {
+				fnKendoMessage({ message: "이미 존재하는 브랜드입니다." });
+				return;
+			}
+
+			var discountRate = $kendoList.dataSource.data().filter(function (v) {
+				return v.urBrandId === _urBrandId
+			}
+			)[0].discountRate || "50%";
+
+			// 새로 추가할 데이터 객체 생성
+			var newData = {
+				urBrandId: _urBrandId,
+				brandName: _brandName,
+				discountRate: discountRate,
+			};
+
+			newGroupList.push(newData);
+
+			// NOTE 기존 데이터를 set을 통해 변경된 데이터로 변경
+			this.set("apiData[" + rowIndex + "].groupData[" + _groupDataIdx + "].groupList", newGroupList);
+
+			this.setUpdateDate();
+
+			// NOTE 데이터가 추가되면 trigger를 통해 화면을 렌더링한다.
+			this.list().trigger("change", {
+				field: "apiData[" + rowIndex + "].groupData[" + _groupDataIdx + "].groupList"
+			});
+			$kendoList.text("");
+			$kendoList.select(-1);
+		}
+
+		// 할인 그룹 아이템 삭제 이벤트
+		function onRemoveGroupItem(e) {
+			var self = this;
+			fnKendoMessage({
+				message: "해당 그룹을 삭제하시겠습니까?",
+				type: "confirm",
+				ok: function (event) {
+					removeGroupItem.call(self, e);
+					return true;
+				},
+				cancel: function (event) {
+					return false;
+				}
+			})
+		}
+
+		function removeGroupItem(e) {
+			var rowIndex = $(e.target).closest("tr.outer-row").index();
+
+			var _data = this.list()[rowIndex];
+
+			// apiData[index].groupData[index].groupList ==> 데이터 추가
+			// 각 groupData는 table내의 한 행에 매칭되므로  "tr.groupData-row"의 데이터셋을 통해 인덱스를 가져온다.
+			var _groupDataIdx = $(e.target).closest("tr.groupData-row").data().groupdataIdx;
+
+			var _groupData = _data.groupData[_groupDataIdx];
+
+			// 데이터를 추가할 리스트
+			var newGroupList = _groupData.groupList.toJSON().slice();
+
+			var _brandId = $(e.target).closest(".group__item__select").data().brandId;
+
+			// 삭제할 아이템의 인덱스를 담을 변수
+			var _deleteIdx = "";
+
+			newGroupList.some(function (v, index) {
+				if (v.urBrandId == Number(_brandId)) {
+					_deleteIdx = index;
+				}
+				return v.urBrandId === _brandId;
+			});
+
+			console.log("삭제한 아이템은 " + JSON.stringify(newGroupList[_deleteIdx]));
+
+			// 인덱스에 해당하는 아이템 삭제
+			newGroupList.splice(_deleteIdx, 1);
+
+			this.set("apiData[" + rowIndex + "].groupData[" + _groupDataIdx + "].groupList", newGroupList);
+			this.setUpdateDate();
+
+			// NOTE 데이터가 추가되면 trigger를 통해 화면을 렌더링한다.
+			this.list().trigger("change", {
+				field: "apiData[" + rowIndex + "].groupData[" + _groupDataIdx + "].groupList"
+			});
+		}
+
+		// 할인 그룹 추가 이벤트
+		function onAddGroupData(e) {
+			var self = this;
+			var rowIndex = $(e.target).closest("tr.outer-row").index();
+
+			var _data = this.list()[rowIndex];
+
+			// groupData 존재 여부 체크
+			var groupData = _data.groupData ? _data.groupData.toJSON().slice() : [];
+
+			var groupDataItem = {
+				groupList: [],
+				cycle: null,
+				maxAmmount: "",
+			};
+
+			groupData.push(groupDataItem);
+
+			_data.set("groupData", groupData);
+			this.setUpdateDate();
+
+			this.list().trigger("change", {
+				field: "apiData[" + rowIndex + "]"
+			});
+		}
+
+		// 할인 그룹 삭제 이벤트
+		function onRemoveGroupData(e) {
+			var self = this;
+			fnKendoMessage({
+				message: "할인그룹을 삭제하시겠습니까?",
+				type: "confirm",
+				ok: function (event) {
+					removeGroupData.call(self, e);
+					return true;
+				},
+				cancel: function (event) {
+					return false;
+				}
+			})
+		}
+
+		function removeGroupData(e) {
+			var groupdataIdx = $(e.target).data().groupdataIdx * 1;
+
+			var rowIndex = $(e.target).closest("tr.outer-row").index();
+
+			var rowData = this.list()[rowIndex];
+
+			var newGroupData = rowData.groupData.slice();
+
+			var _length = newGroupData.length;
+
+			newGroupData.splice(groupdataIdx, 1);
+
+			rowData.set("groupData", newGroupData);
+			this.setUpdateDate();
+
+			//데이터가 추가되면 trigger를 통해 화면을 렌더링한다.
+			this.list().trigger("change", {
+				field: "apiData[" + rowIndex + "]"
+			});
+		}
+
+		// 혜택그룹 신규생성 버튼 이벤트
+		function onAddRow(e) {
+			var self = this;
+
+			var apiData = this.list() ? this.list().slice() : [];
+
+			// newApiData.push({
+			// 	companyList: [],
+			// 	groupData: [{
+			// 		groupList: [],
+			// 		maxAmmount: "",
+			// 		cycle: null,
+			// 	}],
+			// });
+
+			var apiItem = new ApiItem({
+				companyList: [],
+				groupData: [],
+			})
+
+			apiData.push(apiItem);
+
+			console.log(apiData.length);
+			showNorecord(apiData.length);
+			this.set("apiData", apiData);
+			this.setUpdateDate();
+			this.trigger("change", {
+				field: "apiData"
+			});
+		}
+
+		// 혜택 그룹 행 삭제
+		function onRemoveRow(e) {
+			e.preventDefault();
+			var self = this;
+			fnKendoMessage({
+				message: "할인그룹을 삭제하시겠습니까?",
+				type: "confirm",
+				ok: function (event) {
+					removeRow.call(self, e);
+					return true;
+				},
+				cancel: function (event) {
+					return false;
+				}
+			})
+		}
+
+		function removeRow(e) {
+			var rowIndex = $(e.target).closest("tr.outer-row").index();
+
+			var rowData = this.list()[rowIndex];
+
+			var apiData = this.list().slice();
+
+			apiData.splice(rowIndex, 1);
+
+			showNorecord(apiData.length);
+			this.setUpdateDate();
+			this.set("apiData", apiData);
+			this.list().trigger("change");
+		}
+
+		function onCheckAmmount(e) {
+			var num_check = /[^0-9]/g
+
+			var value = $(e.target).val().trim();
+
+			if (!value.length) return;
+
+			if (num_check.test(value)) {
+				value = value.replace(num_check, "");
+				$(e.target).val(value);
+			}
+		}
+
+		//데이터 중복 체크
+		function findInObject(obj, comparedObj, field) {
+			return Object.keys(obj).some(function (key) {
+				var value = obj[key];
+
+				if (!value) {
+					return false;
+				}
+
+				if (key === field) {
+					return value === comparedObj;
+				}
+
+				if (typeof value === "string") {
+					return value === comparedObj;
+				}
+
+				if (value instanceof Array) {
+					return value.some(function (e) {
+						return (typeof value === "string" && e === comparedObj) ||
+							findInObject(e, comparedObj);
+					});
+				}
+
+				return findInObject(value, comparedObj);
+			});
+		}
+
+		//데이터 입력 검사
+		function isEmptyData(obj) {
+			var isEmpty = false;
+			var field = "";
+			var list = viewModel.get("apiData");
+
+			if (!list || !list.length) return false;
+
+			list = list.toJSON();
+
+			for (var i = 0; i < list.length; i++) {
+				var item = list[i];
+				if ((!item.companyList || !item.companyList.length)) {
+					field = "법인 그룹";
+					isEmpty = true;
+					break;
+				}
+
+				if ((!item.groupData || !item.groupData.length)) {
+					field = "할인 그룹";
+					isEmpty = true;
+					break;
+				}
+
+				if (item.groupData.length > 0) {
+
+					for (var j = 0; j < item.groupData.length; j++) {
+						var groupItem = item.groupData[j];
+						if (!groupItem.groupList.length) {
+
+							field = "임직원 할인 그룹/할인율";
+							isEmpty = true;
+							break;
+
+						} else if (!groupItem.maxAmmount) {
+
+							field = "한도액";
+							isEmpty = true;
+							break;
+
+						} else if (!groupItem.cycle) {
+
+							field = "한도액 주기";
+							isEmpty = true;
+							break;
+
+						}
+					}
+				}
+			}
+
+			return {
+				isEmpty: isEmpty,
+				field: field,
+			};
+		}
+
+		window.isEmptyData = isEmptyData;
+
+		// 업데이트 일자 갱신
+		function setUpdateDate() {
+			var date = kendo.toString(new Date(), FULL_DATE_FORMAT);
+			this.set("recentUpdated", date);
+		}
+
+		// grid-norecords 영역 display
+		function showNorecord(length) {
+			var _display = !length ? "block" : "none";
+			$noRecords.css("display", _display);
+		}
+	});
+</script>

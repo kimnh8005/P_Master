@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.stock.GoodsStockExcelUploadDetlListMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description   : ERP 재고 엑셀 업로드 상세내역 조회
+     * @
+     * @ 수정일                 수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.11.23  이성준         최초생성
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getStockUploadDetlList" resultType="kr.co.pulmuone.v1.goods.stock.dto.vo.StockExcelUploadDetlListResultVo">
+    /* stockExcelUploadDetlList.getStockUploadDetlList */
+     SELECT B.IL_ITEM_CD,   /* 품목코드 */
+	        B.ITEM_NM,      /* 품목명 */
+	        DATE_FORMAT(A.EXPIRATION_DT,'%Y-%m-%d') AS EXPIRATION_DT,/* 유통기한 */
+	        A.SUCCESS_YN,   /* 성공여부 */
+	        CONCAT(A.STOCK_QTY,'개') AS STOCK_QTY, /* 재고수량 */
+	        DATE_FORMAT(A.CREATE_DT,'%Y-%m-%d') AS CREATE_DT /* 등록일 */
+	   FROM IL_STOCK_EXCEL_UPLOAD_DETL_LOG A
+	  INNER JOIN IL_ITEM B
+              ON A.IL_ITEM_CD = B.IL_ITEM_CD
+             AND A.SUCCESS_YN = 'Y'
+      <where>
+      <choose>
+	      <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'codeSearch')">
+	         <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemCodes)">
+	         AND (
+	              B.IL_ITEM_CD IN
+	             <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+	                         #{data}
+	             </foreach>
+	                OR
+	              B.ITEM_BARCODE IN
+	             <foreach item="data" index="index" collection="ilItemCodeArray" open="(" separator="," close=")">
+	                         #{data}
+	             </foreach>
+	             )
+	         </if>
+	      </when>
+	      <otherwise>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchKind, '1')"> /* 검색종류 품목명 */
+	         B.ITEM_NM LIKE CONCAT('%', #{itemName}, '%')
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchKind, '2')"> /* 검색종류 품목코드 */
+	         B.IL_ITEM_CD = #{itemName}
+	        </if>
+	      </otherwise>
+      </choose>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(ilStockExcelUploadLogId, '0')">
+          AND A.IL_STOCK_EXCEL_UPLOAD_LOG_ID = #{ilStockExcelUploadLogId} /* 업로드ID(상세보기) */
+      </if>
+      </where>
+      ORDER BY A.CREATE_DT DESC
+    </select>
+
+</mapper>

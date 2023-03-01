@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.excel.PolicyExcelTmpltMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 엑셀양식관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.24		박승현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.policy.excel.dto.vo.PolicyExcelTmpltVo" id="getPolicyExcelTmpltMap">
+		<result column="PS_EXCEL_TEMPLATE_ID"  property="psExcelTemplateId"  />
+		<result column="EXCEL_TEMPLATE_TP"  property="excelTemplateTp" />
+		<result column="EXCEL_TEMPLATE_USE_TP"  property="excelTemplateUseTp"  />
+		<result column="TEMPLATE_NM"  property="templateNm" />
+		<result column="DATA"  property="templateData" />
+		<!-- 11.26 SPEC OUT
+		<result column="START_LINE"  property="startLine" />
+		-->
+		<result column="UR_USER_ID"  property="urUserId" />
+		<result column="UR_COMPANY_ID"  property="urCompanyId" />
+		<result column="PERSONAL_USE_YN"  property="personalUseYn" />
+		<result column="PRIVACY_INCLUDE_YN"  property="privacyIncludeYn" />
+		<result column="CREATE_ID"  property="createId" />
+		<result column="CREATE_DT"  property="createDt" />
+		<result column="MODIFY_ID"  property="modifyId" />
+		<result column="MODIFY_DT"  property="modifyDt" />
+	</resultMap>
+
+	<insert id="addPolicyExcelTmplt">
+		/*	PolicyExcelTmplt.addPolicyExcelTmplt	*/
+		INSERT INTO PS_EXCEL_TEMPLATE
+			(
+				EXCEL_TEMPLATE_TP, EXCEL_TEMPLATE_USE_TP, TEMPLATE_NM, DATA
+				, UR_USER_ID, UR_COMPANY_ID, PERSONAL_USE_YN, PRIVACY_INCLUDE_YN
+				, CREATE_ID, CREATE_DT)
+		VALUES
+			(
+				#{excelTemplateTp}, #{excelTemplateUseTp}, #{templateNm}, #{templateData}
+				, #{userVo.userId}, #{urCompanyId}, #{personalUseYn}, IFNULL(#{privacyIncludeYn}, 'N')
+				, #{userVo.userId}, NOW())
+	</insert>
+	<update id="putPolicyExcelTmplt">
+		/*	PolicyExcelTmplt.putPolicyExcelTmplt	*/
+		UPDATE PS_EXCEL_TEMPLATE
+		SET
+			EXCEL_TEMPLATE_TP = #{excelTemplateTp}
+			, EXCEL_TEMPLATE_USE_TP = #{excelTemplateUseTp}
+			, TEMPLATE_NM = #{templateNm}
+			, DATA = #{templateData}
+			, UR_USER_ID = #{userVo.userId}
+			, UR_COMPANY_ID = #{urCompanyId}
+			, PERSONAL_USE_YN = #{personalUseYn}
+			, PRIVACY_INCLUDE_YN = IFNULL(#{privacyIncludeYn}, 'N')
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = NOW()
+		WHERE PS_EXCEL_TEMPLATE_ID = #{psExcelTemplateId}
+	</update>
+	<delete id="delPolicyExcelTmplt">
+		/*	PolicyExcelTmplt.delPolicyExcelTmplt	*/
+		DELETE
+		FROM PS_EXCEL_TEMPLATE
+		WHERE PS_EXCEL_TEMPLATE_ID = #{psExcelTemplateId}
+	</delete>
+	<select id="getPolicyExcelTmpltList" resultMap="getPolicyExcelTmpltMap">
+		/*	PolicyExcelTmplt.getPolicyExcelTmpltList	*/
+		SELECT
+			PS_EXCEL_TEMPLATE_ID, EXCEL_TEMPLATE_TP, TEMPLATE_NM, UR_USER_ID, IFNULL(PRIVACY_INCLUDE_YN, 'N') AS PRIVACY_INCLUDE_YN
+		FROM PS_EXCEL_TEMPLATE
+		WHERE EXCEL_TEMPLATE_TP = #{excelTemplateTp}
+		AND PERSONAL_USE_YN = 'N'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(excelTemplateUseTp, 'DOWNLOAD')">
+		AND EXCEL_TEMPLATE_USE_TP IN ('EXCEL_TEMPLATE_USE_TP.DOWNLOAD', 'EXCEL_TEMPLATE_USE_TP.ALL')
+		</if>
+		UNION ALL
+		SELECT
+			PS_EXCEL_TEMPLATE_ID, EXCEL_TEMPLATE_TP, TEMPLATE_NM, UR_USER_ID, IFNULL(PRIVACY_INCLUDE_YN, 'N') AS PRIVACY_INCLUDE_YN
+		FROM PS_EXCEL_TEMPLATE
+		WHERE EXCEL_TEMPLATE_TP = #{excelTemplateTp}
+		AND PERSONAL_USE_YN = 'Y'
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(excelTemplateUseTp, 'DOWNLOAD')">
+		AND EXCEL_TEMPLATE_USE_TP IN ('EXCEL_TEMPLATE_USE_TP.DOWNLOAD', 'EXCEL_TEMPLATE_USE_TP.ALL')
+		</if>
+		AND UR_USER_ID = #{userVo.userId}
+	</select>
+	<select id="getPolicyExcelTmpltInfo" resultMap="getPolicyExcelTmpltMap">
+		/*	PolicyExcelTmplt.getPolicyExcelTmpltInfo	*/
+		SELECT
+			PS_EXCEL_TEMPLATE_ID, EXCEL_TEMPLATE_TP, EXCEL_TEMPLATE_USE_TP, TEMPLATE_NM, DATA
+			, UR_USER_ID, UR_COMPANY_ID, PERSONAL_USE_YN
+			, CREATE_ID, CREATE_DT, MODIFY_ID, MODIFY_DT, IFNULL(PRIVACY_INCLUDE_YN, 'N') AS PRIVACY_INCLUDE_YN
+		FROM PS_EXCEL_TEMPLATE
+		WHERE PS_EXCEL_TEMPLATE_ID = #{psExcelTemplateId}
+	</select>
+</mapper>

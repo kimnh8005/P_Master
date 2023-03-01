@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.item.GoodsItemStoreMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 매장 정보 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.10		홍진영
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.ItemStoreInfoDto" id="getStoreListMap">
+		<result column="UR_STORE_ID"  property="urStoreId" />
+		<result column="STORE_NM"  property="storeName" />
+		<result column="STORE_SALE_PRICE"  property="storeSalePrice" />
+		<result column="STORE_STOCK"  property="storeStock" />
+	</resultMap>
+	<select id="getStoreList" resultMap="getStoreListMap">
+		/*	goodsItemStore.getStoreList	*/
+		SELECT
+			ISI.UR_STORE_ID
+			, S.NM AS STORE_NM
+			, ISI.STORE_SALE_PRICE
+			, ISI.STORE_STOCK
+        FROM IL_ITEM_STORE_INFO ISI
+        JOIN UR_STORE S ON (ISI.UR_STORE_ID = S.UR_STORE_ID AND S.ONLINE_DIV_YN = 'Y')
+        WHERE ISI.IL_ITEM_CD = #{ilItemCd}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 매장 가격 히스토리 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.10		홍진영
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.goods.item.dto.ItemStorePriceLogDto" id="getStorePriceLogListMap">
+		<result column="STORE_NM"  property="storeName" />
+		<result column="PRICE_START_DT"  property="priceStartDate" />
+		<result column="PRICE_END_DT"  property="priceEndDate" />
+		<result column="STORE_SALE_PRICE"  property="storeSalePrice" />
+	</resultMap>
+	<select id="getStorePriceLogList" parameterType="kr.co.pulmuone.v1.goods.item.dto.ItemStorePriceLogRequestDto" resultMap="getStorePriceLogListMap">
+		/*	goodsItemStore.getStorePriceLogList	*/
+		SELECT
+			S.NM AS STORE_NM
+			, ISPL.PRICE_START_DT
+			, ISPL.PRICE_END_DT
+			, ISPL.STORE_SALE_PRICE
+        FROM IL_ITEM_STORE_PRICE_LOG ISPL
+        JOIN UR_STORE S ON (ISPL.UR_STORE_ID = S.UR_STORE_ID)
+        WHERE ISPL.IL_ITEM_CD = #{ilItemCd}
+        AND ISPL.UR_STORE_ID = #{urStoreId}
+        ORDER BY ISPL.CREATE_DT DESC
+	</select>
+
+
+	<select id="getItemStoreStockList" resultType="kr.co.pulmuone.v1.goods.item.dto.ItemStoreStockDto">
+		/* goodsItemStore.getItemShopStockList */
+		SELECT
+			ISI.IL_ITEM_CD AS ITEM_CODE
+			, II.ITEM_NM AS ITEM_NM
+			, UC.COMP_NM AS COMPANY_NM
+			, DB.DP_BRAND_NM AS DISP_BRAND_NM
+		    , UB.BRAND_NM AS BRAND_NM
+			, S.NM AS STORE_NM
+			, ICS.CTGRY_STD_NM AS CATEGORY
+			, II.ERP_O2O_EXPOSURE_TP AS ITEM_STORE_TYPE
+			, ISI.STORE_STOCK AS STORE_STOCK
+			, II.ITEM_TP AS ITEM_TYPE
+			, II.ERP_IF_YN AS ERP_IF_YN
+		FROM IL_ITEM_STORE_INFO ISI
+			INNER JOIN UR_STORE S ON (ISI.UR_STORE_ID = S.UR_STORE_ID AND S.ONLINE_DIV_YN = 'Y' AND S.USE_YN = 'Y')
+			INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = ISI.IL_ITEM_CD AND II.ITEM_STATUS_TP = 'ITEM_STATUS_TP.REGISTER' AND II.ERP_O2O_EXPOSURE_TP IN ('저울코드(손질)', '직제조(FRM)', '사간거래', '미대상(일반)')
+			INNER JOIN UR_SUPPLIER US ON II.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+			INNER JOIN UR_COMPANY UC ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+			INNER JOIN UR_BRAND UB ON II.UR_BRAND_ID = UB.UR_BRAND_ID
+			INNER JOIN DP_BRAND DB ON II.DP_BRAND_ID = DB.DP_BRAND_ID
+			INNER JOIN IL_CTGRY_STD_PRNTS_INFO ICSPI ON ICSPI.IL_CTGRY_STD_ID = II.IL_CTGRY_STD_ID
+			INNER JOIN IL_CTGRY_STD ICS ON ICS.IL_CTGRY_STD_ID = ICSPI.CTGRY_STD_ID_DEPTH1
+		<where>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'singleSection')"> <!-- 단일조건 검색 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemCodeList)">
+					AND II.IL_ITEM_CD IN
+					<foreach collection="itemCodeList" item="itemCode" index="index" separator="," open="(" close=")">
+						#{itemCode}
+					</foreach>
+					OR
+					II.ITEM_BARCODE IN
+					<foreach collection="itemCodeList" item="itemCode" index="index" separator="," open="(" close=")">
+						#{itemCode}
+					</foreach>
+
+				</if>
+			</when>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectConditionType, 'multiSection')"> <!-- 복수 조건 검색 -->
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemNm)">
+					AND II.ITEM_NM LIKE CONCAT('%', #{itemNm}, '%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeNm)">
+					AND S.UR_STORE_ID = #{storeNm}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(itemStoreTypeList)">
+					AND II.ERP_O2O_EXPOSURE_TP IN
+					<foreach collection="itemStoreTypeList" item="itemStoreType" index="index" separator="," open="(" close=")">
+						#{itemStoreType}
+					</foreach>
+				</if>
+			</when>
+			</choose>
+		</where>
+		ORDER BY II.IL_ITEM_CD
+	</select>
+
+</mapper>
+

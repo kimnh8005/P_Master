@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.adminpointsetting.AdminPointSettingMapper">
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 설정 한도 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.adminpointsetting.dto.vo.AdminPointSettingVo" id="getAdminPointSettingResultMap">
+		<result column="PM_POINT_ADMIN_SETTING_ID"  property="pmPointAdminSettingId"  />
+		<result column="SETTING_TP"  property="settingType"  />
+		<result column="AMOUNT"  property="amount" />
+		<result column="AMOUNT_INDIVIDUAL"  property="amountIndividual"  />
+		<result column="VALIDITY_DAY"  property="validityDay" />
+		<result column="ST_ROLE_TP_ID"  property="stRoleTpId"  />
+		<result column="ROLE_NM"  property="roleName"  />
+	</resultMap>
+	<select id="getAdminPointSetting" resultMap="getAdminPointSettingResultMap">
+
+		/*	adminPointSetting.getAdminPointSetting	*/
+
+		SELECT P1.PM_POINT_ADMIN_SETTING_ID
+			  , P1.SETTING_TP
+			  , P1.AMOUNT
+			  , P1.AMOUNT_INDIVIDUAL
+			  , P1.VALIDITY_DAY
+			  , S1.ST_ROLE_TP_ID
+			  , S1.ROLE_NM
+		FROM PM_POINT_ADMIN_SETTING P1
+		JOIN PM_POINT_ADMIN_SETTING_TARGET P2 ON P1.PM_POINT_ADMIN_SETTING_ID = P2.PM_POINT_ADMIN_SETTING_ID
+		JOIN ST_ROLE_TYPE S1 ON P2.ST_ROLE_TP_ID  = S1.ST_ROLE_TP_ID
+		WHERE P1.DEL_YN = 'N'
+		ORDER BY P1.CREATE_DT DESC
+
+	</select>
+
+
+	<select id="getAdminPointSettingCount" resultType="int">
+
+		/*	adminPointSetting.getAdminPointSettingCount */
+
+		SELECT COUNT(*)
+		FROM PM_POINT_ADMIN_SETTING P1
+		JOIN PM_POINT_ADMIN_SETTING_TARGET P2 ON P1.PM_POINT_ADMIN_SETTING_ID = P2.PM_POINT_ADMIN_SETTING_ID
+		JOIN ST_ROLE_TYPE S1 ON P2.ST_ROLE_TP_ID  = S1.ST_ROLE_TP_ID
+		WHERE P1.DEL_YN = 'N'
+		ORDER BY P1.CREATE_DT DESC
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 설정 한도 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.adminpointsetting.dto.vo.AdminPointSettingVo" id="getRoleGroupListResultMap">
+		<result column="ST_ROLE_TP_ID"  property="stRoleTpId"  />
+		<result column="ROLE_NM"  property="roleName"  />
+		<result column="ERP_ORGANIZATION_CD"  property="erpOrganizationCd"  />
+	</resultMap>
+	<select id="getRoleGroupList" resultMap="getRoleGroupListResultMap">
+
+		/*	adminPointSetting.getRoleGroupList	*/
+
+		SELECT S1.ST_ROLE_TP_ID
+			  , S1.ROLE_NM
+			  , S1.ERP_ORGANIZATION_CD
+		FROM ST_ROLE_TYPE S1
+		WHERE USE_YN = 'Y'
+		ORDER BY CREATE_DT
+
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 설정 한도 이력 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.adminpointsetting.dto.vo.AdminPointSettingVo" id="getAdminPointSettingListResultMap">
+		<result column="PM_POINT_ADMIN_SETTING_ID"  property="pmPointAdminSettingId"  />
+		<result column="SETTING_TP"  property="settingType"  />
+		<result column="AMOUNT"  property="amount" />
+		<result column="AMOUNT_INDIVIDUAL"  property="amountIndividual"  />
+		<result column="VALIDITY_DAY"  property="validityDay" />
+		<result column="ST_ROLE_TP_ID"  property="stRoleTpId"  />
+		<result column="ROLE_NM"  property="roleName"  />
+		<result column="ADMIN_NAME"  property="adminName"  />
+		<result column="LOGIN_ID"  property="loginId"  />
+		<result column="CREATE_DT"  property="createInfo"  />
+	</resultMap>
+	<select id="getAdminPointSettingList" resultMap="getAdminPointSettingListResultMap">
+
+		/*	adminPointSetting.getAdminPointSettingList	*/
+
+		SELECT P1.PM_POINT_ADMIN_SETTING_ID
+			  , P1.SETTING_TP
+			  , P1.AMOUNT
+			  , P1.AMOUNT_INDIVIDUAL
+			  , P1.VALIDITY_DAY
+			  , S1.ST_ROLE_TP_ID
+			  , S1.ROLE_NM
+			  , FN_DECRYPT(UU.USER_NM) AS ADMIN_NAME
+			  , UU.LOGIN_ID
+			  , P1.CREATE_DT
+		FROM PM_POINT_ADMIN_SETTING_HISTORY P1
+		JOIN PM_POINT_ADMIN_SETTING_TARGET P2 ON P1.PM_POINT_ADMIN_SETTING_ID = P2.PM_POINT_ADMIN_SETTING_ID
+		JOIN ST_ROLE_TYPE S1 ON P2.ST_ROLE_TP_ID  = S1.ST_ROLE_TP_ID
+		JOIN UR_USER UU ON P1.CREATE_ID = UU.UR_USER_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grantAuthEmployeeNumber)">
+			AND UU.LOGIN_ID = #{grantAuthEmployeeNumber}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(roleGroup)">
+			AND S1.ST_ROLE_TP_ID = #{roleGroup}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+				AND P1.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+		    </if>
+		</if>
+		ORDER BY P1.CREATE_DT DESC
+
+	</select>
+
+
+	<select id="getAdminPointSettingListCount" resultType="int">
+
+		/*	adminPointSetting.getAdminPointSettingListCount */
+
+		SELECT COUNT(*)
+		FROM PM_POINT_ADMIN_SETTING_HISTORY P1
+		JOIN PM_POINT_ADMIN_SETTING_TARGET P2 ON P1.PM_POINT_ADMIN_SETTING_ID = P2.PM_POINT_ADMIN_SETTING_ID
+		JOIN ST_ROLE_TYPE S1 ON P2.ST_ROLE_TP_ID  = S1.ST_ROLE_TP_ID
+		JOIN UR_USER UU ON P1.CREATE_ID = UU.UR_USER_ID
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grantAuthEmployeeNumber)">
+			AND UU.LOGIN_ID = #{grantAuthEmployeeNumber}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(roleGroup)">
+			AND S1.ST_ROLE_TP_ID = #{roleGroup}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+				AND P1.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+		    </if>
+		</if>
+	</select>
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 지급 한도 설정 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getAdminPointSettingDetailResultMap" type="kr.co.pulmuone.v1.promotion.adminpointsetting.dto.vo.AdminPointSettingVo" >
+		<result column="PM_POINT_ADMIN_SETTING_ID"  property="pmPointAdminSettingId"  />
+		<result column="SETTING_TP"  property="settingType"  />
+		<result column="AMOUNT"  property="amount" />
+		<result column="AMOUNT_INDIVIDUAL"  property="amountIndividual"  />
+		<result column="VALIDITY_DAY"  property="validityDay" />
+		<result column="ST_ROLE_TP_ID"  property="roleGroup"  />
+		<result column="ROLE_NM"  property="roleName"  />
+		<result column="ADMIN_NAME"  property="adminName"  />
+		<result column="LOGIN_ID"  property="loginId"  />
+		<result column="CREATE_INFO"  property="createInfo"/>
+		<result column="CREATE_NAME"  property="createName"/>
+		<result column="CREATE_DT"  property="createDate"/>
+		<result column="CREATE_LOGIN_ID"  property="createLoginId"/>
+		<result column="MODIFY_INFO"  property="modifyInfo"/>
+		<result column="MODIFY_NAME"  property="modifyName"/>
+		<result column="MODIFY_LOGIN_ID"  property="modifyLoginId"/>
+		<result column="MODIFY_DT"  property="modifyDate"/>
+	</resultMap>
+	<select id="getAdminPointSettingDetail" resultMap="getAdminPointSettingDetailResultMap">
+		/* adminPointSetting.getAdminPointSettingDetail */
+		SELECT P1.PM_POINT_ADMIN_SETTING_ID
+			  , P1.SETTING_TP
+			  , P1.AMOUNT
+			  , P1.AMOUNT_INDIVIDUAL
+			  , P1.VALIDITY_DAY
+			  , S1.ST_ROLE_TP_ID
+			  , S1.ROLE_NM
+			  , P1.CREATE_DT
+			  , P1.MODIFY_DT
+			  , FN_DECRYPT(UU.USER_NM ) AS CREATE_NAME
+           	  , UU.LOGIN_ID AS CREATE_LOGIN_ID
+              , FN_DECRYPT(UR.USER_NM ) AS MODIFY_NAME
+           	  , UR.LOGIN_ID AS MODIFY_LOGIN_ID
+			  , CONCAT('등록일:',P1.CREATE_DT, CAST(AES_DECRYPT(UNHEX((SELECT UU.USER_NM FROM UR_USER UU WHERE UU.UR_USER_ID  = P1.CREATE_ID ) ), 'lssCSGhjyCBS!@34') AS CHAR), '(', P1.CREATE_ID ,')') AS CREATE_INFO
+		      , CONCAT('최근수정일:',P1.MODIFY_DT, CAST(AES_DECRYPT(UNHEX((SELECT UU.USER_NM FROM UR_USER UU WHERE UU.UR_USER_ID  = P1.MODIFY_ID ) ), 'lssCSGhjyCBS!@34') AS CHAR), '(', P1.MODIFY_ID ,')') AS MODIFY_INFO
+		FROM PM_POINT_ADMIN_SETTING P1
+		JOIN PM_POINT_ADMIN_SETTING_TARGET P2 ON P1.PM_POINT_ADMIN_SETTING_ID = P2.PM_POINT_ADMIN_SETTING_ID
+		JOIN ST_ROLE_TYPE S1 ON P2.ST_ROLE_TP_ID  = S1.ST_ROLE_TP_ID
+		INNER JOIN UR_USER UU ON P1.CREATE_ID = UU.UR_USER_ID
+        LEFT OUTER JOIN UR_USER UR ON P1.MODIFY_ID = UR.UR_USER_ID
+		WHERE P1.PM_POINT_ADMIN_SETTING_ID = #{pmPointAdminSettingId}
+	</select>
+
+
+<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 설정 대상 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.07		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.adminpointsetting.dto.vo.AdminPointSettingVo" id="getAdminPointSettingTargetResultMap">
+		<result column="PM_POINT_ADMIN_SETTING_ID"  property="pmPointAdminSettingId"  />
+	</resultMap>
+	<select id="getAdminPointSettingTarget" resultMap="getAdminPointSettingTargetResultMap">
+
+		/*	adminPointSetting.getAdminPointSettingTarget	*/
+
+		SELECT MAX(PM_POINT_ADMIN_SETTING_ID) AS PM_POINT_ADMIN_SETTING_ID
+		FROM PM_POINT_ADMIN_SETTING_TARGET
+		WHERE ST_ROLE_TP_ID = #{roleGroup}
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 사용설정 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addAdminPointSetting">
+		/*	adminPointSetting.addAdminPointSetting  */
+		INSERT INTO PM_POINT_ADMIN_SETTING (
+		    SETTING_TP
+		  , AMOUNT
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(amountIndividual)">
+		  , AMOUNT_INDIVIDUAL
+		  </if>
+		  , VALIDITY_DAY
+		  , CREATE_DT
+		  , CREATE_ID
+		) VALUES (
+		    #{settingType}
+		  , #{amount}
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(amountIndividual)">
+		  , #{amountIndividual}
+		  </if>
+		  , #{validityDay}
+		  ,  NOW()
+  		  <choose>
+		  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				, #{urUserId}
+			</when>
+			<otherwise>
+				, #{userVo.userId}
+			</otherwise>
+		  </choose>
+		)
+
+		<selectKey resultType="String" keyProperty="pmPointAdminSettingId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 사용설정 대상 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addAdminPointSettingTarget">
+		/*	adminPointSetting.addAdminPointSettingTarget  */
+		INSERT INTO PM_POINT_ADMIN_SETTING_TARGET (
+			PM_POINT_ADMIN_SETTING_ID
+		  , ST_ROLE_TP_ID
+		  , CREATE_DT
+		  , CREATE_ID
+		) VALUES (
+			#{pmPointAdminSettingId}
+		  , #{roleGroup}
+		  ,  NOW()
+  		  <choose>
+		  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				, #{urUserId}
+			</when>
+			<otherwise>
+				, #{userVo.userId}
+			</otherwise>
+		  </choose>
+		)
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 사용설정 이력 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addAdminPointSettingHistory">
+		/*	adminPointSetting.addAdminPointSettingHistory  */
+		INSERT INTO PM_POINT_ADMIN_SETTING_HISTORY (
+			PM_POINT_ADMIN_SETTING_ID
+		  , SETTING_TP
+		  , AMOUNT
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(amountIndividual)">
+		  , AMOUNT_INDIVIDUAL
+		  </if>
+		  , VALIDITY_DAY
+		  , DEL_YN
+		  , CREATE_DT
+		  , CREATE_ID
+		) VALUES (
+			#{pmPointAdminSettingId}
+		  , #{settingType}
+		  , #{amount}
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(amountIndividual)">
+		  , #{amountIndividual}
+		  </if>
+		  , #{validityDay}
+		  , #{delYn}
+		  , NOW()
+  		  <choose>
+		  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				, #{urUserId}
+			</when>
+			<otherwise>
+				, #{userVo.userId}
+			</otherwise>
+		  </choose>
+		)
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 사용설정 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putAdminPointSetting">
+		/* adminPointSetting.putAdminPointSetting */
+		UPDATE 	PM_POINT_ADMIN_SETTING
+		SET  SETTING_TP =  #{settingType}
+		  , AMOUNT = #{amount}
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(delYn)">
+		  , DEL_YN = #{delYn}
+		  </if>
+		  <choose>
+		  	<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(amountIndividual)">
+				, AMOUNT_INDIVIDUAL = #{amountIndividual}
+			</when>
+			<otherwise>
+				, AMOUNT_INDIVIDUAL = NULL
+			</otherwise>
+		  </choose>
+		  , VALIDITY_DAY = #{validityDay}
+		  <choose>
+			  <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				  ,MODIFY_ID		 =  #{urUserId}
+			  </when>
+			  <otherwise>
+				  ,MODIFY_ID		 = #{userVo.userId}
+			  </otherwise>
+		  </choose>
+		  , MODIFY_DT = NOW()
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createUserId)">
+		      ,CREATE_ID		 = #{createUserId}
+		      ,CREATE_DT 		 = NOW()
+		      ,MODIFY_ID		 = NULL
+		      ,MODIFY_DT 	     = NULL
+		  </if>
+		  <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(createUserId)">
+			  <choose>
+				  <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+					  ,MODIFY_ID		 =  #{urUserId}
+				  </when>
+				  <otherwise>
+					  ,MODIFY_ID		 = #{userVo.userId}
+				  </otherwise>
+			  </choose>
+			  , MODIFY_DT = NOW()
+		  </if>
+		WHERE PM_POINT_ADMIN_SETTING_ID = #{pmPointAdminSettingId}
+
+	</update>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 적립금 사용설정 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.06		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="removeAdminPointSetting">
+		/* adminPointSetting.removeAdminPointSetting */
+		UPDATE 	PM_POINT_ADMIN_SETTING
+		SET  DEL_YN = #{delYn}
+		  <choose>
+			  <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urUserId)">
+				  ,MODIFY_ID		 =  #{urUserId}
+			  </when>
+			  <otherwise>
+				  ,MODIFY_ID		 = #{userVo.userId}
+			  </otherwise>
+		  </choose>
+		  , MODIFY_DT = NOW()
+		WHERE PM_POINT_ADMIN_SETTING_ID = #{pmPointAdminSettingId}
+
+	</update>
+
+
+
+</mapper>

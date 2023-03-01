@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.user.UserJoinBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: MALL 신규가입 대상자 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.batch.user.join.dto.vo.JoinBatchVo" id="userJoinResultMap">
+		<result column="UR_USER_ID"   property="urUserId"/>
+		<result column="RECOMM_USER_ID"  property="recommUserId"/>
+		<result column="UR_GROUP_ID"  property="recommUrGroupId"/>
+	</resultMap>
+	<select id="getUserJoin" resultMap="userJoinResultMap">
+		/*	userJoinBatch.getUserJoin  */
+		SELECT UU.UR_USER_ID
+			, UB.RECOMM_USER_ID
+			, RUB.UR_GROUP_ID
+		FROM UR_USER UU
+			INNER JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+			INNER JOIN UR_BUYER RUB ON UB.RECOMM_USER_ID = RUB.UR_USER_ID
+		WHERE UU.USER_TP IN ('USER_TYPE.EMPLOYEE', 'USER_TYPE.BUYER')
+			AND UU.CREATE_DT BETWEEN DATE_SUB(NOW(), INTERVAL #{userJoinDepositDay} DAY) AND NOW()
+			AND UB.RECOMM_USER_ID IS NOT NULL
+			AND UB.RECOMM_GIVE_YN = 'N'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: MALL 신규가입 대상자 - 추천인 적립금 지급
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserJoinRecommGiveYn">
+		/* userJoinBatch.putUserJoinRecommGiveYn */
+		UPDATE UR_BUYER
+		SET RECOMM_GIVE_YN = 'Y'
+		WHERE UR_USER_ID IN
+		<foreach collection="userIdList" item="userId" index="index" separator="," open="(" close=")">
+			#{userId}
+		</foreach>
+	</update>
+
+</mapper>
+

@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.order.CalDeliveryMapper">
+
+	<sql id="searchDetailDate">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CAL_DT")'><!-- 정산처리일자 -->
+					AND ood.DI_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+					AND ood2.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+					AND ood2.IC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="searchClaimDetailDate">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CAL_DT")'><!-- 정산처리일자 -->
+					AND ocd.RC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+					AND ood2.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+					AND ood2.IC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="searchDetailSellersDetail">
+		AND oo.OM_SELLERS_ID IN
+		<foreach collection="omSellersIdList" item="sellersDetail" index="index" separator="," open="(" close=")">
+			#{sellersDetail}
+		</foreach>
+	</sql>
+
+	<sql id="salesDeliveryGubunListDetail">
+		AND x.DIV_NM IN
+		<foreach collection="salesDeliveryGubunList" item="salesDelivery" index="index" separator="," open="(" close=")">
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesDelivery, "S")'>
+				'정상'
+			</if>
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(salesDelivery, "R")'>
+				'반품'
+			</if>
+		</foreach>
+	</sql>
+
+	<sql id="searchDetail">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+			AND oo.SELLERS_GROUP_CD = #{sellersGroup} 	<!-- 판매처 그룹 코드 -->
+		</if>
+		<if test="omSellersIdList.size() > 0">
+			<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(logisticsCost, "ALL")'><!-- 물류비 정산여부 -->
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(logisticsCost, "Y")'>
+					AND osp.SETL_YN != 'X'
+				</when>
+				<otherwise>
+					AND osp.SETL_YN = 'X'
+				</otherwise>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplierId)"> <!-- 공급업체 -->
+			AND ood.UR_SUPPLIER_ID = #{supplierId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)"> <!-- 출고처 그룹 코드 -->
+			AND ood.UR_WAREHOUSE_GRP_CD = #{warehouseGroup}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseId)"> <!-- 출고처 -->
+			AND ood.UR_WAREHOUSE_ID = #{warehouseId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findOdid)"> <!-- 주문번호 -->
+			AND oo.ODID = #{findOdid}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urStoreId)">
+			AND oo.UR_STORE_ID = #{urStoreId}
+		</if>
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 택배내역 카운트 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.29		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDeliveryListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalOrderListRequestDto">
+		/* calDelivery.getDeliveryListCount */
+		SELECT
+			COUNT(*) AS CNT
+		FROM
+		(
+			SELECT
+				'정상' AS DIV_NM
+			FROM OD_SHIPPING_PRICE osp
+			JOIN OD_ORDER_DETL ood ON osp.OD_SHIPPING_PRICE_ID = ood.OD_SHIPPING_PRICE_ID
+			JOIN OD_ORDER oo ON	oo.odid = ood.odid
+			JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+			JOIN OD_PAYMENT op ON oo.OD_ORDER_ID = op.OD_ORDER_ID AND op.OD_CLAIM_ID = 0
+			JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID AND opm.STATUS = 'IC' AND opm.TYPE = 'G'
+			WHERE ood.DI_DT IS NOT NULL
+			AND oo.ORDER_YN ='Y'
+			<include refid="searchDetailDate" />
+			<include refid="searchDetail" />
+			GROUP BY osp.OD_SHIPPING_PRICE_ID
+
+			UNION ALL
+
+			SELECT
+				'반품' AS DIV_NM
+			FROM OD_CLAIM_DETL ocd
+			JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+			JOIN OD_SHIPPING_PRICE osp ON (osp.OD_SHIPPING_PRICE_ID = ood.OD_SHIPPING_PRICE_ID)
+			JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID)
+			JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ocd.UR_WAREHOUSE_ID)
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = oc.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			JOIN OD_PAYMENT op ON oo.OD_ORDER_ID = op.OD_ORDER_ID AND oc.OD_CLAIM_ID = op.OD_CLAIM_ID AND op.SHIPPING_PRICE > 0
+			JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+			WHERE ocd.CLAIM_STATUS_CD IN ('RC')
+			<include refid="searchClaimDetailDate" />
+			<include refid="searchDetail" />
+			GROUP BY oo.ODID, op.OD_PAYMENT_ID, oc.TARGET_TP
+		) x
+		<where>
+			<if test="salesDeliveryGubunList.size > 0">
+				<include refid="salesDeliveryGubunListDetail" />
+			</if>
+		</where>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 택배내역 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.29		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDeliveryList" resultType="kr.co.pulmuone.v1.calculate.order.dto.CalDeliveryListDto" parameterType="kr.co.pulmuone.v1.calculate.order.dto.CalOrderListRequestDto">
+		/* calDelivery.getDeliveryList */
+		SELECT
+			y.DIV_NM
+			, IFNULL(y.ODID, '') AS ODID
+			, IFNULL(y.OUTMALL_ID, '') AS OUTMALL_ID
+			, IFNULL(y.COLLECTION_MALL_ID, '') AS COLLECTION_MALL_ID
+			, IFNULL((SELECT SELLERS_NM FROM OM_SELLERS WHERE OM_SELLERS_ID = y.OM_SELLERS_ID), '') AS SELLERS_NM
+			, IFNULL(y.WAREHOUSE_NM, '') AS WAREHOUSE_NAME
+			, IFNULL(y.STORE_NAME, '') AS STORE_NAME
+			, IF(IFNULL(y.OD_CLAIM_ID ,0) > 0
+			, (SELECT GROUP_CONCAT(DISTINCT uc.COMP_NM)
+				FROM OD_CLAIM_DETL ocd
+				JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+				JOIN UR_SUPPLIER us ON (us.UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID)
+				JOIN UR_COMPANY uc ON (uc.UR_COMPANY_ID = us.UR_COMPANY_ID)
+				WHERE ocd.OD_CLAIM_ID = y.OD_CLAIM_ID)
+			, (SELECT GROUP_CONCAT(DISTINCT uc.COMP_NM)
+				FROM OD_ORDER_DETL ood
+				JOIN UR_SUPPLIER us ON (us.UR_SUPPLIER_ID = ood.UR_SUPPLIER_ID)
+				JOIN UR_COMPANY uc ON (uc.UR_COMPANY_ID = us.UR_COMPANY_ID)
+				WHERE ood.OD_SHIPPING_PRICE_ID = y.OD_SHIPPING_PRICE_ID)) AS COMP_NM
+			, IFNULL(y.OD_SHIPPING_PRICE_ID, '') AS OD_SHIPPING_PRICE_ID
+			, IFNULL(FN_COMN_CODE_DIC(y.CONDITION_TP), '') AS CONDITION_TP_NM
+			, IFNULL(y.TARGET_TP, '') AS TARGET_TP
+			, IFNULL(y.SHIPPING_PRICE, '') AS SHIPPING_PRICE
+			, IFNULL(y.RETURN_SHIPPING_PRICE, '') AS RETURN_SHIPPING_PRICE
+			, IFNULL(y.SHIPPING_DISCOUNT_PRICE, '') AS SHIPPING_DISCOUNT_PRICE
+			, IFNULL(y.SETTLE_DT, '') AS SETTLE_DT
+			, (SELECT DIC_MST_NM FROM GB_DIC_MST WHERE GB_DIC_MST_ID = y.PG_ACCOUNT_TYPE_DIC_MST_ID) AS PG_SERVICE_NM
+			, y.TOTAL_TAXABLE_PRICE
+		FROM
+		(
+			SELECT
+				x.DIV_NM
+				, x.ODID
+				, x.OUTMALL_ID
+				, x.COLLECTION_MALL_ID
+				, x.OM_SELLERS_ID
+				, x.WAREHOUSE_NM
+				, x.OD_SHIPPING_PRICE_ID
+				, x.OD_CLAIM_ID
+				, x.IL_SHIPPING_TMPL_ID
+				, x.TARGET_TP
+				, x.SHIPPING_PRICE
+				, x.RETURN_SHIPPING_PRICE
+				, x.SHIPPING_DISCOUNT_PRICE
+				, x.SETTLE_DT
+				, x.CONDITION_TP
+				, CASE x.UR_STORE_ID
+					WHEN 'O01002' THEN '반포점'
+					WHEN 'O01003' THEN '압구정점'
+					WHEN 'O01004' THEN '이매점'
+					WHEN 'O01006' THEN '방배점'
+					WHEN 'O01011' THEN '방이점'
+				  END AS STORE_NAME
+				, (SELECT GB_DIC_MST_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_ID = x.PG_SERVICE AND ST_COMN_CODE_MST_CD = 'PG_ACCOUNT_TYPE') AS PG_ACCOUNT_TYPE_DIC_MST_ID
+				, SUM(x.SHIPPING_PRICE) OVER() AS TOTAL_TAXABLE_PRICE
+			FROM
+			(
+				SELECT
+					'정상' AS DIV_NM
+					, oo.ODID
+					, oo.OUTMALL_ID
+					, oo.COLLECTION_MALL_ID
+					, oo.OM_SELLERS_ID
+					, uw.WAREHOUSE_NM
+					, osp.OD_SHIPPING_PRICE_ID
+					, NULL AS OD_CLAIM_ID
+					, osp.IL_SHIPPING_TMPL_ID
+					, NULL AS TARGET_TP
+					, osp.SHIPPING_PRICE
+					, 0 AS RETURN_SHIPPING_PRICE
+					, osp.SHIPPING_DISCOUNT_PRICE
+					, ood.DI_DT AS SETTLE_DT
+					, (SELECT CONDITION_TP FROM IL_SHIPPING_TEMPLATE WHERE IL_SHIPPING_TMPL_ID = osp.IL_SHIPPING_TMPL_ID) AS CONDITION_TP
+					, oo.UR_STORE_ID
+					, MAX(opm.PG_SERVICE) AS PG_SERVICE
+				FROM OD_SHIPPING_PRICE osp
+				JOIN OD_ORDER_DETL ood ON osp.OD_SHIPPING_PRICE_ID = ood.OD_SHIPPING_PRICE_ID
+				JOIN OD_ORDER oo ON	oo.odid = ood.odid
+				JOIN UR_WAREHOUSE uw ON uw.UR_WAREHOUSE_ID = ood.UR_WAREHOUSE_ID
+				JOIN OD_PAYMENT op ON oo.OD_ORDER_ID = op.OD_ORDER_ID AND op.OD_CLAIM_ID = 0
+				JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID AND opm.STATUS = 'IC' AND opm.TYPE = 'G'
+				WHERE ood.DI_DT IS NOT NULL
+				AND oo.ORDER_YN ='Y'
+				<include refid="searchDetailDate" />
+				<include refid="searchDetail" />
+				GROUP BY osp.OD_SHIPPING_PRICE_ID
+
+				UNION ALL
+
+				SELECT
+					'반품' AS DIV_NM
+					, oo.ODID
+					, oo.OUTMALL_ID
+					, oo.COLLECTION_MALL_ID
+					, oo.OM_SELLERS_ID
+					, uw.WAREHOUSE_NM
+					, osp.OD_SHIPPING_PRICE_ID
+					, oc.OD_CLAIM_ID
+					, osp.IL_SHIPPING_TMPL_ID
+					, oc.TARGET_TP
+					, CASE
+						WHEN oc.TARGET_TP = 'S' THEN 0
+						ELSE IF(opm.TYPE = 'A', op.SHIPPING_PRICE , 0)
+					  END AS SHIPPING_PRICE
+					, CASE
+						WHEN oc.TARGET_TP = 'S' THEN 0
+						ELSE IF(opm.TYPE = 'F', IF(oc.CLAIM_STATUS_TP = 'CLAIM_STATUS_TP.RETURN', op.SHIPPING_PRICE, CAST(op.SHIPPING_PRICE AS SIGNED) * -1), 0)
+					  END AS RETURN_SHIPPING_PRICE
+					, 0 AS SHIPPING_DISCOUNT_PRICE
+					, ocd.RI_DT AS SETTLE_DT
+					, (SELECT CONDITION_TP FROM IL_SHIPPING_TEMPLATE WHERE IL_SHIPPING_TMPL_ID = osp.IL_SHIPPING_TMPL_ID) AS CONDITION_TP
+					, oo.UR_STORE_ID
+					, MAX(opm.PG_SERVICE) AS PG_SERVICE
+				FROM OD_CLAIM_DETL ocd
+				JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+				JOIN OD_SHIPPING_PRICE osp ON (osp.OD_SHIPPING_PRICE_ID = ood.OD_SHIPPING_PRICE_ID)
+				JOIN OD_CLAIM oc ON (oc.OD_CLAIM_ID = ocd.OD_CLAIM_ID)
+				JOIN UR_WAREHOUSE uw ON (uw.UR_WAREHOUSE_ID = ocd.UR_WAREHOUSE_ID)
+				JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = oc.OD_ORDER_ID)
+				JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+				JOIN OD_PAYMENT op ON oo.OD_ORDER_ID = op.OD_ORDER_ID AND oc.OD_CLAIM_ID = op.OD_CLAIM_ID AND op.SHIPPING_PRICE > 0
+				JOIN OD_PAYMENT_MASTER opm ON op.OD_PAYMENT_MASTER_ID = opm.OD_PAYMENT_MASTER_ID
+				WHERE ocd.CLAIM_STATUS_CD IN ('RC')
+				<include refid="searchClaimDetailDate" />
+				<include refid="searchDetail" />
+				GROUP BY oo.ODID, op.OD_PAYMENT_ID, oc.TARGET_TP
+			) x
+			<where>
+				<if test="salesDeliveryGubunList.size > 0">
+					<include refid="salesDeliveryGubunListDetail" />
+				</if>
+			</where>
+			ORDER BY x.ODID DESC, x.DIV_NM DESC
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+				<include refid="_common.pageLimit"/>
+			</if>
+		) y
+	</select>
+</mapper>

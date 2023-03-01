@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.goods.claiminfo.ClaimInfoMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송/반품/취소안내
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.10		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="ClaimInfoMap" type="kr.co.pulmuone.v1.goods.claiminfo.dto.vo.ClaimInfoVo">
+		<result column="IL_CLAIM_INFO_ID" property="ilClaimInfoId" />
+		<result column="ITEM_TYPE" property="itemType" />
+		<result column="ITEM_TYPE_NAME" property="itemTypeName" />
+		<result column="GOODS_TYPE" property="goodsType" />
+		<result column="GOODS_TYPE_NAME" property="goodsTypeName" />
+		<result column="TEMPLATE_NAME" property="templateName" />
+		<result column="USE_YN" property="useYn" />
+		<result column="USE_YN_NAME" property="useYnName" />
+		<result column="DESCRIBE" property="describe" />
+	</resultMap>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송/반품/취소안내 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.22		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimInfoList" resultMap="ClaimInfoMap">
+		/*	ClaimInfo.getClaimInfoList  */
+		SELECT
+			  CDI.IL_CLAIM_INFO_ID
+			, CDI.ITEM_TP AS ITEM_TYPE
+			, IFNULL(FN_DIC(SCC1.GB_DIC_MST_ID, #{gbLangId}), '기본') AS ITEM_TYPE_NAME
+			, CDI.GOODS_TP AS GOODS_TYPE
+			, IFNULL(FN_DIC(SCC2.GB_DIC_MST_ID, #{gbLangId}), '기본') AS GOODS_TYPE_NAME
+			, CDI.DELIVERY_TP AS DELIVERY_TYPE
+			, CDI.TEMPLATE_NM AS TEMPLATE_NAME
+			, IF(CDI.USE_YN = 'Y', '예', '아니오') AS USE_YN_NAME
+		FROM
+			IL_CLAIM_DESC_INFO CDI
+
+			LEFT OUTER JOIN ST_COMN_CODE SCC1
+				ON CDI.ITEM_TP = SCC1.ST_COMN_CODE_ID
+				AND SCC1.ST_COMN_CODE_MST_CD = 'MASTER_ITEM_TYPE'
+				AND SCC1.USE_YN = 'Y'
+
+			LEFT OUTER JOIN ST_COMN_CODE SCC2
+				ON CDI.GOODS_TP = SCC2.ST_COMN_CODE_ID
+				AND SCC2.ST_COMN_CODE_MST_CD = 'GOODS_TYPE'
+				AND SCC2.USE_YN = 'Y'
+
+		ORDER BY CDI.IL_CLAIM_INFO_ID
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송/반품/취소안내 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.22		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimInfo" resultMap="ClaimInfoMap">
+		/*	ClaimInfo.getClaimInfo  */
+		SELECT
+			  CDI.IL_CLAIM_INFO_ID
+			, CDI.ITEM_TP AS ITEM_TYPE
+			, IFNULL(FN_DIC(SCC1.GB_DIC_MST_ID, #{gbLangId}), '기본') AS ITEM_TYPE_NAME
+			, CDI.GOODS_TP AS GOODS_TYPE
+			, IFNULL(FN_DIC(SCC2.GB_DIC_MST_ID, #{gbLangId}), '기본') AS GOODS_TYPE_NAME
+			, CDI.TEMPLATE_NM AS TEMPLATE_NAME
+			, CDI.USE_YN
+			, CDI.`DESC` AS `DESCRIBE`
+		FROM
+			IL_CLAIM_DESC_INFO CDI
+
+			LEFT OUTER JOIN ST_COMN_CODE SCC1
+				ON CDI.ITEM_TP = SCC1.ST_COMN_CODE_ID
+				AND SCC1.ST_COMN_CODE_MST_CD = 'MASTER_ITEM_TYPE'
+				AND SCC1.USE_YN = 'Y'
+
+			LEFT OUTER JOIN ST_COMN_CODE SCC2
+				ON CDI.GOODS_TP = SCC2.ST_COMN_CODE_ID
+				AND SCC2.ST_COMN_CODE_MST_CD = 'GOODS_TYPE'
+				AND SCC2.USE_YN = 'Y'
+		WHERE
+			IL_CLAIM_INFO_ID = #{ilClaimInfoId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송/반품/취소안내 중복 레코드 수 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.29		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="duplicateIlClaimDescriptionInfomationCount" resultType="int">
+		/*	ilClaimDescriptionInfomation.duplicateIlClaimDescriptionInfomationCount  */
+		SELECT
+			COUNT(*)
+		FROM
+			IL_CLAIM_DESC_INFO
+		WHERE
+			ITEM_TP = #{itemType}
+		AND GOODS_TP = #{goodsType}
+		AND DELIVERY_TP = #{deliveryType}
+		AND IL_CLAIM_INFO_ID != #{ilClaimInfoId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송/반품/취소안내 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.27		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addIlClaimDescriptionInfomation">
+		/*	ilClaimDescriptionInfomation.addIlClaimDescriptionInfomation  */
+		INSERT 	INTO
+			IL_CLAIM_DESC_INFO
+		(
+			  ITEM_TP
+			, GOODS_TP
+			, DELIVERY_TP
+			, TEMPLATE_NM
+			, USE_YN
+			, `DESC`
+			, CREATE_ID
+			, CREATE_DT
+		)
+		VALUES
+		(
+			  #{itemType}
+			, #{goodsType}
+			, #{deliveryType}
+			, #{templateName}
+			, #{useYn}
+			, #{describe}
+			, #{userVo.userId}
+			, CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송/반품/취소안내 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.23		이성준          리팩토링
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putClaimInfo">
+		/*	ClaimInfo.putClaimInfo  */
+		UPDATE
+			IL_CLAIM_DESC_INFO
+		SET
+			  TEMPLATE_NM = #{templateName}
+			, USE_YN = #{useYn}
+			, `DESC` = #{describe}
+			, MODIFY_ID = #{userVo.userId}
+			, MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE
+			IL_CLAIM_INFO_ID = #{ilClaimInfoId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송/반품/취소안내 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.27		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+<!-- 	<delete id="delIlClaimDescriptionInfomation"> -->
+<!-- 		/*	ilClaimDescriptionInfomation.delIlClaimDescriptionInfomation  */ -->
+<!-- 		DELETE FROM -->
+<!-- 			IL_CLAIM_DESC_INFO -->
+<!-- 		WHERE -->
+<!-- 			IL_CLAIM_INFO_ID = #{ilClaimInfoId} -->
+<!-- 	</delete> -->
+
+</mapper>
+

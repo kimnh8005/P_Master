@@ -1,0 +1,427 @@
+<div class="wrap-location">
+	 <h1 class="title"></h1>
+	 <span class="location"></span>
+</div>
+<form id="searchForm" name="searchForm" class="fb__sect__form inputForm">
+	<input type="hidden" id="searchGoodsId" name="searchGoodsId" data-bind="value: searchInfo.searchGoodsId"/>
+	<table class="datatable v-type">
+		<colgroup>
+			<col style="width: 15%">
+			<col style="width: 60%">
+			<col style="width: 25%">
+		</colgroup>
+		<tr>
+			<th scope="row" colspan="3" style="text-align: left;" class="active">
+				<input type="text" id="goodsSelectType" name="goodsSelectType" class="fb__custom__select" style="width : 300px" data-bind="value: searchInfo.goodsSelectType, events: { change: onGoodsSelectTypeChange }">
+			</th>
+		</tr>
+	</table>
+
+	<table class="datatable v-type" data-bind="visible: promotionVisiable" >
+		<colgroup>
+			<col style="width: 15%" />
+			<col style="width: 35%" />
+			<col style="width: 15%" />
+			<col style="width: 35%" />
+		</colgroup>
+		<tbody>
+			<tr>
+				<th scope="row"><label class="req-star-th">프로모션  상품명</label> </th>
+				<td colspan="3">
+					<div class="complex-condition">
+						<input type="text" name="promotionNm" id="promotionNm" class="comm-input" style="width: 400px;" data-bind="value: searchInfo.promotionNm" />
+						<span class="marginL5 marginR10">영문,숫자 최대12자 / 한글 6자 허용</span>
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label class="req-star-th">노출기간</label></th>
+				<td colspan="3" class="need-resize">
+					<div class="complex-condition">
+						<div class="datepicker-wrapper startdate-wrapper">
+							<!-- 시작일 -->
+							<input type="text" id="promotionNameStartYear" name="promotionNameStartYear" style="width:90px"
+								class="datepicker-input" data-bind="value: searchInfo.promotionNameStartYear" />
+							<input id="promotionNameStartHour" name="promotionNameStartHour" style="width:50px" required
+								class="fb__custom__select left-input marginR5" data-role="dropdownlist" data-auto-bind="false"
+								data-value-primitive="true" data-text-field="NAME" data-value-field="CODE" data-bind="value: searchInfo.promotionNameStartHour,
+                                      source: hourDropdownData,
+                                      events: { change: fnHourMinuteChange }" />
+
+							<input id="promotionNameStartMinute" name="promotionNameStartMinute" style="width:50px" required
+								class="fb__custom__select left-input" data-role="dropdownlist" data-auto-bind="false"
+								data-value-primitive="true" data-text-field="NAME" data-value-field="CODE" data-bind="value: searchInfo.promotionNameStartMinute,
+                                      source: MinuteDropdownData,
+                                      events: { change: fnHourMinuteChange }" />
+						</div>
+						<!-- 종료일 -->
+						<div class="datepicker-wrapper">
+							<input type="text" id="promotionNameEndYear" name="promotionNameEndYear" style="width:90px"
+								class="datepicker-input marginR5" data-bind="value: searchInfo.promotionNameEndYear" />
+
+							<input id="promotionNameEndHour" name="promotionNameEndHour" style="width:50px" required
+								class="fb__custom__select left-input marginR5" data-role="dropdownlist" data-auto-bind="false"
+								data-value-primitive="true" data-text-field="NAME" data-value-field="CODE" data-bind="value: searchInfo.promotionNameEndHour,
+                                      source: hourDropdownData,
+                                      events: { change: fnHourMinuteChange }" />
+
+							<input id="promotionNameEndMinute" name="promotionNameEndMinute" style="width:50px" required
+								class="fb__custom__select left-input" data-role="dropdownlist" data-auto-bind="false"
+								data-value-primitive="true" data-text-field="NAME" data-value-field="CODE" data-bind="value: searchInfo.promotionNameEndMinute,
+                                      source: MinuteDropdownData,
+                                      events: { change: fnHourMinuteChange }" />
+
+
+							<button type="button" class="btn-white btn-s middle" style="height:32px;"
+								data-bind="click: fnPromotionDateReset">초기화</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<table class="datatable v-type" data-bind="visible: displayCategoryVisiable" >
+		<tr>
+			<th scope="row"><label class="req-star-th">전시 카테고리</label></th>
+			<td colspan="5">
+				<div class="complex-condition">
+					<div class="contsection10">
+						<table class="datatable v-type">
+							<tr>
+								<td>
+									<div id="goodsDisplayCategory1"></div>
+								</td>
+								<td>
+									<div id="goodsDisplayCategory2"></div>
+								</td>
+								<td>
+									<div id="goodsDisplayCategory3"></div>
+								</td>
+								<td>
+									<div id="goodsDisplayCategory4"></div>
+								</td>
+							</tr>
+							<tr>
+								<th colspan="4">
+									<div class="complex-condition">
+										<div class="inlineBlock middle" style="line-height: 30px;">
+											<span id="selectCtgoryText-addon" class="marginR5" style="display: none;">선택된 카테고리 :</span>
+											<span id="selectCtgoryText">전시 카테고리를 선택한 후 ‘카테고리 추가’ 버튼을 선택해 주세요.</span>
+										</div>
+										<div class="inlineBlock marginL5" style="float: right;">
+											<button type="button" id="fnCtgrySelect" class="btn-point btn-s" onclick="$scope.fnCtgrySelect()">카테고리 추가</button>
+										</div>
+									</div>
+								</th>
+							</tr>
+						</table>
+					</div>
+					<div id="goodsDisplayCategoryGridArea" style="display: none;" class="marginT20">
+						<div id="goodsDisplayCategoryGrid" style="width: 100%" class=""></div>
+					</div>
+				</div>
+			</td>
+		</tr>
+	</table>
+
+	<table class="datatable v-type" data-bind="visible: purchaseVisiable" >
+		<colgroup>
+			<col style="width: 15%">
+			<col style="width: 85%">
+		</colgroup>
+
+		<tr>
+			<th scope="row"><label>판매 허용 범위</label></th>
+			<td>
+				<div id="purchaseTargetType" name="purchaseTargetType" class="checkbox-wrapper fb__custom__checkbox"></div>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><label>쿠폰 사용 허용</label></th>
+			<td>
+				<div id="couponUseYn" name="couponUseYn" class="radios-wrapper fb__custom__radio"></div>
+			</td>
+		</tr>
+	</table>
+
+	<table class="datatable v-type" data-bind="visible: goodsNoticeVisiable" >
+		<colgroup>
+			<col style="width: 15%">
+			<col style="width: 85%">
+		</colgroup>
+
+		<tr>
+			<th scope="row"><label>상세 상단공지</label></th>
+			<td>
+				<div class="flexBox alignCenter" style="margin-bottom: 4px;">
+					<button id="btnNoticeBelow1" type="button" class="btn-blue btn-s marginR10" onclick="$scope.fnNoticeBelow1File()">파일선택</button>
+					<div id="noticeBelow1FileText">최소권장 사이즈 : 가로 640px / Jpg. Jpeg. GIF만 허용 / 이미지당 최대 500kb</div>
+				</div>
+				<div id="noticeBelow1ImageContainer"
+					style="display: flex; flex-wrap: wrap; justify-content: left;"
+					data-template="noticeBelow1Image-row-template"
+					data-bind="source: noticeBelow1ImageList"></div>
+				<div class="datepicker-wrapper" data-bind="visible: showNoticeBelow1Date">
+					노출기간 설정 :
+					<!-- 시작일 -->
+					<input type="text" id="noticeBelow1StartYear" name="noticeBelow1StartYear" style="width: 90px" class="datepicker-input" data-bind="value: searchInfo.noticeBelow1StartYear" />
+					<input id="noticeBelow1StartHour" name="noticeBelow1StartHour"
+						style="width: 50px" class="fb__custom__select left-input marginR5 noticeBelow1StartDate" data-role="dropdownlist" data-auto-bind="false"
+						data-value-primitive="true" data-text-field="NAME" data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow1StartHour,
+	                                      source: hourDropdownData,
+	                                      events: { change: fnHourMinuteChange }"
+					/>
+
+					<input id="noticeBelow1StartMinute" name="noticeBelow1StartMinute" style="width: 50px"
+						class="fb__custom__select left-input noticeBelow1StartDate"
+						data-role="dropdownlist" data-auto-bind="false"
+						data-value-primitive="true" data-text-field="NAME"
+						data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow1StartMinute,
+	                                      source: MinuteDropdownData,
+	                                      events: { change: fnHourMinuteChange }"
+					/>
+
+					<span class="marginR5 marginL5">~</span>
+					<!-- 종료일 -->
+					<input type="text" id="noticeBelow1EndYear" name="noticeBelow1EndYear" style="width: 90px"
+						class="datepicker-input" data-bind="value: searchInfo.noticeBelow1EndYear" />
+					<input id="noticeBelow1EndHour" name="noticeBelow1EndHour"
+						style="width: 50px"
+						class="fb__custom__select left-input marginR5 noticeBelow1EndDate"
+						data-role="dropdownlist" data-auto-bind="false"
+						data-value-primitive="true" data-text-field="NAME"
+						data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow1EndHour,
+	                                      source: hourDropdownData,
+	                                      events: { change: fnHourMinuteChange }"
+					/>
+
+					<input id="noticeBelow1EndMinute" name="noticeBelow1EndMinute"
+						style="width: 50px"
+						class="fb__custom__select left-input noticeBelow1EndDate"
+						data-role="dropdownlist" data-auto-bind="false"
+						data-value-primitive="true" data-text-field="NAME"
+						data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow1EndMinute,
+	                                      source: MinuteDropdownData,
+	                                      events: { change: fnHourMinuteChange }" />
+				</div>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><label>상세 하단공지</label></th>
+			<td>
+				<div class="flexBox alignCenter" style="margin-bottom: 4px;">
+					<button id="btnNoticeBelow2" type="button" class="btn-blue btn-s marginR10"
+						onclick="$scope.fnNoticeBelow2File()">파일선택</button>
+					<div id="noticeBelow1FileText">최소권장 사이즈 : 가로 640px / Jpg.
+						Jpeg. GIF만 허용 / 이미지당 최대 500kb</div>
+				</div>
+				<div id="noticeBelow2ImageContainer"
+					style="display: flex; flex-wrap: wrap; justify-content: left;"
+					data-template="noticeBelow2Image-row-template"
+					data-bind="source: noticeBelow2ImageList"></div>
+				<div class="datepicker-wrapper"
+					data-bind="visible: showNoticeBelow2Date">
+					노출기간 설정 :
+					<!--  HGRM-1646 초기화 및 시간달력포맷 공통화 수정 <input type="text" id="noticeBelow2StartDate" name="noticeBelow2StartDate" class="datepicker-input" data-bind="value: searchInfo.noticeBelow2StartDate" />
+							<input type="text" id="noticeBelow2EndDate"	 name="noticeBelow2EndDate"	 class="datepicker-input" data-bind="value: searchInfo.noticeBelow2EndDate" />
+							-->
+					<!-- 시작일 -->
+					<input type="text" id="noticeBelow2StartYear"
+						name="noticeBelow2StartYear" style="width: 90px"
+						class="datepicker-input"
+						data-bind="value: searchInfo.noticeBelow2StartYear" /> <input
+						id="noticeBelow2StartHour" name="noticeBelow2StartHour"
+						style="width: 50px"
+						class="fb__custom__select left-input marginR5 noticeBelow2StartDate"
+						data-role="dropdownlist" data-auto-bind="false"
+						data-value-primitive="true" data-text-field="NAME"
+						data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow2StartHour,
+	                                      source: hourDropdownData,
+	                                      events: { change: fnHourMinuteChange }" />
+
+					<input id="noticeBelow2StartMinute" name="noticeBelow2StartMinute"
+						style="width: 50px"
+						class="fb__custom__select left-input noticeBelow2StartDate"
+						data-role="dropdownlist" data-auto-bind="false"
+						data-value-primitive="true" data-text-field="NAME"
+						data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow2StartMinute,
+	                                      source: MinuteDropdownData,
+	                                      events: { change: fnHourMinuteChange }" />
+
+					<span class="marginR5 marginL5">~</span>
+					<!-- 종료일 -->
+					<input type="text" id="noticeBelow2EndYear" name="noticeBelow2EndYear" style="width: 90px"
+						class="datepicker-input" data-bind="value: searchInfo.noticeBelow2EndYear" />
+					<input id="noticeBelow2EndHour" name="noticeBelow2EndHour" style="width: 50px" class="fb__custom__select left-input marginR5 noticeBelow2EndDate"
+						data-role="dropdownlist" data-auto-bind="false" data-value-primitive="true" data-text-field="NAME" data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow2EndHour,
+	                                      source: hourDropdownData,
+	                                      events: { change: fnHourMinuteChange }" />
+					<input id="noticeBelow2EndMinute" name="noticeBelow2EndMinute"
+						style="width: 50px"
+						class="fb__custom__select left-input noticeBelow2EndDate"
+						data-role="dropdownlist" data-auto-bind="false"
+						data-value-primitive="true" data-text-field="NAME"
+						data-value-field="CODE"
+						data-bind="value: searchInfo.noticeBelow2EndMinute,
+	                                      source: MinuteDropdownData,
+	                                      events: { change: fnHourMinuteChange }" />
+
+				</div>
+			</td>
+		</tr>
+	</table>
+
+	<table class="datatable v-type" data-bind="visible: goodsAddVisiable">
+			<colgroup>
+				<col style="width: 15%">
+				<col style="width: 85%">
+			</colgroup>
+			<tr>
+				<th scope="row"><label>추가 상품</label></th>
+				<td>
+					<div class="complex-condition" style="margin-bottom:4px;">
+						<button type="button" class="btn-point btn-s" onclick="$scope.fnGoodsSearchPopup()">상품조회</button>
+					</div>
+					<div>
+						<table class="datatable v-type">
+							<colgroup>
+								<col style="width: 15%">
+								<col style="width: 35%">
+								<col style="width: 10%">
+								<col style="width: 10%">
+								<col style="width: 10%">
+								<col style="width: 10%">
+								<col style="width: 10%">
+							</colgroup>
+							<tr style="border-bottom: 1px solid #e5e5e5;">
+								<th scope="row" class="textCenter"><label>상품코드</label></th>
+								<th scope="row" class="textCenter"><label>상품명</label></th>
+								<th scope="row" class="textCenter"><label>출고처명</label></th>
+								<th scope="row" class="textCenter"><label>원가</label></th>
+								<th scope="row" class="textCenter"><label>정상가</label></th>
+								<th scope="row" class="textCenter"><label>판매가</label></th>
+								<th scope="row" class="textCenter"><label>관리</label></th>
+							</tr>
+							<tbody id="goodsAdditionalGoodsMappingNoDataTbody" data-bind="visible: isGoodsAdditionalGoodsMappingNoDataTbody">
+								<tr>
+									<td colspan="7" style="text-align:center; height:32px;">선택한 상품이 없습니다</td>
+								</tr>
+							</tbody>
+							<tbody id="goodsAdditionalGoodsMappingTbody" data-template="goodsAdditionalGoodsMapping-row-template"
+								data-bind="source: goodsAdditionalGoodsMappingList, visible: isGoodsAdditionalGoodsMappingTbody">
+							</tbody>
+						</table>
+					</div>
+					<div class="complex-condition" style="margin-bottom:4px;margin-top:5px;">
+						동일한 출고처의 상품에
+						<input type="text" id="goodsAddType" name="goodsAddType" class="fb__custom__select" style="width : 100px;" data-bind="value: searchInfo.goodsAddType">
+					</div>
+				</td>
+			</tr>
+		</table>
+
+	<nav class="btn-nav">
+		<!-- button area-->
+		<div class="btn-area">
+			<button id="fnClear" class="set-btn-type5 formClear-btn" type="button" data-bind="events:{click: fnClear}">
+				초기화
+			</button>
+         </div>
+		<!-- button area End -->
+	</nav>
+
+	  <div class="fb__sect grid-sect excelPaging-sect">
+        <div class="wrap-tit" style="width: 100%">
+			<div class="ea-title" >
+	            <h3>목록</h3>
+	        </div>
+	        <div class="ea-title">
+	            <span>총 <em id="pageTotalText">0</em> 건 검색</span>
+	        </div>
+
+			<div class="btn-area" style="padding-right:130px;">
+				<button type="button" id="goodsAdd" class="btn-point btn-m left-input" style="width:100px;" onclick="$scope.fnGoodsAdd()">상품 추가</button>
+				<button type="button" id="goodsDel" class="btn-gray btn-m left-input" style="width:100px;" onclick="$scope.fnGoodsDel()">선택 삭제</button>
+				<button id="EXCEL_DN" class="fb__btn-excel ml--default" auth-remove="EXCELDOWN" type="button" onclick="$scope.fnExcelExport()">엑셀 다운로드</button>
+			</div>
+
+		</div>
+		<div id="itemGrid"></div>
+	</div>
+
+	<div class="complex-condition" style="text-align:center;margin-top:6px;">
+		<button id="fnSave" class="fb__btn btn-l btn-point" auth-remove="SAVE" type="button" onclick="$scope.fnSave()">등록</button>
+	</div>
+
+</form>
+
+<!------------ 상품 이미지 파일 첨부시 사용 Form ------------------->
+<form id="uploadNoticeBelow1ImageForm" method="POST" enctype="multipart/form-data" onsubmit="return false;"
+	style="display: none">
+	<!-- 상품 이미지 파일 accept 지정 : .jpg, .jpeg, .gif 파일만 선택 허용 -->
+	<input type="file" id="uploadNoticeBelow1Image" name="uploadNoticeBelow1Image" accept=".jpg, .jpeg, .gif">
+</form>
+
+<form id="uploadNoticeBelow2ImageForm" method="POST" enctype="multipart/form-data" onsubmit="return false;"
+	style="display: none">
+	<!-- 상품 이미지 파일 accept 지정 : .jpg, .jpeg, .gif 파일만 선택 허용 -->
+	<input type="file" id="uploadNoticeBelow2Image" name="uploadNoticeBelow2Image" accept=".jpg, .jpeg, .gif">
+</form>
+
+<!-- 상품 공지 > 상세 상단공지 template -->
+<script id="noticeBelow1Image-row-template" type="text/x-kendo-template">
+	<span class="noticeBelow1Image" data-bind="attr: { data-id: imageName }" style="width:640px; height:100%; padding:10px; margin-right:10px; margin-bottom:10px; position:relative; border-color:\#a9a9a9; border-style:dashed; border-width:5px">
+		<span>
+			<img style="max-width: 100%; max-height: 100%; display: block;margin-left: auto;margin-right: auto;" data-bind="attr: { src: imageSrc }"/>
+		</span>
+		<span class="k-icon k-i-close k-i-x" style="display:block; width:25px; height:25px; margin-right:10px; margin-bottom:10px; position:absolute; top:0px; right:0px; background:white; overflow:hidden;" data-bind="click: fnRemoveNoticeBelow1Image"> </span>
+	</span>
+</script>
+
+
+<!-- 상품 공지 > 상세 하단공지 template -->
+<script id="noticeBelow2Image-row-template" type="text/x-kendo-template">
+	<span class="noticeBelow2Image" data-bind="attr: { data-id: imageNameSecond }" style="width:640px; height:100%; padding:10px; margin-right:10px; margin-bottom:10px; position:relative; border-color:\#a9a9a9; border-style:dashed; border-width:5px">
+		<span>
+			<img style="max-width: 100%; max-height: 100%; display: block;margin-left: auto;margin-right: auto;" data-bind="attr: { src: imageSrcSecond }"/>
+		</span>
+		<span class="k-icon k-i-close k-i-x" style="display:block; width:25px; height:25px; margin-right:10px; margin-bottom:10px; position:absolute; top:0px; right:0px; background:white; overflow:hidden;" data-bind="click: fnRemoveNoticeBelow2Image"> </span>
+	</span>
+</script>
+
+<script id="goodsAdditionalGoodsMapping-row-template" type="text/x-kendo-template">
+	<tr>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			<div data-bind="text: goodsId"></div>
+		</td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			<div data-bind="text: goodsName"></div>
+		</td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			<div data-bind="text: warehouseName" data-format="\#\#,\#">0</div>
+		</td>
+		<td style="text-align:right; border-right: 1px solid \#e5e5e5;">
+			<div data-bind="text: standardPrice" data-format="\#\#,\#">0</div>
+		</td>
+		<td style="text-align:right; border-right: 1px solid \#e5e5e5;">
+			<div data-bind="text: recommendedPrice" data-format="\#\#,\#">0</div>
+		</td>
+		<th scope="row" class="must" style="display:none;"><label>판매가</label></th>
+		<td style="text-align:right; border-right: 1px solid \#e5e5e5;">
+			<div class="complex-condition">
+				<input type="text" name="addGoodsSalePrice" style="width: 100px; text-align:right" data-bind="value: salePrice, events: {change: fnNumberComma}" data-format="\#\#,\#" required>
+			</div>
+		</td>
+		<td style="text-align:center; border-right: 1px solid \#e5e5e5;">
+			<button data-bind="click: fnRemoveGoodsAdditionalGoodsMapping" type="button" class="btn-red btn-s">삭제</button>
+		</td>
+	</tr>
+</script>

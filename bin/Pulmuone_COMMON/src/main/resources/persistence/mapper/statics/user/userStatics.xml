@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.statics.user.UserStaticsMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 회원 유형별 판매/매출 현황 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.23   이원호    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.statics.user.dto.vo.UserTypeStaticsVo" id="getUserTypeStaticsResultMap">
+        <result column="GUBUN"  property="gubun"  />
+        <result column="STANDARD_USER_CNT"  property="standardUserCount"  />
+        <result column="STANDARD_PAID_PRICE"  property="standardPaidPrice"  />
+        <result column="STANDARD_ORDER_CNT"  property="standardOrderCount" />
+        <result column="STANDARD_GOODS_CNT"  property="standardGoodsCount" />
+        <result column="CONTRAST_USER_CNT"  property="contrastUserCount"  />
+        <result column="CONTRAST_PAID_PRICE"  property="contrastPaiPrice"  />
+        <result column="CONTRAST_ORDER_CNT"  property="contrastOrderCount"  />
+        <result column="CONTRAST_GOODS_CNT"  property="contrastGoodsCount"  />
+    </resultMap>
+
+    <select id="getUserTypeStaticsList" resultMap="getUserTypeStaticsResultMap">
+        /* userStatics.getUserTypeStaticsList */
+        WITH FIRST_ORDER AS (
+            SELECT MIN(oo.OD_ORDER_ID) AS OD_ORDER_ID
+            FROM OD_ORDER oo
+            WHERE
+                oo.BUYER_TYPE_CD = 'BUYER_TYPE.USER'
+                AND oo.ORDER_YN = 'Y'
+                AND oo.UR_USER_ID IN (
+                    SELECT oo.UR_USER_ID
+                    FROM OD_ORDER_DETL ood
+                        JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                        JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                        LEFT JOIN OD_TRACKING_NUMBER otn ON	(otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                        LEFT JOIN OD_CLAIM_DETL ocd ON (ocd.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                    WHERE
+                        oo.BUYER_TYPE_CD = 'BUYER_TYPE.USER'
+                        <!-- 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 프로그램 변경 -->
+                        AND	(
+                            <choose>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "ODR")'>
+                                    ood2.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                                    OR
+                                    ood2.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "PAY")'>
+                                    ood2.IC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                                    OR
+                                    ood2.IC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                                </when>
+                                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "SAL")'>
+                                    otn.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                                    OR
+                                    otn.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                                </when>
+                            </choose>
+                            OR
+                            ocd.CC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                            OR
+                            ocd.RC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                            OR
+                            ocd.CC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                            OR
+                            ocd.RC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                        )
+                        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                            <!-- 판매채널 유형 -->
+                            AND   oo.AGENT_TYPE_CD IN
+                            <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                                #{agentTypeCd}
+                            </foreach>
+                        </if>
+                    GROUP BY oo.UR_USER_ID
+                )
+            GROUP BY oo.UR_USER_ID
+        )
+        SELECT
+            CASE BUYER_TYPE_CD
+            WHEN 'BUYER_TYPE.USER_F' THEN '첫구매회원'
+            WHEN 'BUYER_TYPE.USER_R' THEN '재구매회원'
+            WHEN 'BUYER_TYPE.GUEST' THEN '비회원'
+            WHEN 'BUYER_TYPE.EMPLOYEE_BASIC' THEN '임직원(회원가)'
+            WHEN 'BUYER_TYPE.EMPLOYEE' THEN '임직원'
+            ELSE '-' END AS GUBUN -- 구분
+            , COUNT(DISTINCT IF(IS_STANDARD, IF(BUYER_TYPE_CD = 'BUYER_TYPE.GUEST', OD_ORDER_ID, UR_USER_ID), NULL)) AS STANDARD_USER_CNT   -- 기준 구매고객 수
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(vatSumYn, "Y")'>
+                    , SUM(IF(IS_STANDARD, PAID_PRICE, 0)) AS STANDARD_PAID_PRICE  -- 기준 매출금액(VAT포함)
+                    , SUM(IF(IS_CONTRAST, PAID_PRICE, 0)) AS CONTRAST_PAID_PRICE  -- 기준 매출금액(VAT포함)
+                </when>
+                <otherwise>
+                    , SUM(IF(IS_STANDARD, PAID_PRICE_NON_TAX, 0)) AS STANDARD_PAID_PRICE  -- 기준 매출금액(VAT별도)
+                    , SUM(IF(IS_CONTRAST, PAID_PRICE_NON_TAX, 0)) AS CONTRAST_PAID_PRICE  -- 기준 매출금액(VAT별도)
+                </otherwise>
+            </choose>
+            , COUNT(DISTINCT IF(IS_STANDARD, o.OD_ORDER_ID, NULL))  AS STANDARD_ORDER_CNT -- 기준 주문건수
+            , SUM(IF(IS_STANDARD, GOODS_CNT, 0)) AS STANDARD_GOODS_CNT  -- 기준 상품수량
+            , COUNT(DISTINCT IF(IS_CONTRAST, IF(BUYER_TYPE_CD = 'BUYER_TYPE.GUEST', OD_ORDER_ID, UR_USER_ID), NULL)) AS CONTRAST_USER_CNT   -- 기준 구매고객 수
+            , COUNT(DISTINCT IF(IS_CONTRAST, o.OD_ORDER_ID, NULL))  AS CONTRAST_ORDER_CNT -- 기준 주문건수
+            , SUM(IF(IS_CONTRAST, GOODS_CNT, 0)) AS CONTRAST_GOODS_CNT  -- 기준 상품수량
+        FROM (
+        SELECT
+            oo.OD_ORDER_ID -- 주문번호
+            , oo.UR_USER_ID -- 구매자 PK
+            , IF(oo.BUYER_TYPE_CD = 'BUYER_TYPE.USER', if(fo.OD_ORDER_ID IS NULL, 'BUYER_TYPE.USER_R', 'BUYER_TYPE.USER_F'), oo.BUYER_TYPE_CD) AS BUYER_TYPE_CD -- 구매자 구분
+            , ood.ORDER_CNT AS GOODS_CNT -- 구매 수량
+            , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                ELSE ood.PAID_PRICE
+                END, 0) AS PAID_PRICE     -- 매출금액(VAT포함)
+            , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT / 1.1
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                WHEN ood.TAX_YN = 'Y' THEN ood.PAID_PRICE / 1.1
+                ELSE ood.PAID_PRICE
+                END, 0) AS PAID_PRICE_NON_TAX  -- 매출금액(VAT별도)
+                -- * 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 프로그램 변경 *
+            , IF(ood2.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59'), true, false) AS IS_STANDARD -- 기준 여부
+            , IF(ood2.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59'), true, false) AS IS_CONTRAST -- 대비 여부
+        FROM OD_ORDER_DETL ood
+            JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+            JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+            LEFT JOIN OD_TRACKING_NUMBER otn ON	(otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+            LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER')
+            LEFT JOIN FIRST_ORDER fo ON (oo.OD_ORDER_ID = fo.OD_ORDER_ID)
+        WHERE
+            (
+            -- * 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 프로그램 변경 *
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "ODR")'>
+                    ood2.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                    OR
+                    ood2.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "PAY")'>
+                    ood2.IC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                    OR
+                    ood2.IC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                </when>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "SAL")'>
+                    otn.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                    OR
+                    otn.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                </when>
+            </choose>
+            )
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                <!-- 판매채널 유형 -->
+                AND   oo.AGENT_TYPE_CD IN
+                <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                    #{agentTypeCd}
+                </foreach>
+            </if>
+        UNION ALL
+        SELECT
+            oo.OD_ORDER_ID -- 주문번호
+            , oo.UR_USER_ID -- 구매자 PK
+            , IF(oo.BUYER_TYPE_CD = 'BUYER_TYPE.USER', if(fo.OD_ORDER_ID IS NULL, 'BUYER_TYPE.USER_R', 'BUYER_TYPE.USER_F'), oo.BUYER_TYPE_CD) AS BUYER_TYPE_CD -- 구매자 구분
+            , CAST(ocd.CLAIM_CNT AS SIGNED) * -1 AS GOODS_CNT -- 구매 수량
+            , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                ELSE ocd.PAID_PRICE
+                END, 0) AS SIGNED) * -1  AS PAID_PRICE -- 매출금액(VAT포함)
+            , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT / 1.1
+                WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                WHEN ood.TAX_YN = 'Y' THEN ocd.PAID_PRICE / 1.1
+                ELSE ocd.PAID_PRICE
+                END, 0) AS SIGNED) * -1 AS PAID_PRICE_NON_TAX -- 매출금액(VAT별도)
+            , IF( ocd.CC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')
+                OR
+                ocd.RC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59'), true, false) AS IS_STANDARD -- 기준 여부
+            , IF( ocd.CC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59')
+                OR
+                ocd.RC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59'), true, false) AS IS_CONTRAST -- 대비 여부
+        FROM OD_CLAIM_DETL ocd
+            JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+            JOIN OD_ORDER oo ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+            JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+            LEFT JOIN OD_TRACKING_NUMBER otn ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+            LEFT JOIN IF_SALES_SETTLE_INFO issi ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ
+            AND issi.SETTLE_TYPE = 'RETURN' AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID)
+            LEFT JOIN FIRST_ORDER fo ON (oo.OD_ORDER_ID = fo.OD_ORDER_ID)
+        WHERE
+            (
+                ocd.CC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                OR
+                ocd.RC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                OR
+                ocd.CC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+                OR
+                ocd.RC_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59') -- 대비기간
+            )
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                <!-- 판매채널 유형 -->
+                AND   oo.AGENT_TYPE_CD IN
+                <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                    #{agentTypeCd}
+                </foreach>
+            </if>
+        ) o
+        GROUP BY BUYER_TYPE_CD
+        ORDER BY (CASE BUYER_TYPE_CD
+            WHEN 'BUYER_TYPE.USER_F' THEN 1
+            WHEN 'BUYER_TYPE.USER_R' THEN 2
+            WHEN 'BUYER_TYPE.GUEST' THEN 3
+            WHEN 'BUYER_TYPE.EMPLOYEE_BASIC' THEN 4
+            WHEN 'BUYER_TYPE.EMPLOYEE' THEN 5
+            ELSE '-' END)
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 일반 회원 등급별 판매현황 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.26   이원호    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.statics.user.dto.vo.UserGroupStaticsVo" id="getUserGroupStaticsResultMap">
+        <result column="GROUP_MASTER_NM"  property="groupMasterName"  />
+        <result column="GROUP_NM"  property="groupName"  />
+        <result column="USER_CNT"  property="userCount" />
+        <result column="PAID_PRICE"  property="paidPrice" />
+        <result column="ORDER_CNT"  property="orderCount"  />
+        <result column="GOODS_CNT"  property="goodsCount"  />
+    </resultMap>
+
+    <select id="getUserGroupStaticsList" resultMap="getUserGroupStaticsResultMap">
+        /* userStatics.getUserGroupStaticsList */
+        SELECT
+            ugm.GROUP_MASTER_NM
+            , ug.GROUP_NM
+            , USER_CNT
+            <choose>
+                <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(vatSumYn, "Y")'>
+                    , PAID_PRICE  -- 매출금액(VAT포함)
+                </when>
+                <otherwise>
+                    , PAID_PRICE_NON_TAX AS PAID_PRICE  -- 매출금액(VAT별도)
+                </otherwise>
+            </choose>
+            , ORDER_CNT
+            , GOODS_CNT
+        FROM (
+            SELECT
+                UR_GROUP_ID
+                , COUNT(DISTINCT UR_USER_ID) AS USER_CNT   -- 구매고객 수
+                , SUM(PAID_PRICE) AS PAID_PRICE  -- 매출금액(VAT포함)
+                , SUM(PAID_PRICE_NON_TAX) AS PAID_PRICE_NON_TAX  -- 매출금액(VAT별도)
+                , COUNT(DISTINCT o.OD_ORDER_ID)  AS ORDER_CNT -- 주문건수
+                , SUM(GOODS_CNT) AS GOODS_CNT  -- 상품수량
+            FROM (
+                SELECT
+                    oo.OD_ORDER_ID -- 주문번호
+                    , oo.UR_USER_ID -- 구매자 PK
+                    , oo.UR_GROUP_ID -- 회원 그룹 PK
+                    , ood.ORDER_CNT AS GOODS_CNT -- 구매 수량
+                    , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                        WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                        WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                        WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                        ELSE ood.PAID_PRICE
+                        END, 0) AS PAID_PRICE     -- 매출금액(VAT포함)
+                    , ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                        WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                        WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT / 1.1
+                        WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ood.ORDER_CNT
+                        WHEN ood.TAX_YN = 'Y' THEN ood.PAID_PRICE / 1.1
+                        ELSE ood.PAID_PRICE
+                        END, 0) AS PAID_PRICE_NON_TAX  -- 매출금액(VAT별도)
+                FROM OD_ORDER_DETL ood
+                    JOIN OD_ORDER oo ON (oo.ORDER_YN = 'Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                    JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                    LEFT JOIN OD_TRACKING_NUMBER otn ON	(otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                    LEFT JOIN IF_SALES_SETTLE_INFO issi ON (ood.ODID = issi.ODID AND ood.OD_ORDER_DETL_SEQ = issi.OD_ORDER_DETL_SEQ AND issi.SETTLE_TYPE = 'ORDER')
+                WHERE
+                    oo.UR_USER_ID > 0
+                    -- * 검색기준일자 ood2.CREATE_DT: 주문일, ood2.IC_DT: 결제일, otn.CREATE_DT : 매출일 프로그램 변경 *
+                    <choose>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "ODR")'>
+                            AND ood2.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기간
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "PAY")'>
+                            AND ood2.IC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기간
+                        </when>
+                        <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchTp, "SAL")'>
+                            AND otn.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기간
+                        </when>
+                    </choose>
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                        <!-- 판매채널 유형 -->
+                        AND   oo.AGENT_TYPE_CD IN
+                        <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                            #{agentTypeCd}
+                        </foreach>
+                    </if>
+                UNION ALL
+                SELECT
+                    oo.OD_ORDER_ID -- 주문번호
+                    , oo.UR_USER_ID -- 구매자 PK
+                    , oo.UR_GROUP_ID -- 회원 그룹 PK
+                    , CAST(ocd.CLAIM_CNT AS SIGNED) * -1 AS GOODS_CNT -- 구매 수량
+                    , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                        WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN = 'Y' THEN issi.SETTLE_PRICE * 1.1
+                        WHEN issi.SETTLE_PRICE IS NOT NULL AND issi.TAX_YN != 'Y' THEN issi.SETTLE_PRICE
+                        WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                        ELSE ocd.PAID_PRICE
+                        END, 0) AS SIGNED) * -1  AS PAID_PRICE -- 매출금액(VAT포함)
+                    , CAST(ROUND(CASE WHEN ood.GOODS_TP_CD LIKE 'GOODS_TYPE.GIFT%' THEN 0
+                        WHEN issi.SETTLE_PRICE IS NOT NULL THEN issi.SETTLE_PRICE
+                        WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN = 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT / 1.1
+                        WHEN oo.BUYER_TYPE_CD = 'BUYER_TYPE.EMPLOYEE' AND ood.TAX_YN != 'Y' THEN ood.RECOMMENDED_PRICE * ocd.CLAIM_CNT
+                        WHEN ood.TAX_YN = 'Y' THEN ocd.PAID_PRICE / 1.1
+                        ELSE ocd.PAID_PRICE
+                        END, 0) AS SIGNED) * -1 AS PAID_PRICE_NON_TAX -- 매출금액(VAT별도)
+                FROM OD_CLAIM_DETL ocd
+                    JOIN OD_ORDER_DETL ood ON (ood.OD_ORDER_DETL_ID = ocd.OD_ORDER_DETL_ID)
+                    JOIN OD_ORDER oo ON (oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+                    JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+                    LEFT JOIN OD_TRACKING_NUMBER otn ON (otn.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID)
+                    LEFT JOIN IF_SALES_SETTLE_INFO issi ON (issi.ODID = oo.ODID AND issi.OD_ORDER_DETL_SEQ = ood.OD_ORDER_DETL_SEQ
+                        AND issi.SETTLE_TYPE = 'RETURN' AND issi.OD_CLAIM_DETL_ID = ocd.OD_CLAIM_DETL_ID)
+                WHERE
+                    oo.UR_USER_ID > 0
+                    AND (
+                        ocd.CC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                        OR
+                        ocd.RC_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59') -- 기준기간
+                    )
+                    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(agentTypeCdList) and agentTypeCdList.size() > 0'>
+                        <!-- 판매채널 유형 -->
+                        AND   oo.AGENT_TYPE_CD IN
+                        <foreach collection="agentTypeCdList" item="agentTypeCd" index="index" separator="," open="(" close=")">
+                            #{agentTypeCd}
+                        </foreach>
+                    </if>
+                ) o
+                GROUP BY UR_GROUP_ID
+            ) d LEFT JOIN UR_GROUP ug ON ug.UR_GROUP_ID = d.UR_GROUP_ID
+        INNER JOIN UR_GROUP_MASTER ugm ON ugm.UR_GROUP_MASTER_ID = ug.UR_GROUP_MASTER_ID
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userMaster)'>
+            WHERE ugm.UR_GROUP_MASTER_ID = #{userMaster}
+        </if>
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 회원 보유현황 통계
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.27   이원호    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.statics.user.dto.vo.UserCountStaticsVo" id="getUserCountStaticsResultMap">
+        <result column="TYPE"  property="type"  />
+        <result column="SUB_TYPE"  property="subType"  />
+        <result column="STANDARD_CNT"  property="standardCount" />
+        <result column="CONTRAST_TOTAL"  property="contrastTotal" />
+    </resultMap>
+
+    <select id="getUserCountStaticsList" resultMap="getUserCountStaticsResultMap">
+        /* userStatics.getUserCountStaticsList */
+        SELECT '회원' AS `TYPE`
+            , '누계' AS SUB_TYPE
+            ,(SELECT COUNT(*) FROM UR_USER uu JOIN UR_BUYER ub ON (uu.UR_USER_ID = ub.UR_USER_ID) WHERE uu.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')) AS STANDARD_CNT
+            , (SELECT COUNT(*) FROM UR_USER uu JOIN UR_BUYER ub ON (uu.UR_USER_ID = ub.UR_USER_ID) WHERE uu.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59')) AS CONTRAST_TOTAL
+        FROM DUAL
+        UNION ALL
+        SELECT '회원' AS `TYPE`
+            , '신규가입' AS SUB_TYPE
+            , (SELECT COUNT(*) FROM UR_USER uu JOIN UR_BUYER ub ON (uu.UR_USER_ID = ub.UR_USER_ID) WHERE uu.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')) AS STANDARD_CNT
+            , (SELECT COUNT(*) FROM UR_USER uu JOIN UR_BUYER ub ON (uu.UR_USER_ID = ub.UR_USER_ID) WHERE uu.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59')) AS CONTRAST_TOTAL
+        FROM DUAL
+        UNION ALL
+        SELECT '회원' AS `TYPE`
+            , '탈퇴' AS SUB_TYPE
+            , (SELECT COUNT(*) FROM UR_USER_DROP uud WHERE uud.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')) AS STANDARD_CNT
+            , (SELECT COUNT(*) FROM UR_USER_DROP uud WHERE uud.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59')) AS CONTRAST_TOTAL
+        FROM DUAL
+        UNION ALL
+        SELECT '휴면회원' AS `TYPE`
+            , '누계' AS SUB_TYPE
+            , (SELECT COUNT(*) FROM UR_USER_MOVE uum JOIN UR_BUYER_MOVE ubm ON (uum.UR_USER_MOVE_ID = ubm.UR_USER_MOVE_ID) WHERE uum.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')) AS STANDARD_CNT
+            , (SELECT COUNT(*) FROM UR_USER_MOVE uum JOIN UR_BUYER_MOVE ubm ON (uum.UR_USER_MOVE_ID = ubm.UR_USER_MOVE_ID) WHERE uum.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59')) AS CONTRAST_TOTAL
+        FROM DUAL
+        UNION ALL
+        SELECT '휴면회원' AS `TYPE`
+            , '휴면전환' AS SUB_TYPE
+            , (SELECT COUNT(*) FROM UR_USER_MOVE_LOG uuml WHERE uuml.CREATE_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')) AS STANDARD_CNT
+            , (SELECT COUNT(*) FROM UR_USER_MOVE_LOG uuml WHERE uuml.CREATE_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59')) AS CONTRAST_TOTAL
+        FROM DUAL
+        UNION ALL
+        SELECT '휴면회원' AS `TYPE`
+            , '휴면해제' AS SUB_TYPE
+            , (SELECT COUNT(*) FROM UR_USER_MOVE_LOG uuml WHERE uuml.MODIFY_DT BETWEEN DATE_FORMAT(#{startDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endDe}, '%Y-%m-%d 23:59:59')) AS STANDARD_CNT
+            , (SELECT COUNT(*) FROM UR_USER_MOVE_LOG uuml WHERE uuml.MODIFY_DT BETWEEN DATE_FORMAT(#{contrastStartDe}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{contrastEndDe}, '%Y-%m-%d 23:59:59')) AS CONTRAST_TOTAL
+        FROM DUAL
+    </select>
+
+</mapper>

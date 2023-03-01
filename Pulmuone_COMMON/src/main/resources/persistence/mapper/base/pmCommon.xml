@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.base.PmCommonMapper">
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 적립금 리스트 전체 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.26		   강윤경         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPmPointList" resultType="kr.co.pulmuone.v1.base.dto.vo.PmPointCommonResultVo">
+		/*	pmCommon.getPmPointListAll	*/
+		SELECT
+				 PM_POINT_ID													/* 적립금_고유값	*/
+				,POINT_TP			AS POINT_TYPE                               /* 적립금_타입(이용권(난수번호 발급), 후기, 구매, 자동지급, 관리자 지급/차감)	*/
+				,POINT_NM			AS POINT_NAME                               /* 적립금 명	*/
+				,ISSUE_START_DT		AS ISSUE_START_DATE                         /* 발급기간_시작일	*/
+				,ISSUE_END_DT		AS ISSUE_END_DATE                           /* 발급기간_종료일	*/
+				,ISSUE_QTY			AS ISSUE_QUANTITY                           /* 발급수량	*/
+				,ISSUE_BUDGET                                                   /* 발급예산	*/
+				,VALIDITY_END_DT	AS VALIDITY_END_DATE                        /* 유효기간_종료일	*/
+				,VALIDITY_DAY                                                   /* 유효기간_유효일	*/
+				, (CASE WHEN VALIDITY_TP = 'VALIDITY_TYPE.VALIDITY' THEN CONCAT('발급 후 ',VALIDITY_DAY,' 일 간')
+					ELSE DATE_FORMAT(VALIDITY_END_DT,'%Y-%m-%d')
+					END) AS VALIDITY_DATE
+				,ISSUE_QTY_LIMIT	AS ISSUE_QUANTITY_LIMIT                     /* 발급수량제한(1인당 지급제한 건수)	*/
+				,POINT_DETAIL_TP	AS POINT_DETAIL_TYPE                        /* 적립금_세부_타입(자동지급 : 이벤트, 추천인 / 관리자 지급,차감 : 이벤트, 관리자)	*/
+				,FN_COMN_CODE_DIC(POINT_DETAIL_TP) AS POINT_DETAIL_TYPE_NAME
+				,SERIAL_NUMBER_TP	AS SERIAL_NUMBER_TYPE                       /* 난수번호타입(자동생성, 엑셀업로드, 고정값사용)	*/
+				,FIX_SERIAL_NUMBER                                              /* 고정난수번호	*/
+				,PAYMENT_TP			AS PAYMENT_TYPE                             /* 발급타입(적립,차감)	*/
+				,VALIDITY_TP		AS VALIDITY_TYPE                            /* 유효기간 설정타입(기간설정, 유효일설정)	*/
+				,PAYMENT_STANDARD_TP	AS PAYMENT_STANDARD_TYPE                /* 발급기준(배송완료, 구매완료, 구매확정)	*/
+				,PAYMENT_STANDARD_DETL_TP	AS PAYMENT_STANDARD_DETAIL_TYPE     /* 발급기준 상세(즉시, 설정기간)	*/
+				,ISSUE_TP			AS ISSUE_TYPE                               /* 발급방식(정률, 정액)	*/
+				,ISSUE_VAL			AS ISSUE_VALUE                              /* 발급_값	*/
+				,STATUS                                                         /* 상태(승인요청,요청취소,승인, 반려, 중단, 중단회수)	*/
+				,POINT_PROCESS_TP /* 적립금 처리 유형 */
+				,POINT_SETTLEMENT_TP /* 적립금 정산 유형 */
+			FROM PM_POINT PP
+			WHERE POINT_TP = 'POINT_TYPE.AUTO'
+				AND POINT_DETAIL_TP = 'POINT_AUTO_ISSUE_TP.RECOMMENDER_FAVOR'
+				AND POINT_MASTER_STAT = 'POINT_MASTER_STAT.APPROVED'
+				AND USE_YN = 'Y'
+		<where>
+
+		</where>
+		ORDER BY CREATE_DT DESC
+	</select>
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 쿠폰 리스트 전체 조회
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.26		   강윤경         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getCpnMgmResultMap" type="kr.co.pulmuone.v1.base.dto.vo.PmCouponCommonResultVo">
+		<result column="NO" property="no" />
+		<result column="COUPON_TP" property="couponType" />
+		<result column="COUPON_TYPE_NAME" property="couponTypeName" />
+		<result column="DISPLAY_COUPON_NM" property="displayCouponName" />
+		<result column="BOS_COUPON_NM" property="bosCouponName" />
+		<result column="ISSUE_DATE" property="issueDate" />
+		<result column="VALIDITY_DATE" property="validityDate" />
+		<result column="DISCOUNT_TP" property="discountType" />
+		<result column="DISCOUNT_TYPE_NAME" property="discountTypeName" />
+		<result column="DISCOUNT_VALUE" property="discountValue" />
+		<result column="ISSUE_COUNT" property="issueCount" />
+		<result column="USE_COUNT" property="useCount" />
+		<result column="USE_PERCENT" property="usePercent" />
+		<result column="COUPON_MASTER_STAT" property="couponMasterStat" />
+		<result column="APPROVAL_STATUS_NAME" property="approvalStatusName" />
+		<result column="PM_COUPON_ID" property="pmCouponId" />
+		<result column="BUTTON_STATUS" property="buttonStatus" />
+		<result column="ISSUE_TP" property="issueType" />
+	</resultMap>
+	<select id="getPmCpnList" resultMap="getCpnMgmResultMap">
+		/*	pmCommon.getPmCpnList	*/
+			SELECT  PC.COUPON_TP
+					, CONCAT(FN_COMN_CODE_DIC(PC.COUPON_TP ), '(',FN_COMN_CODE_DIC(PC.ISSUE_TP ),')') AS COUPON_TYPE_NAME
+					, PC.DISPLAY_COUPON_NM
+					, PC.BOS_COUPON_NM
+					, CONCAT(DATE_FORMAT(PC.ISSUE_START_DT,'%Y-%m-%d')  ,'~', DATE_FORMAT(PC.ISSUE_END_DT,'%Y-%m-%d') ) AS ISSUE_DATE
+					, CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.VALIDITY' THEN CONCAT('발급 후 ',PC.VALIDITY_DAY,' 일 간')
+					       ELSE CONCAT(DATE_FORMAT(PC.VALIDITY_START_DT,'%Y-%m-%d') ,'~', DATE_FORMAT(PC.VALIDITY_END_DT,'%Y-%m-%d') )
+					  END AS VALIDITY_DATE
+			        , PC.DISCOUNT_TP
+					, FN_COMN_CODE_DIC(PC.DISCOUNT_TP ) AS DISCOUNT_TYPE_NAME
+					, CASE WHEN PC.COUPON_TP = 'COUPON_TYPE.SALEPRICE_APPPOINT' THEN '판매가지정'
+									   WHEN PC.COUPON_TP = 'COUPON_TYPE.SHIPPING_PRICE' THEN CONCAT(PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT,' 원')
+									   WHEN PC.COUPON_TP = 'COUPON_TYPE.GOODS' OR PC.COUPON_TP ='COUPON_TYPE.CART'
+									   	THEN CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.PERCENTAGE_DISCOUNT' THEN CONCAT(PC.DISCOUNT_VAL,'%/ 최대',PC.PERCENTAGE_MAX_DISCOUNT_AMOUNT ,'원')
+											      ELSE CONCAT(PC.DISCOUNT_VAL,' 원')
+									   		  END
+									   END AS DISCOUNT_VALUE
+					, CONCAT(PCI.CNT , '건 / ',PC.ISSUE_QTY, '건' ) AS ISSUE_COUNT
+					, CONCAT(PCU.USE_CNT,'건') AS USE_COUNT
+					, CASE WHEN PCU.USE_CNT IS NOT NULL THEN CONCAT(TRUNCATE(PCU.USE_CNT/PCI.CNT*100,0),'%')
+					       ELSE ''
+					  END AS USE_PERCENT
+					, PC.COUPON_MASTER_STAT		/*쿠폰 마스터 상태 공통코드(COUPON_MASTER_STAT)*/
+					, CASE WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED' AND  PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_END_DT <![CDATA[<]]> DATE(NOW()) THEN '발급기간만료'
+						WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_START_DT <![CDATA[>]]> NOW() THEN '발급기간대기'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.NONE' THEN '저장'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.REQUEST' THEN '승인요청'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.CANCEL' THEN '요청철회'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.DENIED' THEN '승인반려'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE'AND PC.APPR_STAT = 'APPR_STAT.SUB_APPROVED' THEN '1차 승인완료'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.APPROVED' AND PC.APPR_STAT = 'APPR_STAT.APPROVED' THEN '발급'
+						ELSE FN_COMN_CODE_DIC(PC.COUPON_MASTER_STAT)
+						END AS APPROVAL_STATUS_NAME
+					, PC.PM_COUPON_ID
+					, PC.CREATE_DT
+					, PC.ISSUE_TP
+					, CASE WHEN PC.APPR_STAT = 'APPR_STAT.APPROVED' AND  PC.ISSUE_END_DT    <![CDATA[>]]>    NOW() THEN 'ADMIN_BUTTON_Y'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.STOP' THEN 'ADMIN_BUTTON_Y'
+						WHEN PC.COUPON_MASTER_STAT = 'COUPON_MASTER_STAT.SAVE' OR PC.APPR_STAT = 'APPR_STAT.NONE'
+						OR PC.APPR_STAT = 'APPR_STAT.DENIED' THEN 'ADMIN_BUTTON_N'
+						WHEN PC.ISSUE_END_DT    <![CDATA[<]]>   NOW() THEN 'ADMIN_BUTTON_Y'
+						ELSE ''
+						END AS BUTTON_STATUS
+					 , PC.USE_YN
+			FROM PM_COUPON PC
+				LEFT OUTER JOIN (SELECT COUNT(*)AS CNT, PM_COUPON_ID FROM PM_COUPON_ISSUE
+					WHERE STATUS IN ('COUPON_STATUS.USE', 'COUPON_STATUS.NOTUSE')
+					GROUP BY PM_COUPON_ID )  PCI
+				ON PC.PM_COUPON_ID = PCI.PM_COUPON_ID AND PC.USE_YN = 'Y'
+				LEFT OUTER JOIN (SELECT COUNT(*)AS USE_CNT, PM_COUPON_ID FROM PM_COUPON_ISSUE
+					WHERE STATUS IN ('COUPON_STATUS.USE')
+					GROUP BY PM_COUPON_ID )  PCU ON PC.PM_COUPON_ID = PCU.PM_COUPON_ID
+				INNER JOIN (SELECT MAX(CREATE_DT), STATUS, PM_COUPON_ID FROM PM_COUPON_STATUS_HISTORY GROUP BY PM_COUPON_ID )  PCSH ON PC.PM_COUPON_ID  = PCSH.PM_COUPON_ID
+			WHERE PC.ISSUE_TP = 'PAYMENT_TYPE.AUTO_PAYMENT'
+				AND PC.ISSUE_DETAIL_TP = 'AUTO_ISSUE_TYPE.USER_GRADE'
+				AND PC.COUPON_MASTER_STAT IN ('COUPON_MASTER_STAT.APPROVED')
+				AND PC.USE_YN = 'Y'
+				AND DATE(NOW()) <![CDATA[<=]]> PC.ISSUE_END_DT
+			ORDER BY PC.CREATE_DT DESC
+	</select>
+</mapper>

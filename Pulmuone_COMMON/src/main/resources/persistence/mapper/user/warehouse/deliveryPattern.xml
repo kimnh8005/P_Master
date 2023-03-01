@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.warehouse.DeliveryPatternMapper">
+
+	<resultMap id="getDeliveryPatternListResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.DeliveryPatternListVo">
+		<result column="PS_SHIPPING_PATTERN_ID" property="psShippingPatternId" />
+		<result column="TITLE" property="title" />
+		<result column="FORWARD_MON_DAY" property="forwardMonDay" />
+		<result column="ARRIVED_MON_DAY" property="arrivedMonDay" />
+		<result column="FORWARD_TUE_DAY" property="forwardTueDay" />
+		<result column="ARRIVED_TUE_DAY" property="arrivedTueDay" />
+		<result column="FORWARD_WED_DAY" property="forwardWedDay" />
+		<result column="ARRIVED_WED_DAY" property="arrivedWedDay" />
+		<result column="FORWARD_THU_DAY" property="forwardThuDay" />
+		<result column="ARRIVED_THU_DAY" property="arrivedThuDay" />
+		<result column="FORWARD_FRI_DAY" property="forwardFriDay" />
+		<result column="ARRIVED_FRI_DAY" property="arrivedFriDay" />
+		<result column="FORWARD_SAT_DAY" property="forwardSatDay" />
+		<result column="ARRIVED_SAT_DAY" property="arrivedSatDay" />
+		<result column="FORWARD_SUN_DAY" property="forwardSunDay" />
+		<result column="ARRIVED_SUN_DAY" property="arrivedSunDay" />
+	</resultMap>
+
+	<select id="getDeliveryPatternList" resultMap="getDeliveryPatternListResultMap">
+
+		/* deliveryPattern.getDeliveryPatternList */
+		SELECT D.*
+		FROM(
+			SELECT A.PS_SHIPPING_PATTERN_ID
+				 , A.TITLE
+				 , CASE WHEN A.FORWARD_MON_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('월화수목금토일월화수목', A.FORWARD_MON_DAY+1,1),'(D+',A.FORWARD_MON_DAY,')')
+				  END AS FORWARD_MON_DAY
+				 , CASE WHEN A.ARRIVED_MON_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('월화수목금토일월화수목', A.ARRIVED_MON_DAY+1,1), '(D+',A.ARRIVED_MON_DAY ,')')
+				  END  AS ARRIVED_MON_DAY
+				, CASE WHEN A.FORWARD_TUE_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('화수목금토일월화수목금', A.FORWARD_TUE_DAY+1,1),'(D+',A.FORWARD_TUE_DAY,')')
+				  END AS FORWARD_TUE_DAY
+				 , CASE WHEN A.ARRIVED_TUE_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('화수목금토일월화수목금', A.ARRIVED_TUE_DAY+1,1), '(D+',A.ARRIVED_TUE_DAY ,')')
+				  END  AS ARRIVED_TUE_DAY
+				, CASE WHEN A.FORWARD_WED_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('수목금토일월화수목금토', A.FORWARD_WED_DAY+1,1),'(D+',A.FORWARD_WED_DAY,')')
+				  END  AS FORWARD_WED_DAY
+				, CASE WHEN A.ARRIVED_WED_DAY IS NULL THEN '-'
+	   		       	   ELSE CONCAT(SUBSTR('수목금토일월화수목금토', A.ARRIVED_WED_DAY+1,1), '(D+',A.ARRIVED_WED_DAY ,')')
+				  END  AS ARRIVED_WED_DAY
+				, CASE WHEN A.FORWARD_THU_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('목금토일월화수목금토일', A.FORWARD_THU_DAY+1,1),'(D+',A.FORWARD_THU_DAY,')')
+				  END AS FORWARD_THU_DAY
+				, CASE WHEN A.ARRIVED_THU_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('목금토일월화수목금토일', A.ARRIVED_THU_DAY+1,1), '(D+',A.ARRIVED_THU_DAY ,')')
+				  END  AS ARRIVED_THU_DAY
+				, CASE WHEN A.FORWARD_FRI_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('금토일월화수목금토일월', A.FORWARD_FRI_DAY+1,1),'(D+',A.FORWARD_FRI_DAY,')')
+				  END AS FORWARD_FRI_DAY
+				, CASE WHEN A.ARRIVED_FRI_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('금토일월화수목금토일월', A.ARRIVED_FRI_DAY+1,1), '(D+',A.ARRIVED_FRI_DAY ,')')
+				  END  AS ARRIVED_FRI_DAY
+				, CASE WHEN A.FORWARD_SAT_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('토일월화수목금토일월화', A.FORWARD_SAT_DAY+1,1),'(D+',A.FORWARD_SAT_DAY,')')
+				  END  AS FORWARD_SAT_DAY
+				, CASE WHEN A.ARRIVED_SAT_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('토일월화수목금토일월화', A.ARRIVED_SAT_DAY+1,1), '(D+',A.ARRIVED_SAT_DAY ,')')
+				  END  AS ARRIVED_SAT_DAY
+				, CASE WHEN A.FORWARD_SUN_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('일월화수목금토일월화수', A.FORWARD_SUN_DAY+1,1),'(D+',A.FORWARD_SUN_DAY,')')
+				  END  AS FORWARD_SUN_DAY
+				, CASE WHEN A.ARRIVED_SUN_DAY IS NULL THEN '-'
+				       ELSE CONCAT(SUBSTR('일월화수목금토일월화수', A.ARRIVED_SUN_DAY+1,1), '(D+',A.ARRIVED_SUN_DAY ,')')
+				  END  AS ARRIVED_SUN_DAY
+				, CREATE_DT
+			FROM
+			(
+			SELECT
+				PSP.PS_SHIPPING_PATTERN_ID ,
+				PSP.TITLE,
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.MON', PD.FORWARDING_SCHEDULED_DAY , NULL)) AS 'FORWARD_MON_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.MON', PD.ARRIVAL_SCHEDULED_DAY , NULL)) AS 'ARRIVED_MON_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.TUE', PD.FORWARDING_SCHEDULED_DAY , NULL)) AS 'FORWARD_TUE_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.TUE', PD.ARRIVAL_SCHEDULED_DAY , NULL)) AS 'ARRIVED_TUE_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.WED', PD.FORWARDING_SCHEDULED_DAY , NULL)) AS 'FORWARD_WED_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.WED', PD.ARRIVAL_SCHEDULED_DAY , NULL)) AS 'ARRIVED_WED_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.THU', PD.FORWARDING_SCHEDULED_DAY , NULL)) AS 'FORWARD_THU_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.THU', PD.ARRIVAL_SCHEDULED_DAY , NULL)) AS 'ARRIVED_THU_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.FRI', PD.FORWARDING_SCHEDULED_DAY , NULL)) AS 'FORWARD_FRI_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.FRI', PD.ARRIVAL_SCHEDULED_DAY , NULL)) AS 'ARRIVED_FRI_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SAT', PD.FORWARDING_SCHEDULED_DAY , NULL)) AS 'FORWARD_SAT_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SAT', PD.ARRIVAL_SCHEDULED_DAY , NULL)) AS 'ARRIVED_SAT_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SUN', PD.FORWARDING_SCHEDULED_DAY , NULL)) AS 'FORWARD_SUN_DAY',
+				GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SUN', PD.ARRIVAL_SCHEDULED_DAY , NULL)) AS 'ARRIVED_SUN_DAY',
+				PSP.CREATE_DT
+			FROM PS_SHIPPING_PATTERN PSP
+			INNER JOIN PS_SHIPPING_PATTERN_DAY PD ON PSP.PS_SHIPPING_PATTERN_ID = PD.PS_SHIPPING_PATTERN_ID
+			GROUP BY PSP.PS_SHIPPING_PATTERN_ID
+			)A
+			WHERE 1=1
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectDeliveryPattern, "INCLUDE")'>
+				<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON")'>
+					AND FORWARD_MON_DAY <![CDATA[<>]]> '-'
+				</if>
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON")'>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE")'>
+								OR FORWARD_TUE_DAY <![CDATA[<>]]> '-'
+							</if>
+						</when>
+						<otherwise>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE")'>
+								AND FORWARD_TUE_DAY <![CDATA[<>]]> '-'
+							</if>
+						</otherwise>
+					</choose>
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE")'>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkWed, "WEEK_CD.WED")'>
+								OR FORWARD_WED_DAY <![CDATA[<>]]> '-'
+							</if>
+						</when>
+						<otherwise>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkWed, "WEEK_CD.WED")'>
+								AND FORWARD_WED_DAY <![CDATA[<>]]> '-'
+							</if>
+						</otherwise>
+					</choose>
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkWed, "WEEK_CD.WED")'>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkThu, "WEEK_CD.THU")'>
+								OR FORWARD_THU_DAY <![CDATA[<>]]> '-'
+							</if>
+						</when>
+						<otherwise>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkThu, "WEEK_CD.THU")'>
+								AND FORWARD_THU_DAY <![CDATA[<>]]> '-'
+							</if>
+						</otherwise>
+					</choose>
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkWed, "WEEK_CD.WED") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkThu, "WEEK_CD.THU")'>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkFri, "WEEK_CD.FRI")'>
+								OR FORWARD_FRI_DAY <![CDATA[<>]]> '-'
+							</if>
+						</when>
+						<otherwise>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkFri, "WEEK_CD.FRI")'>
+								AND FORWARD_FRI_DAY <![CDATA[<>]]> '-'
+							</if>
+						</otherwise>
+					</choose>
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkWed, "WEEK_CD.WED") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkThu, "WEEK_CD.THU") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkFri, "WEEK_CD.FRI")'>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkSat, "WEEK_CD.SAT")'>
+								OR FORWARD_SAT_DAY <![CDATA[<>]]> '-'
+							</if>
+						</when>
+						<otherwise>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkSat, "WEEK_CD.SAT")'>
+								AND FORWARD_SAT_DAY <![CDATA[<>]]> '-'
+							</if>
+						</otherwise>
+					</choose>
+					<choose>
+						<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkWed, "WEEK_CD.WED") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkThu, "WEEK_CD.THU") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkFri, "WEEK_CD.FRI") ||
+									@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkSat, "WEEK_CD.SAT")'>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkSun, "WEEK_CD.SUN")'>
+								OR FORWARD_SUN_DAY <![CDATA[<>]]> '-'
+							</if>
+						</when>
+						<otherwise>
+							<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkSun, "WEEK_CD.SUN")'>
+								AND FORWARD_SUN_DAY <![CDATA[<>]]> '-'
+							</if>
+						</otherwise>
+					</choose>
+		</if>
+		) AS D
+		WHERE 1=1
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(selectDeliveryPattern, "EQUAL")'>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkMon, "WEEK_CD.MON")'>
+					AND FORWARD_MON_DAY <![CDATA[<>]]> '-'
+				</when>
+				<otherwise>
+					AND FORWARD_MON_DAY = '-'
+				</otherwise>
+			</choose>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkTue, "WEEK_CD.TUE")'>
+					AND FORWARD_TUE_DAY <![CDATA[<>]]> '-'
+				</when>
+				<otherwise>
+					AND FORWARD_TUE_DAY = '-'
+				</otherwise>
+			</choose>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkWed, "WEEK_CD.WED")'>
+					AND FORWARD_WED_DAY <![CDATA[<>]]> '-'
+				</when>
+				<otherwise>
+					AND FORWARD_WED_DAY = '-'
+				</otherwise>
+			</choose>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkThu, "WEEK_CD.THU")'>
+					AND FORWARD_THU_DAY <![CDATA[<>]]> '-'
+				</when>
+				<otherwise>
+					AND FORWARD_THU_DAY = '-'
+				</otherwise>
+			</choose>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkFri, "WEEK_CD.FRI")'>
+					AND FORWARD_FRI_DAY <![CDATA[<>]]> '-'
+				</when>
+				<otherwise>
+					AND FORWARD_FRI_DAY = '-'
+				</otherwise>
+			</choose>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkSat, "WEEK_CD.SAT")'>
+					AND FORWARD_SAT_DAY <![CDATA[<>]]> '-'
+				</when>
+				<otherwise>
+					AND FORWARD_SAT_DAY = '-'
+				</otherwise>
+			</choose>
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(checkSun, "WEEK_CD.SUN")'>
+					AND FORWARD_SUN_DAY <![CDATA[<>]]> '-'
+				</when>
+				<otherwise>
+					AND FORWARD_SUN_DAY = '-'
+				</otherwise>
+			</choose>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psShippingPatternId)">
+			AND D.PS_SHIPPING_PATTERN_ID <![CDATA[<>]]> #{psShippingPatternId}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchTitle)">
+			AND D.TITLE LIKE CONCAT(#{searchTitle},'%')
+		</if>
+		ORDER BY D.CREATE_DT DESC
+	</select>
+
+
+
+	<resultMap id="getShippingPatternResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.DeliveryPatternVo">
+		<result column="PS_SHIPPING_PATTERN_ID"  property="psShippingPatternId"/>
+		<result column="TITLE"  property="deliveryPatternName"/>
+		<result column="FORWARD_MON_DAY"  property="warehouseMon"/>
+		<result column="FORWARD_TUE_DAY"  property="warehouseTue"/>
+		<result column="FORWARD_WED_DAY"  property="warehouseWed"/>
+		<result column="FORWARD_THU_DAY"  property="warehouseThu"/>
+		<result column="FORWARD_FRI_DAY"  property="warehouseFri"/>
+		<result column="FORWARD_SAT_DAY"  property="warehouseSat"/>
+		<result column="FORWARD_SUN_DAY"  property="warehouseSun"/>
+		<result column="ARRIVED_MON_DAY"  property="arrivedMon"/>
+		<result column="ARRIVED_TUE_DAY"  property="arrivedTue"/>
+		<result column="ARRIVED_WED_DAY"  property="arrivedWed"/>
+		<result column="ARRIVED_THU_DAY"  property="arrivedThu"/>
+		<result column="ARRIVED_FRI_DAY"  property="arrivedFri"/>
+		<result column="ARRIVED_SAT_DAY"  property="arrivedSat"/>
+		<result column="ARRIVED_SUN_DAY"  property="arrivedSun"/>
+		<result column="CREATE_INFO"  property="createInfo"/>
+		<result column="MODIFY_INFO"  property="modifyInfo"/>
+	</resultMap>
+	<select id="getShippingPattern" resultMap="getShippingPatternResultMap">
+
+	/* deliveryPattern.getShippingPattern */
+
+		SELECT
+			PSP.PS_SHIPPING_PATTERN_ID ,
+			PSP.TITLE,
+			CONCAT(PSP.CREATE_DT, ' ' , FN_DECRYPT(UU.USER_NM ),'(',PSP.CREATE_ID ,')') AS CREATE_INFO,
+			CONCAT(PSP.MODIFY_DT, ' ' , FN_DECRYPT(UR.USER_NM ),'(',PSP.MODIFY_ID ,')') AS MODIFY_INFO,
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.MON', PD.FORWARDING_SCHEDULED_DAY , NULL)))) AS 'FORWARD_MON_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.MON', PD.ARRIVAL_SCHEDULED_DAY , NULL)))) AS 'ARRIVED_MON_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.TUE', PD.FORWARDING_SCHEDULED_DAY , NULL)))) AS 'FORWARD_TUE_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.TUE', PD.ARRIVAL_SCHEDULED_DAY , NULL)))) AS 'ARRIVED_TUE_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.WED', PD.FORWARDING_SCHEDULED_DAY , NULL)))) AS 'FORWARD_WED_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.WED', PD.ARRIVAL_SCHEDULED_DAY , NULL)))) AS 'ARRIVED_WED_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.THU', PD.FORWARDING_SCHEDULED_DAY , NULL)))) AS 'FORWARD_THU_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.THU', PD.ARRIVAL_SCHEDULED_DAY , NULL)))) AS 'ARRIVED_THU_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.FRI', PD.FORWARDING_SCHEDULED_DAY , NULL)))) AS 'FORWARD_FRI_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.FRI', PD.ARRIVAL_SCHEDULED_DAY , NULL)))) AS 'ARRIVED_FRI_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SAT', PD.FORWARDING_SCHEDULED_DAY , NULL)))) AS 'FORWARD_SAT_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SAT', PD.ARRIVAL_SCHEDULED_DAY , NULL)))) AS 'ARRIVED_SAT_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SUN', PD.FORWARDING_SCHEDULED_DAY , NULL)))) AS 'FORWARD_SUN_DAY',
+			(SELECT ST_COMN_CODE_ID FROM ST_COMN_CODE WHERE ST_COMN_CODE_MST_CD  = 'ARRIVED_SCHEDULE' AND ST_COMN_CODE_CD = CONCAT('DAY_',GROUP_CONCAT(IF(PD.WEEK_CD = 'WEEK_CD.SUN', PD.ARRIVAL_SCHEDULED_DAY , NULL)))) AS 'ARRIVED_SUN_DAY'
+		FROM PS_SHIPPING_PATTERN PSP
+		INNER JOIN PS_SHIPPING_PATTERN_DAY PD ON PSP.PS_SHIPPING_PATTERN_ID = PD.PS_SHIPPING_PATTERN_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(psShippingPatternId)">
+		AND PSP.PS_SHIPPING_PATTERN_ID = #{psShippingPatternId}
+		</if>
+		INNER JOIN UR_USER UU ON PSP.CREATE_ID = UU.UR_USER_ID
+        LEFT OUTER JOIN UR_USER UR ON PSP.MODIFY_ID = UR.UR_USER_ID
+
+	</select>
+
+
+	<insert id="addDeliveryPattern">
+	/* deliveryPattern.addDeliveryPattern */
+		INSERT INTO PS_SHIPPING_PATTERN
+		(
+			TITLE
+			,CREATE_DT
+			,CREATE_ID
+		)
+		VALUES
+		(
+			#{deliveryPatternName}
+			,NOW()
+			,#{userVo.userId}
+		)
+
+		<selectKey resultType="String" keyProperty="psShippingPatternId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+
+	<insert id="addShippingPatternDay">
+	/* deliveryPattern.addShippingPatternDay */
+		INSERT INTO PS_SHIPPING_PATTERN_DAY
+		(
+			WEEK_CD
+			,FORWARDING_SCHEDULED_DAY
+			,ARRIVAL_SCHEDULED_DAY
+			,PS_SHIPPING_PATTERN_ID
+			,CREATE_DT
+			,CREATE_ID
+		)
+		VALUES
+		(
+			#{weekCode}
+			,(SELECT FN_COMN_CODE_DIC(#{forwardingScheduledDay}) FROM DUAL)
+			,(SELECT REPLACE(FN_COMN_CODE_DIC(#{arrivalScheduledDay}),'+','')FROM DUAL)
+			,#{psShippingPatternId}
+			,NOW()
+			,#{userVo.userId}
+		)
+
+		<selectKey resultType="String" keyProperty="psShippingPatternId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+
+
+	<update id="putDeliveryPattern">
+	/* deliveryPattern.putDeliveryPattern */
+		UPDATE 	PS_SHIPPING_PATTERN
+		SET 	MODIFY_ID		= #{userVo.userId}
+				,MODIFY_DT		= NOW()
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryPatternName)">
+				,TITLE    = #{deliveryPatternName}
+				</if>
+		WHERE  	PS_SHIPPING_PATTERN_ID = #{psShippingPatternId}
+
+	</update>
+
+
+
+	<update id="putShippingPatternDay">
+	/* deliveryPattern.putShippingPatternDay */
+		UPDATE 	PS_SHIPPING_PATTERN_DAY
+		SET 	MODIFY_ID		= #{userVo.userId}
+				,MODIFY_DT		= NOW()
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(forwardingScheduledDay)">
+				,FORWARDING_SCHEDULED_DAY    = (SELECT FN_COMN_CODE_DIC(#{forwardingScheduledDay}) FROM DUAL)
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(arrivalScheduledDay)">
+				,ARRIVAL_SCHEDULED_DAY		= (SELECT REPLACE(FN_COMN_CODE_DIC(#{arrivalScheduledDay}),'+','')FROM DUAL)
+				</if>
+		WHERE  	PS_SHIPPING_PATTERN_ID = #{psShippingPatternId}
+		AND     WEEK_CD = #{weekCode}
+	</update>
+
+
+	<delete id="removeShippingPatternDay">
+	/* deliveryPattern.removeShippingPatternDay */
+		DELETE
+		FROM 	PS_SHIPPING_PATTERN_DAY
+		WHERE  	PS_SHIPPING_PATTERN_ID = #{psShippingPatternId}
+	</delete>
+</mapper>

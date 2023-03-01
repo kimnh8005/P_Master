@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.order.ezadmin.EZAdminOrderMapper">
+
+	<select id="getEZAdminOrderTargetList" resultType="kr.co.pulmuone.v1.outmall.ezadmin.dto.EZAdminOrderDto">
+		/*	ezadminOrder.getEZAdminOrderTargetList	*/
+		SELECT
+			IEI.IF_EASYADMIN_INFO_ID
+			,IEI.SYNC_CD
+		FROM
+			IF_EASYADMIN_INFO IEI
+			LEFT JOIN IF_EASYADMIN_INFO_REQ_DATA IEIRD ON IEI.IF_EASYADMIN_INFO_ID = IEIRD.IF_EASYADMIN_INFO_ID
+		WHERE
+			IEI.EASYADMIN_BATCH_TP = #{easyadminBatchTp}
+			AND IEI.SYNC_CD IN
+			<foreach collection="syncCdList" item="syncCd" separator="," open="(" close=")">
+				#{syncCd}
+			</foreach>
+			AND IEIRD.COLLECT_CD = 'S'  /* 수집상태(S:수집성공) */
+		GROUP BY IEI.IF_EASYADMIN_INFO_ID
+		ORDER BY IEI.IF_EASYADMIN_INFO_ID
+		LIMIT 10
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 생성 - 주문생성 안된 건 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.20		천혜현          최초생성
+	 * @ 2021.12.13		최용호          주문량이 많아 쿼리속도개선으로 1일치까지만 조회하도록 수정
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNotOrderCreateInIfEasyadminOrderSucc" resultType="kr.co.pulmuone.v1.outmall.ezadmin.dto.EZAdminOrderDto">
+		/* ezadminOrder.getNotOrderCreateInIfEasyadminOrderSucc */
+		SELECT
+			A.IF_EASYADMIN_ORDER_SUCC_ID
+			,A1.IF_EASYADMIN_ORDER_SUCC_DETL_ID AS IF_EASYADMIN_ORDER_SUCC_DETL_ID
+		FROM
+			IF_EASYADMIN_ORDER_SUCC A
+			INNER JOIN IF_EASYADMIN_ORDER_SUCC_DETL A1 ON A.IF_EASYADMIN_ORDER_SUCC_ID = A1.IF_EASYADMIN_ORDER_SUCC_ID
+			LEFT OUTER JOIN OD_ORDER B ON (A.PACK = B.COLLECTION_MALL_ID AND B.ORDER_YN = 'Y' AND B.CREATE_DT <![CDATA[ > ]]> ADDDATE(NOW(), INTERVAL -1 DAY))
+		WHERE
+			A.IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+		  AND A.ORDER_CREATE_YN = 'Y'
+		  AND B.COLLECTION_MALL_ID IS NULL
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 생성 - 주문생성 총 개수 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.20		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderCreateCount" resultType="int">
+		/* ezadminOrder.getOrderCreateCount */
+		SELECT
+			COUNT(DISTINCT A.PACK)
+		FROM
+			IF_EASYADMIN_ORDER_SUCC A
+		WHERE
+			A.IF_EASYADMIN_INFO_ID = #{ifEasyadminInfoId}
+		  AND A.ORDER_CREATE_YN = 'Y'
+	</select>
+</mapper>

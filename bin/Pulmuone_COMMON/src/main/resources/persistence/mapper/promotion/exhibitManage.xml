@@ -1,0 +1,2952 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.manage.ExhibitManageMapper">
+
+  <!-- #################################################################### -->
+  <!-- 조회 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 리스트조회
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.01   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitVo">
+      /*exhibitManage.selectExhibitList*/
+      SELECT  T.EV_EXHIBIT_ID
+            , T.EXHIBIT_TP
+            , T.MALL_DIV
+            , T.USE_YN
+            , T.DEL_YN
+            , T.DISP_YN
+            , T.TITLE
+            , T.DESCRIPTION
+            , T.DISP_WEB_PC_YN
+            , T.DISP_WEB_MOBILE_YN
+            , T.DISP_APP_YN
+            , T.DISP_NONMEMBER_YN
+            , T.EV_EMPLOYEE_TP
+            , T.ALWAYS_YN
+            , T.START_DT
+            , T.END_DT
+            , T.TIME_OVER_CLOSE_YN
+            , T.BNR_IMG_PATH
+            , T.BNR_IMG_ORIGIN_NM
+            , T.DETL_HTML_PC
+            , T.DETL_HTML_MO
+            , T.EXHIBIT_STATUS
+            , T.CREATE_ID
+            , T.CREATE_DT
+            , T.MODIFY_ID
+            , T.MODIFY_DT
+            , T.STATUS_SE
+            , T.STATUS_NM
+            , T.APPROVAL_STATUS
+            , T.APPROVAL_STATUS_NAME
+            , T.APPROVAL_REQUEST_USER_ID
+            , T.APPROVAL_SUB_USER_ID
+            , T.APPROVAL_USER_ID
+            , T.USER_NM
+            , T.CREATE_LOGIN_ID
+            , T.MODIFY_NM
+            , T.MODIFY_LOGIN_ID
+            , T.EXHIBIT_DISP_YN
+            , T.GIFT_GIVE_TP
+            , T.GIFT_SHIPPING_TP
+            , T.GIFT_TP
+            , T.OVER_PRICE
+            , T.GIFT_RANGE_TP
+            , T.EXHIBIT_TP_NM
+            , T.MALL_DIV_NM
+            , T.DISP_WEB_PC_YN_NM
+            , T.DISP_WEB_MOBILE_YN_NM
+            , T.DISP_APP_YN_NM
+            , T.EV_EMPLOYEE_TP_NM
+            , T.EXHIBIT_STATUS_NM
+            , T.GIFT_GIVE_TP_NM
+            , T.GIFT_SHIPPING_TP_NM
+            , T.GIFT_TP_NM
+            , T.GIFT_RANGE_TP_NM
+            , T.REP_GOODS_ID
+            , T.REP_GOODS_NM
+            , T.REP_GOODS_YN
+      FROM    (
+              SELECT  E.EV_EXHIBIT_ID
+                    , E.EXHIBIT_TP
+                    , E.MALL_DIV
+                    , E.USE_YN
+                    , E.DEL_YN
+                    , E.DISP_YN
+                    , E.TITLE
+                    , E.DESCRIPTION
+                    , E.DISP_WEB_PC_YN
+                    , E.DISP_WEB_MOBILE_YN
+                    , E.DISP_APP_YN
+                    , E.DISP_NONMEMBER_YN
+                    , E.EV_EMPLOYEE_TP
+                    , E.ALWAYS_YN
+                    , E.START_DT
+                    , E.END_DT
+                    , E.TIME_OVER_CLOSE_YN
+                    , E.BNR_IMG_PATH
+                    , IFNULL(E.BNR_IMG_ORIGIN_NM, '')     AS BNR_IMG_ORIGIN_NM
+                    , E.DETL_HTML_PC
+                    , E.DETL_HTML_MO
+                    , E.EXHIBIT_STATUS
+                    , E.CREATE_ID
+                    , E.CREATE_DT
+                    , E.MODIFY_ID
+                    , IFNULL(E.MODIFY_DT, '') AS MODIFY_DT
+                    , CASE WHEN E.USE_YN = 'N' THEN 'END'
+                           WHEN E.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+                           THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN 'ING'
+                                     ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                               WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                               WHEN E.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                               ELSE ''
+                                          END
+                                END
+                           ELSE CASE WHEN E.APPR_STAT = 'APPR_STAT.APPROVED'
+                                     THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN 'ING'
+                                               ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                                         WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                                         WHEN E.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                                         ELSE ''
+                                                    END
+                                          END
+                                     ELSE 'BEF'
+                                END
+                      END AS STATUS_SE
+                    , CASE WHEN E.USE_YN = 'N' THEN '진행종료'
+                    	   WHEN E.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+                           THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN '진행중'
+                                     ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                               WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                               WHEN E.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                               ELSE ''
+                                          END
+                                END
+                           ELSE CASE WHEN E.APPR_STAT = 'APPR_STAT.APPROVED'
+                                THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN '진행중'
+                                          ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                                    WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                                    WHEN E.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                                    ELSE ''
+                                                END
+                                      END
+                                ELSE '진행예정'
+                           END
+                      END AS STATUS_NM
+                    , E.APPR_STAT                         AS APPROVAL_STATUS
+                    , FN_COMN_CODE_DIC(E.APPR_STAT)       AS APPROVAL_STATUS_NAME
+                    , E.APPR_REQ_USER_ID                  AS APPROVAL_REQUEST_USER_ID
+                    , E.APPR_SUB_USER_ID                  AS APPROVAL_SUB_USER_ID
+                    , E.APPR_USER_ID                      AS APPROVAL_USER_ID
+                    , IFNULL(FN_DECRYPT(U.USER_NM) , '')  AS USER_NM
+                    , IFNULL(U.LOGIN_ID, '')              AS CREATE_LOGIN_ID
+                    , IFNULL(FN_DECRYPT(U2.USER_NM), '')  AS MODIFY_NM
+                    , IFNULL(U2.LOGIN_ID, '')             AS MODIFY_LOGIN_ID
+                    , EG.EXHIBIT_DISP_YN
+                    , EG.GIFT_GIVE_TP
+                    , EG.GIFT_SHIPPING_TP
+                    , EG.GIFT_TP
+                    , IFNULL(EG.OVER_PRICE, 0)            AS OVER_PRICE
+                    , EG.GIFT_RANGE_TP
+                    , IFNULL(C1.NAME, '')                 AS EXHIBIT_TP_NM
+                    , IFNULL(C2.NAME, '')                 AS MALL_DIV_NM
+                    , CASE WHEN E.DISP_WEB_PC_YN = 'Y'     THEN C31.NAME ELSE '' END AS DISP_WEB_PC_YN_NM
+                    , CASE WHEN E.DISP_WEB_MOBILE_YN = 'Y' THEN C32.NAME ELSE '' END AS DISP_WEB_MOBILE_YN_NM
+                    , CASE WHEN E.DISP_APP_YN = 'Y'        THEN C33.NAME ELSE '' END AS DISP_APP_YN_NM
+                    , IFNULL(C4.NAME, '')                 AS EV_EMPLOYEE_TP_NM
+                    , IFNULL(C6.NAME, '')                 AS EXHIBIT_STATUS_NM
+                    , IFNULL(C7.NAME, '')                 AS GIFT_GIVE_TP_NM
+                    , IFNULL(C8.NAME, '')                 AS GIFT_SHIPPING_TP_NM
+                    , IFNULL(C9.NAME, '')                 AS GIFT_TP_NM
+                    , IFNULL(C10.NAME, '')                AS GIFT_RANGE_TP_NM
+                    , G.IL_GOODS_ID                       AS REP_GOODS_ID
+                    , G.GOODS_NM                          AS REP_GOODS_NM
+                    , IFNULL(EGG.REP_GOODS_YN, 'N')       AS REP_GOODS_YN
+              FROM    EV_EXHIBIT E
+                          LEFT OUTER  JOIN  UR_USER U
+                                      ON    U.UR_USER_ID = E.CREATE_ID
+                          LEFT OUTER  JOIN  UR_USER U2
+                                      ON    U2.UR_USER_ID = E.MODIFY_ID
+                          LEFT OUTER  JOIN  EV_EXHIBIT_GIFT EG
+                                      ON    EG.EV_EXHIBIT_ID = E.EV_EXHIBIT_ID
+                          LEFT OUTER  JOIN  EV_EXHIBIT_GIFT_GOODS EGG
+                                      ON    EGG.EV_EXHIBIT_ID = E.EV_EXHIBIT_ID
+                                      AND   EGG.REP_GOODS_YN  = 'Y'
+                          LEFT OUTER  JOIN  IL_GOODS G
+                                      ON    G.IL_GOODS_ID = EGG.IL_GOODS_ID
+                          LEFT OUTER  JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EXHIBIT_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C1
+                                      ON    C1.CODE  = E.EXHIBIT_TP
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'MALL_DIV'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C2
+                                      ON    C2.CODE  = E.MALL_DIV
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C31
+                                      ON    C31.CODE  = 'GOODS_DISPLAY_TYPE.WEB_PC'
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C32
+                                      ON    C32.CODE  = 'GOODS_DISPLAY_TYPE.WEB_MOBILE'
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C33
+                                      ON    C33.CODE  = 'GOODS_DISPLAY_TYPE.APP'
+                          LEFT OUTER   JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EV_EMPLOYEE_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C4
+                                      ON    C4.CODE  = E.EV_EMPLOYEE_TP
+                          LEFT OUTER  JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'EXHIBIT_STATUS'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C6
+                                      ON    C6.CODE  = E.EXHIBIT_STATUS
+                          LEFT OUTER  JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_GIVE_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C7
+                                      ON    C7.CODE  = EG.GIFT_GIVE_TP
+                          LEFT OUTER  JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_SHIPPING_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C8
+                                      ON    C8.CODE  = EG.GIFT_SHIPPING_TP
+                          LEFT OUTER  JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C9
+                                      ON    C9.CODE  = EG.GIFT_TP
+                          LEFT OUTER  JOIN  (
+                                            SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                  , DC.DIC_NM          AS NAME
+                                            FROM    ST_COMN_CODE CD
+                                                  , GB_DIC DC
+                                            WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_RANGE_TP'
+                                              AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                              AND   DC.GB_LANG_ID           = '1'
+                                            ) C10
+                                      ON    C10.CODE  = EG.GIFT_RANGE_TP
+            <where>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evExhibitId)'>
+                AND   E.EV_EXHIBIT_ID = #{evExhibitId}
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(exhibitTp)'>
+                AND   E.EXHIBIT_TP = #{exhibitTp}
+              </if>
+                AND   E.TITLE LIKE CONCAT('%', IFNULL(#{title}, ''), '%')
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mallDivList) and mallDivList.size() > 0'>
+                AND   E.MALL_DIV IN <foreach collection="mallDivList" item="mallDiv" index="index" separator="," open="(" close=")">
+                                      #{mallDiv}
+                                    </foreach>
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)'>
+                AND   E.USE_YN = #{useYn}
+              </if>
+                AND   E.DEL_YN = 'N'
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dispYn)'>
+                AND   E.DISP_YN = #{dispYn}
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(goodsDisplayTypeList) and goodsDisplayTypeList.size() > 0'>
+                AND   (
+                  <foreach collection="goodsDisplayTypeList" item="goodsDisplayType" index="index" separator=" OR " open="" close="">
+                    <choose>
+                      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsDisplayType, "GOODS_DISPLAY_TYPE.WEB_PC")'>
+                        E.DISP_WEB_PC_YN = 'Y'
+                      </when>
+                      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsDisplayType, "GOODS_DISPLAY_TYPE.WEB_MOBILE")'>
+                        E.DISP_WEB_MOBILE_YN = 'Y'
+                      </when>
+                      <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(goodsDisplayType, "GOODS_DISPLAY_TYPE.APP")'>
+                        E.DISP_APP_YN = 'Y'
+                      </when>
+                    </choose>
+                  </foreach>
+                      )
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dispNonmemberYn)'>
+                AND   E.DISP_NONMEMBER_YN = #{dispNonmemberYn}
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(evEmployeeTpList) and evEmployeeTpList.size() > 0'>
+                AND   E.EV_EMPLOYEE_TP  IN  <foreach collection="evEmployeeTpList" item="evEmployeeTp" index="index" separator="," open="(" close=")">
+                                              #{evEmployeeTp}
+                                            </foreach>
+              </if>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userGroupIdList) and userGroupIdList.size() > 0'>
+                AND E.EV_EXHIBIT_ID IN (
+                    SELECT EV_EXHIBIT_ID
+                    FROM EV_EXHIBIT_USER_GROUP EUG
+                    WHERE UR_GROUP_ID     IN  <foreach collection="userGroupIdList" item="userGroupId" index="index" separator="," open="(" close=")">
+                                              #{userGroupId}
+                                            </foreach>
+                    GROUP BY EV_EXHIBIT_ID
+                  )
+              </if>
+              <!-- 담당자 -->
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(managerId)'>
+                AND   E.CREATE_ID = #{managerId}
+              </if>
+              <!-- 승인상태 -->
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalStatusList) and approvalStatusList.size() > 0'>
+                AND   E.APPR_STAT IN  <foreach collection="approvalStatusList" item="approvalStatus" index="index" separator="," open="(" close=")">
+                                        #{approvalStatus}
+                                      </foreach>
+              </if>
+              <!-- 증정방식-->
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(giftGiveTpList) and giftGiveTpList.size() > 0'>
+                AND   EG.GIFT_GIVE_TP IN  <foreach collection="giftGiveTpList" item="giftGiveTp" index="index" separator="," open="(" close=")">
+                                            #{giftGiveTp}
+                                          </foreach>
+              </if>
+              <!-- 증정품배송조건 -->
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(giftShippingTp)'>
+                AND   EG.GIFT_SHIPPING_TP = #{giftShippingTp}
+              </if>
+              <!-- 증정조건 -->
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(giftTp)'>
+                AND   EG.GIFT_TP = #{giftTp}
+              </if>
+              <!-- 증정범위 -->
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(giftRangeTp)'>
+                AND   EG.GIFT_RANGE_TP = #{giftRangeTp}
+              </if>
+          <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(alwaysYn, 'Y')">
+                AND   E.ALWAYS_YN = #{alwaysYn}
+            </when>
+            <otherwise>
+              <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startDt)'>
+                AND   (
+                        (
+                        E.START_DT <![CDATA[>=]]> (CASE WHEN IFNULL(#{startDt}, '') = '' THEN E.START_DT ELSE STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') END)
+                        AND
+                        E.START_DT <![CDATA[<=]]> (CASE WHEN IFNULL(#{endDt}  , '') = '' THEN E.END_DT   ELSE STR_TO_DATE(#{endDt}  , '%Y%m%d%H%i%s') END)
+                        )
+                        OR
+                        (
+                        E.END_DT   <![CDATA[>=]]> (CASE WHEN IFNULL(#{startDt}, '') = '' THEN E.START_DT ELSE STR_TO_DATE(#{startDt}, '%Y%m%d%H%i%s') END)
+                        AND
+                        E.END_DT   <![CDATA[<=]]> (CASE WHEN IFNULL(#{endDt}  , '') = '' THEN E.END_DT   ELSE STR_TO_DATE(#{endDt}  , '%Y%m%d%H%i%s') END)
+                        )
+                      )
+              </if>
+            </otherwise>
+          </choose>
+            </where>
+              ) T
+      <where>
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusYnSeList) and statusYnSeList.size() > 0'>
+        AND    T.STATUS_SE IN <foreach collection="statusYnSeList" item="statusYnSe" index="index" separator="," open="(" close=")">
+                                #{statusYnSe}
+                              </foreach>
+        </if>
+    </where>
+      ORDER BY T.CREATE_DT DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 담당자리스트(조회조건 콤보용)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.03.06   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitManagerList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitVo">
+      /*exhibitManage.selectExhibitManagerList*/
+      SELECT  T.CREATE_ID                                                 AS CREATE_ID
+            , CONCAT(IFNULL(FN_DECRYPT(U.USER_NM) , ''), '/', U.LOGIN_ID) AS USER_NM_LOGIN_ID
+            , CASE WHEN T.CREATE_ID = #{createId} THEN 1
+                   ELSE 2
+              END                                 AS SORT
+      FROM    (
+              SELECT  E.CREATE_ID
+              FROM    EV_EXHIBIT E
+              WHERE   E.EXHIBIT_TP = #{exhibitTp}
+                AND   E.DEL_YN     = 'N'
+              GROUP BY E.CREATE_ID
+              ) T
+                LEFT OUTER  JOIN  UR_USER U
+                            ON    U.UR_USER_ID = T.CREATE_ID
+      ORDER BY SORT ASC, USER_NM DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 기본
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.07   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitInfo" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitVo">
+      /*exhibitManage.selectExhibitInfo*/
+      SELECT  E.EV_EXHIBIT_ID
+            , E.EXHIBIT_TP
+            , E.MALL_DIV
+            , E.USE_YN
+            , E.DEL_YN
+            , E.DISP_YN
+            , E.TITLE
+            , E.DESCRIPTION
+            , E.DISP_WEB_PC_YN
+            , E.DISP_WEB_MOBILE_YN
+            , E.DISP_APP_YN
+            , E.DISP_NONMEMBER_YN
+            , E.EV_EMPLOYEE_TP
+            , E.ALWAYS_YN
+            , E.START_DT
+            , E.END_DT
+            , E.TIME_OVER_CLOSE_YN
+            , E.BNR_IMG_PATH
+            , IFNULL(E.BNR_IMG_ORIGIN_NM, '')     AS BNR_IMG_ORIGIN_NM
+            , E.DETL_HTML_PC
+            , E.DETL_HTML_MO
+            , E.EXHIBIT_STATUS
+            , E.CREATE_ID
+            , E.CREATE_DT
+            , E.MODIFY_ID
+            , IFNULL(E.MODIFY_DT, '') AS MODIFY_DT
+            , CASE WHEN E.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+                   THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN 'ING'
+                             ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                       WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                       WHEN E.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                       ELSE ''
+                                  END
+                        END
+                   ELSE CASE WHEN E.APPR_STAT = 'APPR_STAT.APPROVED'
+                             THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN 'ING'
+                                       ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                                 WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                                 WHEN E.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                                 ELSE ''
+                                            END
+                                  END
+                             ELSE 'BEF'
+                        END
+              END AS STATUS_SE
+            , CASE WHEN E.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+                   THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN '진행중'
+                             ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                       WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                       WHEN E.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                       ELSE ''
+                                  END
+                        END
+              ELSE CASE WHEN E.APPR_STAT = 'APPR_STAT.APPROVED'
+                        THEN CASE WHEN E.ALWAYS_YN = 'Y' THEN '진행중'
+                                  ELSE CASE WHEN E.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                            WHEN (E.START_DT <![CDATA[<=]]> NOW() AND E.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                            WHEN E.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                            ELSE ''
+                                        END
+                              END
+                       ELSE '진행예정'
+                   END
+              END AS STATUS_NM
+            , IFNULL(FN_DECRYPT(U.USER_NM) , '')  AS USER_NM
+            , IFNULL(U.LOGIN_ID, '')              AS CREATE_LOGIN_ID
+            , IFNULL(FN_DECRYPT(U2.USER_NM), '')  AS MODIFY_NM
+            , IFNULL(U2.LOGIN_ID, '')             AS MODIFY_LOGIN_ID
+            , EG.GIFT_GIVE_TP
+            , EG.GIFT_SHIPPING_TP
+            , EG.GIFT_TP
+            , EG.GIFT_RANGE_TP
+            , IFNULL(C1.NAME, '')                 AS EXHIBIT_TP_NM
+            , IFNULL(C2.NAME, '')                 AS MALL_DIV_NM
+            , CASE WHEN E.DISP_WEB_PC_YN = 'Y'     THEN C31.NAME ELSE '' END AS DISP_WEB_PC_YN_NM
+            , CASE WHEN E.DISP_WEB_MOBILE_YN = 'Y' THEN C32.NAME ELSE '' END AS DISP_WEB_MOBILE_YN_NM
+            , CASE WHEN E.DISP_APP_YN = 'Y'        THEN C33.NAME ELSE '' END AS DISP_APP_YN_NM
+            , IFNULL(C4.NAME, '')                 AS EV_EMPLOYEE_TP_NM
+            , IFNULL(C6.NAME, '')                 AS EXHIBIT_STATUS_NM
+            , IFNULL(C7.NAME, '')                 AS GIFT_GIVE_TP_NM
+            , IFNULL(C8.NAME, '')                 AS GIFT_SHIPPING_TP_NM
+            , IFNULL(C9.NAME, '')                 AS GIFT_TP_NM
+            , IFNULL(C10.NAME, '')                AS GIFT_RANGE_TP_NM
+            , E.APPR_STAT                         AS APPROVAL_STATUS
+            , FN_COMN_CODE_DIC(E.APPR_STAT)       AS APPROVAL_STATUS_NAME
+            , GH.STATUS_CMNT                      AS APPROVAL_COMMENT
+            , IFNULL(E.APPR_SUB_USER_ID, 0)       AS APPROVAL_SUB_USER_ID
+            , IFNULL(E.APPR_USER_ID, 0)           AS APPROVAL_USER_ID
+      FROM    EV_EXHIBIT E
+                  LEFT OUTER  JOIN  UR_USER U
+                              ON    U.UR_USER_ID = E.CREATE_ID
+                  LEFT OUTER  JOIN  UR_USER U2
+                              ON    U2.UR_USER_ID = E.MODIFY_ID
+                  LEFT OUTER  JOIN  EV_EXHIBIT_GIFT EG
+                              ON    EG.EV_EXHIBIT_ID = E.EV_EXHIBIT_ID
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EXHIBIT_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = E.EXHIBIT_TP
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'MALL_DIV'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C2
+                              ON    C2.CODE  = E.MALL_DIV
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C31
+                              ON    C31.CODE  = 'GOODS_DISPLAY_TYPE.WEB_PC'
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C32
+                              ON    C32.CODE  = 'GOODS_DISPLAY_TYPE.WEB_MOBILE'
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISPLAY_TYPE'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C33
+                              ON    C33.CODE  = 'GOODS_DISPLAY_TYPE.APP'
+                  LEFT OUTER   JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EV_EMPLOYEE_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C4
+                              ON    C4.CODE  = E.EV_EMPLOYEE_TP
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EXHIBIT_STATUS'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C6
+                              ON    C6.CODE  = E.EXHIBIT_STATUS
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_GIVE_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C7
+                              ON    C7.CODE  = EG.GIFT_GIVE_TP
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_SHIPPING_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C8
+                              ON    C8.CODE  = EG.GIFT_SHIPPING_TP
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C9
+                              ON    C9.CODE  = EG.GIFT_TP
+                  LEFT OUTER  JOIN  (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_RANGE_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C10
+                              ON    C10.CODE  = EG.GIFT_RANGE_TP
+              LEFT OUTER JOIN (
+                                SELECT EESH.EV_EXHIBIT_ID, EESH.STATUS_CMNT
+                                FROM EV_EXHIBIT_STATUS_HISTORY EESH
+                                WHERE EESH.EV_EXHIBIT_ID = #{evExhibitId}
+                                ORDER BY EESH.EV_EXHIBIT_STATUS_HISTORY_ID DESC
+                                LIMIT 1
+                            ) GH
+                            ON E.EV_EXHIBIT_ID = GH.EV_EXHIBIT_ID
+      WHERE   E.EV_EXHIBIT_ID = #{evExhibitId}
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 그룹리스트
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.10   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectfExhibitGroupList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGroupVo">
+      /*exhibitManage.selectfExhibitGroupList*/
+      SELECT  EG.EV_EXHIBIT_GROUP_ID
+            , EG.EV_EXHIBIT_ID
+            , IFNULL(EG.GROUP_NM, '')   AS GROUP_NM
+            , EG.TEXT_COLOR
+            , EG.USE_YN AS GROUP_USE_YN
+            , EG.EXHIBIT_IMG_TP
+            , EG.BG_CD
+            , EG.DESCRIPTION
+            , EG.DISP_CNT
+            , EG.GROUP_SORT
+            , IFNULL(C1.NAME, '')       AS EXHIBIT_IMG_TP_NM
+      FROM    EV_EXHIBIT_GROUP EG
+                  LEFT OUTER   JOIN (
+                                    SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                          , DC.DIC_NM          AS NAME
+                                    FROM    ST_COMN_CODE CD
+                                          , GB_DIC DC
+                                    WHERE   CD.ST_COMN_CODE_MST_CD  = 'EXHIBIT_IMG_TP'
+                                      AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                      AND   DC.GB_LANG_ID           = '1'
+                                    ) C1
+                              ON    C1.CODE  = EG.EXHIBIT_IMG_TP
+      WHERE   EG.EV_EXHIBIT_ID = #{evExhibitId}
+      ORDER BY CAST(EG.GROUP_SORT AS SIGNED) ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 그룹상품리스트
+   * @ param        : evExhibitGroupId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.10   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectfExhibitGroupGoodsList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGroupVo">
+      /*exhibitManage.selectfExhibitGroupGoodsList*/
+      SELECT  T1.EV_EXHIBIT_GROUP_DETL_ID
+            , T1.EV_EXHIBIT_GROUP_ID
+            , T1.GOODS_SORT
+            , T1.IL_GOODS_ID
+            , T1.GOODS_TP
+            , IFNULL(T1.GOODS_NM, '') AS GOODS_NM
+            , T1.GOODS_IMAGE_PATH
+            , T1.STANDARD_PRICE
+            , T1.RECOMMENDED_PRICE
+            , T1.SALE_PRICE
+            , T1.DISCOUNT_TP
+            , T1.SALE_STATUS
+            , T1.UR_WAREHOUSE_ID
+            , IFNULL(T1.WAREHOUSE_NM, '') AS WAREHOUSE_NM
+            , T1.IL_SHIPPING_TMPL_ID
+            , T1.SHIPPING_TEMPLATE_NAME
+            , T1.BUNDLE_YN
+            , IFNULL(C1.NAME, '')     AS GOODS_TP_NM
+            , IFNULL(C2.NAME, '')     AS DISCOUNT_TP_NM
+            , IFNULL(C3.NAME, '')     AS SALE_STATUS_NM
+      FROM    (
+              SELECT  D.EV_EXHIBIT_GROUP_DETL_ID
+                    , D.EV_EXHIBIT_GROUP_ID
+                    , D.GOODS_SORT
+                    , D.IL_GOODS_ID
+                    , G.GOODS_TP
+                    , G.GOODS_NM
+                    , G.SALE_STATUS
+                    , G.UR_WAREHOUSE_ID
+                    , II.C_IMG            AS GOODS_IMAGE_PATH
+                    , GP.STANDARD_PRICE
+                    , GP.RECOMMENDED_PRICE
+                    , GP.SALE_PRICE
+                    , GP.DISCOUNT_TP
+                    , W.WAREHOUSE_NM
+                    , HH.IL_SHIPPING_TMPL_ID
+                    , HH.NAME             AS SHIPPING_TEMPLATE_NAME
+                    , HH.BUNDLE_YN
+              FROM    EV_EXHIBIT_GROUP_DETL D
+                    , IL_GOODS G
+                        LEFT OUTER  JOIN  IL_ITEM_IMG II
+                                    ON    II.IL_ITEM_CD = G.IL_ITEM_CD
+                                    AND   II.BASIC_YN = 'Y'
+                        LEFT OUTER  JOIN  IL_GOODS_PRICE GP
+                                    ON    GP.IL_GOODS_ID = G.IL_GOODS_ID
+                                    AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT
+                                    AND   GP.USE_YN = 'Y'
+                        LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                    ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                        LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                    ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                    AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                        LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                    ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                    AND   HH.DEL_YN = 'N'
+              WHERE   D.EV_EXHIBIT_GROUP_ID = #{evExhibitGroupId}
+                AND   G.IL_GOODS_ID = D.IL_GOODS_ID
+              ) T1
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                             , DC.DIC_NM          AS NAME
+                                       FROM    ST_COMN_CODE CD
+                                             , GB_DIC DC
+                                       WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+                                         AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                         AND   DC.GB_LANG_ID           = '1'
+                                      ) C1
+                                ON    C1.CODE  = T1.GOODS_TP
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                             , DC.DIC_NM          AS NAME
+                                       FROM    ST_COMN_CODE CD
+                                             , GB_DIC DC
+                                       WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISCOUNT_TP'
+                                         AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                         AND   DC.GB_LANG_ID           = '1'
+                                      ) C2
+                                ON    C2.CODE  = T1.DISCOUNT_TP
+                    LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'SALE_STATUS'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C3
+                                    ON    C3.CODE  = T1.SALE_STATUS
+      ORDER BY CAST(T1.GOODS_SORT AS SIGNED) ASC, CAST(T1.IL_GOODS_ID AS SIGNED) DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 골라담기정보
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.11   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectfExhibitSelectInfo" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitSelectVo">
+      /*exhibitManage.selectfExhibitSelectInfo*/
+      SELECT  T1.EV_EXHIBIT_SELECT_ID
+            , T1.EV_EXHIBIT_ID
+            , T1.GOODS_BUY_LIMIT_CNT
+            , T1.DEFAULT_BUY_CNT
+            , T1.SELECT_PRICE
+            , T1.IL_GOODS_ID
+            , T1.GOODS_TP
+            , C2.NAME                     AS GOODS_TP_NM
+            , IFNULL(T1.GOODS_NM, '')     AS GOODS_NM
+            , T1.GOODS_IMAGE_PATH
+            , T1.STANDARD_PRICE
+            , T1.RECOMMENDED_PRICE
+            , T1.SALE_PRICE
+            , T1.DISCOUNT_TP
+            , C3.NAME                     AS DISCOUNT_TP_NM
+            , T1.UR_WAREHOUSE_ID
+            , IFNULL(T1.WAREHOUSE_NM, '') AS WAREHOUSE_NM
+            , T1.IL_SHIPPING_TMPL_ID
+            , T1.SHIPPING_TEMPLATE_NAME
+            , T1.BUNDLE_YN
+            , CASE WHEN T1.BUNDLE_YN THEN 'GIFT_SHIPPING_TP.COMBINED' ELSE 'GIFT_SHIPPING_TP.INDIVIDUAL' END AS GIFT_SHIPPING_TP
+            , T1.UNDELIVERABLE_AREA_TP
+            , IFNULL(C4.NAME, '')         AS UNDELIVERABLE_AREA_TP_NM
+            , MAX_DISCOUNT AS MAX_DISCOUNT_RATE
+      FROM    (
+              SELECT  ES.EV_EXHIBIT_SELECT_ID
+                    , ES.EV_EXHIBIT_ID
+                    , ES.GOODS_BUY_LIMIT_CNT
+                    , ES.DEFAULT_BUY_CNT
+                    , ES.SELECT_PRICE
+                    , ES.IL_GOODS_ID
+                    , G.GOODS_TP
+                    , G.GOODS_NM
+                    , II.C_IMG              AS GOODS_IMAGE_PATH
+                    , GP.STANDARD_PRICE
+                    , GP.RECOMMENDED_PRICE
+                    , GP.SALE_PRICE
+                    , GP.DISCOUNT_TP
+                    , G.UR_WAREHOUSE_ID
+                    , W.WAREHOUSE_NM
+                    , HH.IL_SHIPPING_TMPL_ID
+                    , HH.NAME AS SHIPPING_TEMPLATE_NAME
+                    , HH.BUNDLE_YN
+                    , I.UNDELIVERABLE_AREA_TP
+                    , MAX_DISCOUNT
+              FROM    EV_EXHIBIT_SELECT ES
+                    , IL_GOODS G
+                                            JOIN  IL_ITEM I
+                                            ON    I.IL_ITEM_CD = G.IL_ITEM_CD
+                                LEFT OUTER  JOIN  IL_ITEM_IMG II
+                                            ON    II.IL_ITEM_CD = G.IL_ITEM_CD
+                                            AND   II.BASIC_YN = 'Y'
+                                LEFT OUTER  JOIN  IL_GOODS_PRICE GP
+                                            ON    GP.IL_GOODS_ID = G.IL_GOODS_ID
+                                            AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT
+                                            AND   GP.USE_YN = 'Y'
+                                LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                            ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                            ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                            AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                            ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                            AND   HH.DEL_YN = 'N'
+              WHERE   EV_EXHIBIT_ID = #{evExhibitId}
+                AND   G.IL_GOODS_ID = ES.IL_GOODS_ID
+              ) T1
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C2
+                                    ON    C2.CODE  = T1.GOODS_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                 , DC.DIC_NM          AS NAME
+                                           FROM    ST_COMN_CODE CD
+                                                 , GB_DIC DC
+                                           WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_DISCOUNT_TP'
+                                             AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                             AND   DC.GB_LANG_ID           = '1'
+                                          ) C3
+                                    ON    C3.CODE  = T1.DISCOUNT_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'UNDELIVERABLE_AREA_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C4
+                                    ON    C4.CODE  = T1.UNDELIVERABLE_AREA_TP
+      LIMIT 1
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 골라담기 - 상품리스트
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.11   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitSelectGoodsList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitSelectGoodsVo">
+      /*exhibitManage.selectExhibitSelectGoodsList*/
+      SELECT  T1.EV_EXHIBIT_SELECT_GOODS_ID
+            , T1.EV_EXHIBIT_ID
+            , T1.IL_GOODS_ID
+            , T1.GOODS_SORT
+            , T1.GOODS_TP
+            , T1.GOODS_IMAGE_PATH
+            , T1.STANDARD_PRICE
+            , T1.RECOMMENDED_PRICE
+            , T1.SALE_PRICE
+            , T1.UR_WAREHOUSE_ID
+            , IFNULL(T1.WAREHOUSE_NM, '') AS WAREHOUSE_NM
+            , IFNULL(T1.GOODS_NM, '')     AS GOODS_NM
+            , IFNULL(C1.NAME, '')         AS GOODS_TP_NM
+            , T1.IL_SHIPPING_TMPL_ID
+            , T1.SHIPPING_TEMPLATE_NAME
+            , T1.BUNDLE_YN
+            , CASE WHEN T1.BUNDLE_YN THEN 'GIFT_SHIPPING_TP.COMBINED' ELSE 'GIFT_SHIPPING_TP.INDIVIDUAL' END AS GIFT_SHIPPING_TP
+            , T1.UNDELIVERABLE_AREA_TP
+            , IFNULL(C2.NAME, '')         AS UNDELIVERABLE_AREA_TP_NM
+            , T1.TARGET_IL_SHIPPING_TMPL_ID
+            , T1.TARGET_SHIPPING_TEMPLATE_NAME
+      FROM    (
+              SELECT  SG.EV_EXHIBIT_SELECT_GOODS_ID
+                    , SG.EV_EXHIBIT_ID
+                    , SG.IL_GOODS_ID
+                    , SG.GOODS_SORT
+                    , G.GOODS_TP
+                    , G.GOODS_NM
+                    , II.C_IMG              AS GOODS_IMAGE_PATH
+                    , GP.STANDARD_PRICE
+                    , GP.RECOMMENDED_PRICE
+                    , GP.SALE_PRICE
+                    , GP.DISCOUNT_TP
+                    , G.UR_WAREHOUSE_ID
+                    , W.WAREHOUSE_NM
+                    , HH.IL_SHIPPING_TMPL_ID
+                    , HH.NAME AS SHIPPING_TEMPLATE_NAME
+                    , HH.BUNDLE_YN
+                    , I.UNDELIVERABLE_AREA_TP
+                    , HHT.IL_SHIPPING_TMPL_ID   AS TARGET_IL_SHIPPING_TMPL_ID
+                    , HHT.NAME                  AS TARGET_SHIPPING_TEMPLATE_NAME
+              FROM    EV_EXHIBIT_SELECT_GOODS SG
+                                LEFT OUTER  JOIN  EV_EXHIBIT_SELECT ES
+                                            ON    ES.EV_EXHIBIT_ID = SG.EV_EXHIBIT_ID
+                                LEFT OUTER  JOIN  IL_GOODS GT
+                                            ON    GT.IL_GOODS_ID = ES.IL_GOODS_ID
+                                LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE HT
+                                            ON    HT.IL_GOODS_ID = GT.IL_GOODS_ID
+                                            AND   HT.UR_WAREHOUSE_ID = GT.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HHT
+                                            ON    HHT.ORIG_IL_SHIPPING_TMPL_ID = HT.ORIG_IL_SHIPPING_TMPL_ID
+                                            AND   HHT.DEL_YN = 'N'
+                    , IL_GOODS G
+                                            JOIN  IL_ITEM I
+                                            ON    I.IL_ITEM_CD = G.IL_ITEM_CD
+                                LEFT OUTER  JOIN  IL_ITEM_IMG II
+                                            ON    II.IL_ITEM_CD = G.IL_ITEM_CD
+                                            AND   II.BASIC_YN = 'Y'
+                                LEFT OUTER  JOIN  IL_GOODS_PRICE GP
+                                            ON    GP.IL_GOODS_ID = G.IL_GOODS_ID
+                                            AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT
+                                            AND   GP.USE_YN = 'Y'
+                                LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                            ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                            ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                            AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                            ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                            AND   HH.DEL_YN = 'N'
+              WHERE   SG.EV_EXHIBIT_ID = #{evExhibitId}
+                AND   G.IL_GOODS_ID    = SG.IL_GOODS_ID
+              ) T1
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C1
+                                    ON    C1.CODE  = T1.GOODS_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'UNDELIVERABLE_AREA_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C2
+                                    ON    C2.CODE  = T1.UNDELIVERABLE_AREA_TP
+
+      ORDER BY CAST(T1.GOODS_SORT AS SIGNED) ASC, CAST(T1.IL_GOODS_ID AS SIGNED) DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 골라담기 - 추가상품리스트
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.11   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitSelectAddGoodsList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitSelectGoodsVo">
+      /*exhibitManage.selectExhibitSelectAddGoodsList*/
+      SELECT  T1.EV_EXHIBIT_SELECT_ADD_GOODS_ID
+            , T1.EV_EXHIBIT_ID
+            , T1.IL_GOODS_ID
+            , T1.GOODS_TP
+            , T1.GOODS_IMAGE_PATH
+            , T1.STANDARD_PRICE
+            , T1.RECOMMENDED_PRICE
+            , T1.SALE_PRICE
+            , T1.ORI_SALE_PRICE
+            , T1.UR_WAREHOUSE_ID
+            , IFNULL(T1.WAREHOUSE_NM, '') AS WAREHOUSE_NM
+            , IFNULL(T1.GOODS_NM, '')     AS GOODS_NM
+            , IFNULL(C1.NAME, '')         AS GOODS_TP_NM
+            , T1.IL_SHIPPING_TMPL_ID
+            , T1.SHIPPING_TEMPLATE_NAME
+            , T1.BUNDLE_YN
+            , CASE WHEN T1.BUNDLE_YN THEN 'GIFT_SHIPPING_TP.COMBINED' ELSE 'GIFT_SHIPPING_TP.INDIVIDUAL' END AS GIFT_SHIPPING_TP
+            , T1.UNDELIVERABLE_AREA_TP
+            , IFNULL(C2.NAME, '')         AS UNDELIVERABLE_AREA_TP_NM
+            , T1.TARGET_IL_SHIPPING_TMPL_ID
+            , T1.TARGET_SHIPPING_TEMPLATE_NAME
+      FROM    (
+              SELECT  SA.EV_EXHIBIT_SELECT_ADD_GOODS_ID
+                    , SA.EV_EXHIBIT_ID
+                    , SA.IL_GOODS_ID
+                    , SA.SALE_PRICE         AS SALE_PRICE
+                    , G.GOODS_TP
+                    , G.GOODS_NM
+                    , II.C_IMG              AS GOODS_IMAGE_PATH
+                    , GP.STANDARD_PRICE
+                    , GP.RECOMMENDED_PRICE
+                    , GP.SALE_PRICE         AS ORI_SALE_PRICE
+                    , GP.DISCOUNT_TP
+                    , G.UR_WAREHOUSE_ID
+                    , W.WAREHOUSE_NM
+                    , HH.IL_SHIPPING_TMPL_ID
+                    , HH.NAME AS SHIPPING_TEMPLATE_NAME
+                    , HH.BUNDLE_YN
+                    , I.UNDELIVERABLE_AREA_TP
+                    , HHT.IL_SHIPPING_TMPL_ID   AS TARGET_IL_SHIPPING_TMPL_ID
+                    , HHT.NAME                  AS TARGET_SHIPPING_TEMPLATE_NAME
+              FROM    EV_EXHIBIT_SELECT_ADD_GOODS SA
+                                LEFT OUTER  JOIN  EV_EXHIBIT_SELECT ES
+                                            ON    ES.EV_EXHIBIT_ID = SA.EV_EXHIBIT_ID
+                                LEFT OUTER  JOIN  IL_GOODS GT
+                                            ON    GT.IL_GOODS_ID = ES.IL_GOODS_ID
+                                LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE HT
+                                            ON    HT.IL_GOODS_ID = GT.IL_GOODS_ID
+                                            AND   HT.UR_WAREHOUSE_ID = GT.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HHT
+                                            ON    HHT.ORIG_IL_SHIPPING_TMPL_ID = HT.ORIG_IL_SHIPPING_TMPL_ID
+                                            AND   HHT.DEL_YN = 'N'
+                    , IL_GOODS G
+                                            JOIN  IL_ITEM I
+                                            ON    I.IL_ITEM_CD = G.IL_ITEM_CD
+                                LEFT OUTER  JOIN  IL_ITEM_IMG II
+                                            ON    II.IL_ITEM_CD = G.IL_ITEM_CD
+                                            AND   II.BASIC_YN = 'Y'
+                                LEFT OUTER  JOIN  IL_GOODS_PRICE GP
+                                            ON    GP.IL_GOODS_ID = G.IL_GOODS_ID
+                                            AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT
+                                            AND   GP.USE_YN = 'Y'
+                                LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                            ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                            ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                            AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                            ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                            AND   HH.DEL_YN = 'N'
+              WHERE   SA.EV_EXHIBIT_ID = #{evExhibitId}
+                AND   G.IL_GOODS_ID    = SA.IL_GOODS_ID
+              ) T1
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C1
+                                    ON    C1.CODE  = T1.GOODS_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'UNDELIVERABLE_AREA_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C2
+                                    ON    C2.CODE  = T1.UNDELIVERABLE_AREA_TP
+
+      ORDER BY CAST(T1.IL_GOODS_ID AS SIGNED) DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 증정행사정보
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.11   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitGiftInfo" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftVo">
+      /*exhibitManage.selectExhibitGiftInfo*/
+      SELECT  EG.EV_EXHIBIT_GIFT_ID
+            , EG.EV_EXHIBIT_ID
+            , EG.EXHIBIT_DISP_YN
+            , EG.GIFT_CNT
+            , EG.GIFT_TP
+            , EG.OVER_PRICE
+            , EG.GIFT_RANGE_TP
+            , EG.GIFT_GIVE_TP
+            , EG.GIFT_SHIPPING_TP
+            , EG.UR_WAREHOUSE_ID
+            , EG.GIFT_TARGET_TP
+            , EG.GIFT_TARGET_GOODS_TP
+            , EG.GIFT_TARGET_BRAND_TP
+            , IFNULL(W.WAREHOUSE_NM, '')  AS WAREHOUSE_NM
+            , IFNULL(C2.NAME, '')         AS GIFT_TP_NM
+            , IFNULL(C3.NAME, '')         AS GIFT_RANGE_TP_NM
+            , IFNULL(C4.NAME, '')         AS GIFT_GIVE_TP_NM
+            , IFNULL(C5.NAME, '')         AS GIFT_SHIPPING_TP_NM
+            , IFNULL(C6.NAME, '')         AS GIFT_TARGET_TP_NM
+            , IFNULL(C7.NAME, '')         AS GIFT_TARGET_GOODS_TP_NM
+            , IFNULL(C8.NAME, '')         AS GIFT_TARGET_BRAND_TP_NM
+      FROM    EV_EXHIBIT_GIFT EG
+                        LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                    ON    W.UR_WAREHOUSE_ID = EG.UR_WAREHOUSE_ID
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C2
+                                    ON    C2.CODE  = EG.GIFT_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_RANGE_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C3
+                                    ON    C3.CODE  = EG.GIFT_RANGE_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_GIVE_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C4
+                                    ON    C4.CODE  = EG.GIFT_GIVE_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_SHIPPING_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C5
+                                    ON    C5.CODE  = EG.GIFT_SHIPPING_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_TARGET_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C6
+                                    ON    C6.CODE  = EG.GIFT_TARGET_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_TARGET_GOODS_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C7
+                                    ON    C7.CODE  = EG.GIFT_TARGET_GOODS_TP
+                        LEFT OUTER  JOIN  (
+                                          SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                                , DC.DIC_NM          AS NAME
+                                          FROM    ST_COMN_CODE CD
+                                                , GB_DIC DC
+                                          WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_TARGET_BRAND_TP'
+                                            AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                            AND   DC.GB_LANG_ID           = '1'
+                                          ) C8
+                                    ON    C8.CODE  = EG.GIFT_TARGET_BRAND_TP
+      WHERE   EG.EV_EXHIBIT_ID  = #{evExhibitId}
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 증정행사정보 - 증정상품리스트
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.14   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitGiftGoodsList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftGoodsVo">
+      /*exhibitManage.selectExhibitGiftGoodsList*/
+      SELECT  T1.EV_EXHIBIT_GIFT_GOODS_ID
+            , T1.EV_EXHIBIT_ID
+            , T1.IL_GOODS_ID
+            , T1.GOODS_SORT
+            , T1.GIFT_CNT
+            , T1.GOODS_TP
+            , IFNULL(T1.GOODS_NM, '')                         AS GOODS_NM
+            , T1.C_IMG                                        AS GOODS_IMAGE_PATH
+            , T1.STANDARD_PRICE
+            , T1.RECOMMENDED_PRICE
+            , T1.SALE_PRICE
+            , T1.IL_CTGRY_ID
+            , T1.UR_BRAND_ID
+            , T1.DP_BRAND_ID
+            , IFNULL(FN_CTGRY_FULL_NAME(T1.IL_CTGRY_ID), '')  AS CTGRY_FULL_NM
+            , IFNULL(UB.BRAND_NM, '')                         AS UR_BRAND_NM
+            , IFNULL(DB.DP_BRAND_NM, '')                      AS DP_BRAND_NM
+            , T1.UR_WAREHOUSE_ID
+            , IFNULL(T1.WAREHOUSE_NM, '')                     AS WAREHOUSE_NM
+            , T1.STORE_YN
+            , GS.IL_GOODS_SHIPPING_TEMPLATE_ID
+            , T1.UNDELIVERABLE_AREA_TP
+            , ST.IL_SHIPPING_TMPL_ID
+            , ST.ORIG_IL_SHIPPING_TMPL_ID
+            , ST.PAYMENT_METHOD_TP
+            , IFNULL(ST.NAME, '')                             AS SHIPPING_TMPL_NM
+            , IFNULL(C1.NAME, '')                             AS GOODS_TP_NM
+            , IFNULL(C2.NAME, '')                             AS UNDELIVERABLE_AREA_TP_NM
+            , IFNULL(T1.REP_GOODS_YN, 'N')                    AS REP_GOODS_YN
+      FROM    (
+              SELECT  GG.EV_EXHIBIT_GIFT_GOODS_ID
+                    , GG.EV_EXHIBIT_ID
+                    , GG.IL_GOODS_ID
+                    , GG.GOODS_SORT
+                    , GG.GIFT_CNT
+                    , G.GOODS_TP
+                    , G.GOODS_NM
+                    , II.C_IMG
+                    , GP.STANDARD_PRICE
+                    , GP.RECOMMENDED_PRICE
+                    , GP.SALE_PRICE
+                    , G.UR_WAREHOUSE_ID
+                    , GC.IL_CTGRY_ID
+                    , I.UR_BRAND_ID
+                    , I.DP_BRAND_ID
+                    , W.WAREHOUSE_NM
+                    , W.STORE_YN
+                    , I.UNDELIVERABLE_AREA_TP
+                    , GG.REP_GOODS_YN
+              FROM    EV_EXHIBIT_GIFT_GOODS GG
+                    , IL_GOODS G
+                                        INNER       JOIN  IL_ITEM I
+                                                    ON    I.IL_ITEM_CD =  G.IL_ITEM_CD
+                                        LEFT OUTER  JOIN  IL_ITEM_IMG II
+                                                    ON    II.IL_ITEM_CD  = G.IL_ITEM_CD
+                                                    AND   II.BASIC_YN    = 'Y'
+                                        LEFT OUTER  JOIN  IL_GOODS_CTGRY GC
+                                                    ON    GC.IL_GOODS_ID = G.IL_GOODS_ID
+                                                    AND   GC.MALL_DIV    = 'MALL_DIV.PULMUONE'
+                                                    AND   GC.BASIC_YN    = 'Y'
+                                        LEFT OUTER  JOIN  IL_GOODS_PRICE GP
+                                                    ON    GP.IL_GOODS_ID = G.IL_GOODS_ID
+                                                    AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT
+                                                    AND   GP.USE_YN      = 'Y'
+                                        LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                                    ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                        LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                                    ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                                    AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                        LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                                    ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                                    AND   HH.DEL_YN = 'N'
+              WHERE   GG.EV_EXHIBIT_ID = #{evExhibitId}
+                AND   G.IL_GOODS_ID    = GG.IL_GOODS_ID
+              ) T1
+                    LEFT OUTER  JOIN  UR_BRAND UB
+                                ON    UB.UR_BRAND_ID      = T1.UR_BRAND_ID
+                    LEFT OUTER  JOIN  DP_BRAND DB
+                                ON    DB.DP_BRAND_ID      = T1.DP_BRAND_ID
+                    LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE GS
+                                ON    GS.IL_GOODS_ID      = T1.IL_GOODS_ID
+                                AND   GS.UR_WAREHOUSE_ID  = T1.UR_WAREHOUSE_ID
+                    LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE ST
+                                ON    ST.ORIG_IL_SHIPPING_TMPL_ID = GS.ORIG_IL_SHIPPING_TMPL_ID
+                                AND   ST.DEL_YN           = 'N'
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                             , DC.DIC_NM          AS NAME
+                                       FROM    ST_COMN_CODE CD
+                                             , GB_DIC DC
+                                       WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+                                         AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                         AND   DC.GB_LANG_ID           = '1'
+                                      ) C1
+                                ON    C1.CODE  = T1.GOODS_TP
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                             , DC.DIC_NM          AS NAME
+                                       FROM    ST_COMN_CODE CD
+                                             , GB_DIC DC
+                                       WHERE   CD.ST_COMN_CODE_MST_CD  = 'UNDELIVERABLE_AREA_TP'
+                                         AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                         AND   DC.GB_LANG_ID           = '1'
+                                      ) C2
+                                ON    C2.CODE  = T1.UNDELIVERABLE_AREA_TP
+      ORDER BY CAST(T1.GOODS_SORT AS SIGNED) ASC, CAST(T1.IL_GOODS_ID AS SIGNED) DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 증정행사정보 - 적용상품리스트
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.14   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectExhibitGiftTargetGoodsList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftGoodsVo">
+      /*exhibitManage.selectExhibitGiftTargetGoodsList*/
+      SELECT  T1.EV_EXHIBIT_GIFT_TARGET_GOODS_ID
+            , T1.EV_EXHIBIT_ID
+            , T1.IL_GOODS_ID
+            , T1.GOODS_TP
+            , IFNULL(T1.GOODS_NM, '')       AS GOODS_NM
+            , T1.C_IMG                      AS GOODS_IMAGE_PATH
+            , T1.STANDARD_PRICE
+            , T1.RECOMMENDED_PRICE
+            , T1.SALE_PRICE
+            , T1.UR_WAREHOUSE_ID
+            , IFNULL(T1.WAREHOUSE_NM, '')   AS WAREHOUSE_NM
+            , T1.STORE_YN
+            , T1.IL_CTGRY_ID
+            , T1.UR_BRAND_ID
+            , T1.DP_BRAND_ID
+            , T1.UNDELIVERABLE_AREA_TP
+            , IFNULL(FN_CTGRY_FULL_NAME(T1.IL_CTGRY_ID), '')  AS CTGRY_FULL_NM
+            , IFNULL(UB.BRAND_NM, '')       AS UR_BRAND_NM
+            , IFNULL(DB.DP_BRAND_NM, '')    AS DP_BRAND_NM
+            , ST.IL_SHIPPING_TMPL_ID
+            , ST.ORIG_IL_SHIPPING_TMPL_ID
+            , ST.PAYMENT_METHOD_TP
+            , IFNULL(ST.NAME, '')           AS SHIPPING_TMPL_NM
+            , IFNULL(C1.NAME, '')           AS GOODS_TP_NM
+            , IFNULL(C2.NAME, '')           AS UNDELIVERABLE_AREA_TP_NM
+            , T1.GIFT_SHIPPING_TP
+      FROM    (
+              SELECT  TG.EV_EXHIBIT_GIFT_TARGET_GOODS_ID
+                    , TG.EV_EXHIBIT_ID
+                    , TG.IL_GOODS_ID
+                    , G.GOODS_TP
+                    , G.GOODS_NM
+                    , II.C_IMG
+                    , GP.STANDARD_PRICE
+                    , GP.RECOMMENDED_PRICE
+                    , GP.SALE_PRICE
+                    , G.UR_WAREHOUSE_ID
+                    , W.WAREHOUSE_NM
+                    , W.STORE_YN
+                    , GC.IL_CTGRY_ID
+                    , I.UR_BRAND_ID
+                    , I.DP_BRAND_ID
+                    , I.UNDELIVERABLE_AREA_TP
+                    , EG.GIFT_SHIPPING_TP
+              FROM    EV_EXHIBIT_GIFT_TARGET_GOODS TG
+                    , EV_EXHIBIT_GIFT EG
+                    , IL_GOODS G
+                                        INNER       JOIN  IL_ITEM I
+                                                    ON    I.IL_ITEM_CD =  G.IL_ITEM_CD
+                                        LEFT OUTER  JOIN  IL_ITEM_IMG II
+                                                    ON    II.IL_ITEM_CD  = G.IL_ITEM_CD
+                                                    AND   II.BASIC_YN    = 'Y'
+                                        LEFT OUTER  JOIN  IL_GOODS_CTGRY GC
+                                                    ON    GC.IL_GOODS_ID = G.IL_GOODS_ID
+                                                    AND   GC.MALL_DIV    = 'MALL_DIV.PULMUONE'
+                                                    AND   GC.BASIC_YN    = 'Y'
+                                        LEFT OUTER  JOIN  IL_GOODS_PRICE GP
+                                                    ON    GP.IL_GOODS_ID = G.IL_GOODS_ID
+                                                    AND   NOW() BETWEEN GP.PRICE_START_DT AND GP.PRICE_END_DT
+                                                    AND   GP.USE_YN      = 'Y'
+                                        LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                                    ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                        LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                                    ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                                    AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                                        LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                                    ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                                    AND   HH.DEL_YN = 'N'
+              WHERE   TG.EV_EXHIBIT_ID  = #{evExhibitId}
+                AND   G.IL_GOODS_ID     = TG.IL_GOODS_ID
+                AND   EG.EV_EXHIBIT_ID  = TG.EV_EXHIBIT_ID
+              ) T1
+                    LEFT OUTER  JOIN  UR_BRAND UB
+                                ON    UB.UR_BRAND_ID = T1.UR_BRAND_ID
+                    LEFT OUTER  JOIN  DP_BRAND DB
+                                ON    DB.DP_BRAND_ID = T1.DP_BRAND_ID
+                    LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE GS
+                                ON    GS.IL_GOODS_ID      = T1.IL_GOODS_ID
+                                AND   GS.UR_WAREHOUSE_ID  = T1.UR_WAREHOUSE_ID
+                    LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE ST
+                                ON    ST.ORIG_IL_SHIPPING_TMPL_ID = GS.ORIG_IL_SHIPPING_TMPL_ID
+                                AND   ST.DEL_YN           = 'N'
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                             , DC.DIC_NM          AS NAME
+                                       FROM    ST_COMN_CODE CD
+                                             , GB_DIC DC
+                                       WHERE   CD.ST_COMN_CODE_MST_CD  = 'GOODS_TYPE'
+                                         AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                         AND   DC.GB_LANG_ID           = '1'
+                                      ) C1
+                                ON    C1.CODE  = T1.GOODS_TP
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                             , DC.DIC_NM          AS NAME
+                                       FROM    ST_COMN_CODE CD
+                                             , GB_DIC DC
+                                       WHERE   CD.ST_COMN_CODE_MST_CD  = 'UNDELIVERABLE_AREA_TP'
+                                         AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                         AND   DC.GB_LANG_ID           = '1'
+                                      ) C2
+                                ON    C2.CODE  = T1.UNDELIVERABLE_AREA_TP
+      ORDER BY CAST(T1.IL_GOODS_ID AS SIGNED) ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 상세조회 - 증정행사정보 - 적용브랜드리스트
+   * @ param        : evExhibitId
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.14   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <!-- TODO 공급업체 확인 필요 -->
+  <select id="selectExhibitGiftTargetBrandList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftGoodsVo">
+      /*exhibitManage.selectExhibitGiftTargetBrandList*/
+      SELECT  T1.EV_EXHIBIT_GIFT_TARGET_BRAND_ID
+            , T1.EV_EXHIBIT_ID
+            , T1.GIFT_TARGET_BRAND_TP
+            , T1.BRAND_ID
+            , CASE WHEN T1.GIFT_TARGET_BRAND_TP = 'GIFT_TARGET_BRAND_TP.STANDARD' THEN UR_BRAND_NM
+                   WHEN T1.GIFT_TARGET_BRAND_TP = 'GIFT_TARGET_BRAND_TP.DISPLAY'  THEN DP_BRAND_NM
+                   ELSE ''
+              END                   AS BRAND_NM
+            , IFNULL(C1.NAME, '')   AS GIFT_TARGET_BRAND_TP_NM
+      FROM    (
+              SELECT  TB.EV_EXHIBIT_GIFT_TARGET_BRAND_ID
+                    , TB.EV_EXHIBIT_ID
+                    , TB.GIFT_TARGET_BRAND_TP
+                    , TB.BRAND_ID
+                    , UB.BRAND_NM     AS UR_BRAND_NM
+                    , DB.DP_BRAND_NM  AS DP_BRAND_NM
+              FROM    EV_EXHIBIT_GIFT_TARGET_BRAND TB
+                                        LEFT OUTER  JOIN  UR_BRAND UB
+                                                    ON    UB.UR_BRAND_ID = TB.BRAND_ID
+                                                    AND   TB.GIFT_TARGET_BRAND_TP = 'GIFT_TARGET_BRAND_TP.STANDARD'
+                                        LEFT OUTER  JOIN  DP_BRAND DB
+                                                    ON    DB.DP_BRAND_ID = TB.BRAND_ID
+                                                    AND   TB.GIFT_TARGET_BRAND_TP = 'GIFT_TARGET_BRAND_TP.DISPLAY'
+              WHERE   EV_EXHIBIT_ID = #{evExhibitId}
+              ) T1
+                    LEFT OUTER  JOIN  (
+                                      SELECT  CD.ST_COMN_CODE_ID AS CODE
+                                             , DC.DIC_NM         AS NAME
+                                       FROM    ST_COMN_CODE CD
+                                             , GB_DIC DC
+                                       WHERE   CD.ST_COMN_CODE_MST_CD  = 'GIFT_TARGET_BRAND_TP'
+                                         AND   CD.GB_DIC_MST_ID        = DC.GB_DIC_MST_ID
+                                         AND   DC.GB_LANG_ID           = '1'
+                                      ) C1
+                                ON    C1.CODE  = T1.GIFT_TARGET_BRAND_TP
+      ORDER BY CAST(T1.EV_EXHIBIT_GIFT_TARGET_BRAND_ID AS SIGNED) ASC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 상품정보리스트조회(엑셀용)
+   *                  popupCommon.getGoodsList 와 동일
+   * @ param        :
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.11   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <select id="selectGoodsInfoList" resultType="kr.co.pulmuone.v1.base.dto.vo.GoodsSearchVo">
+      /*exhibitManage.selectGoodsInfoList*/
+      SELECT  A.GOODS_ID                  /* 상품 ID */
+            , A.GOODS_NAME                /* 상품명 */
+            , A.ITEM_CODE                 /* 품목코드 */
+            , A.ITEM_NAME                 /* 품목명 */
+            , A.ITEM_BARCODE              /* 품목바코드 */
+            , A.WAREHOUSE_ID              /* 출고처 ID */
+            , A.WAREHOUSE_NAME            /* 출고처명 */
+            , A.SUPPLIER_ID               /* 공급처 ID */
+            , A.SUPPLIER_COMPANY_ID       /* 공급처 회사 ID */
+            , A.SUPPLIER_NAME             /* 공급처명 */
+            , A.BRAND_ID                  /* 브랜드 ID */
+            , A.BRAND_NAME                /* 브랜드명 */
+            , A.DP_BRAND_NAME             /* 전시 브랜드명 */
+            , A.CATEGORY_STANDARD_ID      /* 표준카테고리 ID */
+            , FN_CTGRY_STD_FULL_NAME(A.CATEGORY_STANDARD_ID) AS CATEGORY_STANDARD_DEPTH_NAME /* 표준카테고리 DEPTH */
+            , A.CATEGORY_ID               /* 전시카테고리 */
+            , (
+              CASE  WHEN A.CATEGORY_ID IS NULL
+                    THEN ''
+                    ELSE FN_CTGRY_FULL_NAME(A.CATEGORY_ID)
+              END
+              ) AS CATEGORY_DEPTH_NAME    /* 전시카테고리 DEPTH */
+            , A.GOODS_TYPE_CODE           /* 상품유형코드 */
+            , FN_COMN_CODE_DIC(A.GOODS_TYPE_CODE) AS GOODS_TP_NM /* 상품유형명 */
+            , FN_COMN_CODE_DIC(A.GOODS_TYPE_CODE) AS GOODS_TYPE_NAME /* 상품유형명 */
+            , A.SALE_TYPE_CODE            /* 판매유형코드 */
+            , A.ITEM_TYPE_CODE            /* 품목유형코드 */
+            , A.PACKAGE_UNIT_DISPLAY_YN   /* 포장용량 구성정보 노출여부 */
+            , A.PURCHASE_MEMBER_YN        /* 회원 구매여부 */
+            , A.PURCHASE_EMPLOYEE_YN      /* 임직원 구매여부 */
+            , A.PURCHASE_NONMEMBER_YN     /* 비회원 구매여부 */
+            , A.DISPLAY_WEB_PC_YN         /* WEB PC 전시여부 */
+            , A.DISPLAY_WEB_MOBILE_YN     /* WEB 모바일 전시여부 */
+            , A.DISPLAY_APP_YN            /* APP 전시여부 */
+            , A.SALE_START_DATE           /* 판매 시작일 */
+            , A.SALE_END_DATE             /* 판매 종료일 */
+            , A.GOODS_DISPLAY_YN          /* 상품 전시여부 */
+            , A.SALE_STATUS_CODE          /* 상품 판매상태 공통코드 */
+            , FN_COMN_CODE_DIC(A.SALE_STATUS_CODE) AS SALE_STATUS_CODE_NAME
+            , A.ITEM_GROUP                /* 품목 그룹 */
+            , A.STORAGE_METHOD_TYPE_CODE  /* 보관방법 공통코드 */
+            , FN_COMN_CODE_DIC(A.STORAGE_METHOD_TYPE_CODE) AS STORAGE_METHOD_TYPE_NAME /* 보관방법명 */
+            , A.PLACE_ORDER_ID            /* 발주유형 ID */
+            , A.ITEM_IMAGE_PATH           /* 상품 이미지 경로 */
+            , A.IL_SHIPPING_TMPL_ID
+            , A.UNDELIVERABLE_AREA_TP
+            , GP.IL_GOODS_PRICE_ID        /* 가격정보 ID */
+            , GP.STANDARD_PRICE           /* 원가 */
+            , GP.RECOMMENDED_PRICE        /* 정상가 */
+            , GP.SALE_PRICE               /* 판매가 */
+            , GP.DISCOUNT_TP
+            , FN_COMN_CODE_DIC(GP.DISCOUNT_TP) AS DISCOUNT_TP_NAME
+            , A.NAME                      /* 배송정책 */
+            , CASE  WHEN UNDELIVERABLE_AREA_TP = 'UNDELIVERABLE_AREA_TP.NONE' AND STORE_YN = 'N'
+                    THEN A.AREA_SHIPPING_DELIVERY_YN
+                    ELSE '불가'
+              END AS AREA_SHIPPING_DELIVERY_YN
+      FROM  (
+            SELECT  G.IL_GOODS_ID AS GOODS_ID
+                  , G.GOODS_NM AS GOODS_NAME
+                  , I.IL_ITEM_CD AS ITEM_CODE
+                  , I.ITEM_NM AS ITEM_NAME
+                  , IFNULL(I.ITEM_BARCODE, '') AS ITEM_BARCODE
+                  , G.UR_WAREHOUSE_ID AS WAREHOUSE_ID
+                  , W.WAREHOUSE_NM AS WAREHOUSE_NAME
+                  , I.UR_SUPPLIER_ID AS SUPPLIER_ID
+                  , S.UR_COMPANY_ID AS SUPPLIER_COMPANY_ID
+                  , C.COMP_NM AS SUPPLIER_NAME
+                  , I.UR_BRAND_ID AS BRAND_ID
+                  , B.BRAND_NM AS BRAND_NAME
+                  , I.DP_BRAND_ID
+                  , I.UNDELIVERABLE_AREA_TP
+                  , DP.DP_BRAND_NM AS DP_BRAND_NAME
+                  , I.IL_CTGRY_STD_ID AS CATEGORY_STANDARD_ID
+                  , (
+                    SELECT  T1.IL_CTGRY_ID
+                    FROM    IL_CTGRY_PRNTS_INFO T1
+                                JOIN IL_GOODS_CTGRY T2
+                                  ON T2.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                                JOIN IL_CTGRY T3
+                                  ON T3.IL_CTGRY_ID = T1.IL_CTGRY_ID
+                    WHERE   T3.USE_YN = 'Y'
+                      AND   T3.DEL_YN = 'N'
+                      AND   T2.IL_GOODS_ID = G.IL_GOODS_ID
+                      AND   T3.MALL_DIV = 'MALL_DIV.PULMUONE'
+                      AND   T2.BASIC_YN = 'Y'
+                    LIMIT 1
+                    ) AS CATEGORY_ID
+                  , G.GOODS_TP AS GOODS_TYPE_CODE
+                  , G.SALE_TP AS SALE_TYPE_CODE
+                  , I.ITEM_TP AS ITEM_TYPE_CODE
+                  , G.PACKAGE_UNIT_DISP_YN AS PACKAGE_UNIT_DISPLAY_YN
+                  , G.PURCHASE_MEMBER_YN
+                  , G.PURCHASE_EMPLOYEE_YN
+                  , G.PURCHASE_NONMEMBER_YN
+                  , G.DISP_WEB_PC_YN AS DISPLAY_WEB_PC_YN
+                  , G.DISP_WEB_MOBILE_YN AS DISPLAY_WEB_MOBILE_YN
+                  , G.DISP_APP_YN AS DISPLAY_APP_YN
+                  , DATE_FORMAT(G.SALE_START_DT, '%Y-%m-%d %H:%i:%s') AS SALE_START_DATE
+                  , DATE_FORMAT(G.SALE_END_DT, '%Y-%m-%d %H:%i:%s') AS SALE_END_DATE
+                  , G.DISP_YN AS GOODS_DISPLAY_YN
+                  , G.SALE_STATUS AS SALE_STATUS_CODE
+                  , I.ITEM_GRP AS ITEM_GROUP
+                  , I.STORAGE_METHOD_TP AS STORAGE_METHOD_TYPE_CODE
+                  , IIW.IL_PO_TP_ID AS PLACE_ORDER_ID
+                  , (
+                    SELECT  II.C_IMG
+                    FROM    IL_ITEM_IMG II
+                    WHERE   II.IL_ITEM_CD = I.IL_ITEM_CD
+                      AND II.BASIC_YN = 'Y'
+                    LIMIT 1
+                    ) AS ITEM_IMAGE_PATH
+                  , G.CREATE_DT
+                  , (
+                    SELECT  IL_GOODS_PRICE_ID
+                    FROM    IL_GOODS_PRICE
+                    WHERE   IL_GOODS_ID = G.IL_GOODS_ID
+                      AND   NOW() BETWEEN PRICE_START_DT AND PRICE_END_DT
+                    ORDER BY IL_GOODS_PRICE_ID DESC
+                    LIMIT 1
+                    ) AS GOODS_PRICE_ID
+                  , W.STORE_YN
+                  , SP.IL_SHIPPING_TMPL_ID
+                  , SP.AREA_SHIPPING_DELIVERY_YN
+                  , SP.NAME
+            FROM    IL_GOODS G
+                                    JOIN  IL_ITEM I
+                                    ON    I.IL_ITEM_CD = G.IL_ITEM_CD
+                        LEFT OUTER  JOIN  UR_WAREHOUSE W
+                                    ON    W.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                        LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE H
+                                    ON    H.IL_GOODS_ID = G.IL_GOODS_ID
+                                    AND   H.UR_WAREHOUSE_ID = G.UR_WAREHOUSE_ID
+                        LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE HH
+                                    ON    HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID
+                                    AND   HH.DEL_YN = 'N'
+                                    JOIN  UR_SUPPLIER S
+                                    ON    S.UR_SUPPLIER_ID = I.UR_SUPPLIER_ID
+                                    JOIN  UR_SUPPLIER_WAREHOUSE USW
+                                    ON    USW.UR_SUPPLIER_ID = S.UR_SUPPLIER_ID
+                                    AND   USW.UR_WAREHOUSE_ID = W.UR_WAREHOUSE_ID
+                                    JOIN  IL_ITEM_WAREHOUSE IIW
+                                    ON    IIW.IL_ITEM_CD = I.IL_ITEM_CD
+                                    AND   IIW.UR_SUPPLIER_WAREHOUSE_ID = USW.UR_SUPPLIER_WAREHOUSE_ID
+                                    JOIN  UR_COMPANY C
+                                    ON    C.UR_COMPANY_ID = S.UR_COMPANY_ID
+                                    JOIN  UR_BRAND B
+                                    ON    B.UR_BRAND_ID = I.UR_BRAND_ID
+                                    JOIN  DP_BRAND DP
+                                    ON    DP.DP_BRAND_ID = I.DP_BRAND_ID
+                        LEFT OUTER  JOIN  IL_GOODS_SHIPPING_TEMPLATE GDSP
+                                    ON    G.IL_GOODS_ID = GDSP.IL_GOODS_ID
+                                    AND   G.UR_WAREHOUSE_ID = GDSP.UR_WAREHOUSE_ID
+                        LEFT OUTER  JOIN  IL_SHIPPING_TEMPLATE SP
+                                    ON    GDSP.ORIG_IL_SHIPPING_TMPL_ID = SP.ORIG_IL_SHIPPING_TMPL_ID
+                                    AND   SP.DEL_YN  = 'N'
+          <where>
+            <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsIdList) and ilGoodsIdList.size() > 0'>
+              AND   G.IL_GOODS_ID IN  <foreach collection="ilGoodsIdList" item="ilGoodsId" index="index" separator="," open="(" close=")">
+                                        #{ilGoodsId}
+                                      </foreach>
+            </if>
+          </where>
+            ) A
+              JOIN IL_GOODS_PRICE GP
+                ON GP.IL_GOODS_PRICE_ID = A.GOODS_PRICE_ID
+    <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(ilGoodsIdList) and ilGoodsIdList.size() > 0'>
+      ORDER BY FIELD (A.GOODS_ID   <foreach collection="ilGoodsIdList" item="goodsId" index="index" separator="," open="," close=")">
+                                      #{goodsId}
+                                    </foreach>
+    </if>
+  </select>
+
+
+  <!-- #################################################################### -->
+  <!-- 삭제 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 삭제
+   * @                일반(그룹) / 골라담기(균일가) / 증정행사 공통
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.18   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="delExhibit" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitVo">
+      /*exhibitManage.delExhibit*/
+      UPDATE  EV_EXHIBIT
+      SET     MODIFY_DT     = NOW()
+            , MODIFY_ID     = #{modifyId}
+            , DEL_YN        = #{delYn}
+      WHERE   EV_EXHIBIT_ID = #{evExhibitId}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 그룹 삭제 - 기획전ID기준 (실제 삭제)
+   * @                일반(그룹)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGroupByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGroupByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_GROUP
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 그룹 삭제 (실제 삭제)
+   * @                일반(그룹)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGroup" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGroup*/
+      DELETE FROM EV_EXHIBIT_GROUP
+      WHERE  EV_EXHIBIT_GROUP_ID = #{evExhibitGroupId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 그룹상세 삭제 - 기획전ID기준 (실제 삭제)
+   * @                일반(그룹)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGroupDetlByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGroupDetlByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_GROUP_DETL
+      WHERE  EV_EXHIBIT_GROUP_ID  IN  (
+                                      SELECT  EV_EXHIBIT_GROUP_ID
+                                      FROM    EV_EXHIBIT_GROUP
+                                      WHERE   EV_EXHIBIT_ID = #{evExhibitId}
+                                      )
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 그룹상세 삭제 (실제 삭제)
+   * @                일반(그룹)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGroupDetl" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGroupDetl*/
+      DELETE FROM EV_EXHIBIT_GROUP_DETL
+      WHERE  EV_EXHIBIT_GROUP_DETL_ID = #{evExhibitGroupDetlId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기상세 삭제 - 기획전ID기준 (실제 삭제)
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitSelectByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitSelectByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_SELECT
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기상품 삭제 - 기획전ID기준 (실제 삭제)
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitSelectGoodsByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitSelectGoodsByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_SELECT_GOODS
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기추가상품 삭제 - 기획전ID기준 (실제 삭제)
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitSelectAddGoodsByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitSelectAddGoodsByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_SELECT_ADD_GOODS
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기상세 삭제
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitSelect" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitSelect*/
+      DELETE FROM EV_EXHIBIT_SELECT
+      WHERE  EV_EXHIBIT_SELECT_ID = #{evExhibitSelectId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기상품 삭제
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitSelectGoods" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitSelectGoods*/
+      DELETE FROM EV_EXHIBIT_SELECT_GOODS
+      WHERE  EV_EXHIBIT_SELECT_GOODS_ID = #{evExhibitSelectGoodsId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기추가상품 삭제
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitSelectAddGoods" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitSelectAddGoods*/
+      DELETE FROM EV_EXHIBIT_SELECT_ADD_GOODS
+      WHERE  EV_EXHIBIT_SELECT_ADD_GOODS_ID = #{evExhibitSelectAddGoodsId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사상세 삭제 - 기획전ID기준 (실제 삭제)
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGiftByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGiftByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_GIFT
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사상품 삭제 - 기획전ID기준 (실제 삭제)
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGiftGoodsByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGiftGoodsByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_GIFT_GOODS
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사대상상품 삭제 - 기획전ID기준 (실제 삭제)
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGiftTargetGoodsByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGiftTargetGoodsByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_GIFT_TARGET_GOODS
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사대상브랜드 삭제 - 기획전ID기준 (실제 삭제)
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGiftTargetBrandByEvExhibitId" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGiftTargetBrandByEvExhibitId*/
+      DELETE FROM EV_EXHIBIT_GIFT_TARGET_BRAND
+      WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사상세 삭제
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGift" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGift*/
+      DELETE FROM EV_EXHIBIT_GIFT
+      WHERE  EV_EXHIBIT_GIFT_ID = #{evExhibitGiftId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사상품 삭제
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGiftGoods" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGiftGoods*/
+      DELETE FROM EV_EXHIBIT_GIFT_GOODS
+      WHERE  EV_EXHIBIT_GIFT_GOODS_ID = #{evExhibitGiftGoodsId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사대상상품 삭제
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGiftTargetGoods" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGiftTargetGoods*/
+      DELETE FROM EV_EXHIBIT_GIFT_TARGET_GOODS
+      WHERE  EV_EXHIBIT_GIFT_TARGET_GOODS_ID = #{evExhibitGiftTargetGoodsId}
+  </delete>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사대상브랜드 삭제
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <delete id="delExhibitGiftTargetBrand" parameterType="java.lang.String">
+      /*exhibitManage.delExhibitGiftTargetBrand*/
+      DELETE FROM EV_EXHIBIT_GIFT_TARGET_BRAND
+      WHERE  EV_EXHIBIT_GIFT_TARGET_BRAND_ID = #{evExhibitGiftTargetBrandId}
+  </delete>
+
+  <!-- #################################################################### -->
+  <!-- 등록 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 등록
+   * @                일반(그룹) / 골라담기(균일가) / 증정행사 공통
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibit" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitVo">
+      /*exhibitManage.addExhibit*/
+      INSERT INTO EV_EXHIBIT(
+          EXHIBIT_TP
+        , MALL_DIV
+        , USE_YN
+        , DEL_YN
+        , DISP_YN
+        , TITLE
+        , DESCRIPTION
+        , DISP_WEB_PC_YN
+        , DISP_WEB_MOBILE_YN
+        , DISP_APP_YN
+        , DISP_NONMEMBER_YN
+        , EV_EMPLOYEE_TP
+        , EXHIBIT_STATUS
+        , ALWAYS_YN
+        , START_DT
+        , END_DT
+        , TIME_OVER_CLOSE_YN
+        , BNR_IMG_PATH
+        , BNR_IMG_ORIGIN_NM
+        , DETL_HTML_PC
+        , DETL_HTML_MO
+        , APPR_STAT
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalSubUserId)">
+          , APPR_SUB_USER_ID
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalUserId)">
+          , APPR_REQ_USER_ID
+          , APPR_USER_ID
+          , APPR_REQ_DT
+        </if>
+        , CREATE_ID
+        , CREATE_DT
+        , MODIFY_ID
+        , MODIFY_DT
+      )
+      VALUES(
+          #{exhibitTp}
+        , #{mallDiv}
+        , #{useYn}
+        , #{delYn}
+        , #{dispYn}
+        , #{title}
+        , #{description}
+        , #{dispWebPcYn}
+        , #{dispWebMobileYn}
+        , #{dispAppYn}
+        , #{dispNonmemberYn}
+        , #{evEmployeeTp}
+        , #{exhibitStatus}
+        , #{alwaysYn}
+        , #{startDt}
+        , #{endDt}
+        , #{timeOverCloseYn}
+        , #{bnrImgPath}
+        , #{bnrImgOriginNm}
+        , #{detlHtmlPc}
+        , #{detlHtmlMo}
+        , #{approvalStatus}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalSubUserId)">
+            ,#{approvalSubUserId}
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalUserId)">
+            ,#{approvalRequestUserId}
+            ,#{approvalUserId}
+            ,NOW()
+        </if>
+        , #{createId}
+        , NOW()
+        , #{modifyId}
+        , NOW()
+      )
+      <selectKey keyProperty="evExhibitId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 일반기획전 - 그룹정보 등록
+   * @                일반(그룹)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitGroup" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGroupVo">
+      /*exhibitManage.addExhibitGroup*/
+      INSERT INTO EV_EXHIBIT_GROUP(
+          EV_EXHIBIT_ID
+        , GROUP_NM
+        , TEXT_COLOR
+        , USE_YN
+        , EXHIBIT_IMG_TP
+        , BG_CD
+        , DESCRIPTION
+        , DISP_CNT
+        , GROUP_SORT
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{groupNm}
+        , #{textColor}
+        , #{useYn}
+        , #{exhibitImgTp}
+        , #{bgCd}
+        , #{groupDesc}
+        , #{dispCnt}
+        , #{groupSort}
+      )
+      <selectKey keyProperty="evExhibitGroupId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 일반기획전 - 그룹상세 등록 (상품)
+   * @                일반(그룹)
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitGroupDetl" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGroupDetlVo">
+      /*exhibitManage.addExhibitGroupDetl*/
+      INSERT INTO EV_EXHIBIT_GROUP_DETL(
+          EV_EXHIBIT_GROUP_ID
+        , GOODS_SORT
+        , IL_GOODS_ID
+       )
+       VALUES(
+          #{evExhibitGroupId}
+        , #{goodsSort}
+        , #{ilGoodsId}
+       )
+      <selectKey keyProperty="evExhibitGroupDetlId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 기획전 수정
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.11.23   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putExhibit" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitVo">
+      /*exhibitManage.putExhibit*/
+      UPDATE  EV_EXHIBIT
+      SET
+              EXHIBIT_TP              = #{exhibitTp}
+            , MALL_DIV                = #{mallDiv}
+            , USE_YN                  = #{useYn}
+            , DEL_YN                  = #{delYn}
+            , DISP_YN                 = #{dispYn}
+            , TITLE                   = #{title}
+            , DESCRIPTION             = #{description}
+            , DISP_WEB_PC_YN          = #{dispWebPcYn}
+            , DISP_WEB_MOBILE_YN      = #{dispWebMobileYn}
+            , DISP_APP_YN             = #{dispAppYn}
+            , DISP_NONMEMBER_YN       = #{dispNonmemberYn}
+            , EV_EMPLOYEE_TP          = #{evEmployeeTp}
+            <!-- , EXHIBIT_STATUS          = #{exhibitStatus} -->
+            , ALWAYS_YN               = #{alwaysYn}
+            , START_DT                = #{startDt}
+            , END_DT                  = #{endDt}
+            , TIME_OVER_CLOSE_YN      = #{timeOverCloseYn}
+            , BNR_IMG_PATH            = #{bnrImgPath}
+            , BNR_IMG_ORIGIN_NM       = #{bnrImgOriginNm}
+            , DETL_HTML_PC            = #{detlHtmlPc}
+            , DETL_HTML_MO            = #{detlHtmlMo}
+            , MODIFY_ID               = #{modifyId}
+            , MODIFY_DT               = NOW()
+      WHERE   EV_EXHIBIT_ID           = #{evExhibitId}
+  </update>
+
+<!-- @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ -->
+<!-- 2020.12.24 여기서 작업 시작 -->
+
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기 - 상세정보 등록
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitSelect" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitSelectVo">
+      /*exhibitManage.addExhibitSelect*/
+      INSERT INTO EV_EXHIBIT_SELECT (
+          EV_EXHIBIT_ID
+        , GOODS_BUY_LIMIT_CNT
+        , DEFAULT_BUY_CNT
+        , SELECT_PRICE
+        , IL_GOODS_ID
+        , MAX_DISCOUNT
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{goodsBuyLimitCnt}
+        , #{defaultBuyCnt}
+        , #{selectPrice}
+        , #{ilGoodsId}
+        , #{maxDiscountRate}
+      )
+      <selectKey keyProperty="evExhibitSelectId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기 - 상품 등록
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitSelectGoods" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitSelectGoodsVo">
+      /*exhibitManage.addExhibitSelectGoods*/
+      INSERT INTO EV_EXHIBIT_SELECT_GOODS(
+          EV_EXHIBIT_ID
+        , IL_GOODS_ID
+        , GOODS_SORT
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{ilGoodsId}
+        , #{goodsSort}
+      )
+      <selectKey keyProperty="evExhibitSelectGoodsId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 골라담기 - 추가상품 등록
+   * @                골라담기
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitSelectAddGoods" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitSelectGoodsVo">
+      /*exhibitManage.addExhibitSelectGoods*/
+      INSERT INTO EV_EXHIBIT_SELECT_ADD_GOODS(
+          EV_EXHIBIT_ID
+        , IL_GOODS_ID
+        , SALE_PRICE
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{ilGoodsId}
+        , #{salePrice}
+      )
+      <selectKey keyProperty="evExhibitSelectAddGoodsId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사 - 상세정보 등록
+   * @                증정행사
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitGift" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftVo">
+      /*exhibitManage.addExhibitGift*/
+      INSERT INTO EV_EXHIBIT_GIFT(
+          EV_EXHIBIT_ID
+        , EXHIBIT_DISP_YN
+        , GIFT_CNT
+        , GIFT_TP
+        , OVER_PRICE
+        , GIFT_RANGE_TP
+        , GIFT_GIVE_TP
+        , GIFT_SHIPPING_TP
+        , UR_WAREHOUSE_ID
+        , GIFT_TARGET_TP
+        , GIFT_TARGET_GOODS_TP
+        , GIFT_TARGET_BRAND_TP
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{exhibitDispYn}
+        , #{giftCnt}
+        , #{giftTp}
+        , #{overPrice}
+        , #{giftRangeTp}
+        , #{giftGiveTp}
+        , #{giftShippingTp}
+        , CASE WHEN IFNULL(#{urWarehouseId}, 0) = '' THEN 0 ELSE #{urWarehouseId} END
+        , #{giftTargetTp}
+        , #{giftTargetGoodsTp}
+        , #{giftTargetBrandTp}
+      )
+      <selectKey keyProperty="evExhibitGiftId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사 - 증정행사 상품 등록
+   * @                증정행사
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitGiftGoods" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftGoodsVo">
+      /*exhibitManage.addExhibitGiftGoods*/
+      INSERT INTO EV_EXHIBIT_GIFT_GOODS(
+          EV_EXHIBIT_ID
+        , IL_GOODS_ID
+        , GOODS_SORT
+        , GIFT_CNT
+        , REP_GOODS_YN
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{ilGoodsId}
+        , #{goodsSort}
+        , #{giftCnt}
+        , #{repGoodsYn}
+      )
+      <selectKey keyProperty="evExhibitGiftGoodsId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사 - 증정대상 상품 등록
+   * @                증정행사
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitGiftTargetGoods" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftGoodsVo">
+      /*exhibitManage.addExhibitGiftTargetGoods*/
+      INSERT INTO EV_EXHIBIT_GIFT_TARGET_GOODS(
+          EV_EXHIBIT_ID
+        , IL_GOODS_ID
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{ilGoodsId}
+      )
+      <selectKey keyProperty="evExhibitGiftTargetGoodsId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사 - 증정대상 브랜드 등록
+   * @                증정행사
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2020.12.24   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitGiftTargetBrand" parameterType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitGiftGoodsVo">
+      /*exhibitManage.addExhibitGiftTargetBrand*/
+      INSERT INTO EV_EXHIBIT_GIFT_TARGET_BRAND(
+          EV_EXHIBIT_ID
+        , BRAND_ID
+        , GIFT_TARGET_BRAND_TP
+      )
+      VALUES(
+          #{evExhibitId}
+        , #{brandId}
+        , #{giftTargetBrandTp}
+      )
+      <selectKey keyProperty="evExhibitGiftTargetBrandId" resultType="String" order="AFTER">
+         SELECT CONCAT(LAST_INSERT_ID())
+      </selectKey>
+  </insert>
+
+  <!-- #################################################################### -->
+  <!-- 수정 -->
+  <!-- #################################################################### -->
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사 - 대표상품 변경 - 대표상품해제
+   * @                증정행사
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.06   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putExhibitGiftRepGoodsCancel" parameterType="java.lang.String">
+      /*exhibitManage.putExhibitGiftRepGoodsCancel*/
+      UPDATE  EV_EXHIBIT_GIFT_GOODS
+      SET     REP_GOODS_YN  = 'N'
+      WHERE   EV_EXHIBIT_ID = #{evExhibitId}
+        AND   REP_GOODS_YN  = 'Y'
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+   * description    : 증정행사 - 대표상품 변경 - 대표상품해제
+   * @                증정행사
+   * @
+   * @ 수정일       수정자    수정내용
+   * @ ──────────────────────────────────────────────────────────────────────
+   * @ 2021.01.06   dgyoun    최초생성
+   * @
+  ────────────────────────────────────────────────────────────────────────-->
+  <update id="putExhibitGiftRepGoodsReg" parameterType="java.lang.String">
+      /*exhibitManage.putExhibitGiftRepGoodsReg*/
+      UPDATE  EV_EXHIBIT_GIFT_GOODS
+      SET     REP_GOODS_YN  = 'Y'
+      WHERE   EV_EXHIBIT_GIFT_GOODS_ID = #{evExhibitGiftGoodsId}
+  </update>
+
+
+
+  <!-- #################################################################### -->
+  <!-- 전체건수 -->
+  <!-- #################################################################### -->
+  <select id="selectTotalCount" resultType="int">
+    /* exhibitManage.selectTotalCount */
+    SELECT FOUND_ROWS()
+  </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 기획전 접근권한 정보 조회
+    * @
+    * @ 수정일       수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.02.03   이원호    최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getExhibitUserGroup" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.EvUserGroupVo">
+        /*exhibitManage.getExhibitUserGroup*/
+        SELECT EUG.UR_GROUP_ID,
+            UGM.GROUP_MASTER_NM AS GROUP_MASTER_NAME,
+            UG.GROUP_NM AS GROUP_NAME
+        FROM EV_EXHIBIT_USER_GROUP EUG
+            INNER JOIN UR_GROUP UG ON EUG.UR_GROUP_ID = UG.UR_GROUP_ID
+            INNER JOIN UR_GROUP_MASTER UGM ON UG.UR_GROUP_MASTER_ID = UGM.UR_GROUP_MASTER_ID
+        WHERE EUG.EV_EXHIBIT_ID = #{exExhibitId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 기획전 접근권한 정보 저장
+    * @
+    * @ 수정일       수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.02.03   이원호    최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addExhibitUserGroup">
+        /*exhibitManage.addExhibitUserGroup*/
+        INSERT INTO EV_EXHIBIT_USER_GROUP (
+            EV_EXHIBIT_ID, UR_GROUP_ID
+        ) VALUES
+        <foreach collection="urGroupIdList" item="item" index="index"  open="" separator="," close="">
+            (
+            #{evExhibitId}, #{item}
+            )
+        </foreach>
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 기획전 접근권한 정보 삭제
+    * @
+    * @ 수정일       수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.02.03   이원호    최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="delExhibitUserGroup">
+        /*exhibitManage.delExhibitUserGroup*/
+        DELETE FROM EV_EXHIBIT_USER_GROUP
+        WHERE  EV_EXHIBIT_ID = #{evExhibitId}
+    </delete>
+
+
+    <!--───────────────────────────────────────────────────────────────────────
+    * description    : 기획전 승인관리 목록
+    * @
+    * @ 수정일         수정자    수정내용
+    * @ ──────────────────────────────────────────────────────────────────────
+    * @ 2021.02.08  박승현    최초생성
+    * @
+    ────────────────────────────────────────────────────────────────────────-->
+  <select id="getApprovalExhibitList" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitApprovalResultVo">
+            /* exhibitManage.getApprovalExhibitList */
+            SELECT  EE.EV_EXHIBIT_ID
+                  , EE.EXHIBIT_TP
+                  , EE.MALL_DIV
+                  , EE.USE_YN
+                  , EE.DEL_YN
+                  , EE.TITLE
+                  , EE.DESCRIPTION
+                  /* [HGRM-8181] [골라담기승인] 상시 진행 골라담기, 증정행사화면의 시작일자, 종료일자 공백으로 노출됨, 2021-05-21 임상건 */
+                  , CASE WHEN EE.ALWAYS_YN = 'Y' THEN '상시진행' ELSE EE.START_DT END AS START_DT
+                  , CASE WHEN EE.ALWAYS_YN = 'Y' THEN '상시진행' ELSE EE.END_DT END AS END_DT
+                  /* [HGRM-8181] [골라담기승인] 상시 진행 골라담기, 증정행사화면의 시작일자, 종료일자 공백으로 노출됨, 2021-05-21 임상건 */
+                  , CASE WHEN EE.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+                         THEN CASE WHEN EE.ALWAYS_YN = 'Y' THEN 'ING'
+                                   ELSE CASE WHEN EE.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                             WHEN (EE.START_DT <![CDATA[<=]]> NOW() AND EE.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                             WHEN EE.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                             ELSE ''
+                                        END
+                              END
+                         ELSE CASE WHEN EE.APPR_STAT = 'APPR_STAT.APPROVED'
+                                   THEN CASE WHEN EE.ALWAYS_YN = 'Y' THEN 'ING'
+                                             ELSE CASE WHEN EE.START_DT <![CDATA[>]]> NOW()  THEN 'BEF'
+                                                       WHEN (EE.START_DT <![CDATA[<=]]> NOW() AND EE.END_DT <![CDATA[>=]]> NOW()) THEN 'ING'
+                                                       WHEN EE.END_DT <![CDATA[<]]> NOW()    THEN 'END'
+                                                       ELSE ''
+                                                  END
+                                        END
+                                   ELSE 'BEF'
+                              END
+                    END AS STATUS_SE
+                  , CASE WHEN EE.EXHIBIT_TP = 'EXHIBIT_TP.NORMAL'
+                         THEN CASE WHEN EE.ALWAYS_YN = 'Y' THEN '진행중'
+                                   ELSE CASE WHEN EE.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                             WHEN (EE.START_DT <![CDATA[<=]]> NOW() AND EE.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                             WHEN EE.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                             ELSE ''
+                                        END
+                              END
+                         ELSE CASE WHEN EE.APPR_STAT = 'APPR_STAT.APPROVED'
+                              THEN CASE WHEN EE.ALWAYS_YN = 'Y' THEN '진행중'
+                                        ELSE CASE WHEN EE.START_DT <![CDATA[>]]> NOW()  THEN '진행예정'
+                                                  WHEN (EE.START_DT <![CDATA[<=]]> NOW() AND EE.END_DT <![CDATA[>=]]> NOW()) THEN '진행중'
+                                                  WHEN EE.END_DT <![CDATA[<]]> NOW()    THEN '진행종료'
+                                                  ELSE ''
+                                              END
+                                    END
+                              ELSE '진행예정'
+                         END
+                    END AS STATUS_NAME
+                  , EE.EXHIBIT_STATUS
+                  , FN_COMN_CODE_DIC(EE.EXHIBIT_TP) AS EXHIBIT_TP_NAME
+                  , FN_COMN_CODE_DIC(EE.MALL_DIV) AS MALL_DIV_NAME
+                  , FN_COMN_CODE_DIC(EE.EXHIBIT_STATUS) AS EXHIBIT_STATUS_NAME
+                  , EE.APPR_STAT
+                  , FN_COMN_CODE_DIC(EE.APPR_STAT) AS APPR_STAT_NAME
+                  , REQUU.LOGIN_ID AS APPROVAL_REQUEST_USER_ID
+                  , FN_DECRYPT(REQUU.USER_NM) AS APPROVAL_REQUEST_USER_NAME
+                  , EE.APPR_REQ_DT AS APPROVAL_REQUEST_DT
+					, SUBUU.LOGIN_ID AS APPROVAL_SUB_USER_ID
+					, FN_DECRYPT(SUBUU.USER_NM) AS APPROVAL_SUB_USER_NAME
+					, SUBGUU.LOGIN_ID AS APPROVAL_SUB_GRANT_USER_ID
+					, FN_DECRYPT(SUBGUU.USER_NM) AS APPROVAL_SUB_GRANT_USER_NAME
+					, SUBCHG.LOGIN_ID AS APPROVAL_SUB_CHANGE_USER_ID
+					, FN_DECRYPT(SUBCHG.USER_NM) AS APPROVAL_SUB_CHANGE_USER_NAME
+					, EE.APPR_SUB_CHG_DT AS APPROVAL_SUB_CHANGE_DT
+					, APPRUU.LOGIN_ID AS APPROVAL_USER_ID
+					, FN_DECRYPT(APPRUU.USER_NM) AS APPROVAL_USER_NAME
+					, APPRGUU.LOGIN_ID AS APPROVAL_GRANT_USER_ID
+					, FN_DECRYPT(APPRGUU.USER_NM) AS APPROVAL_GRANT_USER_NAME
+					, CHGUU.LOGIN_ID AS APPROVAL_CHANGE_USER_ID
+					, FN_DECRYPT(CHGUU.USER_NM) AS APPROVAL_CHANGE_USER_NAME
+					, EE.APPR_CHG_DT AS APPROVAL_CHANGE_DT
+				, CASE
+					WHEN EE.APPR_STAT = 'APPR_STAT.DENIED' THEN IFNULL((
+						SELECT
+							STATUS_CMNT
+						FROM
+							EV_EXHIBIT_STATUS_HISTORY EESH
+						WHERE
+							EESH.EV_EXHIBIT_ID = EE.EV_EXHIBIT_ID
+							AND EESH.APPR_STAT = 'APPR_STAT.DENIED'
+						ORDER BY EESH.EV_EXHIBIT_STATUS_HISTORY_ID DESC
+						LIMIT 1
+					), '')
+					ELSE ''
+				END AS APPR_STAT_CMNT
+            FROM    EV_EXHIBIT EE
+	            LEFT OUTER  JOIN  UR_USER SUBUU
+	                        ON    EE.APPR_SUB_USER_ID = SUBUU.UR_USER_ID
+	            LEFT OUTER  JOIN  UR_EMPLOYEE SUBUE
+	                        ON    EE.APPR_SUB_USER_ID = SUBUE.UR_USER_ID
+				LEFT JOIN UR_EMPLOYEE SUBGUE
+					ON SUBUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND SUBUE.GRANT_AUTH_STOP_YN = 'N'
+					AND SUBUE.GRANT_AUTH_USER_ID = SUBGUE.UR_USER_ID
+					AND CURDATE() BETWEEN SUBUE.GRANT_AUTH_START_DT AND SUBUE.GRANT_AUTH_END_DT
+				LEFT JOIN UR_USER SUBGUU
+					ON SUBGUE.UR_USER_ID = SUBGUU.UR_USER_ID
+	            LEFT OUTER  JOIN  UR_USER SUBCHG
+	                        ON    EE.APPR_SUB_CHG_USER_ID = SUBCHG.UR_USER_ID
+	            LEFT OUTER  JOIN  UR_USER APPRUU
+	                        ON    EE.APPR_USER_ID = APPRUU.UR_USER_ID
+	            LEFT OUTER  JOIN  UR_EMPLOYEE APPRUE
+	                        ON    EE.APPR_USER_ID = APPRUE.UR_USER_ID
+				LEFT JOIN UR_EMPLOYEE APPRGUE
+					ON APPRUE.GRANT_AUTH_USER_ID IS NOT NULL
+					AND APPRUE.GRANT_AUTH_STOP_YN = 'N'
+					AND APPRUE.GRANT_AUTH_USER_ID = APPRGUE.UR_USER_ID
+					AND CURDATE() BETWEEN APPRUE.GRANT_AUTH_START_DT AND APPRUE.GRANT_AUTH_END_DT
+				LEFT JOIN UR_USER APPRGUU
+					ON APPRGUE.UR_USER_ID = APPRGUU.UR_USER_ID
+	            LEFT OUTER  JOIN  UR_USER CHGUU
+	                        ON    EE.APPR_CHG_USER_ID = CHGUU.UR_USER_ID
+	            LEFT OUTER  JOIN  UR_USER REQUU
+	                        ON    EE.APPR_REQ_USER_ID = REQUU.UR_USER_ID
+            WHERE   EE.EXHIBIT_TP = #{exhibitTp}
+              AND   EE.DEL_YN = 'N'
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchKeywordType)">
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchKeyword)">
+          <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchKeywordType, 'ID')">
+              AND   EE.EV_EXHIBIT_ID = #{searchKeyword}
+            </when>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchKeywordType, 'TITLE')">
+              AND   EE.TITLE LIKE CONCAT('%', IFNULL(#{searchKeyword}, ''), '%')
+            </when>
+          </choose>
+        </if>
+      </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(searchApprovalStatus,'ALL') and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprovalStatus)">
+              AND   EE.APPR_STAT IN <foreach item="data" index="index" collection="approvalStatusArray" open="(" separator="," close=")">
+                                      #{data}
+                                    </foreach>
+            </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUserType)">
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprReqUser)">
+          <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'ID')">
+              AND   REQUU.LOGIN_ID = #{searchApprReqUser}
+            </when>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprReqUserType,'NAME')">
+              AND   FN_DECRYPT(REQUU.USER_NM) = #{searchApprReqUser}
+            </when>
+          </choose>
+        </if>
+            </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUserType)">
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchApprChgUser)">
+          <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'ID')">
+              AND   (
+                    SUBUU.LOGIN_ID = #{searchApprChgUser}
+                    OR
+                    APPRUU.LOGIN_ID = #{searchApprChgUser}
+                    OR
+					SUBGUU.LOGIN_ID = #{searchApprChgUser}
+					OR
+					APPRGUU.LOGIN_ID = #{searchApprChgUser}
+                    )
+            </when>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchApprChgUserType,'NAME')">
+              AND   (
+                    FN_DECRYPT(SUBUU.USER_NM) = #{searchApprChgUser}
+                    OR
+                    FN_DECRYPT(APPRUU.USER_NM) = #{searchApprChgUser}
+                    OR
+					FN_DECRYPT(SUBGUU.USER_NM) = #{searchApprChgUser}
+	                OR
+					FN_DECRYPT(APPRGUU.USER_NM) = #{searchApprChgUser}
+                    )
+            </when>
+          </choose>
+        </if>
+      </if>
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqStartDate)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalReqEndDate)">
+              AND   EE.APPR_REQ_DT BETWEEN #{approvalReqStartDate} AND #{approvalReqEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+            </if>
+          </if>
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgStartDate)">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalChgEndDate)">
+              AND   (
+                    EE.APPR_SUB_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                    OR
+                    EE.APPR_CHG_DT BETWEEN #{approvalChgStartDate} AND #{approvalChgEndDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+                    )
+            </if>
+          </if>
+            ORDER BY EE.CREATE_DT DESC
+  </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+     * description    : 기획전 승인 요청철회
+     * @
+     * @ 수정일      수정자 수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.08   박승현 최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+  <update id="putCancelRequestApprovalExhibit">
+    /*  exhibitManage.putCancelRequestApprovalExhibit */
+    UPDATE  EV_EXHIBIT
+    SET     APPR_STAT             = #{apprStat}
+          , APPR_SUB_USER_ID      = NULL
+          , APPR_SUB_CHG_USER_ID  = NULL
+          , APPR_SUB_CHG_DT       = NULL
+          , APPR_USER_ID          = NULL
+          , APPR_CHG_USER_ID      = NULL
+          , APPR_CHG_DT           = NULL
+          , MODIFY_DT             = SYSDATE()
+          , MODIFY_ID             = #{userVo.userId}
+    WHERE   EV_EXHIBIT_ID         = #{taskPk}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+     * description    : 기획전 승인처리
+     * @
+     * @ 수정일      수정자 수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.08   박승현 최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+  <update id="putApprovalProcessExhibit">
+    /*  exhibitManage.putApprovalProcessExhibit */
+    UPDATE  EV_EXHIBIT
+    SET     APPR_STAT             = #{apprStat}
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.SUB_APPROVED')">
+          , APPR_SUB_CHG_DT       = SYSDATE()
+          , APPR_SUB_CHG_USER_ID  = #{userVo.userId}
+        </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(apprStep,'APPR_STAT.APPROVED')">
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+          , EXHIBIT_STATUS        = #{masterStat}
+        </if>
+          , APPR_CHG_DT           = SYSDATE()
+          , APPR_CHG_USER_ID      = #{userVo.userId}
+      </if>
+          , MODIFY_DT             = SYSDATE()
+          , MODIFY_ID             = #{userVo.userId}
+    WHERE   EV_EXHIBIT_ID         = #{taskPk}
+  </update>
+
+  <!--───────────────────────────────────────────────────────────────────────
+     * description    : 기획전 상태이력 등록
+     * @
+     * @ 수정일      수정자 수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.08   박승현 최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+  <insert id="addExhibitStatusHistory">
+    /*  exhibitManage.addExhibitStatusHistory */
+    INSERT INTO EV_EXHIBIT_STATUS_HISTORY
+    (
+      EV_EXHIBIT_ID
+      <!-- , STATUS -->
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+      , STATUS_CMNT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+      , PREV_EXHIBIT_STAT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+      , PREV_APPR_STAT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+      , EXHIBIT_STAT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+      , APPR_STAT
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+      , APPR_SUB_USER_ID
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+      , APPR_USER_ID
+      </if>
+      , CREATE_DT
+      , CREATE_ID
+    )
+    VALUES
+    (
+      #{taskPk}
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(statusComment)">
+      ,#{statusComment}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevMasterStat)">
+      ,#{prevMasterStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(prevApprStat)">
+      ,#{prevApprStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(masterStat)">
+      ,#{masterStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprStat)">
+      ,#{apprStat}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSubUserId)">
+      ,#{apprSubUserId}
+      </if>
+      <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprUserId)">
+      ,#{apprUserId}
+      </if>
+      ,SYSDATE()
+      ,#{userVo.userId}
+    )
+  </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 기획전 - 승인 폐기
+     * @
+     * @ 수정일			수정자	수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.07.06 	원종한	최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putDisposalApprovalExhibit">
+		/*  exhibitManage.putDisposalApprovalExhibit */
+		UPDATE EV_EXHIBIT
+		SET
+			APPR_STAT = #{apprStat}
+			, DEL_YN = 'Y'
+			, MODIFY_DT = NOW()
+			, MODIFY_ID = #{userVo.userId}
+		WHERE EV_EXHIBIT_ID = #{taskPk}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 기획전 - 승인 요청
+     * @
+     * @ 수정일      수정자 수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.16   이원호 최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <update id="putApprovalRequestExhibit">
+        /*  exhibitManage.putApprovalRequestExhibit */
+        UPDATE  EV_EXHIBIT
+        SET     EXHIBIT_STATUS        = #{exhibitStatus}
+              , APPR_STAT             = #{approvalStatus}
+              , APPR_REQ_USER_ID      = #{modifyId}
+              , APPR_REQ_DT           = SYSDATE()
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(approvalSubUserId)">
+              , APPR_SUB_USER_ID      = #{approvalSubUserId}
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(approvalSubUserId)">
+              , APPR_SUB_USER_ID      = NULL
+            </if>
+              , APPR_SUB_CHG_USER_ID  = NULL
+              , APPR_SUB_CHG_DT       = NULL
+              , APPR_USER_ID          = #{approvalUserId}
+              , APPR_CHG_USER_ID      = NULL
+              , APPR_CHG_DT           = NULL
+              , MODIFY_DT             = SYSDATE()
+              , MODIFY_ID             = #{modifyId}
+        WHERE   EV_EXHIBIT_ID         = #{evExhibitId}
+    </update>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 기획전 승인담당자 정보 조회
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.17   이원호    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getApprovalUserInfo" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ApprovalUserVo">
+        /* exhibitManage.getApprovalUserInfo */
+        SELECT  UU.UR_USER_ID
+              , FN_COMN_CODE_DIC(UC.COMP_TP) AS ADMIN_TYPE_NAME
+              , FN_DECRYPT(UU.USER_NM) AS APPROVAL_USER_NAME
+              , UU.LOGIN_ID AS APPROVAL_LOGIN_ID
+              , (CASE WHEN UC.COMP_TP = 'COMPANY_TYPE.CLIENT' THEN UC.COMP_NM ELSE UE.ORGANIZATION_NM END) AS ORGANIZATION_NAME
+              , UE.TEAM_LEADER_YN
+              , FN_COMN_CODE_DIC(UE.STATUS_TP) AS USER_STATUS_NAME
+              , IFNULL(GUU.LOGIN_ID,"") AS GRANT_LOGIN_ID
+              , FN_DECRYPT(GUU.USER_NM) AS GRANT_USER_NAME
+              , UE.GRANT_AUTH_START_DT
+              , UE.GRANT_AUTH_END_DT
+              , FN_COMN_CODE_DIC(GUE.STATUS_TP) AS GRANT_USER_STATUS_NAME
+        FROM    UR_USER UU
+                    LEFT OUTER JOIN UR_EMPLOYEE UE  ON UU.UR_USER_ID          = UE.UR_USER_ID
+                    LEFT OUTER JOIN UR_COMPANY UC   ON UC.UR_COMPANY_ID       = UE.UR_COMPANY_ID
+                    LEFT OUTER JOIN UR_USER GUU     ON UE.GRANT_AUTH_USER_ID  = GUU.UR_USER_ID
+                    LEFT OUTER JOIN UR_EMPLOYEE GUE ON UE.GRANT_AUTH_USER_ID  = GUE.UR_USER_ID
+        WHERE   UU.UR_USER_ID = #{urUserId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description    : 골라담기 최대할인율을 구하기위한 쿼리
+     * @
+     * @ 수정일       수정자    수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.12.17   최용호    최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getExhibitSelectGoodsListForMaxRate" resultType="kr.co.pulmuone.v1.promotion.manage.dto.vo.ExhibitSelectVo">
+        /* exhibitManage.getExhibitSelectGoodsListForMaxRate */
+        SELECT
+            IFNULL(AA.GOODS_BUY_LIMIT_CNT, 0) AS GOODS_BUY_LIMIT_CNT
+            , IFNULL(AA.DEFAULT_BUY_CNT, 0) AS DEFAULT_BUY_CNT
+            , AA.SELECT_PRICE
+            , AA.IL_GOODS_ID
+            , BB.RECOMMENDED_PRICE
+        FROM (
+            SELECT
+                A.GOODS_BUY_LIMIT_CNT
+                , A.DEFAULT_BUY_CNT
+                , A.SELECT_PRICE
+                , B.IL_GOODS_ID
+            FROM
+                EV_EXHIBIT_SELECT A
+                INNER JOIN EV_EXHIBIT_SELECT_GOODS B ON (A.EV_EXHIBIT_ID = B.EV_EXHIBIT_ID)
+            WHERE
+                A.EV_EXHIBIT_ID = #{evExhibitId}
+            UNION ALL
+            SELECT
+                A.GOODS_BUY_LIMIT_CNT
+                , A.DEFAULT_BUY_CNT
+                , A.SELECT_PRICE
+                , A.IL_GOODS_ID
+            FROM
+                EV_EXHIBIT_SELECT A
+            WHERE
+                A.EV_EXHIBIT_ID = #{evExhibitId}
+        ) AA
+        INNER JOIN IL_GOODS_PRICE BB ON (BB.IL_GOODS_ID = AA.IL_GOODS_ID AND BB.USE_YN = 'Y' AND BB.PRICE_START_DT <![CDATA[<=]]> NOW() AND BB.PRICE_END_DT <![CDATA[>=]]> NOW())
+        ORDER BY BB.RECOMMENDED_PRICE DESC
+    </select>
+
+</mapper>

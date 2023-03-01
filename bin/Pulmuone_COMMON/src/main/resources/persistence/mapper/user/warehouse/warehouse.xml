@@ -1,0 +1,637 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.warehouse.WarehouseMapper">
+
+	<resultMap id="getWarehouseListResultMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseResultVo">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="WAREHOUSE_GROUP_CD"  property="warehouseGroupCd"/>
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="COMPANY_NM"  property="companyName"/>
+		<result column="STORE_YN"  property="storeYn"/>
+		<result column="CUTOFF_TIME"  property="cutoffTime"/>
+		<result column="CLIENT_NAME"  property="clientName"/>
+		<result column="CREATE_DATE"  property="createDate"/>
+		<result column="SUPPLIER_COMPANY"  property="supplierCompany"/>
+		<result column="PS_SHIPPING_PATTERN_ID"  property="psShippingPatternId"/>
+		<result column="DAWN_DLVRY_PS_SHIPPING_PATTERN_ID"  property="dawnDeliveryPatternId"/>
+		<result column="SHIPPING_PATTERN_TITLE"  property="deliveryPatternName"/>
+		<result column="SHIPPING_TEMPLATE_CNT"  property="shippingTemplateCnt"/>
+	</resultMap>
+
+	<select id="getWarehouseList" resultMap="getWarehouseListResultMap">
+	/* warehouse.getWarehouseList */
+		SELECT  A.*
+		FROM(
+				SELECT DISTINCT UW.UR_WAREHOUSE_ID
+					  ,UW.WAREHOUSE_GRP_CD
+					  ,FN_COMN_CODE_DIC(UW.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+					  ,UW.WAREHOUSE_NM
+					  ,UW.COMPANY_NM
+					  ,UW.STORE_YN
+					  ,TIME_FORMAT(CUTOFF_TIME , "%H:%i") AS CUTOFF_TIME
+					  ,UW.CREATE_DT AS CREATE_DATE
+					  ,CASE WHEN (SELECT COUNT(*)CNT FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID ) = 1 THEN
+						   			(
+						   				SELECT UC.COMP_NM
+										FROM UR_SUPPLIER_WAREHOUSE USW
+										INNER JOIN UR_SUPPLIER US
+										ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+										INNER JOIN UR_COMPANY UC
+								        ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+										WHERE USW.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+										LIMIT 1
+						   			)
+					    ELSE CONCAT((SELECT UC.COMP_NM
+									   FROM UR_SUPPLIER_WAREHOUSE USW
+									   INNER JOIN UR_SUPPLIER US
+									   ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+									   INNER JOIN UR_COMPANY UC
+								       ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+									   WHERE USW.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID
+									   LIMIT 1),' 외',
+					         		(SELECT COUNT(*)CNT  FROM UR_SUPPLIER_WAREHOUSE USW WHERE USW.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID )-1 ,'건')
+					    END AS SUPPLIER_COMPANY
+					  , UW.PS_SHIPPING_PATTERN_ID
+					  , UW.DAWN_DLVRY_PS_SHIPPING_PATTERN_ID
+					  , (SELECT TITLE FROM PS_SHIPPING_PATTERN PSP WHERE PSP.PS_SHIPPING_PATTERN_ID = UW.PS_SHIPPING_PATTERN_ID ) AS SHIPPING_PATTERN_TITLE
+					  , (SELECT COUNT(*) FROM IL_SHIPPING_WAREHOUSE ISW WHERE ISW.UR_WAREHOUSE_ID = UW.UR_WAREHOUSE_ID ) AS SHIPPING_TEMPLATE_CNT
+					  , UW.CREATE_DT
+				FROM  UR_WAREHOUSE UW
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplier)">
+				INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+				ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+				AND USW.UR_SUPPLIER_ID = #{supplier}
+				</if>
+				WHERE 1=1
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+					AND UW.WAREHOUSE_NM LIKE CONCAT(#{warehouseName},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+					AND UW.WAREHOUSE_GRP_CD = #{warehouseGroup}
+				</if>
+			)A
+			ORDER BY CREATE_DT DESC
+	</select>
+
+
+
+
+	<resultMap id="getWarehouseMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseResultVo">
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="CREATE_INFO"  property="createInfo"/>
+		<result column="MODIFY_INFO"  property="modifyInfo"/>
+		<result column="WAREHOUSE_NM"  property="inputWarehouseName"/>
+		<result column="COMPANY_NM"  property="inputCompanyName"/>
+		<result column="WAREHOUSE_GRP_CD"  property="warehouseGroupCode"/>
+		<result column="HTML_PATH"  property="stockOrderYn"/>
+		<result column="STOCK_ORDER_YN"  property="stockOrderYn"/>
+		<result column="STLMN_YN"  property="stlmnYn"/>
+		<result column="LIMIT_CNT"  property="limitCount"/>
+		<result column="STORE_YN"  property="storeYn"/>
+		<result column="HLDY_GRP_USE_YN"  property="holidayGroupYn"/>
+		<result column="HLDY_GRP_ID"  property="holidayGroup"/>
+		<result column="HOUR"  property="hour"/>
+		<result column="MINUTE"  property="minute"/>
+		<result column="DAWN_DLVRY_YN"  property="dawnDlvryYn"/>
+		<result column="DAWN_DLVRY_HLDY_GRP_USE_YN"  property="dawnDlvryHldyGroupYn"/>
+		<result column="DAWN_DLVRY_HLDY_GRP_ID"  property="dawnDlvryHolidayGroup"/>
+		<result column="DAWN_HOUR"  property="dawnHour"/>
+		<result column="DAWN_MINUTE"  property="dawnMinute"/>
+		<result column="DAWN_LIMIT_CNT"  property="dawnLimitCnt"/>
+		<result column="ZIP_CD"  property="receiverZipCode"/>
+		<result column="ADDRESS1"  property="receiverAddress1"/>
+		<result column="ADDRESS2"  property="receiverAddress2"/>
+		<result column="PS_SHIPPING_PATTERN_ID"  property="deliveryPatternId"/>
+		<result column="DELIVERY_PATTERN_NAME"  property="deliveryPatternName"/>
+		<result column="DAWN_DLVRY_PS_SHIPPING_PATTERN_ID"  property="dawnDeliveryPatternId"/>
+		<result column="DAWN_DELIVERY_PATTERN_NAME"  property="dawnDeliveryPatternName"/>
+		<result column="ORDER_CHANGE_TP"  property="orderChangeType"/>
+		<result column="ORDER_STATUS_ALAM_YN"  property="orderStatusAlamYn"/>
+		<result column="ORDER_STATUS_ALAM_MAIL"  property="warehouseMail"/>
+		<result column="WAREHOUSE_TELEPHONE1"  property="warehouseTelephone1"/>
+		<result column="WAREHOUSE_TELEPHONE2"  property="warehouseTelephone2"/>
+		<result column="WAREHOUSE_TELEPHONE3"  property="warehouseTelephone3"/>
+		<result column="STORE_SHIPPING_PATTERN_ID"  property="storeShippingPatternId"/>
+		<result column="STORE_PATTERN_NAME"  property="storePatternName"/>
+		<result column="STORE_HOUR"  property="storeHour"/>
+		<result column="STORE_MINUTE"  property="storeMinute"/>
+		<result column="STORE_LIMIT_CNT"  property="storeLimitCnt"/>
+		<result column="UNDELIVERABLE_AREA_TP"  property="undeliverableAreaTp"/>
+		<result column="UNDELIVERABLE_AREA_TP_GRP"  property="undeliverableAreaTpGrp"/>
+		<result column="DAWN_UNDELIVERABLE_AREA_TP"  property="dawnUndeliverableAreaTp"/>
+		<result column="DAWN_UNDELIVERABLE_AREA_TP_GRP"  property="dawnUndeliverableAreaTpGrp"/>
+		<result column="WAREHOUSE_MEMO"  property="warehouseMemo"/>
+	</resultMap>
+	<select id="getWarehouse" resultMap="getWarehouseMap">
+	/* warehouse.getWarehouse */
+		SELECT A.UR_WAREHOUSE_ID
+			   , CONCAT('등록일:',A.CREATE_DT, FN_DECRYPT((SELECT UU.USER_NM FROM UR_USER UU WHERE UU.UR_USER_ID  = A.CREATE_ID )), '(', A.CREATE_ID ,')') AS CREATE_INFO
+		       , CONCAT('최근수정일:',A.MODIFY_DT, FN_DECRYPT((SELECT UU.USER_NM FROM UR_USER UU WHERE UU.UR_USER_ID  = A.MODIFY_ID )), '(', A.MODIFY_ID ,')') AS MODIFY_INFO
+			   , A.WAREHOUSE_NM
+			   , A.COMPANY_NM
+			   , A.WAREHOUSE_GRP_CD
+			   , FN_COMN_CODE_DIC(A.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_CODE_NAME
+			   , A.STLMN_YN
+			   , A.STOCK_ORDER_YN
+			   , A.LIMIT_CNT
+			   , A.STORE_YN
+			   , A.HLDY_GRP_USE_YN
+		       , A.HLDY_GRP_ID
+			   , SUBSTRING_INDEX(A.CUTOFF_TIME, ':', 1) AS HOUR
+			   , SUBSTRING_INDEX(SUBSTRING_INDEX(A.CUTOFF_TIME, ':', 2), ':', -1) AS MINUTE
+			   , A.DAWN_DLVRY_YN
+			   , A.DAWN_DLVRY_HLDY_GRP_USE_YN
+			   , A.DAWN_DLVRY_HLDY_GRP_ID
+			   , A.DAWN_LIMIT_CNT
+			   , SUBSTRING_INDEX(A.DAWN_DLVRY_HLDY_CUTOFF_TIME, ':', 1) AS DAWN_HOUR
+			   , SUBSTRING_INDEX(SUBSTRING_INDEX(A.DAWN_DLVRY_HLDY_CUTOFF_TIME, ':', 2), ':', -1) AS DAWN_MINUTE
+			   , A.ZIP_CD
+			   , A.ADDRESS1
+			   , A.ADDRESS2
+		       , A.PS_SHIPPING_PATTERN_ID
+		       , (SELECT PSP.TITLE FROM PS_SHIPPING_PATTERN PSP WHERE PSP.PS_SHIPPING_PATTERN_ID =A.PS_SHIPPING_PATTERN_ID ) AS DELIVERY_PATTERN_NAME
+		       , A.DAWN_DLVRY_PS_SHIPPING_PATTERN_ID
+		       , (SELECT PSP.TITLE FROM PS_SHIPPING_PATTERN PSP WHERE PSP.PS_SHIPPING_PATTERN_ID =A.DAWN_DLVRY_PS_SHIPPING_PATTERN_ID ) AS DAWN_DELIVERY_PATTERN_NAME
+		       , A.ORDER_CHANGE_TP
+		       , A.ORDER_STATUS_ALAM_YN
+		       , A.ORDER_STATUS_ALAM_MAIL
+		       , SUBSTRING_INDEX(A.WAREHOUSE_TEL, '-', 1) AS WAREHOUSE_TELEPHONE1
+			   , SUBSTRING_INDEX(SUBSTRING_INDEX(A.WAREHOUSE_TEL, '-', 2), '-', -1) AS WAREHOUSE_TELEPHONE2
+			   , SUBSTRING_INDEX(A.WAREHOUSE_TEL, '-', -1) AS WAREHOUSE_TELEPHONE3
+			   , A.STORE_LIMIT_CNT
+			   , A.STORE_SHIPPING_PATTERN_ID
+			   , (SELECT PSP.TITLE FROM PS_SHIPPING_PATTERN PSP WHERE PSP.PS_SHIPPING_PATTERN_ID =A.STORE_SHIPPING_PATTERN_ID ) AS STORE_PATTERN_NAME
+			   , SUBSTRING_INDEX(A.STORE_CUTOFF_TIME, ':', 1) AS STORE_HOUR
+			   , SUBSTRING_INDEX(SUBSTRING_INDEX(A.STORE_CUTOFF_TIME, ':', 2), ':', -1) AS STORE_MINUTE
+		       , A.UNDELIVERABLE_AREA_TP
+		       , A.UNDELIVERABLE_AREA_TP_GRP
+		       , A.DAWN_UNDELIVERABLE_AREA_TP
+		       , A.DAWN_UNDELIVERABLE_AREA_TP_GRP
+			   , IFNULL(A.MEMO, '') AS WAREHOUSE_MEMO
+		FROM UR_WAREHOUSE A
+		WHERE 1=1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+				AND A.UR_WAREHOUSE_ID = #{urWarehouseId}
+			</if>
+	</select>
+
+
+	<resultMap id="getSupplierListMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseResultVo">
+		<result column="UR_SUPPLIER_WAREHOUSE_ID"  property="urSupplierWarehouseId"/>
+		<result column="UR_WAREHOUSE_ID"  property="urWarehouseId"/>
+		<result column="COMP_NM"  property="supplierName"/>
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId"/>
+		<result column="SUPPLIER_YN"  property="supplierYn"/>
+	</resultMap>
+
+	<select id="getSupplierList" resultMap="getSupplierListMap">
+	 /* warehouse.getSupplierList */
+		SELECT B.UR_SUPPLIER_WAREHOUSE_ID
+		      ,B.UR_WAREHOUSE_ID
+		      ,D.COMP_NM
+		      ,B.UR_SUPPLIER_ID
+		      <!-- ,CASE WHEN (SELECT COUNT(*) FROM IL_ITEM WHERE UR_SUPPLIER_ID = C.UR_SUPPLIER_ID ) > 0 THEN 'Y'
+		            ELSE 'N'
+		       END AS SUPPLIER_YN -->
+		       ,CASE WHEN (SELECT COUNT(*) FROM IL_ITEM_WAREHOUSE WHERE UR_SUPPLIER_WAREHOUSE_ID = B.UR_SUPPLIER_WAREHOUSE_ID ) >0 THEN 'Y'
+		           ELSE 'N'
+		       END AS SUPPLIER_YN
+		FROM UR_WAREHOUSE A
+		INNER JOIN UR_SUPPLIER_WAREHOUSE B
+		INNER JOIN UR_SUPPLIER C
+		INNER JOIN UR_COMPANY D
+		WHERE A.UR_WAREHOUSE_ID = B.UR_WAREHOUSE_ID
+		AND B.UR_SUPPLIER_ID = C.UR_SUPPLIER_ID
+		AND C.UR_COMPANY_ID = D.UR_COMPANY_ID
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+			AND A.UR_WAREHOUSE_ID = #{urWarehouseId}
+		</if>
+	</select>
+
+
+
+
+	<resultMap id="getWarehouseTemplateInfoMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseResultVo">
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="WAREHOUSE_GROUP_NAME"  property="warehouseGroupName"/>
+	</resultMap>
+
+	<select id="getWarehouseTemplateInfo" resultMap="getWarehouseTemplateInfoMap">
+	 /* warehouse.getWarehouseTemplateInfo */
+		SELECT A.WAREHOUSE_NM
+		     , FN_COMN_CODE_DIC(A.WAREHOUSE_GRP_CD) AS WAREHOUSE_GROUP_NAME
+		  FROM UR_WAREHOUSE A
+         WHERE UR_WAREHOUSE_ID = #{urWarehouseId}
+	</select>
+
+
+	<resultMap id="getShippingTemplateListMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.ShippingTemplateVo">
+		<result column="NAME"  property="shippingTemplateName"/>
+		<result column="BASIC"  property="basicYnCheck"/>
+	</resultMap>
+
+	<select id="getShippingTemplateList" resultMap="getShippingTemplateListMap">
+	 /* warehouse.getShippingTemplateList */
+		SELECT A.NAME,
+         		CASE WHEN B.BASIC_YN = 'Y'
+                     THEN 'true'
+                     ELSE 'false'
+                END AS BASIC
+         FROM IL_SHIPPING_TEMPLATE A
+         JOIN IL_SHIPPING_WAREHOUSE B
+           ON A.IL_SHIPPING_TMPL_ID = B.IL_SHIPPING_TMPL_ID
+         WHERE A.DEL_YN = 'N'
+         AND B.UR_WAREHOUSE_ID = #{urWarehouseId}
+	</select>
+
+
+	<insert id="addWarehouse">
+	/* warehouse.addWarehouse */
+		INSERT INTO UR_WAREHOUSE
+		(
+			WAREHOUSE_GRP_CD
+			,WAREHOUSE_NM
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone1)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone2)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone3)">
+						,WAREHOUSE_TEL
+					</if>
+				</if>
+			</if>
+			,COMPANY_NM
+			,STOCK_ORDER_YN
+			,STLMN_YN
+			,ORDER_CHANGE_TP
+			,ORDER_STATUS_ALAM_YN
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseMail)">
+			,ORDER_STATUS_ALAM_MAIL
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(limitCount)">
+			,LIMIT_CNT
+			</if>
+			,HLDY_GRP_USE_YN
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(holidayGroup)">
+			,HLDY_GRP_ID
+			</if>
+			,CUTOFF_TIME
+			,DAWN_DLVRY_YN
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDlvryHldyGroupYn)">
+			,DAWN_DLVRY_HLDY_GRP_USE_YN
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDlvryHolidayGroup)">
+			,DAWN_DLVRY_HLDY_GRP_ID
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnHour)">
+			,DAWN_DLVRY_HLDY_CUTOFF_TIME
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnLimitCnt)">
+			,DAWN_LIMIT_CNT
+			</if>
+			,STORE_YN
+			,ZIP_CD
+			,ADDRESS1
+			,ADDRESS2
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryPatternId)">
+			,PS_SHIPPING_PATTERN_ID
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDeliveryPatternId)">
+			,DAWN_DLVRY_PS_SHIPPING_PATTERN_ID
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeLimitCnt)">
+			,STORE_LIMIT_CNT
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeShippingPatternId)">
+			,STORE_SHIPPING_PATTERN_ID
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeHour)">
+			,STORE_CUTOFF_TIME
+			</if>
+			,UNDELIVERABLE_AREA_TP
+			,DAWN_UNDELIVERABLE_AREA_TP
+			,UNDELIVERABLE_AREA_TP_GRP
+			,DAWN_UNDELIVERABLE_AREA_TP_GRP
+			,CREATE_DT
+			,CREATE_ID
+			,MEMO
+		)
+		VALUES
+		(
+			#{warehouseGroupCode}
+			,#{inputWarehouseName}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone1)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone2)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone3)">
+						,CONCAT(#{warehouseTelephone1},'-',#{warehouseTelephone2},'-',#{warehouseTelephone3})
+					</if>
+				</if>
+			</if>
+			,#{inputCompanyName}
+			,#{stockOrderYn}
+			,#{stlmnYn}
+			,#{orderChangeType}
+			,#{orderStatusAlamYn}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseMail)">
+				,#{warehouseMail}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(limitCount)">
+			,#{limitCount}
+			</if>
+			,#{holidayGroupYn}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(holidayGroup)">
+			,#{holidayGroup}
+			</if>
+			,CONCAT(#{hour},':',#{minute})
+			,#{dawnDlvryYn}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDlvryHldyGroupYn)">
+			,#{dawnDlvryHldyGroupYn}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDlvryHolidayGroup)">
+			,#{dawnDlvryHolidayGroup}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnHour)">
+			,CONCAT(#{dawnHour},':',#{dawnMinute})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnLimitCnt)">
+			,#{dawnLimitCnt}
+			</if>
+			,#{storeYn}
+			,#{receiverZipCode}
+			,#{receiverAddress1}
+			,#{receiverAddress2}
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryPatternId)">
+			,#{deliveryPatternId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDeliveryPatternId)">
+			,#{dawnDeliveryPatternId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeLimitCnt)">
+			,#{storeLimitCnt}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeShippingPatternId)">
+			,#{storeShippingPatternId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeHour)">
+			,CONCAT(#{storeHour},':',#{storeMinute})
+			</if>
+			,#{undeliverableAreaTp}
+			,#{dawnUndeliverableAreaTp}
+			,#{undeliverableAreaTpGrp}
+			,#{dawnUndeliverableAreaTpGrp}
+			,SYSDATE()
+			,#{userVo.userId}
+			,#{warehouseMemo}
+		)
+
+		<selectKey resultType="String" keyProperty="urWarehouseId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<insert id="addSupplierWarehouse">
+	/* warehouse.addSupplierWarehouse */
+		INSERT INTO UR_SUPPLIER_WAREHOUSE
+		(
+			UR_SUPPLIER_ID
+			,UR_WAREHOUSE_ID
+			,CREATE_DT
+			,CREATE_ID
+		)
+		VALUES
+		(
+			#{supplierCompany}
+			,#{urWarehouseId}
+			,SYSDATE()
+			,#{userVo.userId}
+		)
+
+	</insert>
+
+
+	<update id="putWarehouse">
+	/* warehouse.putWarehouse */
+		UPDATE 	UR_WAREHOUSE
+		SET		WAREHOUSE_GRP_CD		= #{warehouseGroupCode}
+				,WAREHOUSE_NM			= #{inputWarehouseName}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone1)">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone2)">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseTelephone3)">
+							,WAREHOUSE_TEL	= CONCAT(#{warehouseTelephone1},'-',#{warehouseTelephone2},'-',#{warehouseTelephone3})
+						</if>
+					</if>
+				</if>
+				,COMPANY_NM				= #{inputCompanyName}
+				,STOCK_ORDER_YN			= #{stockOrderYn}
+				,STLMN_YN				= #{stlmnYn}
+				,ORDER_CHANGE_TP		= #{orderChangeType}
+				,ORDER_STATUS_ALAM_YN	= #{orderStatusAlamYn}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseMail)">
+					,ORDER_STATUS_ALAM_MAIL = #{warehouseMail}
+				</if>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(limitCount)">
+						,LIMIT_CNT				= NULL
+					</when>
+					<otherwise>
+						,LIMIT_CNT				= #{limitCount}
+					</otherwise>
+				</choose>
+				,HLDY_GRP_USE_YN		= #{holidayGroupYn}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(holidayGroup)">
+				,HLDY_GRP_ID			= #{holidayGroup}
+				</if>
+				,CUTOFF_TIME			= CONCAT(#{hour},':',#{minute})
+				,DAWN_DLVRY_YN			= #{dawnDlvryYn}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDlvryHldyGroupYn)">
+				,DAWN_DLVRY_HLDY_GRP_USE_YN	= #{dawnDlvryHldyGroupYn}
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dawnDlvryHolidayGroup)">
+				,DAWN_DLVRY_HLDY_GRP_ID		= #{dawnDlvryHolidayGroup}
+				</if>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dawnDlvryYn,'Y')">
+						,DAWN_DLVRY_HLDY_CUTOFF_TIME	= CONCAT(#{dawnHour},':',#{dawnMinute})
+						,DAWN_DLVRY_PS_SHIPPING_PATTERN_ID = #{dawnDeliveryPatternId}
+					</when>
+					<otherwise>
+						,DAWN_DLVRY_HLDY_CUTOFF_TIME	= NULL
+						,DAWN_DLVRY_PS_SHIPPING_PATTERN_ID = NULL
+					</otherwise>
+				</choose>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(dawnLimitCnt)">
+						,DAWN_LIMIT_CNT				= NULL
+					</when>
+					<otherwise>
+						,DAWN_LIMIT_CNT				= #{dawnLimitCnt}
+					</otherwise>
+				</choose>
+				,STORE_YN				= #{storeYn}
+				,ZIP_CD					= #{receiverZipCode}
+				,ADDRESS1				= #{receiverAddress1}
+				,ADDRESS2				= #{receiverAddress2}
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(deliveryPatternId)">
+				,PS_SHIPPING_PATTERN_ID = #{deliveryPatternId}
+				</if>
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(storeYn,'Y')">
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeLimitCnt)">
+							,STORE_LIMIT_CNT        = #{storeLimitCnt}
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeShippingPatternId)">
+							,STORE_SHIPPING_PATTERN_ID  = #{storeShippingPatternId}
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(storeHour)">
+							,STORE_CUTOFF_TIME          = CONCAT(#{storeHour},':',#{storeMinute})
+						</if>
+					</when>
+					<otherwise>
+						,STORE_LIMIT_CNT        	= NULL
+						,STORE_SHIPPING_PATTERN_ID  = NULL
+						,STORE_CUTOFF_TIME          = NULL
+					</otherwise>
+				</choose>
+				,UNDELIVERABLE_AREA_TP  = #{undeliverableAreaTp}
+				,DAWN_UNDELIVERABLE_AREA_TP  = #{dawnUndeliverableAreaTp}
+				,UNDELIVERABLE_AREA_TP_GRP  = #{undeliverableAreaTpGrp}
+				,DAWN_UNDELIVERABLE_AREA_TP_GRP  = #{dawnUndeliverableAreaTpGrp}
+				,MODIFY_DT				= SYSDATE()
+				,MODIFY_ID				= #{userVo.userId}
+				,MEMO					= #{warehouseMemo}
+		WHERE  	UR_WAREHOUSE_ID    = #{urWarehouseId}
+	</update>
+
+	<delete id="delSupplierWarehouse">
+	/* warehouse.delSupplierWarehouse */
+		DELETE
+		FROM 	UR_SUPPLIER_WAREHOUSE
+		WHERE  	UR_SUPPLIER_WAREHOUSE_ID = #{deleteSupplierCompany}
+	</delete>
+
+<!--───────────────────────────────────────────────────────────────────────
+ * description 		:  출고처 업체명 중복 확인
+ * @
+ * @ 수정일			 수정자          수정내용
+ * @ ──────────────────────────────────────────────────────────────────────
+ * @ 2021.05.17      안치열         최초생성
+ * @
+────────────────────────────────────────────────────────────────────────-->
+	<select id="getDuplicateCompanyName" resultType="int">
+
+		/*	warehouse.getDuplicateCompanyName */
+
+		SELECT COUNT(*)
+		FROM UR_WAREHOUSE
+		WHERE REPLACE(COMPANY_NM,' ','') = REPLACE(#{inputCompanyName},' ','')
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urWarehouseId)">
+		AND UR_WAREHOUSE_ID <![CDATA[<>]]> #{urWarehouseId}
+		</if>
+
+
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  출고처 업체명(약관) 조회 - 약관
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.02      이원호         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getWarehouseCompanyName" resultType="string">
+		/*	warehouse.getWarehouseCompanyName */
+		SELECT COMPANY_NM
+		FROM UR_WAREHOUSE UW
+		WHERE COMPANY_NM IS NOT NULL
+			AND COMPANY_NM != ""
+			AND WAREHOUSE_GRP_CD = 'WAREHOUSE_GROUP.ACCOUNT_Orga'
+		GROUP BY COMPANY_NM
+		ORDER BY CREATE_DT DESC
+	</select>
+
+	<resultMap id="getWarehouseExcelMap" type="kr.co.pulmuone.v1.user.warehouse.dto.vo.WarehouseResultVo">
+		<result column="WAREHOUSE_NM"  property="warehouseName"/>
+		<result column="WAREHOUSE_GRP_CD_NM"  property="warehouseGroupName"/>
+		<result column="COMPANY_NM"  property="companyName"/>
+		<result column="WAREHOUSE_TELEPHONE1"  property="warehouseTelephone1"/>
+		<result column="WAREHOUSE_TELEPHONE2"  property="warehouseTelephone2"/>
+		<result column="WAREHOUSE_TELEPHONE3"  property="warehouseTelephone3"/>
+		<result column="WAREHOUSE_MEMO"  property="warehouseMemo"/>
+		<result column="STOCK_ORDER_YN"  property="stockOrderYn"/>
+		<result column="STLMN_YN"  property="stlmnYn"/>
+		<result column="ORDER_CHANGE_TP"  property="orderChangeType"/>
+		<result column="LIMIT_CNT"  property="limitCount"/>
+		<result column="DELIVERY_PATTERN_NM"  property="deliveryPatternName"/>
+		<result column="HOUR"  property="hour"/>
+		<result column="MINUTE"  property="minute"/>
+		<result column="UNDELIVERABLE_AREA_TP_GRP"  property="undeliverableAreaTpGrp"/>
+		<result column="DAWN_DLVRY_YN"  property="dawnDlvryYn"/>
+		<result column="DAWN_LIMIT_CNT"  property="dawnLimitCnt"/>
+		<result column="DAWN_DELIVERY_PATTERN_NM"  property="dawnDeliveryPatternName"/>
+		<result column="DAWN_UNDELIVERABLE_AREA_TP_GRP"  property="dawnUndeliverableAreaTpGrp"/>
+		<result column="DAWN_HOUR"  property="dawnHour"/>
+		<result column="DAWN_MINUTE"  property="dawnMinute"/>
+		<result column="ZIP_CD"  property="receiverZipCode"/>
+		<result column="ADDRESS1"  property="receiverAddress1"/>
+		<result column="ADDRESS2"  property="receiverAddress2"/>
+		<result column="CREATE_INFO"  property="createInfo"/>
+	</resultMap>
+	<select id="getWarehouseExcelDownload" resultMap="getWarehouseExcelMap">
+		/* warehouse.getWarehouseExcelDownload  */
+		SELECT A.WAREHOUSE_NM
+		     , FN_COMN_CODE_DIC(A.WAREHOUSE_GRP_CD) AS WAREHOUSE_GRP_CD_NM
+		     , IFNULL((SELECT GROUP_CONCAT(UC.COMP_NM)
+		     			 FROM UR_SUPPLIER_WAREHOUSE USW
+								INNER JOIN UR_SUPPLIER US ON USW.UR_SUPPLIER_ID = US.UR_SUPPLIER_ID
+								INNER JOIN UR_COMPANY UC ON US.UR_COMPANY_ID = UC.UR_COMPANY_ID
+						WHERE USW.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID), '') AS COMPANY_NM
+		     , IFNULL(SUBSTRING_INDEX(A.WAREHOUSE_TEL, '-', 1), '') AS WAREHOUSE_TELEPHONE1
+		     , IFNULL(SUBSTRING_INDEX(SUBSTRING_INDEX(A.WAREHOUSE_TEL, '-', 2), '-', -1), '') AS WAREHOUSE_TELEPHONE2
+		     , IFNULL(SUBSTRING_INDEX(A.WAREHOUSE_TEL, '-', -1), '') AS WAREHOUSE_TELEPHONE3
+		     , IFNULL(A.MEMO, '') AS WAREHOUSE_MEMO
+		     , A.STOCK_ORDER_YN
+		     , A.STLMN_YN
+		     , FN_COMN_CODE_DIC(A.ORDER_CHANGE_TP) AS ORDER_CHANGE_TP
+		     , IFNULL(A.LIMIT_CNT, '') AS LIMIT_CNT
+		     , (SELECT PSP.TITLE FROM PS_SHIPPING_PATTERN PSP WHERE PSP.PS_SHIPPING_PATTERN_ID =A.PS_SHIPPING_PATTERN_ID ) AS DELIVERY_PATTERN_NM
+		     , SUBSTRING_INDEX(A.CUTOFF_TIME, ':', 1) AS HOUR
+		     , SUBSTRING_INDEX(SUBSTRING_INDEX(A.CUTOFF_TIME, ':', 2), ':', -1) AS MINUTE
+		     , IFNULL(A.UNDELIVERABLE_AREA_TP_GRP, '') AS UNDELIVERABLE_AREA_TP_GRP
+		     , A.DAWN_DLVRY_YN
+		     , IFNULL(A.DAWN_LIMIT_CNT, '') AS DAWN_LIMIT_CNT
+		     , IFNULL((SELECT PSP.TITLE FROM PS_SHIPPING_PATTERN PSP WHERE PSP.PS_SHIPPING_PATTERN_ID =A.DAWN_DLVRY_PS_SHIPPING_PATTERN_ID ), '') AS DAWN_DELIVERY_PATTERN_NM
+		     , IFNULL(A.DAWN_UNDELIVERABLE_AREA_TP_GRP, '') AS DAWN_UNDELIVERABLE_AREA_TP_GRP
+		     , IFNULL(SUBSTRING_INDEX(A.DAWN_DLVRY_HLDY_CUTOFF_TIME, ':', 1), '') AS DAWN_HOUR
+		     , IFNULL(SUBSTRING_INDEX(SUBSTRING_INDEX(A.DAWN_DLVRY_HLDY_CUTOFF_TIME, ':', 2), ':', -1), '') AS DAWN_MINUTE
+		     , IFNULL(A.ZIP_CD, '') AS ZIP_CD
+		     , IFNULL(A.ADDRESS1, '') AS ADDRESS1
+		     , IFNULL(A.ADDRESS2, '') AS ADDRESS2
+		     , CONCAT('등록일:',A.CREATE_DT, FN_DECRYPT((SELECT UU.USER_NM FROM UR_USER UU WHERE UU.UR_USER_ID  = A.CREATE_ID )), '(', A.CREATE_ID ,')') AS CREATE_INFO
+		FROM UR_WAREHOUSE A
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(supplier)">
+			INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+			ON A.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+			AND USW.UR_SUPPLIER_ID = #{supplier}
+		</if>
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseName)">
+			AND A.WAREHOUSE_NM LIKE CONCAT(#{warehouseName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(warehouseGroup)">
+			AND A.WAREHOUSE_GRP_CD = #{warehouseGroup}
+		</if>
+	</select>
+
+	<select id="getDicNames" resultType="string">
+		/* warehouse.getDicNames */
+		SELECT GROUP_CONCAT(B.DIC_MST_NM) AS DIC_MST_NM
+		FROM ST_COMN_CODE A
+				 INNER JOIN GB_DIC_MST B
+							ON A.GB_DIC_MST_ID = B.GB_DIC_MST_ID
+		WHERE A.ST_COMN_CODE_ID IN (
+		<foreach collection="getNames" item="name" index="index" separator=",">
+		    #{name}
+		</foreach>
+		    )
+	</select>
+</mapper>

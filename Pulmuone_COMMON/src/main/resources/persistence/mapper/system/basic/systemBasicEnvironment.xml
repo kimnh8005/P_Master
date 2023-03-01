@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.basic.SystemBasicEnvironmentMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.29		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.system.basic.dto.vo.GetEnvironmentListResultVo" id="getEnvironmentListResultMap">
+		<result column="ST_ENV_ID"  property="stEnvId"  />
+		<result column="ENVIRONMENT_KEY"  property="environmentKey" />
+		<result column="ENVIRONMENT_NAME"  property="environmentName" />
+		<result column="ENVIRONMENT_VALUE"  property="environmentValue" />
+		<result column="COMMENT"  property="comment" />
+	</resultMap>
+
+	<select id="getEnvironmentList" resultMap="getEnvironmentListResultMap">
+		/* environment.getEnvironmentList */
+		SELECT
+			A.ST_ENV_ID 	AS ID
+			,A.ST_ENV_ID 	AS ST_ENV_ID
+			,A.ENV_KEY		AS ENVIRONMENT_KEY<!-- -->
+			,A.ENV_NM		AS ENVIRONMENT_NAME<!-- -->
+			,A.ENV_VAL 		AS ENVIRONMENT_VALUE<!-- -->
+			,A.COMMENT		AS COMMENT<!-- -->
+		FROM ST_ENV A
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEnvironmentKeyName)">
+			AND A.ENV_NM LIKE CONCAT(#{searchEnvironmentKeyName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEnvironmentKey)">
+			AND UPPER(A.ENV_KEY) LIKE CONCAT(UPPER(#{searchEnvironmentKey}),'%')
+		</if>
+		ORDER BY A.CREATE_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.29		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getEnvironmentListCount" resultType="int">
+		/* environment.getEnvironmentListCount */
+		select count(*) as total FROM ST_ENV A
+		WHERE 1=1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEnvironmentKeyName)">
+			AND A.ENV_NM LIKE CONCAT(#{searchEnvironmentKeyName},'%')
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchEnvironmentKey)">
+			AND UPPER(A.ENV_KEY) LIKE CONCAT(UPPER(#{searchEnvironmentKey}),'%')
+		</if>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addEnvironment" >
+		/* environment.addEnvironment */
+			INSERT INTO ST_ENV(
+				ENV_KEY<!-- -->
+				,ENV_NM<!-- -->
+				,ENV_VAL<!-- -->
+				,COMMENT<!-- -->
+				,CREATE_ID
+			)
+			VALUES
+			<foreach item="insertData" index="index" collection="list" open="" separator="," close="">
+				(
+					#{insertData.environmentKey}
+					,#{insertData.environmentName}
+					,#{insertData.environmentValue}
+					,#{insertData.comment}
+					,#{insertData.userVo.userId}
+				)
+			</foreach>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putEnvironment">
+		/* environment.putEnvironment */
+		<foreach item="updateData" index="index" collection="list"  separator=";">
+		UPDATE ST_ENV
+		SET
+			ENV_NM			=#{updateData.environmentName}	<!-- -->
+			,ENV_VAL		=#{updateData.environmentValue}	<!-- -->
+			,COMMENT		=#{updateData.comment}			<!-- -->
+			,MODIFY_ID 		= #{updateData.userVo.userId}
+		WHERE ST_ENV_ID     = #{updateData.stEnvId}
+		</foreach>
+		;
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delEnvironment"  >
+		/* environment.delEnvironment */
+		<foreach item="deleteData" collection="list" separator=";">
+			DELETE FROM ST_ENV	WHERE	ST_ENV_ID =#{deleteData.stEnvId}
+		</foreach>
+		;
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.05.29		오영민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="checkEnvironmentDuplicate" resultType="int">
+		/* environment.delEnvironment */
+		select count(*) as total FROM ST_ENV A
+		WHERE 1=1
+		AND ENV_KEY IN
+		<foreach item="data" index="index" collection="list" open="(" separator="," close=")">
+				#{data}
+		</foreach>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.04		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getEnvironment" resultMap="getEnvironmentListResultMap">
+		/* environment.getEnvironment */
+		SELECT
+			A.ST_ENV_ID 	AS ID
+			,A.ST_ENV_ID 	AS ST_ENV_ID
+			,A.ENV_KEY		AS ENVIRONMENT_KEY<!-- -->
+			,A.ENV_NM		AS ENVIRONMENT_NAME<!-- -->
+			,A.ENV_VAL 		AS ENVIRONMENT_VALUE<!-- -->
+			,A.COMMENT		AS COMMENT<!-- -->
+		FROM ST_ENV A
+		WHERE
+			UPPER(A.ENV_KEY) =  UPPER(#{searchEnvironmentKey})
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 시스템 환경설정 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.20		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putEnvironmentEnvVal">
+		/* environment.putEnvironment */
+		UPDATE ST_ENV
+		SET
+			 ENV_VAL		= #{environmentValue}
+			,MODIFY_ID 		= #{userVo.userId}
+		WHERE ST_ENV_ID     = #{stEnvId}
+	</update>
+</mapper>

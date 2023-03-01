@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.policy.shiparea.PolicyShipareaMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBackCountryMap" type="kr.co.pulmuone.v1.policy.shiparea.dto.vo.GetBackCountryResultVo">
+		<result column="ZIP_CODE" property="zipCode" />
+		<result column="JEJU_YN" property="jejuYn" />
+		<result column="ISLAND_YN" property="islandYn" />
+		<result column="CREATE_DATE" property="createDate" />
+	</resultMap>
+
+
+	<sql id="getBackCountryRow">
+		SELECT
+			ZIP_CD			AS ZIP_CODE
+			, JEJU_YN
+			, ISLAND_YN
+			, DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+		FROM
+			IL_SHIPPING_AREA
+		WHERE
+			1 = 1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchZipCode)">
+			AND ZIP_CD = #{searchZipCode}
+			</if>
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(jejuYn,'Y')">
+					AND JEJU_YN = 'Y'
+				</when>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(islandYn,'Y')">
+					AND ISLAND_YN = 'Y'
+				</when>
+			</choose>
+		ORDER BY CREATE_DT DESC
+	</sql>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 리스트  조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBackCountryList" resultMap="getBackCountryMap">
+		/*	backCountry.getBackCountryList  */
+		<include refid="getBackCountryRow" />
+		<!--페이징-->
+<!-- 		<include refid="common.pageLimit"/> -->
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 리스트카운트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBackCountryListCount" resultType="int" >
+		/*	backCountry.getBackCountryListCount	*/
+		SELECT	COUNT(*) AS TOTAL
+		FROM 	(
+		<include refid="getBackCountryRow" />
+				) AS BACK_COUNTRY
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 중복 검사
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="duplicateBackCountryCount" resultType="int">
+		/*	backCountry.duplicateBackCountryCount	*/
+		SELECT
+			COUNT(*)
+		FROM
+			IL_SHIPPING_AREA
+		WHERE
+			ZIP_CD = #{zipCode}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addBackCountry">
+		/*	backCountry.addBackCountry	*/
+		INSERT
+			INTO IL_SHIPPING_AREA
+		(
+			  ZIP_CD
+			, JEJU_YN
+			, ISLAND_YN
+			, CREATE_ID
+			, CREATE_DT
+		)
+		VALUES
+		(
+			#{zipCode}
+			, #{jejuYn}
+			, #{islandYn}
+			, #{userVo.userId}
+			, CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putBackCountry">
+		/*	backCountry.putBackCountry	*/
+		UPDATE
+			IL_SHIPPING_AREA
+		SET
+			JEJU_YN = #{jejuYn}
+			, ISLAND_YN = #{islandYn}
+		WHERE
+			ZIP_CD = #{zipCode}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="delBackCountry">
+		/*	backCountry.delBackCountry	*/
+		DELETE FROM
+			IL_SHIPPING_AREA
+		WHERE
+			ZIP_CD IN (
+		<foreach item="item" index="index" collection="zipCodes" separator=",">
+			#{item}
+		</foreach>
+		)
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBackCountry" resultMap="getBackCountryMap">
+		/*	backCountry.getBackCountry	*/
+		SELECT
+			ZIP_CD			AS ZIP_CODE
+			, JEJU_YN
+			, ISLAND_YN
+		FROM
+			IL_SHIPPING_AREA
+		WHERE
+			ZIP_CD = #{zipCode}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도서산관 권역설정 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.02		박영후          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBackCountryExcelList" resultMap="getBackCountryMap">
+		/*	backCountry.getBackCountryExcelList	*/
+		SELECT
+			ZIP_CD			AS ZIP_CODE
+			, JEJU_YN
+			, ISLAND_YN
+			, DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+		FROM
+			IL_SHIPPING_AREA
+		WHERE
+			ZIP_CD IN (
+				<foreach collection="array" item="zipCode" separator=",">
+					#{zipCode}
+				</foreach>
+			)
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송불가 권역 여부
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.15		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="isUndeliverableArea" resultType="boolean" >
+		/*	policyShiparea.isUndeliverableArea	*/
+		SELECT	IF(COUNT(*) > 0, TRUE, FALSE) TOTAL
+		FROM PS_UNDELIVERABLE_AREA PUA
+		WHERE PUA.UNDELIVERABLE_TP = #{undeliverableType}
+		AND PUA.ZIP_CD = #{zipCode}
+		AND PUA.UNDELIVERY_YN = 'Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송불가 권역 여부
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.15		정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="isNonDeliveryArea" resultType="boolean">
+		/* policyShiparea.isNonDeliveryArea */
+		SELECT IF(COUNT(*) > 0, TRUE, FALSE) isNonDeliveryArea
+		FROM PS_SHIPPING_AREA
+		WHERE ZIP_CD = #{zipCode}
+			AND UNDELIVERABLE_TP IN (
+				<foreach collection="undeliverableTypes" item="undeliverableType" separator=",">
+					#{undeliverableType}
+				</foreach>
+			)
+			AND ALTERNATE_DELIVERY_TP = ''
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 배송불가권역 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.10.18		정동훈          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNonDeliveryAreaInfo" resultType="kr.co.pulmuone.v1.policy.shiparea.dto.vo.NonDeliveryAreaInfoVo">
+		/* policyShiparea.getNonDeliveryAreaInfo */
+		SELECT PSA.ZIP_CD,
+			PSA.UNDELIVERABLE_TP,
+			(SELECT SCC.ATTR1 FROM ST_COMN_CODE SCC WHERE SCC.ST_COMN_CODE_ID = PSA.UNDELIVERABLE_TP AND SCC.USE_YN = 'Y') NON_DELIVERY_AREA_MESSAGE,
+			PSA.ALTERNATE_DELIVERY_TP AS ALTERNATE_DELIVERY_TYPE
+		FROM PS_SHIPPING_AREA PSA
+		WHERE PSA.ZIP_CD = #{zipCode}
+			AND PSA.UNDELIVERABLE_TP IN (
+				<foreach collection="undeliverableTypes" item="undeliverableType" separator=",">
+					#{undeliverableType}
+				</foreach>
+			)
+			AND PSA.ALTERNATE_DELIVERY_TP = ''
+			ORDER BY PSA.CREATE_DT
+			LIMIT 1
+	</select>
+</mapper>

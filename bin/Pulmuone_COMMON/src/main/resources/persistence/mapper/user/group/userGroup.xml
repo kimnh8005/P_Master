@@ -1,0 +1,586 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.group.UserGroupMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.24		강윤경          최초생성
+	 * @ 2021.02.05		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserGroupMasterList" resultType="kr.co.pulmuone.v1.user.group.dto.vo.UserGroupMasterResultVo">
+		/* userGroup.getUserGroupMasterList */
+		SELECT
+			UR_GROUP_MASTER_ID
+			,GROUP_MASTER_NM		AS GROUP_MASTER_NAME
+			,(SELECT COUNT(1) FROM UR_GROUP UG WHERE UGM.UR_GROUP_MASTER_ID = UG.UR_GROUP_MASTER_ID ) AS GROUP_LEVEL_COUNT
+			,DATE(START_DT)			AS START_DATE
+			,DATE(END_DT) 			AS END_DATE
+			<![CDATA[
+			,(CASE WHEN END_DT < NOW() THEN '기간종료'
+				WHEN START_DT <= NOW() THEN '적용중'
+				WHEN START_DT > NOW() THEN '예약'
+			END) 					AS STATE
+			]]>
+		FROM UR_GROUP_MASTER UGM
+		ORDER BY START_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.26		강윤경          최초생성
+	 * @ 2021.02.05		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserGroupMaster" resultType="kr.co.pulmuone.v1.user.group.dto.vo.UserGroupMasterResultVo">
+		/* userGroup.getUserGroupMaster */
+		SELECT UR_GROUP_MASTER_ID
+			, GROUP_MASTER_NM			AS GROUP_MASTER_NAME
+			, CALCULATE_PERIOD
+			, START_DT 					AS START_DATE
+			, END_DT					AS END_DATE
+			, DATE_FORMAT(START_DT,'%Y') AS START_DATE_YEAR
+			, DATE_FORMAT(START_DT,'%m') AS START_DATE_MONTH
+		FROM UR_GROUP_MASTER UGM
+		WHERE UGM.UR_GROUP_MASTER_ID = #{urGroupMasterId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.24		강윤경          최초등록
+	 * @ 2021.02.05		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUserMasterGroup">
+		/* userGroup.addUserMasterGroup */
+		INSERT INTO UR_GROUP_MASTER(
+			GROUP_MASTER_NM, CALCULATE_PERIOD, START_DT, CREATE_ID, CREATED_DT
+		) VALUES (
+			#{groupMasterName}, #{calculatePeriod}, #{startDate}, #{userVo.userId}, CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.05		이원호          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserMasterGroup">
+		/* userGroup.putUserMasterGroup */
+		UPDATE UR_GROUP_MASTER
+		SET GROUP_MASTER_NM = #{groupMasterName},
+			CALCULATE_PERIOD = #{calculatePeriod},
+			START_DT = #{startDate},
+			MODIFY_ID = #{userVo.userId},
+			MODIFY_DT=CURRENT_TIMESTAMP
+		WHERE UR_GROUP_MASTER_ID = #{urGroupMasterId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.05		이원호          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserMasterGroupEndDate">
+		/* userGroup.putUserMasterGroupEndDate */
+		UPDATE UR_GROUP_MASTER
+		SET END_DT = #{endDate},
+			MODIFY_ID = #{userVo.userId},
+			MODIFY_DT = CURRENT_TIMESTAMP
+		WHERE UR_GROUP_MASTER_ID = #{urGroupMasterId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 혜택 삭제 (마스터ID로)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserGroupBenefitByMasterId" >
+		/* userGroup.delUserGroupBenefitByMasterId */
+		DELETE FROM UR_GROUP_BENEFIT
+		WHERE UR_GROUP_ID IN (
+			SELECT UR_GROUP_ID
+			FROM UR_GROUP
+			WHERE UR_GROUP_MASTER_ID = #{urGroupMasterId}
+		)
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 회원그룹 설정 상세 전체 삭제
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.27		강윤경          최초등록
+    ────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserGroupListByMasterId">
+		/* userGroup.delUserGroupListByMasterId */
+		DELETE FROM UR_GROUP
+		WHERE UR_GROUP_MASTER_ID = #{urGroupMasterId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	* description 		: 회원그룹 설정 삭제
+	* @
+	* @ 수정일			수정자          수정내용
+	* @ ──────────────────────────────────────────────────────────────────────
+	* @ 2020.08.27		강윤경          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserGroupByMasterId">
+		/* userGroup.delUserGroupByMasterId */
+		DELETE FROM UR_GROUP_MASTER
+		WHERE UR_GROUP_MASTER_ID = #{urGroupMasterId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 페이지 정보
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09		이원호          최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserGroupPageInfo" resultType="kr.co.pulmuone.v1.user.group.dto.vo.UserGroupPageInfoVo">
+		/* userGroup.getUserGroupPageInfo */
+		SELECT GROUP_MASTER_NM AS groupMasterName
+			, CALCULATE_PERIOD
+			, DATE_FORMAT(START_DT, "%Y.%m.%d") AS START_DATE
+			, IFNULL(DATE_FORMAT(END_DT, "%Y.%m.%d"), '-') 	AS END_DATE
+		FROM UR_GROUP_MASTER
+		WHERE UR_GROUP_MASTER_ID = #{urGroupMasterId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.26		강윤경          최초생성
+	 * @ 2021.02.05		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserGroupList" resultType="kr.co.pulmuone.v1.user.group.dto.vo.UserGroupResultVo">
+		/* userGroup.getUserGroupList */
+		SELECT UG.UR_GROUP_ID
+			, UG.DEFAULT_YN
+			, UG.GROUP_NM							AS GROUP_NAME
+			, UG.GROUP_LEVEL_TP 					AS GROUP_LEVEL_TYPE
+			, FN_COMN_CODE_DIC(UG.GROUP_LEVEL_TP) 	AS GROUP_LEVEL_TYPE_NAME
+			, UG.PURCHASE_AMOUNT_FROM
+			, UG.PURCHASE_CNT_FROM  				AS PURCHASE_COUNT_FROM
+		FROM UR_GROUP UG
+			LEFT OUTER JOIN ST_COMN_CODE CC ON UG.GROUP_LEVEL_TP = CC.ST_COMN_CODE_ID
+		WHERE UG.UR_GROUP_MASTER_ID = #{urGroupMasterId}
+		ORDER BY CC.SORT ASC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초생성
+	 * @ 2021.02.05		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserGroup" resultType="kr.co.pulmuone.v1.user.group.dto.vo.UserGroupResultVo">
+		/* userGroup.getUserGroup */
+		SELECT UG.UR_GROUP_ID
+			, UG.GROUP_NM       	AS GROUP_NAME
+			, UG.GROUP_LEVEL_TP 	AS GROUP_LEVEL_TYPE
+			, UG.TOP_IMG_ORIGIN_NM	AS TOP_IMAGE_ORIGINAL_NAME	/* 상단 등급아이콘(원본 파일명) */
+			, UG.TOP_IMG_NM			AS TOP_IMAGE_NAME			/* 상단 등급아이콘(파일명) */
+			, UG.TOP_IMG_PATH		AS TOP_IMAGE_PATH			/* 상단 등급아이콘(파일 전체 경로) */
+			, UG.LIST_IMG_ORIGIN_NM	AS LIST_IMAGE_ORIGINAL_NAME	/* 리스트 등급아이콘(원본 파일명) */
+			, UG.LIST_IMG_NM		AS LIST_IMAGE_NAME			/* 리스트 등급아이콘( 파일명) */
+			, UG.LIST_IMG_PATH		AS LIST_IMAGE_PATH			/* 리스트 등급아이콘(파일 전체 경로) */
+			, UG.PURCHASE_AMOUNT_FROM
+			, UG.PURCHASE_CNT_FROM	AS PURCHASE_COUNT_FROM
+		FROM UR_GROUP UG
+		WHERE UG.UR_GROUP_ID = #{urGroupId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	 * @ 2021.02.05		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUserGroup">
+		/* userGroup.addUserGroup */
+		INSERT INTO UR_GROUP (
+			UR_GROUP_MASTER_ID, GROUP_NM, GROUP_LEVEL_TP, TOP_IMG_ORIGIN_NM, TOP_IMG_NM,
+			TOP_IMG_PATH, LIST_IMG_ORIGIN_NM, LIST_IMG_NM, LIST_IMG_PATH, PURCHASE_AMOUNT_FROM,
+			PURCHASE_CNT_FROM, CREATE_ID, CREATE_DT
+		) VALUES (
+			#{urGroupMasterId}, #{groupName} ,#{groupLevelType}, #{topImageOriginalName}, #{topImageName},
+			#{topImagePath}, #{listImageOriginalName}, #{listImageName}, #{listImagePath}, #{purchaseAmountFrom},
+			#{purchaseCountFrom}, #{userVo.userId}, NOW()
+		)
+
+		<selectKey resultType="long" keyProperty="urGroupId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 수정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	 * @ 2021.02.05		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserGroup">
+		/* userGroup.putUserGroup */
+		UPDATE UR_GROUP
+		SET GROUP_NM = #{groupName}
+			, GROUP_LEVEL_TP = #{groupLevelType}
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topImageOriginalName)">
+			, TOP_IMG_ORIGIN_NM	= #{topImageOriginalName}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topImageName)">
+			, TOP_IMG_NM         = #{topImageName}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(topImagePath)">
+			, TOP_IMG_PATH       = #{topImagePath}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listImageOriginalName)">
+			, LIST_IMG_ORIGIN_NM = #{listImageOriginalName}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listImageName)">
+			, LIST_IMG_NM        = #{listImageName}
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(listImagePath)">
+			, LIST_IMG_PATH      = #{listImagePath}
+		</if>
+			, PURCHASE_AMOUNT_FROM	= #{purchaseAmountFrom}
+			, PURCHASE_CNT_FROM	= #{purchaseCountFrom}
+			, MODIFY_ID			= #{userVo.userId}
+		WHERE UR_GROUP_ID = #{urGroupId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 수정 - 기본등급 여부 초기화
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.09		이원호          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserGroupDefaultYnInit">
+		/* userGroup.putUserGroupDefaultYnInit */
+		UPDATE UR_GROUP
+		SET DEFAULT_YN = 'N'
+			, MODIFY_ID	= #{userVo.userId}
+		WHERE UR_GROUP_MASTER_ID = #{urGroupMasterId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 수정 - 기본등급 여부
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.05		이원호          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUserGroupDefaultYn">
+		/* userGroup.putUserGroupDefaultYn */
+		UPDATE UR_GROUP
+		SET DEFAULT_YN = 'Y'
+			, MODIFY_ID	= #{userVo.userId}
+		WHERE UR_GROUP_ID = #{urGroupId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 혜택 삭제(그룹ID로)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserGroupBenefitByGroupId" >
+		/* userGroup.delUserGroupBenefitByGroupId */
+		DELETE FROM UR_GROUP_BENEFIT
+		WHERE UR_GROUP_ID = #{urGroupId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserGroup">
+		/* userGroup.delUserGroup */
+		DELETE FROM UR_GROUP
+		WHERE UR_GROUP_ID = #{urGroupId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 혜택 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	 * @ 2021.02.08		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserBenefitList" resultType="kr.co.pulmuone.v1.user.group.dto.AddItemBenefitDto">
+		/* userGroup.getUserBenefitList */
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userGroupBenefitType, "UR_GROUP_BENEFIT_TP.COUPON")'>
+			SELECT UGB.UR_GROUP_BENEFIT_ID
+				, UGB.UR_GROUP_ID
+				, UGB.BENEFIT_REL_ID AS BENEFIT_RELATION_ID
+				, PC.DISPLAY_COUPON_NM AS DISPLAY_COUPON_NAME
+				, CASE WHEN PC.VALIDITY_TP = 'VALIDITY_TYPE.VALIDITY' THEN CONCAT('발급 후 ',PC.VALIDITY_DAY,' 일 간')
+					ELSE CONCAT(DATE_FORMAT(PC.VALIDITY_START_DT,'%Y-%m-%d') ,'~', DATE_FORMAT(PC.VALIDITY_END_DT,'%Y-%m-%d') )
+					END AS VALIDITY_DATE
+			FROM UR_GROUP_BENEFIT UGB
+				INNER JOIN PM_COUPON PC ON UGB.BENEFIT_REL_ID = PC.PM_COUPON_ID
+			WHERE UGB.UR_GROUP_ID = #{urGroupId}
+				AND UGB.UR_GROUP_BENEFIT_TP = #{userGroupBenefitType}
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userGroupBenefitType, "UR_GROUP_BENEFIT_TP.POINT")'>
+			SELECT UGB.UR_GROUP_BENEFIT_ID
+				, UGB.UR_GROUP_ID
+				, UGB.BENEFIT_REL_ID AS BENEFIT_RELATION_ID
+				, PP.POINT_NM AS POINT_NAME
+				, FN_COMN_CODE_DIC(PP.POINT_DETAIL_TP) AS POINT_DETAIL_TYPE_NAME
+				, PP.ISSUE_VAL	AS ISSUE_VALUE                              /* 발급_값	*/
+				, (CASE WHEN PP.VALIDITY_TP = 'VALIDITY_TYPE.VALIDITY' THEN CONCAT('발급 후 ',PP.VALIDITY_DAY,' 일 간')
+					ELSE DATE_FORMAT(PP.VALIDITY_END_DT,'%Y-%m-%d')
+					END) AS VALIDITY_DATE
+			FROM UR_GROUP_BENEFIT UGB
+				INNER JOIN PM_POINT PP ON UGB.BENEFIT_REL_ID = PP.PM_POINT_ID
+			WHERE UGB.UR_GROUP_ID = #{urGroupId}
+				AND UGB.UR_GROUP_BENEFIT_TP = #{userGroupBenefitType}
+		</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 혜택 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	 * @ 2021.02.08		이원호          수정사항 반영 - 회원그룹 기준 변경
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUserGroupBenefit">
+		/* userGroup.addUserGroupBenefit */
+		INSERT INTO UR_GROUP_BENEFIT (
+			UR_GROUP_ID, UR_GROUP_BENEFIT_TP, BENEFIT_REL_ID, CREATE_ID
+		) VALUES (
+			#{urGroupId}, #{userGroupBenefitType}, #{benefitRelationId}, #{userVo.userId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원그룹 설정 상세 혜택 개별 삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.27		강윤경          최초등록
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delUserGroupBenefit" >
+		/* userGroup.delUserGroupBenefit */
+		DELETE FROM UR_GROUP_BENEFIT
+		WHERE UR_GROUP_BENEFIT_ID = #{urGroupBenefitId}
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 등급메인조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.12		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getGroupInfoByUserMap" type="kr.co.pulmuone.v1.user.group.dto.vo.GroupInfoByUserResultVo">
+		<result column="GROUP_NM"			property="groupName" />
+		<result column="TOP_IMG_PATH" 	    property="topImagePath" />
+		<result column="LIST_IMG_PATH"   	property="listImagePath" />
+		<result column="CALCULATE_PERIOD"   property="calculatePeriod" />
+	</resultMap>
+	<select id="getGroupByUser" resultMap="getGroupInfoByUserMap">
+		/*	userGroup.getGroupByUser  */
+		SELECT UG.GROUP_NM
+			, CONCAT(UG.TOP_IMG_PATH, UG.TOP_IMG_NM) AS TOP_IMG_PATH
+			, CONCAT(UG.LIST_IMG_PATH, UG.LIST_IMG_NM) AS LIST_IMG_PATH
+			, UGM.CALCULATE_PERIOD
+		FROM UR_BUYER  UB
+			INNER JOIN UR_GROUP UG ON UG.UR_GROUP_ID = UB.UR_GROUP_ID
+			INNER JOIN UR_GROUP_MASTER UGM ON UG.UR_GROUP_MASTER_ID = UGM.UR_GROUP_MASTER_ID
+		WHERE UB.UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 등급 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.12		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getGroupListMap" type="kr.co.pulmuone.v1.user.group.dto.vo.GroupListVo">
+		<result column="UR_GROUP_ID"			property="urGroupId" />
+		<result column="GROUP_NM"				property="groupName" />
+		<result column="TOP_IMG_PATH" 	    	property="topImagePath" />
+		<result column="LIST_IMG_PATH"   		property="listImagePath" />
+		<result column="PURCHASE_AMOUNT_FROM" 	property="purchaseAmountFrom" />
+		<result column="PURCHASE_CNT_FROM"      property="purchaseCountFrom" />
+	</resultMap>
+	<select id="getGroupList" resultMap="getGroupListMap">
+		/*	userGroup.getGroupList	*/
+		SELECT UG.UR_GROUP_ID
+			,UG.GROUP_NM              /*회원그룹명 등급명*/
+			, CONCAT(UG.TOP_IMG_PATH, UG.TOP_IMG_NM) AS TOP_IMG_PATH
+			, CONCAT(UG.LIST_IMG_PATH, UG.LIST_IMG_NM) AS LIST_IMG_PATH
+			,UG.PURCHASE_AMOUNT_FROM  /*매출액조건 from*/
+			,UG.PURCHASE_CNT_FROM     /*구매건수조건 from*/
+		FROM UR_GROUP UG
+			INNER JOIN (
+				SELECT UR_GROUP_MASTER_ID
+					, GROUP_MASTER_NM
+					, CALCULATE_PERIOD
+					, DATE(START_DT) AS START_DT
+				FROM UR_GROUP_MASTER
+				WHERE START_DT <![CDATA[<=]]> NOW()
+				ORDER BY START_DT DESC
+				LIMIT 1
+			) G1 ON UG.UR_GROUP_MASTER_ID = G1.UR_GROUP_MASTER_ID
+			INNER JOIN ST_COMN_CODE CC ON UG.GROUP_LEVEL_TP = CC.ST_COMN_CODE_ID
+		ORDER BY CC.SORT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 등급 혜택 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.28		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getGroupBenefitMap" type="kr.co.pulmuone.v1.user.group.dto.vo.GroupBenefitVo">
+		<result column="BENEFIT_RELATION_NAME"	property="benefitRelationName" />
+		<result column="BENEFIT"				property="benefit" />
+		<result column="BENEFIT_COUNT" 			property="benefitCount" />
+		<result column="UR_GROUP_BENEFIT_TP" 	property="benefitType" />
+	</resultMap>
+	<select id="getGroupBenefit" resultMap="getGroupBenefitMap">
+		/*	userGroup.getGroupBenefit	*/
+		SELECT CONCAT(FN_COMN_CODE_DIC(PC.COUPON_TP), ' 쿠폰') AS BENEFIT_RELATION_NAME
+			,(CASE WHEN PC.DISCOUNT_TP = 'COUPON_DISCOUNT_STATUS.FIXED_DISCOUNT' THEN CONCAT( FORMAT(DISCOUNT_VAL, 0) , '원') ELSE CONCAT (DISCOUNT_VAL , '%') END) AS BENEFIT /*혜택*/
+			, PC.ISSUE_QTY_LIMIT AS BENEFIT_COUNT
+			, UGE.UR_GROUP_BENEFIT_TP
+		FROM UR_GROUP UG
+			INNER JOIN UR_GROUP_BENEFIT UGE ON UG.UR_GROUP_ID = UGE.UR_GROUP_ID
+			INNER JOIN PM_COUPON PC  ON PC.PM_COUPON_ID = UGE.BENEFIT_REL_ID
+		WHERE UG.UR_GROUP_ID = #{urGroupId}
+			AND UGE.UR_GROUP_BENEFIT_TP = 'UR_GROUP_BENEFIT_TP.COUPON'
+			AND PC.COUPON_MASTER_STAT  ='COUPON_MASTER_STAT.APPROVED'
+			AND PC.USE_YN = 'Y'
+			AND NOW() BETWEEN PC.ISSUE_START_DT AND PC.ISSUE_END_DT
+		UNION ALL
+		SELECT PP.POINT_NM AS BENEFIT_RELATION_NAME
+			, CONCAT( FORMAT(PP.ISSUE_VAL, 0) , '원') AS BENEFIT /*혜택*/
+			, PP.ISSUE_QTY_LIMIT AS BENEFIT_COUNT
+			, UGE.UR_GROUP_BENEFIT_TP
+		FROM UR_GROUP UG
+			INNER JOIN UR_GROUP_BENEFIT UGE ON UG.UR_GROUP_ID = UGE.UR_GROUP_ID
+			INNER JOIN PM_POINT PP  ON PP.PM_POINT_ID = UGE.BENEFIT_REL_ID
+		WHERE UG.UR_GROUP_ID = #{urGroupId}
+			AND UGE.UR_GROUP_BENEFIT_TP = 'UR_GROUP_BENEFIT_TP.POINT'
+			AND PP.POINT_MASTER_STAT  = 'POINT_MASTER_STAT.APPROVED'
+			AND PP.USE_YN = 'Y'
+			AND NOW() BETWEEN PP.ISSUE_START_DT AND PP.ISSUE_END_DT
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 기본등급 조회 - 회원가입
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.26		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDefaultGroup" resultType="long">
+		/*	userGroup.getDefaultGroup	*/
+		SELECT UG.UR_GROUP_ID
+		FROM UR_GROUP_MASTER UGM
+			INNER JOIN UR_GROUP UG ON UGM.UR_GROUP_MASTER_ID = UG.UR_GROUP_MASTER_ID
+		WHERE UGM.START_DT <![CDATA[<=]]> NOW()
+			AND UG.DEFAULT_YN = 'Y'
+		ORDER BY UGM.START_DT DESC
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원마스터그룹 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.29		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserMasterCategoryListMap" type="kr.co.pulmuone.v1.user.group.dto.vo.UserGroupMasterResultVo">
+		<result column="UR_GROUP_MASTER_ID" 	property="urGroupMasterId" />
+		<result column="GROUP_MASTER_NM" 		property="groupMasterName" />
+		<result column="START_DT" property="startDate" />
+		<result column="END_DT" property="endDate" />
+	</resultMap>
+	<select id="getUserMasterCategoryList" resultMap="getUserMasterCategoryListMap">
+		/* userGroup.getUserMasterCategoryList */
+		SELECT UR_GROUP_MASTER_ID
+     		  , GROUP_MASTER_NM
+			, DATE(START_DT) AS START_DT
+			, DATE(END_DT) AS END_DT
+		FROM UR_GROUP_MASTER
+		<where>
+			<if test="searchActiveMaster">
+				AND START_DT <![CDATA[<=]]> NOW()
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(urGroupMasterId)">
+				AND UR_GROUP_MASTER_ID = #{urGroupMasterId}
+			</if>
+		</where>
+		ORDER BY START_DT DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원마스터그룹 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.29		안치열          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserGroupCategoryListMap" type="kr.co.pulmuone.v1.user.group.dto.vo.UserGroupResultVo">
+		<result column="UR_GROUP_ID" 		property="urGroupId" />
+		<result column="GROUP_NM" 			property="groupName" />
+		<result column="GROUP_LEVEL_TP" 	property="groupLevelType" />
+	</resultMap>
+	<select id="getUserGroupCategoryList" resultMap="getUserGroupCategoryListMap">
+		/* userGroup.getUserGroupCategoryList */
+		SELECT A.UR_GROUP_MASTER_ID
+		     , A.GROUP_MASTER_NM
+		     , B.UR_GROUP_ID
+		     , B.GROUP_NM
+		     , B.GROUP_LEVEL_TP
+		FROM UR_GROUP_MASTER A
+			INNER JOIN UR_GROUP B ON  A.UR_GROUP_MASTER_ID = B.UR_GROUP_MASTER_ID
+			INNER JOIN ST_COMN_CODE CC ON B.GROUP_LEVEL_TP = CC.ST_COMN_CODE_ID
+		WHERE 1=1
+			AND A.UR_GROUP_MASTER_ID = #{urGroupMasterId}
+		ORDER BY CC.SORT ASC
+	</select>
+
+</mapper>

@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.calculate.collation.CalOutmallMapper">
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 부문 구문 전체 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.03		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<!--<select id="getOuIdAllList" resultType="kr.co.pulmuone.v1.calculate.employee.dto.vo.SettleOuMngVo">
+		/*	employee.getOuIdAllList  */
+		SELECT  OUI.SUCCESS_CNT
+		,OUI.FAIL_CNT
+		,(OUI.SUCCESS_CNT + OUI.FAIL_CNT) AS TOTAL_CNT
+		,OUI.CREATE_ID
+		,FN_DECRYPT(U.USER_NM ) AS USER_NM
+		,OUI.CREATE_DT
+		FROM OD_OUT_MALL_COMPARE_UPLOAD_INFO OUI
+		INNER JOIN UR_USER U ON OUI.CREATE_ID  = U.UR_USER_ID
+	</select>-->
+
+	<sql id="findCalOutmallItem">
+		<where>
+			1=1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(grantAuthEmployeeNumber)">
+				AND U.LOGIN_ID = #{grantAuthEmployeeNumber}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+				AND DATE_FORMAT(OUI.CREATE_DT, '%Y%m%d') BETWEEN #{dateSearchStart} AND #{dateSearchEnd}
+			</if>
+		</where>
+	</sql>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 대사 카운트 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOutmallListCount" resultType="long" parameterType="kr.co.pulmuone.v1.calculate.collation.dto.CalOutmallListDto">
+		SELECT
+		COUNT(*) AS CNT
+		FROM OD_OUT_MALL_COMPARE_UPLOAD_INFO OUI
+		INNER JOIN UR_USER U ON OUI.CREATE_ID  = U.UR_USER_ID
+		<include refid="findCalOutmallItem" />
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 대사 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.05		이명수	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOutmallList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalOutmallListDto">
+		/* calOutmall.getOutmallList */
+		SELECT  OUI.SUCCESS_CNT AS successCnt
+				,OUI.FAIL_CNT AS failCnt
+				,(OUI.SUCCESS_CNT + OUI.FAIL_CNT) AS TOTAL_CNT
+				,OUI.CREATE_DT AS createDt
+				,OUI.CREATE_ID AS createId
+				,FN_DECRYPT(U.USER_NM ) AS userNm
+				,OUI.OD_OUT_MALL_COMPARE_UPLOAD_INFO_ID
+		FROM OD_OUT_MALL_COMPARE_UPLOAD_INFO OUI
+		INNER JOIN UR_USER U ON OUI.CREATE_ID  = U.UR_USER_ID
+		<include refid="findCalOutmallItem" />
+		ORDER BY OUI.CREATE_DT DESC
+		<include refid="_common.pageLimit"/>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 대사 상세내역 카운트 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOutmallDetlListCount" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalOutmallDetlListDto">
+		<!-- 외부몰 주문 대사 상세 내역 쿼리 -->
+		/* calOutmall.getOutmallDetlListCount */
+		SELECT
+		COUNT(*) AS TOTAL_CNT, IFNULL(SUM(o.ORDER_AMT),0) AS TOTAL_AMT
+		FROM
+		(
+		<!-- 외부몰 주문 매칭 및 외부몰 주문 데이터 없는 리스트 -->
+		SELECT
+		oomcud.SELLERS_NM 								<!-- 업로드 판매처명 -->
+		,oomcud.OUTMALL_ID AS UPLOAD_OUTMALL_DETAIL_ID 	<!-- 업로드 외부몰 주문번호 -->
+		,oomcud.ORDER_AMT 								<!-- 업로드 매출금액 -->
+		,oomcud.ORDER_AMT - oomcud.SETTLE_PRICE AS CONTRAST_AMT <!-- 업로드 대비금액 -->
+		,oomcud.SETTLE_PRICE 							<!-- 업로드 최종 매출금액 -->
+		,ood.UR_SUPPLIER_ID 							<!-- 공급업체ID -->
+		,ood.ODID 										<!-- 주문번호 -->
+		,ood.OD_ORDER_DETL_ID 							<!-- 주문상세번호 -->
+		,oo.OM_SELLERS_ID 								<!-- 판매처ID -->
+		,ood.OUTMALL_DETAIL_ID 							<!-- 외부몰주문번호 -->
+		,ood.TAX_YN 									<!-- 과세여부 -->
+		,ood.PAID_PRICE - IFNULL((SELECT SUM(SOCD.PAID_PRICE)
+		FROM OD_ORDER_DETL SOOD
+		INNER JOIN OD_CLAIM_DETL SOCD ON SOOD.OD_ORDER_DETL_ID = SOCD.OD_ORDER_DETL_ID
+		INNER JOIN OD_CLAIM OC ON OC.OD_CLAIM_ID = SOCD.OD_CLAIM_ID AND OC.CLAIM_YN = 'Y'
+		WHERE SOOD.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID
+		AND SOCD.CLAIM_STATUS_CD NOT IN ('CE','RE', 'CS') ), 0) AS PAID_PRICE <!-- 매출금액 (VAT 포함) -->
+		FROM
+		OD_ORDER_DETL ood
+		JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+		JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+		<!--LEFT JOIN OD_OUT_MALL_COMPARE_UPLOAD_DETAIL oomcud ON (ood.OUTMALL_DETAIL_ID = oomcud.OUTMALL_ID)-->
+		JOIN OD_OUT_MALL_COMPARE_UPLOAD_DETAIL oomcud ON (ood.OUTMALL_DETAIL_ID = oomcud.OUTMALL_ID
+															AND oomcud.OD_OUT_MALL_COMPARE_UPLOAD_DETAIL_ID = #{odOutMallCompareUploadInfoId}
+															AND oomcud.SUCCESS_YN = 'Y'
+															AND ood.OUTMALL_DETAIL_ID = oomcud.OUTMALL_ID
+															AND oomcud.OUTMALL_ID IS NOT NULL AND oomcud.OUTMALL_ID <![CDATA[<>]]> '')
+		WHERE
+		oo.SELLERS_GROUP_CD != 'SELLERS_GROUP.MALL'
+		<include refid="searchDetailDate" />	<!-- 기간조회 -->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+			AND oo.SELLERS_GROUP_CD = #{sellersGroup}
+		</if>
+
+		<if test="omSellersIdList.size() > 0">
+			<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findOutmallMatchingType, "OUTMALL_NOT")'>	<!-- 외부몰 미매칭 -->
+			AND oomcud.OD_OUT_MALL_COMPARE_UPLOAD_DETAIL_ID IS NULL
+		</if>
+		<include refid="searchOutmall" />	<!-- 검색어 조회 -->
+		<!-- 외부몰 주문 데이터만 있는 경우 (매칭여부:외부몰 미매칭 검색일때 경우는 아래 쿼리 필요 없음) -->
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(findOutmallMatchingType, "BOS_NOT")'>	<!-- BOS주문 미매칭 -->
+			UNION ALL
+			SELECT
+			oomcud.SELLERS_NM 								<!-- 업로드 판매처명 -->
+			,oomcud.OUTMALL_ID AS UPLOAD_OUTMALL_DETAIL_ID 	<!-- 업로드 외부몰 주문번호 -->
+			,oomcud.ORDER_AMT 								<!-- 업로드 매출금액 -->
+			,oomcud.ORDER_AMT - oomcud.SETTLE_PRICE AS CONTRAST_AMT <!-- 업로드 대비금액 -->
+			,oomcud.SETTLE_PRICE 							<!-- 업로드 최종 매출금액 -->
+			,NULL AS UR_SUPPLIER_ID 						<!-- 공급업체ID -->
+			,NULL AS ODID 									<!-- 주문번호 -->
+			,NULL AS OD_ORDER_DETL_ID						<!-- 주문상세번호 -->
+			,NULL AS OM_SELLERS_ID 							<!-- 판매처ID -->
+			,NULL AS OUTMALL_DETAIL_ID 						<!-- 외부몰주문번호 -->
+			,NULL AS TAX_YN 								<!-- 과세여부 -->
+			,NULL AS PAID_PRICE 							<!-- 매출금액 (VAT 포함) -->
+			FROM
+			OD_OUT_MALL_COMPARE_UPLOAD_DETAIL oomcud
+			LEFT JOIN OD_ORDER_DETL ood ON (oomcud.OUTMALL_ID = ood.OUTMALL_DETAIL_ID)
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			WHERE
+			ood.OD_ORDER_DETL_ID IS NULL
+			<include refid="searchDetailDate" />	<!-- 기간조회 -->
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+				AND oo.SELLERS_GROUP_CD = #{sellersGroup}
+			</if>
+
+			<if test="omSellersIdList.size() > 0">
+				<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+			</if>
+
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findOutmallMatchingType, "OUTMALL_NOT")'>	<!-- 외부몰 미매칭 -->
+				AND oomcud.OD_OUT_MALL_COMPARE_UPLOAD_DETAIL_ID IS NULL
+			</if>
+			<include refid="searchOutmall" />   <!-- 검색어 조회 -->
+		</if>
+		) o
+		LEFT JOIN UR_SUPPLIER us ON (us.UR_SUPPLIER_ID = o.UR_SUPPLIER_ID)
+		LEFT JOIN UR_COMPANY uc ON (uc.UR_COMPANY_ID = us.UR_COMPANY_ID)
+		LEFT JOIN OM_SELLERS os ON (os.OM_SELLERS_ID = o.OM_SELLERS_ID)
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findOutmallMatchingType, "ORDER_NOT")'>	<!-- 주문 내역 상이 -->
+			WHERE o.SETTLE_PRICE != o.PAID_PRICE
+		</if>
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 대사 상세내역 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.27		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOutmallDetlList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalOutmallDetlListDto">
+		/* calOutmall.getOutmallDetlList */
+		<!-- 외부몰 주문 대사 상세 내역 쿼리 -->
+		SELECT
+		IFNULL(o.SELLERS_NM,'') AS uploadSellersNm  					<!-- 업로드 판매처명 -->
+		,IFNULL(o.UPLOAD_OUTMALL_DETAIL_ID, '') AS uploadOutmallDetailId	<!-- 업로드 외부몰 주문번호 -->
+		,IFNULL(o.ORDER_AMT, '') AS orderAmt					<!-- 업로드 매출금액 -->
+		,IFNULL(o.CONTRAST_AMT, '') AS contrastAmt				<!-- 업로드 대비금액 -->
+		,IFNULL(o.SETTLE_PRICE, '') AS settlePrice				<!-- 업로드 최종 매출금액 -->
+		,IFNULL(uc.COMP_NM, '') AS supplierNm 		<!-- 공급업체명 -->
+		,IFNULL(o.ODID, '') AS odid						<!-- 주문번호 -->
+		,IFNULL(o.OD_ORDER_DETL_ID, '') AS odOrderDetlId			<!-- 주문상세번호 -->
+		,IFNULL(os.SELLERS_NM, '-') AS sellersNm <!-- 판매처명 -->
+		,IFNULL(o.OUTMALL_DETAIL_ID, '') AS outmallDetailId			<!-- 외부몰주문번호 -->
+		,IF(o.TAX_YN = 'Y', ROUND(o.PAID_PRICE / 1.1), o.PAID_PRICE) AS vatRemovePaidPrice <!-- 매출금액 (VAT제외) -->
+		,IF(o.PAID_PRICE IS NULL, NULL, o.PAID_PRICE - IF(o.TAX_YN = 'Y', ROUND(o.PAID_PRICE / 1.1), o.PAID_PRICE)) AS vat <!-- VAT -->
+		,o.PAID_PRICE AS paidPrice 					<!-- 매출금액 (VAT 포함) -->
+		FROM
+		(
+		<!-- 외부몰 주문 매칭 및 외부몰 주문 데이터 없는 리스트 -->
+		SELECT
+		oomcud.SELLERS_NM 								<!-- 업로드 판매처명 -->
+		,oomcud.OUTMALL_ID AS UPLOAD_OUTMALL_DETAIL_ID 	<!-- 업로드 외부몰 주문번호 -->
+		,oomcud.ORDER_AMT 								<!-- 업로드 매출금액 -->
+		,(CONVERT(oomcud.ORDER_AMT, SIGNED) - CONVERT(oomcud.SETTLE_PRICE, SIGNED)) AS CONTRAST_AMT <!-- 업로드 대비금액 -->
+		,oomcud.SETTLE_PRICE 							<!-- 업로드 최종 매출금액 -->
+		,ood.UR_SUPPLIER_ID 							<!-- 공급업체ID -->
+		,ood.ODID 										<!-- 주문번호 -->
+		,ood.OD_ORDER_DETL_ID 							<!-- 주문상세번호 -->
+		,oo.OM_SELLERS_ID 								<!-- 판매처ID -->
+		,ood.OUTMALL_DETAIL_ID 							<!-- 외부몰주문번호 -->
+		,ood.TAX_YN 									<!-- 과세여부 -->
+		,ood.PAID_PRICE - IFNULL((SELECT SUM(SOCD.PAID_PRICE)
+		FROM OD_ORDER_DETL SOOD
+		INNER JOIN OD_CLAIM_DETL SOCD ON SOOD.OD_ORDER_DETL_ID = SOCD.OD_ORDER_DETL_ID
+		INNER JOIN OD_CLAIM OC ON OC.OD_CLAIM_ID = SOCD.OD_CLAIM_ID AND OC.CLAIM_YN = 'Y'
+		WHERE SOOD.OD_ORDER_DETL_ID = ood.OD_ORDER_DETL_ID
+		AND SOCD.CLAIM_STATUS_CD NOT IN ('CE','RE', 'CS') ), 0) AS PAID_PRICE <!-- 매출금액 (VAT 포함) -->
+		FROM
+		OD_ORDER_DETL ood
+		JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+		JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+		<!--LEFT JOIN OD_OUT_MALL_COMPARE_UPLOAD_DETAIL oomcud ON (ood.OUTMALL_DETAIL_ID = oomcud.OUTMALL_ID AND ood.OUTMALL_DETAIL_ID = oomcud.OUTMALL_ID AND oomcud.OUTMALL_ID IS NOT NULL AND oomcud.OUTMALL_ID <> '')-->
+		JOIN OD_OUT_MALL_COMPARE_UPLOAD_DETAIL oomcud ON (ood.OUTMALL_DETAIL_ID = oomcud.OUTMALL_ID
+														  AND oomcud.OD_OUT_MALL_COMPARE_UPLOAD_DETAIL_ID = #{odOutMallCompareUploadInfoId}
+														  AND oomcud.SUCCESS_YN = 'Y'
+														  AND ood.OUTMALL_DETAIL_ID = oomcud.OUTMALL_ID
+														  AND oomcud.OUTMALL_ID IS NOT NULL AND oomcud.OUTMALL_ID <![CDATA[<>]]> '')
+		WHERE
+		oo.SELLERS_GROUP_CD != 'SELLERS_GROUP.MALL'
+		<include refid="searchDetailDate" />	<!-- 기간조회 -->
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+			AND oo.SELLERS_GROUP_CD = #{sellersGroup}
+		</if>
+
+		<if test="omSellersIdList.size() > 0">
+			<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findOutmallMatchingType, "OUTMALL_NOT")'>	<!-- 외부몰 미매칭 -->
+			AND oomcud.OD_OUT_MALL_COMPARE_UPLOAD_DETAIL_ID IS NULL
+		</if>
+		<include refid="searchOutmall" />	<!-- 검색어 조회 -->
+		<!-- 외부몰 주문 데이터만 있는 경우 (매칭여부:외부몰 미매칭 검색일때 경우는 아래 쿼리 필요 없음) -->
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(findOutmallMatchingType, "BOS_NOT")'>	<!-- BOS주문 미매칭 -->
+			UNION ALL
+			SELECT
+			oomcud.SELLERS_NM 								<!-- 업로드 판매처명 -->
+			,oomcud.OUTMALL_ID AS UPLOAD_OUTMALL_DETAIL_ID 	<!-- 업로드 외부몰 주문번호 -->
+			,oomcud.ORDER_AMT 								<!-- 업로드 매출금액 -->
+			,oomcud.ORDER_AMT - oomcud.SETTLE_PRICE AS CONTRAST_AMT <!-- 업로드 대비금액 -->
+			,oomcud.SETTLE_PRICE 							<!-- 업로드 최종 매출금액 -->
+			,NULL AS UR_SUPPLIER_ID 						<!-- 공급업체ID -->
+			,NULL AS ODID 									<!-- 주문번호 -->
+			,NULL AS OD_ORDER_DETL_ID						<!-- 주문상세번호 -->
+			,NULL AS OM_SELLERS_ID 							<!-- 판매처ID -->
+			,NULL AS OUTMALL_DETAIL_ID 						<!-- 외부몰주문번호 -->
+			,NULL AS TAX_YN 								<!-- 과세여부 -->
+			,NULL AS PAID_PRICE 							<!-- 매출금액 (VAT 포함) -->
+			FROM
+			OD_OUT_MALL_COMPARE_UPLOAD_DETAIL oomcud
+			LEFT JOIN OD_ORDER_DETL ood ON (oomcud.OUTMALL_ID = ood.OUTMALL_DETAIL_ID)
+			JOIN OD_ORDER oo ON	(oo.ORDER_YN ='Y' AND oo.OD_ORDER_ID = ood.OD_ORDER_ID)
+			JOIN OD_ORDER_DT ood2 ON (ood2.OD_ORDER_ID = oo.OD_ORDER_ID)
+			WHERE
+			ood.OD_ORDER_DETL_ID IS NULL
+			<include refid="searchDetailDate" />	<!-- 기간조회 -->
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sellersGroup)"> <!-- 판매처 -->
+				AND oo.SELLERS_GROUP_CD = #{sellersGroup}
+			</if>
+
+			<if test="omSellersIdList.size() > 0">
+				<include refid="searchDetailSellersDetail" />	<!-- 판매처 조회조건 -->
+			</if>
+
+			<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findOutmallMatchingType, "OUTMALL_NOT")'>	<!-- 외부몰 미매칭 -->
+				AND oomcud.OD_OUT_MALL_COMPARE_UPLOAD_DETAIL_ID IS NULL
+			</if>
+			<include refid="searchOutmall" />   <!-- 검색어 조회 -->
+		</if>
+		) o
+		LEFT JOIN UR_SUPPLIER us ON (us.UR_SUPPLIER_ID = o.UR_SUPPLIER_ID)
+		LEFT JOIN UR_COMPANY uc ON (uc.UR_COMPANY_ID = us.UR_COMPANY_ID)
+		LEFT JOIN OM_SELLERS os ON (os.OM_SELLERS_ID = o.OM_SELLERS_ID)
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(findOutmallMatchingType, "ORDER_NOT")'>	<!-- 주문 내역 상이 -->
+			WHERE o.SETTLE_PRICE != o.PAID_PRICE
+		</if>
+		<if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(excelYn, "Y")'>
+			<include refid="_common.pageLimit"/>
+		</if>
+	</select>
+
+
+
+	<sql id="searchDetailDate">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(dateSearchStart)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "ORDER_DT")'><!-- 주문일자 -->
+					AND ood2.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "IC_DT")'><!-- 결제일자 -->
+					AND ood2.IC_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(dateSearchType, "CREATE_DT")'><!-- 등록일자 -->
+					AND oomcud.CREATE_DT BETWEEN #{dateSearchStart} AND (#{dateSearchEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="searchDetailSellersDetail">
+		AND oo.OM_SELLERS_ID IN
+		<foreach collection="omSellersIdList" item="sellersDetail" index="index" separator="," open="(" close=")">
+			#{sellersDetail}
+		</foreach>
+
+	</sql>
+
+
+	<sql id="searchOutmall">
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+			<choose>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(outmallSearchMultiType, "OD_ORDER_ID")'><!-- 주문번호 -->
+					AND oo.ODID = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(outmallSearchMultiType, "IL_ITEM_CD")'><!-- 품목코드 -->
+					AND ood.IL_ITEM_CD  = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(outmallSearchMultiType, "ITEM_BATCODE")'><!-- 품목 바코드 -->
+					AND ood.ITEM_BARCODE = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(outmallSearchMultiType, "IL_GOODS_ID")'><!-- 상품코드 -->
+					AND ood.IL_GOODS_ID = #{findKeyword}
+				</when>
+				<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(outmallSearchMultiType, "GOODS_NAME")'><!-- 상품명 -->
+					AND ood.GOODS_NM = #{findKeyword}
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+
+	<select id="getSellerInfo" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalOutmallUploadDto">
+		/*	calOutmall.getSellerInfo  */
+		SELECT
+		OM_SELLERS_ID
+		FROM
+		OM_SELLERS
+		WHERE SELLERS_NM = #{sellersNm}
+	</select>
+
+	<insert id="addOdOrderMaster">
+		/*	calOutmall.addOdOrderMaster  */
+		INSERT INTO OD_OUT_MALL_COMPARE_UPLOAD_INFO (
+		FAIL_NM,
+		CREATE_DT,
+		CREATE_ID
+		)
+		VALUES	(
+		#{originNm},
+		NOW(),
+		#{createId}
+		)
+		<selectKey resultType="Long" keyProperty="odOutMallCompareUploadInfoId" order="AFTER">
+			SELECT IFNULL(MAX(OD_OUT_MALL_COMPARE_UPLOAD_INFO_ID), 1)  FROM OD_OUT_MALL_COMPARE_UPLOAD_INFO
+		</selectKey>
+	</insert>
+
+	<insert id="addOdOrderUploadDetail">
+		/*	calOutmall.addOdOrderUploadDetail  */
+		INSERT INTO OD_OUT_MALL_COMPARE_UPLOAD_DETAIL (
+			OD_OUT_MALL_COMPARE_UPLOAD_INFO_ID,
+			OUTMALL_ID,
+			OM_SELLERS_ID,
+			SELLERS_NM,
+			ORDER_AMT,
+			ORDER_CNT,
+			IC_DT,
+			ORDER_IF_DT,
+			SETTLE_DT,
+			GOODS_NM,
+			DISCOUNT_PRICE,
+			COUPON_PRICE,
+			ETC_DISCOUNT_PRICE,
+			SETTLE_PRICE,
+			SETTLE_ITEM_CNT,
+			SUCCESS_YN,
+			CREATE_DT,
+			CREATE_ID
+		)
+		VALUES	(
+			#{odOutMallCompareUploadInfoId},
+			#{outmallId},
+			#{omSellersId},
+			#{sellersNm},
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderAmt)">
+				#{orderAmt},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderCnt)">
+				#{orderCnt},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(icDt)">
+				#{icDt},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderIfDt)">
+				#{orderIfDt},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(settleDt)">
+				#{settleDt},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+			#{goodsNm},
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(discountPrice)">
+				#{discountPrice},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(couponPrice)">
+				#{couponPrice},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(etcDiscountPrice)">
+				#{etcDiscountPrice},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(settlePrice)">
+				#{settlePrice},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(orderCnt)">
+				#{orderCnt},
+			</when>
+			<otherwise>
+				NULL,
+			</otherwise>
+		</choose>
+			#{successYn},
+			NOW(),
+			#{createId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 업로드 정보 수정
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.28		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putOutmallCountInfo">
+		/*	calOutmall.putOutmallCountInfo */
+		UPDATE OD_OUT_MALL_COMPARE_UPLOAD_INFO
+		SET SUCCESS_CNT = #{successCnt},
+		FAIL_CNT = #{failCnt}
+		WHERE OD_OUT_MALL_COMPARE_UPLOAD_INFO_ID = #{odOutMallCompareUploadInfoId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: BOS 클레임 정보 건 수 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.28		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getPsClaimBosCount" resultType="int">
+		/*	calOutmall.getPsClaimBosCount */
+		SELECT IFNULL((
+		SELECT	COUNT(1)
+		FROM	PS_CLAIM_BOS
+		WHERE	PS_CLAIM_BOS_ID = #{psClaimBosId}
+		AND 	DEL_YN = 'N'
+		AND 	USE_YN = 'Y'
+		), 0)
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 외부몰 주문 대사 업로드 실패내역 조회
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.08.31		안치열	  		최초생성
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCalOutmallUploadFailList" resultType="kr.co.pulmuone.v1.calculate.collation.dto.CalOutmallDetlListDto">
+	/* calOutmall.getCalOutmallUploadFailList */
+		SELECT IFNULL(OUTMALL_ID, '') AS OUTMALL_ID
+			, IFNULL(OM_SELLERS_ID, '') AS OM_SELLERS_ID
+			, IFNULL(SELLERS_NM, '') AS SELLERS_NM
+			, IFNULL(ORDER_AMT, '') AS ORDER_AMT
+			, IFNULL(ORDER_CNT, '') AS ORDER_CNT
+			, IFNULL(DATE_FORMAT(IC_DT, '%Y-%m-%d'), '') AS IC_DT
+			, IFNULL(DATE_FORMAT(ORDER_IF_DT, '%Y-%m-%d'), '') AS ORDER_IF_DT
+			, IFNULL(DATE_FORMAT(SETTLE_DT, '%Y-%m-%d'), '') AS SETTLE_DT
+			, IFNULL(GOODS_NM, '') AS GOODS_NM
+			, IFNULL(DISCOUNT_PRICE, '') AS DISCOUNT_PRICE
+			, IFNULL(COUPON_PRICE, '') AS COUPON_PRICE
+			, IFNULL(ETC_DISCOUNT_PRICE, '') AS ETC_DISCOUNT_PRICE
+			, IFNULL(SETTLE_PRICE, '') AS SETTLE_PRICE
+			, IFNULL(SETTLE_ITEM_CNT, '') AS SETTLE_ITEM_CNT
+		FROM OD_OUT_MALL_COMPARE_UPLOAD_DETAIL
+		WHERE OD_OUT_MALL_COMPARE_UPLOAD_INFO_ID = #{odOutMallCompareUploadInfoId}
+		AND SUCCESS_YN = 'N'
+	</select>
+</mapper>

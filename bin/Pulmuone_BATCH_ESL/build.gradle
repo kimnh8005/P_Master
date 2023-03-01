@@ -1,0 +1,48 @@
+apply plugin: 'org.springframework.boot'
+
+group = 'kr.co.pulmuone.batch.esl'
+
+bootJar {
+    enabled = true
+    archiveBaseName = "pulmuone-batch-esl"
+}
+
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    compile.exclude module: 'spring-boot-starter-tomcat'
+    compile.exclude module: 'spring-boot-starter-data-redis'
+    compile.exclude module: 'spring-session-data-redis'
+    compile.exclude module: 'lettuce'
+}
+
+repositories {
+    maven {
+        name 'nexus-maven-mirror'
+        url "${NEXUS_MAVEN_MIRROR_PROTOCOL}://${NEXUS_MAVEN_MIRROR_URL}"
+        credentials {
+            username "${NEXUS_MAVEN_MIRROR_USERNAME}"
+            password "${NEXUS_MAVEN_MIRROR_PASSWORD}"
+        }
+    }
+}
+
+compileJava.options.encoding = 'UTF-8'
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.data:spring-data-commons'
+
+    implementation 'com.github.ulisesbocchio:jasypt-spring-boot-starter:2.1.1'
+    implementation 'org.apache.commons:commons-lang3:3.9'
+    implementation 'javax.servlet:javax.servlet-api:4.0.1'
+}

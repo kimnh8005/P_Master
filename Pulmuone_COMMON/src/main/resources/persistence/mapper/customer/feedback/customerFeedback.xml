@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.customer.feedback.CustomerFeedbackMapper">
+
+  <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 나의상품구매후기 목록조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getFeedbackByUserMap" type="kr.co.pulmuone.v1.customer.feedback.dto.vo.FeedbackByUserResultVo">
+        <result column="FB_FEEDBACK_ID"           property="fbFeedbackId" />
+        <result column="BEST_YN"                  property="bestYn" />
+        <result column="EXPERIENCE_YN"            property="experienceYn" />
+        <result column="IL_GOODS_ID"              property="ilGoodsId" />
+        <result column="GOODS_NAME"               property="goodsName" />
+        <result column="THUMBNAIL_PATH"           property="thumbnailPath" />
+        <result column="IL_ITEM_CD"               property="ilItemCd" />
+        <result column="ITEM_NAME"                property="itemName" />
+        <result column="IC_DT"                    property="icDate" />
+        <result column="CREATE_DATE"              property="createDate" />
+        <result column="SATISFACTION_SCORE"       property="satisfactionScore" />
+        <result column="BEST_COUNT"               property="bestCount" />
+        <result column="COMMENT"                  property="comment" />
+        <result column="PACK_GOODS_ID"            property="packGoodsId" />
+        <result column="PACK_TITLE"               property="packTitle" />
+        <result column="PACK_TYPE"                property="packType" />
+        <result column="EV_EVENT_ID"              property="evEventId" />
+    </resultMap>
+    <select id="getFeedbackByUser" resultMap="getFeedbackByUserMap">
+        /* customerFeedback.getFeedbackByUser */
+        SELECT G1.FB_FEEDBACK_ID
+            , G1.BEST_YN
+            , G1.EXPERIENCE_YN
+            , G1.IL_GOODS_ID
+            , (CASE WHEN G1.PACK_TYPE = 'PACKAGE' THEN G1.PACK_GOODS_IMG ELSE G1.THUMBNAIL_PATH END) AS THUMBNAIL_PATH
+            , G1.IL_ITEM_CD
+            , G1.ITEM_NAME
+            , G1.IC_DT
+            , G1.CREATE_DATE
+            , G1.SATISFACTION_SCORE
+            , G1.BEST_COUNT
+            , G1.COMMENT
+            , G1.PACK_TITLE
+            , G1.GOODS_NAME
+            , G1.PACK_TYPE
+            , G1.EV_EVENT_ID
+            , G1.PACK_GOODS_ID
+        FROM(
+            SELECT
+                FF.FB_FEEDBACK_ID                                AS FB_FEEDBACK_ID /*후기PK*/
+                , (CASE WHEN FF.BEST_CNT <![CDATA[>=]]> #{bestCount} OR ADMIN_BEST_YN = 'Y' OR ADMIN_EXCELLENT_YN = 'Y' THEN 'Y' ELSE 'N'  END) AS BEST_YN
+                , (CASE WHEN EE.EV_EVENT_ID is not null THEN 'Y' ELSE 'N' END) AS EXPERIENCE_YN
+                , FF.IL_GOODS_ID                                   AS IL_GOODS_ID    /*상품PK*/
+                , FN_GOODS_S_IMG(IFNULL(FF.IL_GOODS_ID, 0))        AS THUMBNAIL_PATH
+                , FF.IL_ITEM_CD                                    AS IL_ITEM_CD     /*품목PK*/
+                , FF.ITEM_NM                                       AS ITEM_NAME      /*품목명*/
+                , (SELECT DATE(IC_DT) AS IC_DT FROM OD_ORDER_DT WHERE OD_ORDER_ID = FF.OD_ORDER_ID) AS IC_DT
+                , DATE(FF.CREATE_DT)                               AS CREATE_DATE    /*등록일*/
+                ,FF.SATISFACTION_SCORE                            AS SATISFACTION_SCORE /*만족도*/
+                ,FF.BEST_CNT                                      AS BEST_COUNT      /*베스트평가획득횟수*/
+                ,FF.COMMENT                                       AS COMMENT        /*후기 내용*/
+                , ODP.GOODS_NM AS PACK_TITLE
+                , FF.GOODS_NM                                      AS GOODS_NAME     /*상품정보백업 - 마스터 품목명 --상품명 */
+                ,(CASE WHEN ODP.PROMOTION_TP = 'CART_PROMOTION_TP.EXHIBIT_SELECT' THEN 'EXHIBIT'
+                WHEN ODP.PROMOTION_TP = 'CART_PROMOTION_TP.GREENJUICE_SELECT' THEN 'GREENJUICE'
+                WHEN ODP.GOODS_TP_CD = 'GOODS_TYPE.PACKAGE' THEN 'PACKAGE'
+                ELSE 'NORMAL' END) AS PACK_TYPE
+                , OD.EV_EXHIBIT_ID AS EV_EVENT_ID
+                , ODP.IL_GOODS_ID AS PACK_GOODS_ID
+                , FN_GOODS_S_IMG(IFNULL(ODP.IL_GOODS_ID, 0)) AS PACK_GOODS_IMG
+                , FF.CREATE_DT AS CREATE_DATE_TIME
+            FROM FB_FEEDBACK FF
+                LEFT OUTER JOIN OD_ORDER OO ON FF.OD_ORDER_ID = OO.OD_ORDER_ID
+                LEFT OUTER JOIN OD_ORDER_DETL OD ON FF.OD_ORDER_ID = OD.OD_ORDER_ID AND FF.OD_ORDER_DETL_ID = OD.OD_ORDER_DETL_ID
+                LEFT OUTER JOIN OD_ORDER_DETL_PACK ODP ON FF.OD_ORDER_ID = ODP.OD_ORDER_ID AND OD.OD_ORDER_DETL_PARENT_ID = ODP.OD_ORDER_DETL_ID
+                LEFT OUTER JOIN EV_EVENT EE ON FF.EV_EVENT_ID = EE.EV_EVENT_ID AND EE.EVENT_TP = 'EVENT_TP.EXPERIENCE'
+            WHERE FF.UR_USER_ID= #{urUserId}
+                AND FF.CREATE_DT between  #{startDate} AND (#{endDate}+ INTERVAL 1 DAY - INTERVAL 1 SECOND)
+                AND FF.DISP_YN = 'Y'
+        ) G1
+        ORDER BY G1.CREATE_DATE_TIME DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:후기 첨부파일 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.27		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="feedbackAttcMap" type="kr.co.pulmuone.v1.customer.feedback.dto.vo.FeedbackAttcVo">
+        <result column="FB_FEEDBACK_ATTC_ID"    property="fbFeedbackAttcId" />
+        <result column="FB_FEEDBACK_ID"         property="fbFeedbackId" />
+        <result column="IMG_ORIGIN_NM"          property="imageOriginalName" />
+        <result column="IMG_NM"                 property="imageName" />
+        <result column="IMG_PATH"               property="imagePath" />
+        <result column="THUMBNAIL_ORIGIN_NM"    property="thumbnailOriginalName" />
+        <result column="THUMBNAIL_NM"           property="thumbnailName" />
+        <result column="THUMBNAIL_PATH"         property="thumbnailPath" />
+        <result column="IMAGE_NAME_PATH"        property="imageNamePath" />
+        <result column="THUMBNAIL_NAME_PATH"    property="thumbnailNamePath" />
+    </resultMap>
+    <select id="getFeedbackAttcByFbFeedbackId" resultMap="feedbackAttcMap">
+        SELECT FB_FEEDBACK_ATTC_ID
+            , FB_FEEDBACK_ID
+            , IMG_ORIGIN_NM
+            , IMG_NM
+            , IMG_PATH
+            , THUMBNAIL_ORIGIN_NM
+            , THUMBNAIL_NM
+            , THUMBNAIL_PATH
+            , CONCAT(IMG_PATH ,IMG_NM)                 AS IMAGE_NAME_PATH
+            , CONCAT(THUMBNAIL_PATH, THUMBNAIL_NM )    AS THUMBNAIL_NAME_PATH
+        FROM FB_FEEDBACK_ATTC
+        WHERE FB_FEEDBACK_ID = #{fbFeedbackId}
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 구매후기 기존 등록여부 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.19		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getFeedbackExistCnt" resultType="int">
+        /* customerFeedback.getFeedbackExistCnt */
+        SELECT COUNT(*) AS CNT
+        FROM FB_FEEDBACK
+        WHERE IL_GOODS_ID = #{ilGoodsId}
+            AND IL_ITEM_CD = #{ilItemCd}
+            AND OD_ORDER_ID = #{odOrderId}
+            AND OD_ORDER_DETL_ID = #{odOrderDetlId}
+            AND UR_USER_ID = #{urUserId}
+    </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:상품구매후기 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addFeedback" >
+  	/* customerFeedback.addFeedback */
+		INSERT  INTO FB_FEEDBACK (
+               IL_ITEM_CD               /* 품목PK */
+               ,IL_GOODS_ID             /* 상품PK */
+               ,OD_ORDER_ID             /* 주문PK */
+               ,OD_ORDER_DETL_ID        /* 주문상세PK */
+               ,UR_USER_ID              /* 후기작성자PK */
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackProductType)">
+               ,FEEDBACK_PRODUCT_TP     /* 상품유형-FEEDBACK_PRODUCT_TP - NORMAL(일반상품후기), TESTER(체험단상품후기) */
+               </if>
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackType)">
+               ,FEEDBACK_TP             /* 후기유형-FEEDBACK_TP - NORMAL(일반후기), PHOTO(포토후기), PREMIUM(프리미엄후기) */
+               </if>
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(satisfactionScore)">
+               ,SATISFACTION_SCORE      /* 만족도 */
+               </if>
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayYn)">
+               ,DISP_YN                 /* 노출여부  Y.노출 N.비노출  */
+               </if>
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(bestCount)">
+               ,BEST_CNT                /* 베스트평가획득횟수 */
+               </if>
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminBestYn)">
+               ,ADMIN_BEST_YN           /* 베스트 후기(관리자)  Y. N. */
+               </if>
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminExcellentYn)">
+               ,ADMIN_EXCELLENT_YN      /* 우수 후기  Y. N. */
+               </if>
+               <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(comment)">
+               ,COMMENT                 /* 후기 내용 */
+               </if>
+               ,GOODS_NM                /*상품정보백업 - 상품명 */
+               ,ITEM_NM                 /* 상품정보백업 - 마스터 품목명 */
+               ,LOGIN_ID                /* 회원정보백업 - 로그인ID  */
+               ,USER_NM                 /* 회원정보백업 - 이름(암호화) */
+               ,CREATE_DT               /* 등록일 */
+                , EV_EVENT_ID
+         )
+         SELECT
+             #{ilItemCd}             /* 품목PK */
+            ,#{ilGoodsId}            /* 상품PK */
+            ,#{odOrderId}            /* 주문PK */
+            ,#{odOrderDetlId}        /* 주문상세PK */
+            ,#{urUserId}             /* 후기작성자PK */
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackProductType)">
+             ,#{feedbackProductType}    /* 상품유형-FEEDBACK_PRODUCT_TP - NORMAL(일반상품후기), TESTER(체험단상품후기) */
+              </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(feedbackType)">
+             ,#{feedbackType}           /* 후기유형-FEEDBACK_TP - NORMAL(일반후기), PHOTO(포토후기), PREMIUM(프리미엄후기) */
+              </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(satisfactionScore)">
+             ,#{satisfactionScore}    /* 만족도 */
+              </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(displayYn)">
+             ,#{displayYn}               /* 노출여부  Y.노출 N.비노출  */
+              </if>
+              <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(bestCount)">
+             ,#{bestCount}              /* 베스트평가획득횟수 */
+              </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminBestYn)">
+             ,#{adminBestYn}          /* 베스트 후기(관리자)  */
+              </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(adminExcellentYn)">
+             ,#{adminExcellentYn}     /* 우수 후기  */
+              </if>
+             <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(comment)">
+             ,#{comment}              /* 후기 내용 */
+              </if>
+	         ,(SELECT GOODS_NM FROM IL_GOODS WHERE IL_GOODS_ID = #{ilGoodsId})  /* 상품정보백업 - 상품명 */
+             ,(SELECT ITEM_NM FROM IL_ITEM WHERE IL_ITEM_CD = #{ilItemCd})    /* 상품정보백업 - 마스터 품목명 */
+            , UU.LOGIN_ID
+            , UU.USER_NM
+            , NOW()
+            , #{evEventId}
+        FROM UR_USER UU
+        WHERE UU.UR_USER_ID = #{urUserId}
+
+        <selectKey resultType="Long" keyProperty="fbFeedbackId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:상품구매후기 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addFeedbackAttc" >
+  	/* customerFeedback.addFeedbackAttc */
+	  INSERT INTO FB_FEEDBACK_ATTC
+               (
+                FB_FEEDBACK_ID          /*후기PK*/
+               ,IMG_ORIGIN_NM           /*원본파일명*/
+               ,IMG_NM                  /*파일명*/
+               ,IMG_PATH                /*파일전체경로*/
+               ,THUMBNAIL_ORIGIN_NM     /*썸네일 원본파일명*/
+               ,THUMBNAIL_NM            /*썸네일 파일명*/
+               ,THUMBNAIL_PATH          /*썸네일 파일전체경로*/
+               ,CREATE_DT               /*등록일시*/
+               )
+        VALUES
+               (
+                #{fbFeedbackId}
+               ,#{imageOriginalName}
+               ,#{imageName}
+               ,#{imagePath}
+               ,#{thumbnailOriginalName}
+               ,#{thumbnailName}
+               ,#{thumbnailPath}
+               ,now()
+               )
+	</insert>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:상품구매 후기 별점 점수 목록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getFeedbackScorePercentListMap" type="kr.co.pulmuone.v1.customer.feedback.dto.FeedbackScorePercentDto">
+        <result column="SCORE"         property="score" />
+        <result column="PERCENT"       property="percent" />
+    </resultMap>
+    <select id="getFeedbackScorePercentList" resultMap="getFeedbackScorePercentListMap">
+        /* customerFeedback.getFeedbackScorePercentList */
+		SELECT BASE.SATISFACTION_SCORE AS SCORE
+			, ROUND(IFNULL(	SATISFACTION_SCORE_CNT / ALL_COUNT * 100, 0)) AS PERCENT
+		FROM (
+            SELECT '5' AS SATISFACTION_SCORE
+            UNION
+            SELECT '4' AS SATISFACTION_SCORE
+            UNION
+            SELECT '3' AS SATISFACTION_SCORE
+			UNION
+            SELECT '2' AS SATISFACTION_SCORE
+			UNION
+			SELECT '1' AS SATISFACTION_SCORE
+			) BASE
+		LEFT JOIN (
+				SELECT
+					FF.SATISFACTION_SCORE , COUNT(FF.SATISFACTION_SCORE) AS SATISFACTION_SCORE_CNT ,(
+						SELECT COUNT(*)
+                        FROM (
+                            SELECT IL_ITEM_CD
+                            FROM IL_GOODS IG
+                            WHERE IG.IL_GOODS_ID IN
+                                <foreach collection="ilGoodsIdList" item="ilGoodsId" separator="," open="(" close=")">
+                                    #{ilGoodsId}
+                                </foreach>
+                            GROUP BY IL_ITEM_CD
+                            ) GG
+                            INNER JOIN FB_FEEDBACK FF ON GG.IL_ITEM_CD = FF.IL_ITEM_CD
+                        WHERE FF.SATISFACTION_SCORE IN ('1', '2', '3', '4', '5')
+                            AND FF.DISP_YN = 'Y'
+					) AS ALL_COUNT
+                FROM (
+                        SELECT IL_ITEM_CD
+                        FROM IL_GOODS IG
+                        WHERE IG.IL_GOODS_ID IN
+                        <foreach collection="ilGoodsIdList" item="ilGoodsId" separator="," open="(" close=")">
+                            #{ilGoodsId}
+                        </foreach>
+                        GROUP BY IL_ITEM_CD
+                    ) GG
+                    INNER JOIN FB_FEEDBACK FF ON GG.IL_ITEM_CD = FF.IL_ITEM_CD
+                WHERE FF.DISP_YN = 'Y'
+					AND FF.SATISFACTION_SCORE IN (
+						'1', '2', '3', '4', '5'
+					)
+				GROUP BY
+					FF.SATISFACTION_SCORE
+			)T ON
+			BASE.SATISFACTION_SCORE = T.SATISFACTION_SCORE
+    </select>
+
+ 	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:상품구매 후기 각 각의 점수 내역
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getFeedbackEachCountMap" type="kr.co.pulmuone.v1.customer.feedback.dto.FeedbackEachCountDto">
+        <result column="FEEDBACK_TOTAL_COUNT"     property="feedbackTotalCount" />
+        <result column="SATISFACTION_SCORE"       property="satisfactionScore" />
+        <result column="SATISFACTION_COUNT"       property="satisfactionCount" />
+        <result column="QNA_TOTAL_COUNT"          property="qnaTotalCount" />
+    </resultMap>
+    <select id="getFeedbackEachCount" resultMap="getFeedbackEachCountMap">
+        /* customerFeedback.getFeedbackEachCount */
+        SELECT SUM(FEEDBACK_TOTAL_COUNT) AS FEEDBACK_TOTAL_COUNT,
+            SUM(SATISFACTION_SCORE) AS SATISFACTION_SCORE,
+            SUM(SATISFACTION_COUNT) AS SATISFACTION_COUNT,
+            SUM(QNA_TOTAL_COUNT) AS QNA_TOTAL_COUNT
+        FROM (
+            SELECT  COUNT(FF.FB_FEEDBACK_ID)                   AS FEEDBACK_TOTAL_COUNT /* 상품 후기.총 갯수            */
+                ,IFNULL(ROUND(AVG(FF.SATISFACTION_SCORE),1),0) AS SATISFACTION_SCORE   /* 상품 후기.점수               */
+                ,COUNT(FF.FB_FEEDBACK_ID)                      AS SATISFACTION_COUNT   /* 상품 후기. 글쓴 사람 총 수 */
+                , 0 AS QNA_TOTAL_COUNT
+                FROM (
+                    SELECT IL_ITEM_CD
+                    FROM IL_GOODS IG
+                    WHERE IG.IL_GOODS_ID IN
+                        <foreach collection="ilGoodsIdList" item="item" separator="," open="(" close=")">
+                            #{item}
+                        </foreach>
+                    GROUP BY IL_ITEM_CD
+                ) GG
+                INNER JOIN FB_FEEDBACK FF ON GG.IL_ITEM_CD = FF.IL_ITEM_CD
+            WHERE FF.DISP_YN = 'Y'
+            UNION ALL
+            SELECT 0 AS FEEDBACK_TOTAL_COUNT
+                , 0 AS SATISFACTION_SCORE
+                , 0 AS SATISFACTION_COUNT
+                , COUNT(*) AS QNA_TOTAL_COUNT
+            FROM CS_QNA CQ
+            WHERE CQ.IL_GOODS_ID = #{ilGoodsId}
+                AND CQ.QNA_TP = 'QNA_TP.PRODUCT'
+        ) G1
+    </select>
+
+   		<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:상품 후기 이미지 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getFeedbackImageListByGoodsMap" type="kr.co.pulmuone.v1.customer.feedback.dto.vo.FeedbackImageListByGoodsResultVo">
+        <result column="FB_FEEDBACK_ID"          property="fbFeedbackId" />
+        <result column="SATISFACTION_SCORE"      property="satisfactionScore" />
+        <result column="BEST_COUNT"              property="bestCount" />
+        <result column="FB_FEEDBACK_BEST_ID"     property="fbFeedbackBestId" />
+        <result column="LOGIN_ID"                property="loginId" />
+        <result column="CREATE_DATE"             property="createDate" />
+        <result column="COMMENT"                 property="comment" />
+        <result column="HEALTH_GOODS_YN"        property="healthGoodsYn" />
+    </resultMap>
+    <select id="getFeedbackImageListByGoods" resultMap="getFeedbackImageListByGoodsMap">
+        /* customerFeedback.getFeedbackImageListByGoods */
+        SELECT *
+        FROM (
+            SELECT FF.FB_FEEDBACK_ID            AS FB_FEEDBACK_ID /*후기PK*/
+                , FF.SATISFACTION_SCORE      AS SATISFACTION_SCORE /* 후기점수 만족도*/
+                , FF.BEST_CNT                AS BEST_COUNT /*베스트평가획득횟수*/
+                , (SELECT FFB.FB_FEEDBACK_BEST_ID FROM FB_FEEDBACK_BEST FFB WHERE FF.FB_FEEDBACK_ID = FFB.FB_FEEDBACK_ID AND FFB.UR_USER_ID = #{urUserId}) AS FB_FEEDBACK_BEST_ID
+                , FF.LOGIN_ID                AS LOGIN_ID
+                , DATE(FF.CREATE_DT)         AS CREATE_DATE
+                , FF.COMMENT                 AS COMMENT /*후기 내용*/
+                , (SELECT COUNT(*) AS CNT FROM FB_FEEDBACK_ATTC FFA WHERE FFA.FB_FEEDBACK_ID = FF.FB_FEEDBACK_ID) AS FEEDBACK_ATTC_CNT
+                ,(CASE WHEN II.IL_SPEC_MASTER_ID = (SELECT PS_VAL FROM PS_CONFIG PC WHERE PS_KEY = 'SPEC_MASTER_HEALTH_ID') THEN 'Y' ELSE 'N' END) AS HEALTH_GOODS_YN
+            FROM (
+                    SELECT IL_ITEM_CD
+                    FROM IL_GOODS IG
+                    WHERE IG.IL_GOODS_ID IN
+                    <foreach collection="ilGoodsIdList" item="ilGoodsId" separator="," open="(" close=")">
+                        #{ilGoodsId}
+                    </foreach>
+                    GROUP BY IL_ITEM_CD
+                ) GG
+                INNER JOIN FB_FEEDBACK FF ON GG.IL_ITEM_CD = FF.IL_ITEM_CD
+                INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = GG.IL_ITEM_CD
+            WHERE FF.DISP_YN = 'Y'
+        ) G1
+        WHERE G1.FEEDBACK_ATTC_CNT != 0
+        ORDER BY G1.CREATE_DATE DESC
+   </select>
+
+ 	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:상품 후기 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getFeedbackListByGoodsMap" type="kr.co.pulmuone.v1.customer.feedback.dto.vo.FeedbackListByGoodsResultVo">
+        <result column="FB_FEEDBACK_ID"          property="fbFeedbackId" />
+        <result column="FEEDBACK_PRODUCT_TYPE"   property="feedbackProductType" />
+        <result column="FEEDBACK_TYPE"           property="feedbackType" />
+        <result column="SATISFACTION_SCORE"      property="satisfactionScore" />
+        <result column="BEST_CNT"                property="bestCount" />
+        <result column="FB_FEEDBACK_BEST_ID"     property="fbFeedbackBestId" />
+        <result column="LOGIN_ID"                property="loginId" />
+        <result column="ADMIN_BEST_YN"           property="adminBestYn" />
+        <result column="DISPLAY_YN"              property="displayYn" />
+        <result column="CREATE_DATE"             property="createDate" />
+        <result column="COMMENT"                 property="comment" />
+        <result column="GOODS_NM"                property="goodsName" />
+        <result column="ITEM_NM"                 property="itemName" />
+        <result column="HEALTH_GOODS_YN"        property="healthGoodsYn" />
+    </resultMap>
+    <select id="getFeedbackListByGoods" resultMap="getFeedbackListByGoodsMap">
+        /* customerFeedback.getFeedbackListByGoods */
+        SELECT
+            FF.FB_FEEDBACK_ID            AS FB_FEEDBACK_ID /*후기PK*/
+            , FF.FEEDBACK_PRODUCT_TP     AS FEEDBACK_PRODUCT_TYPE /* 상품유형*/
+            , FF.FEEDBACK_TP             AS FEEDBACK_TYPE /* 후기유형*/
+            , FF.SATISFACTION_SCORE      AS SATISFACTION_SCORE /* 후기점수 만족도*/
+            , FF.BEST_CNT                AS BEST_CNT /*베스트평가획득횟수*/
+            , (SELECT FFB.FB_FEEDBACK_BEST_ID FROM FB_FEEDBACK_BEST FFB WHERE FF.FB_FEEDBACK_ID = FFB.FB_FEEDBACK_ID AND FFB.UR_USER_ID = #{urUserId}) AS FB_FEEDBACK_BEST_ID
+            , FF.LOGIN_ID                AS LOGIN_ID
+            , FF.ADMIN_BEST_YN           AS ADMIN_BEST_YN
+            , FF.DISP_YN                 AS DISPLAY_YN
+            , DATE(FF.CREATE_DT)         AS CREATE_DATE
+            , FF.COMMENT                 AS COMMENT /*후기 내용*/
+            , FF.GOODS_NM
+            , FF.ITEM_NM
+            ,(CASE WHEN II.IL_SPEC_MASTER_ID = (SELECT PS_VAL FROM PS_CONFIG PC WHERE PS_KEY = 'SPEC_MASTER_HEALTH_ID') THEN 'Y' ELSE 'N' END) AS HEALTH_GOODS_YN
+        FROM (
+                SELECT IL_ITEM_CD
+                FROM IL_GOODS IG
+                WHERE IG.IL_GOODS_ID IN
+                <foreach collection="ilGoodsIdList" item="ilGoodsId" separator="," open="(" close=")">
+                    #{ilGoodsId}
+                </foreach>
+                GROUP BY IL_ITEM_CD
+            ) GG
+            INNER JOIN FB_FEEDBACK FF ON GG.IL_ITEM_CD = FF.IL_ITEM_CD
+            INNER JOIN IL_ITEM II ON II.IL_ITEM_CD = GG.IL_ITEM_CD
+        WHERE FF.DISP_YN = 'Y'
+        <if test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(photoYn, "Y")'>
+            AND FF.FEEDBACK_TP IN ('FEEDBACK_TP.PHOTO', 'FEEDBACK_TP.PREMIUM')
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sortCode)">
+	        <choose>
+	            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sortCode, "NEW")'> <!-- 최신순 -->
+	                ORDER BY   FF.CREATE_DT DESC
+	            </when>
+	            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sortCode, "LOW_SCORE")'> <!-- 평점 낮은순 -->
+	                 ORDER BY   FF.SATISFACTION_SCORE ASC, FF.CREATE_DT DESC
+	            </when>
+	            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sortCode, "HIGH_SCORE")'> <!-- 평점 높은순 -->
+	               ORDER BY   FF.SATISFACTION_SCORE DESC, FF.CREATE_DT DESC
+	            </when>
+	            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sortCode, "ADMIN")'> <!--관리자추천순 -->
+	               ORDER BY FF.ADMIN_BEST_YN DESC, FF.CREATE_DT DESC
+	            </when>
+	            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sortCode, "POPULARITY")'> <!-- 베스트순 -->
+	               ORDER BY FF.BEST_CNT DESC, FF.CREATE_DT DESC
+	            </when>
+	        </choose>
+	    </if>
+   </select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		isExistFeedbackBest
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="isExistFeedbackBest" resultType="int">
+  	    /* customerFeedback.isExistFeedbackBest */
+        SELECT COUNT(*)
+        FROM FB_FEEDBACK_BEST
+        WHERE  FB_FEEDBACK_ID  = #{fbFeedbackId}
+            AND  UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		putFeedbackBestCntPlus
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putFeedbackBestCntPlus" >
+  	/* customerFeedback.putFeedbackBestCntPlus */
+		UPDATE FB_FEEDBACK SET
+		 BEST_CNT = BEST_CNT+1
+		WHERE
+		FB_FEEDBACK_ID =  #{fbFeedbackId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:putFeedbackBestCntMinus
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putFeedbackBestCntMinus" >
+  	    /* customerFeedback.putFeedbackBestCntMinus */
+        UPDATE FB_FEEDBACK SET
+        BEST_CNT = BEST_CNT-1
+        WHERE FB_FEEDBACK_ID =  #{fbFeedbackId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		addFeedbackBest
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addFeedbackBest" >
+  	/* customerFeedback.addFeedbackBest */
+	  INSERT INTO FB_FEEDBACK_BEST (
+            FB_FEEDBACK_ID          /*후기PK*/
+            ,UR_USER_ID              /*UR_USR_ID*/
+            ,CREATE_DT              /*등록일시*/
+        ) VALUES (
+            #{fbFeedbackId}
+            ,#{urUserId}
+            ,now()
+        )
+	</insert>
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:delFeedbackBest
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		kkm          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delFeedbackBest" >
+  	    /* customerFeedback.delFeedbackBest */
+        DELETE FROM  FB_FEEDBACK_BEST
+        WHERE 	FB_FEEDBACK_ID =  #{fbFeedbackId}
+        AND  UR_USER_ID = #{urUserId}
+	</delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		:후기 베스트 수량 검색
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.22		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+    <select id="getFeedbackBestCount" resultType="int">
+        /* customerFeedback.getFeedbackBestCount */
+        SELECT BEST_CNT
+        FROM FB_FEEDBACK
+        WHERE FB_FEEDBACK_ID = #{fbFeedbackId}
+    </select>
+
+</mapper>

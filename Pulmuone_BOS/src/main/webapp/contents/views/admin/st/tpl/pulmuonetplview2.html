@@ -1,0 +1,336 @@
+<!-- authUser.html && authUserController.js 참고 -->
+<!-- wrap-location -->
+<div class="wrap-location">
+  <h2 class="title">풀무원_상세2</h2>
+  <span class="location">상품관리 &gt; 상품 기초정보 &gt; 상품분류 관리</span>
+</div>
+<!-- wrap-location End-->
+
+<!-- 그리드 섹션 -->
+<div class="wrap-section fb__sect">
+  <!-- 그리드 섹션1 -->
+  <section class="section" style="width: 200px">
+    <h3 class="hidden-title">메뉴그룹명</h3>
+    <div class="wrap-tit">
+      <div class="ea-title">
+        <h3>메뉴그룹명</h3>
+      </div>
+    </div>
+    <!-- 그리드1 -->
+    <div id="aGrid"></div>
+  </section>
+
+  <!-- 그리드 섹션2 -->
+  <section class="section" style="width: 700px">
+    <h3 class="hidden-title">메뉴목록</h3>
+    <div class="wrap-tit">
+      <div class="ea-title">
+        <h3>메뉴목록</h3>
+      </div>
+    </div>
+    <!-- 그리드2 -->
+    <div id="bGrid"></div>
+  </section>
+
+  <!-- 그리드 섹션3 -->
+  <section class="section" style="width: 290px">
+    <h3 class="hidden-title">메뉴URL전체목록</h3>
+    <div class="wrap-tit">
+      <div class="ea-title">
+        <h3>메뉴URL전체목록</h3>
+      </div>
+    </div>
+    <!-- 그리드3 -->
+    <div id="cGrid" class="menu__grid divide-line"></div>
+  </section>
+
+  <!-- 그리드 간 이동 버튼 -->
+  <div class="fb__move__btn__wrapper dynamic__center">
+    <button id="moveToDGrid" class="fb__btn__arrow fb__btn__arrow--right" type="button" onclick=""></button>
+    <button id="moveToCGrid" class="fb__btn__arrow fb__btn__arrow--left" type="button" onclick=""></button>
+  </div>
+
+  <!-- 그리드 섹션4 -->
+  <section class="section" style="width: 290px">
+    <h3 class="hidden-title">할당된URL목록</h3>
+    <div class="wrap-tit">
+      <div class="ea-title">
+        <h3>할당된URL목록</h3>
+      </div>
+    </div>
+    <!-- 그리드4 -->
+    <div id="dGrid" class="menu__grid"></div>
+    <span class="btn-area align-right">
+      <button id="fnSave" class="fb-btn btn-m btn-point" onclick="">저장</button>
+    </span>
+  </section>
+
+  <!-- 로딩 영역 -->
+  <div class="loading">
+    <div class="loading__image">loading...</div>
+  </div>
+</div>
+
+<!-- 테스트용 스크립트 -->btn-point
+<script>
+  $(document).ready(function () {
+    fnInitialize();	//Initialize Page Call ---------------------------------
+
+    //Initialize PageR
+    function fnInitialize(){ 
+        $scope.$emit("fnIsMenu", { flag : true });
+
+        fnPageInfo({
+            PG_ID  : "sampleView2",
+            callback : null
+        });
+    };
+    const viewTemplate = function viewTemplate() {
+      const $document = $(document)
+      var aGrid, bGrid, cGrid, dGrid
+
+      //버튼
+      const $saveBtn = $("#fnSave")
+      const $moveToDGridBtn = $("#moveToDGrid")
+      const $moveToCGridBtn = $("#moveToCGrid")
+
+      //data
+      const fbData = {
+        //로딩
+        fetches: {},
+
+        //api요청 파라미터
+        requests: {},
+
+        //데이터
+        data: {},
+      }
+
+      /************************** Functions *******************************/
+
+      function initKendo() {
+        //그리드1 테스트
+        $("#aGrid").kendoGrid({
+          dataSource: {
+            type: "odata",
+            transport: {
+              read:
+                "https://demos.telerik.com/kendo-ui/service/Northwind.svc/Customers",
+            },
+            pageSize: 20,
+          },
+          height: 710,
+          columns: [
+            {
+              field: "Country",
+              width: 150,
+            },
+          ],
+        })
+
+        $("#bGrid").kendoGrid({
+          dataSource: {
+            type: "odata",
+            transport: {
+              read:
+                "https://demos.telerik.com/kendo-ui/service/Northwind.svc/Customers",
+            },
+            pageSize: 20,
+          },
+          pageable: {
+            refresh: true,
+            pageSizes: [5, 10, 20],
+            buttonCount: 5,
+          },
+          filterable: {
+            mode: "row",
+            showOperators: false,
+            operators: {
+              string: {
+                contains: "Contains",
+              },
+            },
+          },
+          height: 710,
+          dataBound: function (e) {
+            //k-pager-sm, k-pager-lg 클래스가 있으면 목록 수 부분이 표출이 안되는 에러발생
+            //동적으로 제거
+            setTimeout(function () {
+              e.sender.element
+                .find(".k-pager-wrap")
+                .removeClass("k-pager-sm k-pager-lg")
+            })
+          },
+          columns: [
+            {
+              template:
+                "<div class='customer-photo'" +
+                "style='background-image: url(../content/web/Customers/#:data.CustomerID#.jpg);'></div>" +
+                "<div class='customer-name'>#: ContactName #</div>",
+              field: "ContactName",
+              title: "Contact Name",
+              filterable: false,
+            },
+            {
+              field: "ContactTitle",
+              title: "Contact Title",
+              filterable: {
+                cell: {
+                  suggestionOperator: "contains",
+                  showOperators: false,
+                  template: function (e) {
+                    e.element.addClass("k-textbox search-textbox")
+                    e.element.css("width", "100%")
+                  },
+                },
+              },
+            },
+            {
+              field: "CompanyName",
+              title: "Company Name",
+              filterable: {
+                cell: {
+                  suggestionOperator: "contains",
+                  showOperators: false,
+                  template: function (e) {
+                    e.element.css("width", "100%")
+                    e.element.kendoDropDownList({
+                      dataSource: e.dataSource,
+                      dataTextField: "CompanyName",
+                      dataValueField: "CompanyName",
+                      valuePrimitive: true,
+                      optionLabel: "All",
+                    })
+                  },
+                },
+              },
+            },
+            {
+              field: "Country",
+              filterable: false,
+            },
+          ],
+        })
+
+        $("#cGrid").kendoGrid({
+          dataSource: {
+            type: "odata",
+            transport: {
+              read:
+                "https://demos.telerik.com/kendo-ui/service/Northwind.svc/Customers",
+            },
+            schema: {
+              model: {
+                id: "CustomerID",
+              },
+            },
+          },
+          height: 710,
+          change: function (e) {
+            console.log(this)
+          },
+          persistSelection: true,
+          selectable: "multiple, row",
+          columns: [
+            /*{
+     		field:'chk',
+     		title : "체크박스",
+     		width : 60,
+     		attributes: { style:'text-align:center' },
+     		template : "<input type='checkbox' class='bGridCheckbox' name='BGRID'/>",
+     		headerTemplate : "<input type='checkbox' id='checkBoxAll' />",
+     		filterable: false
+  	},*/
+            {
+              selectable: true,
+              width: "60px",
+            },
+            {
+              field: "ContactTitle",
+              title: "Contact Title",
+            },
+          ],
+        })
+
+        $("#dGrid").kendoGrid({
+          dataSource: [],
+          height: 710,
+          filterable: {
+            mode: "row",
+            showOperators: false,
+            operators: {
+              string: {
+                contains: "Contains",
+              },
+            },
+          },
+          noRecords: {
+            template: "No data available",
+          },
+          columns: [
+            {
+              selectable: true,
+              width: "60px",
+            },
+            {
+              field: "ContactTitle",
+              title: "Contact Title",
+              filterable: {
+                cell: {
+                  suggestionOperator: "contains", //contains라는 오퍼레이터
+                  showOperators: false, //필터 옆에 표시되는 아이콘 제거
+                  template: function (e) {
+                    // 템플릿 선언, e에는 dataSource와 element가 넘어온다.
+                    e.element.addClass("k-textbox")
+                    e.element.css("width", "100%")
+                  },
+                },
+              },
+            },
+          ],
+        })
+
+        aGrid = $("#aGrid").data("kendoGrid")
+        bGrid = $("#bGrid").data("kendoGrid")
+        cGrid = $("#cGrid").data("kendoGrid")
+        dGrid = $("#dGrid").data("kendoGrid")
+
+        window.dGrid = dGrid
+        window.cGrid = cGrid
+      }
+
+      /*****************************************************************/
+
+      /************************** 이벤트 핸들러 *******************************/
+
+      function onSave(e) {
+        //get dGrid data
+        console.log(dGrid.dataSource.data())
+      }
+
+      function onMoveToDGrid(e) {
+        const _selectedCgrid = cGrid.select()
+        console.log(_selectedCgrid)
+      }
+
+      function onMoveToCGrid(e) {
+        const _selectedDgrid = dGrid.select()
+        console.log(_selectedDgrid)
+      }
+      /*****************************************************************/
+
+      function init() {
+        initKendo()
+
+        $saveBtn.on("click", onSave)
+
+        $moveToDGridBtn.on("click", onMoveToDGrid)
+        $moveToCGridBtn.on("click", onMoveToCGrid)
+      }
+
+      init()
+    }
+
+    viewTemplate()
+  })
+</script>

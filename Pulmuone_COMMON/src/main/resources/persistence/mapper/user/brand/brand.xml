@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.brand.BrandMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 브랜드 관리(목록 조회, 추가, 수정)
+	 * @
+	 * @ 수정일			 수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.06      신성훈         최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+    <sql id="whereBrandRetrieve">
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(brandSearchType)">
+                <choose>
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandSearchType, 'BRAND_CODE')">
+                    	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(brandSearchValue)">
+                        	AND UR_BRAND_ID = TRIM(#{brandSearchValue})
+                        </if>
+                    </when>
+
+                    <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(brandSearchType, 'BRAND_NAME')">
+                        AND LOWER(BRAND_NM) LIKE CONCAT('%', LOWER(TRIM(#{brandSearchValue})), '%')
+                    </when>
+                </choose>
+            </if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUrSupplierId)">
+				AND UR_SUPPLIER_ID = #{searchUrSupplierId}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchUseYn)">
+                AND USE_YN = UPPER(#{searchUseYn})
+            </if>
+    </sql>
+
+
+	<resultMap id="getBrandListResultMap" type="kr.co.pulmuone.v1.user.brand.dto.vo.GetBrandListResultVo">
+		<result column="UR_BRAND_ID"   property="urBrandId"    />
+		<result column="LOGO_URL"      property="logoUrl"      />
+		<result column="BRAND_NAME"    property="brandName"    />
+		<result column="SUPPLIER_NAME" property="supplierName" />
+		<result column="CREATE_DATE"   property="createDate"   />
+	</resultMap>
+
+
+	<select id="getBrandList" resultMap="getBrandListResultMap">
+	    /* BrandMapper.getBrandList */
+
+        SELECT
+               BRAND.UR_BRAND_ID
+             , BRAND.BRAND_NAME
+             , (SELECT COMP.COMP_NM
+                  FROM UR_SUPPLIER  SUP
+                     , UR_COMPANY   COMP
+                 WHERE SUP.UR_COMPANY_ID  = COMP.UR_COMPANY_ID
+                   AND SUP.UR_SUPPLIER_ID = BRAND.UR_SUPPLIER_ID
+               )  AS  SUPPLIER_NAME
+             , CASE BRAND.USE_YN WHEN 'Y' THEN '사용' WHEN 'N' THEN '사용안함' END  AS  USE_YN
+             , DATE_FORMAT(BRAND.CREATE_DATE, '%Y-%m-%d')                           AS  CREATE_DATE
+          FROM (
+                SELECT
+                       BRAND.UR_BRAND_ID
+                     , (SELECT  CONCAT(PATH, NM)
+                          FROM UR_BRAND_ATTC  ATTACH
+                         WHERE ATTACH.UR_BRAND_ID  = BRAND.UR_BRAND_ID
+                           AND ATTACH.IMG_TP       = 'BRAND_LOGO_TYPE.PC_MAIN'
+                        LIMIT 1
+                       )  AS  S_IMG
+                     , BRAND.BRAND_NM   AS  BRAND_NAME
+                     , BRAND.UR_SUPPLIER_ID
+                     , BRAND.USE_YN
+                     , BRAND.CREATE_DT  AS  CREATE_DATE
+                  FROM UR_BRAND  BRAND
+                 WHERE 1 = 1
+
+                <include refid="whereBrandRetrieve" />
+
+		        ORDER BY BRAND.CREATE_DT DESC,  BRAND.UR_BRAND_ID  DESC
+
+               ) BRAND
+	</select>
+
+
+	<resultMap id="searchBrandListResultMap" type="kr.co.pulmuone.v1.user.brand.dto.vo.GetBrandListResultVo">
+		<result column="UR_BRAND_ID"   property="urBrandId"    />
+		<result column="BRAND_NAME"    property="brandName"    />
+	</resultMap>
+
+
+	<select id="searchBrandList" resultMap="searchBrandListResultMap">
+	    /* BrandMapper.searchBrandList */
+
+
+		       SELECT
+		              BRAND.UR_BRAND_ID
+		            , BRAND.BRAND_NM   AS  BRAND_NAME
+		         FROM UR_BRAND  BRAND
+		        WHERE 1 = 1
+
+                <include refid="whereBrandRetrieve" />
+
+		        ORDER BY BRAND.CREATE_DT DESC,  BRAND.UR_BRAND_ID  DESC
+
+
+	</select>
+
+
+    <!-- 브랜드 1건 조회 -->
+	<resultMap id="getBrandResultMap" type="kr.co.pulmuone.v1.user.brand.dto.vo.GetBrandResultVo">
+		<result column="UR_BRAND_ID"    property="urBrandId"   />
+		<result column="BRAND_NAME"     property="brandName"   />
+		<result column="UR_SUPPLIER_ID" property="urSupplierId"/>
+		<result column="USE_YN"         property="useYn"       />
+	</resultMap>
+
+	<select id="getBrand" resultMap="getBrandResultMap">
+	    /* BrandMapper.getBrand */
+
+                SELECT BRAND.UR_BRAND_ID
+                     , BRAND.UR_SUPPLIER_ID
+                     , BRAND.BRAND_NM AS BRAND_NAME
+                     , BRAND.USE_YN
+                  FROM UR_BRAND  BRAND
+                 WHERE BRAND.UR_BRAND_ID = TRIM(#{urBrandId})
+	</select>
+
+
+	<select id="duplicateBrandCount" resultType="int">
+        /* BrandMapper.duplicateBrandCount */
+        SELECT COUNT(1)
+          FROM UR_BRAND
+         WHERE UR_BRAND_ID = TRIM(#{urBrandId})
+	</select>
+
+
+
+    <insert id="addBrand">
+        /* BrandMapper.addBrand */
+        INSERT INTO UR_BRAND
+               (
+                  BRAND_NM
+                , UR_SUPPLIER_ID
+                , USE_YN
+                , CREATE_DT
+                , CREATE_ID
+               )
+        values (
+                  TRIM(#{brandName})
+                , TRIM(#{urSupplierId})
+                , UPPER(TRIM(#{useYn}))
+                , NOW()
+                , #{userVo.userId}
+               )
+
+        <selectKey resultType="String" keyProperty="urBrandId" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+	</insert>
+
+
+    <update id="putBrand">
+        /* BrandMapper.putBrand */
+        UPDATE UR_BRAND
+           SET BRAND_NM       = TRIM(#{brandName})
+             , USE_YN         = UPPER(trim(#{useYn}))
+             , UR_SUPPLIER_ID = TRIM(#{urSupplierId})
+             , MODIFY_ID      = #{userVo.userId}
+             , MODIFY_DT      = NOW()
+         where UR_BRAND_ID = TRIM(#{urBrandId})
+    </update>
+
+
+<!--     <update id="putBrandAttachFileInfo">
+        /* BrandMapper.putBrandAttachFileInfo */
+        update UR_BRAND_ATTC
+           set BRAND_NM       = trim(#{brandName})
+             , USE_YN         = upper(trim(#{useYn}))
+             , MODIFY_ID      = #{userVo.userId}
+             , MODIFY_DT      = now()
+         where seq = #{seq}
+    </update> -->
+
+
+<!--     <delete id="delBrandLogoMappingInfo">
+        /* BrandMapper.delBrandLogoMappingInfo */
+        delete from UR_BRAND_ATTC
+         where ur_brand_id = #{urBrandId}
+         and img_tp = #{imageType}
+    </delete> -->
+
+
+   	<resultMap id="getUrIdListResultMap" type="kr.co.pulmuone.v1.user.brand.dto.vo.GetBrandResultVo">
+		<result column="UR_BRAND_ID"   property="urBrandId"    />
+	</resultMap>
+	<select id="getUrIdList" resultMap="getUrIdListResultMap">
+	    /* brandMapper.getUrIdList */
+
+		SELECT A.UR_BRAND_ID
+		FROM (
+			SELECT DISTINCT J.UR_BRAND_ID
+	        FROM IL_GOODS G
+	        JOIN IL_ITEM I ON I.IL_ITEM_CD = G.IL_ITEM_CD AND I.UR_BRAND_ID IS NOT NULL
+	        LEFT JOIN  UR_BRAND J ON I.UR_BRAND_ID = J.UR_BRAND_ID
+        ) AS A
+        WHERE A.UR_BRAND_ID IS NOT NULL
+
+	</select>
+
+
+
+
+	<resultMap id="getUrSupplierIdListResultMap" type="kr.co.pulmuone.v1.user.brand.dto.vo.GetUrSupplierIdListResultVo">
+		<result column="UR_SUPPLIER_ID"  property="urSupplierId" />
+		<result column="UR_COMPANY_ID"   property="urCompanyId"  />
+		<result column="COMPANY_NAME"    property="companyName"  />
+	</resultMap>
+
+	<select id="getUrSupplierIdList" resultMap="getUrSupplierIdListResultMap">
+	    /* BrandMapper.getUrSupplierIdList */
+
+        SELECT DISTINCT
+               SUP.UR_SUPPLIER_ID
+             , COMP.COMP_NM    AS  COMPANY_NAME
+          FROM UR_SUPPLIER  SUP
+             , UR_COMPANY   COMP
+         WHERE SUP.UR_COMPANY_ID = COMP.UR_COMPANY_ID
+           <![CDATA[
+           AND (   COMP.COMP_NM       <>  ''
+                OR COMP.COMP_NM       IS NULL
+                OR TRIM(COMP.COMP_NM) <> ''
+                OR TRIM(COMP.COMP_NM) IS NULL
+               )
+           ]]>
+         ORDER BY COMP.COMP_NM
+	</select>
+
+
+
+</mapper>

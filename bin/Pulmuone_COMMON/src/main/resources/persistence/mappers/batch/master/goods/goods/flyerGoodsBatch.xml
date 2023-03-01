@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.FlyerGoodsBatchMapper">
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 전단행사 미노출시 노출시킬 상품리스트 조회 및 추가 (할인율 순)
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.08.04		남기승          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="flyerGoodsListResultMap" type="kr.co.pulmuone.v1.goods.goods.dto.vo.FlyerGoodsVo">
+        <result column="IL_GOODS_ID" property="ilGoodsId" />
+        <result column="IL_ITEM_CD" property="ilItemCd" />
+        <result column="GOODS_NM" property="goodsNm" />
+        <result column="RECOMMENDED_PRICE" property="recommendedPrice" />
+        <result column="SALE_PRICE" property="salePrice" />
+        <result column="DISCOUNT_RATE" property="discountRate" />
+        <result column="EMPLOYEE_SALE_PRICE" property="employeeSalePrice" />
+        <result column="EMPLOYEE_DISCOUNT_RATE" property="employeeDiscountRate" />
+        <result column="DISCOUNT_TP" property="discountTp" />
+    </resultMap>
+
+    <select id="getFlyerGoodsList" resultMap="flyerGoodsListResultMap">
+        /* flyerGoodsBatch.getFlyerGoodsList */
+        SELECT IL_GOODS_ID
+            , IL_ITEM_CD
+            , GOODS_NM
+            , RECOMMENDED_PRICE
+            , SALE_PRICE
+            , DISCOUNT_RATE
+            , EMPLOYEE_SALE_PRICE
+            , EMPLOYEE_DISCOUNT_RATE
+            , DISCOUNT_TP
+        FROM (
+            SELECT A.IL_GOODS_ID
+                 , A.IL_ITEM_CD
+                 , A.GOODS_NM
+                 , P.RECOMMENDED_PRICE
+                 , P.SALE_PRICE
+                 , TRUNCATE((CAST(P.RECOMMENDED_PRICE AS SIGNED) - CAST(P.SALE_PRICE AS SIGNED)) / P.RECOMMENDED_PRICE * 100, 0) AS DISCOUNT_RATE
+                 , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                     ( SELECT SUM(TRUNCATE(CAST(TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0))) / 100) AS SIGNED), -1) * IGPGM.GOODS_QTY)
+                         FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+                             JOIN IL_GOODS_PRICE TGP
+                                 ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+                                        AND TGP.USE_YN = 'Y'
+                                        AND DATE_FORMAT(#{execTime}, '%Y-%m-%d %H:%i:%s') BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+                             JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+                             JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+                             LEFT JOIN IL_GOODS_DISCOUNT SIGD
+                                 ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID
+                                        AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                        AND DATE_FORMAT(#{execTime}, '%Y-%m-%d %H:%i:%s') BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT
+                                        AND SIGD.USE_YN = 'Y'
+                             LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP
+                                 ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID
+                                        AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+                             LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                             LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG
+                                 ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+                     WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID
+                       AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                     )
+                        ELSE
+                            TRUNCATE(CAST(P.RECOMMENDED_PRICE * ((100 - IFNULL((SELECT IGD.DISCOUNT_RATIO
+                                                                                FROM IL_GOODS_DISCOUNT IGD
+                                                                                WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                                                                  AND #{execTime} BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT
+                                                                                  AND IGD.IL_GOODS_ID = A.IL_GOODS_ID
+                                                                                  AND IGD.USE_YN = 'Y'
+                                ), IFNULL(BG.DISCOUNT_RATIO, 0))) / 100) AS SIGNED), -1)
+                        END AS EMPLOYEE_SALE_PRICE    -- 임직원할인가 원단위 버림
+                 , CASE WHEN A.GOODS_TP = 'GOODS_TYPE.PACKAGE' THEN
+                    IFNULL(( SELECT TRUNCATE(((
+                                                SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY)
+                                                - SUM(TRUNCATE(CAST( TGP.RECOMMENDED_PRICE * ((100 - IFNULL(IGPIFDP.DISCOUNT_RATIO, IFNULL(SBG.DISCOUNT_RATIO, 0))) /100) AS SIGNED), -1) * IGPGM.GOODS_QTY)
+                                            ) / SUM(TGP.RECOMMENDED_PRICE * IGPGM.GOODS_QTY) * 100), 0)
+                             FROM IL_GOODS_PACKAGE_GOODS_MAPPING IGPGM
+                                 JOIN IL_GOODS_PRICE TGP
+                                     ON TGP.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+                                            AND TGP.USE_YN = 'Y'
+                                            AND DATE_FORMAT(#{execTime}, '%Y-%m-%d %H:%i:%s') BETWEEN TGP.PRICE_START_DT AND TGP.PRICE_END_DT
+                                 JOIN IL_GOODS SG ON SG.IL_GOODS_ID = IGPGM.TARGET_GOODS_ID
+                                 JOIN IL_ITEM SI ON SI.IL_ITEM_CD = SG.IL_ITEM_CD
+                                 LEFT JOIN IL_GOODS_DISCOUNT SIGD
+                                     ON SIGD.IL_GOODS_ID = IGPGM.IL_GOODS_ID
+                                            AND SIGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                            AND DATE_FORMAT(#{execTime}, '%Y-%m-%d %H:%i:%s') BETWEEN SIGD.DISCOUNT_START_DT AND SIGD.DISCOUNT_END_DT
+                                            AND SIGD.USE_YN = 'Y'
+                                 LEFT JOIN IL_GOODS_PACKAGE_ITEM_FIXED_DISCOUNT_PRICE IGPIFDP
+                                     ON IGPIFDP.IL_GOODS_DISCOUNT_ID = SIGD.IL_GOODS_DISCOUNT_ID
+                                            AND IGPIFDP.IL_GOODS_PACKAGE_GOODS_MAPPING_ID = IGPGM.IL_GOODS_PACKAGE_GOODS_MAPPING_ID
+                                 LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND SBGB ON SBGB.UR_BRAND_ID = SI.UR_BRAND_ID
+                                 LEFT JOIN PS_EMPL_DISC_BRAND_GRP SBG ON SBG.PS_EMPL_DISC_BRAND_GRP_ID = SBGB.PS_EMPL_DISC_BRAND_GRP_ID
+                             WHERE IGPGM.IL_GOODS_ID = A.IL_GOODS_ID
+                               AND IGPGM.GOODS_TP NOT IN ('GOODS_TYPE.GIFT', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                            ), 0)
+                        ELSE
+                            IFNULL((SELECT IGD.DISCOUNT_RATIO
+                                    FROM IL_GOODS_DISCOUNT IGD
+                                    WHERE IGD.DISCOUNT_TP = 'GOODS_DISCOUNT_TP.EMPLOYEE'
+                                      AND DATE_FORMAT(#{execTime}, '%Y-%m-%d %H:%i:%s') BETWEEN IGD.DISCOUNT_START_DT AND IGD.DISCOUNT_END_DT
+                                      AND IGD.IL_GOODS_ID = A.IL_GOODS_ID
+                                      AND USE_YN = 'Y'
+                                ), IFNULL(BG.DISCOUNT_RATIO, 0))
+                        END AS EMPLOYEE_DISCOUNT_RATE -- 임직원할인율
+                    ,   <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(priceType,'NORMAL')">
+                            'NORMAL' AS DISCOUNT_TP
+                        </if>
+                        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(priceType,'EMPLOYEE')">
+                            'EMPLOYEE' AS DISCOUNT_TP
+                        </if>
+            FROM IL_ITEM B
+                JOIN IL_GOODS A ON A.IL_ITEM_CD = B.IL_ITEM_CD AND A.SALE_STATUS = 'SALE_STATUS.ON_SALE' AND A.GOODS_TP IN ('GOODS_TYPE.NORMAL', 'GOODS_TYPE.PACKAGE') AND A.DISP_YN = 'Y'
+                JOIN IL_GOODS_PRICE P
+                    ON P.IL_GOODS_ID = A.IL_GOODS_ID
+                           AND P.USE_YN = 'Y'
+                           AND DATE_FORMAT(#{execTime}, '%Y-%m-%d %H:%i:%s') BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+                LEFT OUTER JOIN UR_BRAND G ON G.UR_BRAND_ID = B.UR_BRAND_ID AND G.USE_YN = 'Y'
+                LEFT OUTER JOIN DP_BRAND DB ON DB.DP_BRAND_ID = B.DP_BRAND_ID AND DB.USE_YN = 'Y' AND DB.DP_BRAND_ID IN (1, 14, 15)
+                LEFT JOIN PS_EMPL_DISC_BRAND_GRP_BRAND BGB ON G.UR_BRAND_ID = BGB.UR_BRAND_ID
+                LEFT JOIN PS_EMPL_DISC_BRAND_GRP BG ON BG.PS_EMPL_DISC_BRAND_GRP_ID = BGB.PS_EMPL_DISC_BRAND_GRP_ID
+                JOIN IL_GOODS_SHIPPING_TEMPLATE H ON H.IL_GOODS_ID = A.IL_GOODS_ID AND H.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID
+                JOIN IL_SHIPPING_TEMPLATE HH ON HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND HH.DEL_YN = 'N'
+            ) AS TOT
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(priceType,'NORMAL')">
+            ORDER BY DISCOUNT_RATE DESC
+        </if>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(priceType,'EMPLOYEE')">
+            ORDER BY EMPLOYEE_DISCOUNT_RATE DESC
+        </if>
+        LIMIT 20
+
+    </select>
+
+    <delete id="deleteFlyerGoods">
+        /* flyerGoodsBatch.deleteFlyerGoods */
+        TRUNCATE TABLE IL_GOODS_FLYER
+    </delete>
+
+    <insert id="addFlyerGoodsList">
+        /* flyerGoodsBatch.addFlyerGoodsList */
+        INSERT INTO IL_GOODS_FLYER (
+            IL_GOODS_ID, IL_ITEM_CD, GOODS_NM, DISCOUNT_TP, CREATE_DT
+        ) VALUES
+        <foreach item="insertData" index="index" collection="insertList" open="" separator="," close="">
+            (
+            #{insertData.ilGoodsId}
+            , #{insertData.ilItemCd}
+            , #{insertData.goodsNm}
+            , #{insertData.discountTp}
+            , now()
+            )
+        </foreach>
+    </insert>
+</mapper>

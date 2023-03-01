@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.system.help.SystemHelpMapper">
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도움말 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getHelpListResultMap" type="kr.co.pulmuone.v1.system.help.dto.vo.GetHelpListResultVo">
+		<result column="ID" property="id" />
+		<result column="NO" property="no" />
+		<result column="TITLE" property="title" />
+		<result column="CONTENT" property="content" />
+		<result column="DIVISION_CODE" property="divisionCode" />
+		<result column="DIVISION_CODE_NAME" property="divisionCodeName" />
+		<result column="USE_YN" property="useYn" />
+		<result column="CREATE_DATE" property="createDate" />
+		<result column="MODIFY_DATE" property="modifyDate" />
+		<result column="CONTENT_PLAIN" property="contentPlain" />
+	</resultMap>
+
+	<select id="getHelpList" resultMap="getHelpListResultMap">
+		/* help.getHelpList */
+		SELECT
+			@rownum:=@rownum+1 AS NO
+			,ST_HELP_ID AS ID
+			,TITLE AS TITLE
+			,CONTENT AS CONTENT
+			,DIV_CD AS DIVISION_CODE
+			,FN_COMN_CODE_DIC(DIV_CD) AS DIVISION_CODE_NAME
+			,USE_YN AS USE_YN
+			,DATE_FORMAT(CREATE_DT, '%Y-%m-%d %T') AS CREATE_DATE
+			,DATE_FORMAT(MODIFY_DT, '%Y-%m-%d %T') AS MODIFY_DATE
+			,CONTENT_PLAIN
+		FROM
+		 	ST_HELP, (SELECT @rownum:=0) r
+		<where>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(divisionCode)">
+		   	AND DIV_CD = #{divisionCode}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		   	AND USE_YN = UPPER(#{useYn})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionValue)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'TITLE')">
+						AND TITLE LIKE CONCAT('%',#{conditionValue},'%')
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'CONTENT')">
+						AND CONTENT_PLAIN LIKE CONCAT('%',#{conditionValue},'%')
+					</when>
+				</choose>
+			</if>
+		</where>
+		ORDER BY ST_HELP_ID DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도움말 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getHelpListCount" resultType="int">
+		/* help.getHelpListCount */
+		SELECT
+			COUNT(*)
+		FROM
+			ST_HELP
+		WHERE
+			1 = 1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(divisionCode)">
+		   	AND DIV_CD = #{divisionCode}
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(useYn)">
+		   	AND USE_YN = UPPER(#{useYn})
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(conditionType)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'TITLE')">
+						AND TITLE LIKE CONCAT('%',#{conditionValue},'%')
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(conditionType,'CONTENT')">
+						AND TITLE LIKE CONCAT('%',#{conditionValue},'%')
+					</when>
+				</choose>
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도움말 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getHelpResultMap" type="kr.co.pulmuone.v1.system.help.dto.vo.GetHelpResultVo">
+		<result column="ID" property="id" />
+		<result column="TITLE" property="title" />
+		<result column="CONTENT" property="content" />
+		<result column="DIVISION_CODE" property="inputDivisionCode" />
+		<result column="DIVISION_NAME" property="divisionName" />
+		<result column="DIVISION_ID" property="divisionId" />
+		<result column="USE_YN" property="inputUseYn" />
+	</resultMap>
+
+	<select id="getHelp" resultMap="getHelpResultMap">
+		/* help.getHelp */
+		SELECT
+			SH.ST_HELP_ID AS ID
+			,SH.TITLE AS TITLE
+			,SH.CONTENT AS CONTENT
+			,SH.DIV_CD AS DIVISION_CODE
+			,CASE WHEN SH.DIV_CD = 'HELP_DIV.HELP_ST' THEN GDM.DIC_MST_NM
+			 	  ELSE SM.MENU_NM
+				  END AS DIVISION_NAME
+			,CASE WHEN SH.DIV_CD = 'HELP_DIV.HELP_ST' THEN SH.GB_DIC_MST_ID
+			 	  ELSE SH.ST_MENU_ID
+				  END AS DIVISION_ID
+			,SH.USE_YN AS USE_YN
+		FROM
+		 	ST_HELP SH
+		  	LEFT JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SH.GB_DIC_MST_ID
+		  	LEFT JOIN ST_MENU SM ON SM.ST_MENU_ID = SH.ST_MENU_ID
+		WHERE
+			1 = 1
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+		   		AND SH.ST_HELP_ID = #{id}
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도움말 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="duplicateHelpCount" resultType="int">
+		/* help.duplicateHelpCount */
+		SELECT
+			COUNT(*)
+		FROM
+			ST_HELP
+		WHERE
+			DIV_CD = #{inputDivisionCode}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputDivisionCode,'HELP_DIV.HELP_MENU')">
+					AND ST_MENU_ID = #{divisionId}
+				</when>
+				<otherwise>
+					AND GB_DIC_MST_ID = #{divisionId}
+				</otherwise>
+			</choose>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(id)">
+				AND ST_HELP_ID != #{id}
+			</if>
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도움말 설정 등록
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		천혜현          최초생성
+	 * @ 2020.11.06		강윤경          현행화
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addHelp">
+		/* help.addHelp */
+		INSERT INTO ST_HELP (
+			DIV_CD
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputDivisionCode,'HELP_DIV.HELP_MENU')">
+					,ST_MENU_ID
+				</when>
+				<otherwise>
+					,GB_DIC_MST_ID
+				</otherwise>
+			</choose>
+			,TITLE
+			,CONTENT
+			,CONTENT_PLAIN
+			,USE_YN
+			,CREATE_ID
+		) VALUES(
+			#{inputDivisionCode}
+			,#{divisionId}
+			,#{title}
+			,#{content}
+			,#{contentPlain}
+			,#{inputUseYn}
+			,#{userVo.userId}
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도움말 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putHelp">
+		/* help.putHelp */
+		UPDATE
+			ST_HELP
+		SET
+			MODIFY_ID = #{userVo.userId}
+			,MODIFY_DT = SYSDATE()
+			,DIV_CD = #{inputDivisionCode}
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(inputDivisionCode,'HELP_DIV.HELP_MENU')">
+					,ST_MENU_ID = #{divisionId}
+				</when>
+				<otherwise>
+					,GB_DIC_MST_ID = #{divisionId}
+				</otherwise>
+			</choose>
+			,TITLE = #{title}
+			,CONTENT = #{content}
+			,CONTENT_PLAIN = #{contentPlain}
+			,USE_YN = #{inputUseYn}
+		WHERE
+			ST_HELP_ID = #{id}
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 도움말 설정
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.02		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delHelp">
+		/* help.delHelp */
+		DELETE
+		FROM
+			ST_HELP
+		WHERE
+			ST_HELP_ID = #{id}
+	</delete>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  해당 도움말 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.11.17		강윤경          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getHelpListByArray" resultMap="getHelpListResultMap">
+		/* help.getHelpListByArray */
+		SELECT
+			 ST_HELP_ID AS ID
+			,TITLE AS TITLE
+			,CONTENT AS CONTENT
+		FROM
+		 	ST_HELP
+		WHERE USE_YN = 'Y'
+			<if test="systemHelpIdList !=null">
+			AND ST_HELP_ID IN
+			<foreach collection="systemHelpIdList" item="systemHelpId" index="index" separator="," open="(" close=")">
+				#{systemHelpId}
+			</foreach>
+			</if>
+		ORDER BY ST_HELP_ID ASC
+	</select>
+
+</mapper>

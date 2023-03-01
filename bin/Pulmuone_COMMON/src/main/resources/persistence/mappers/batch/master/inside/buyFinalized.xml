@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.inside.BuyFinalizedMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 자동 구매확정 설정기간 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.31		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBuyFinalizedDay" resultType="int">
+		/* buyFinalized.getBuyFinalizedDay */
+		SELECT IFNULL(PC.PS_VAL, 0) AS PS_VAL	/* 자동 구매확정 설정기간 */
+		  FROM PS_CONFIG PC
+		 INNER JOIN ST_SHOP SS ON PC.ST_SHOP_ID = SS.ST_SHOP_ID
+		 					  AND SS.USE_YN 	= 'Y'
+		 WHERE PC.PS_KEY 	= #{buyFinalizedDayKey}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 구매확정대상 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.31		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getBuyFinalizedList" resultType="kr.co.pulmuone.v1.batch.order.inside.dto.vo.OrderStatusInfoVo">
+		/* buyFinalized.getBuyFinalizedList */
+        SELECT OOD.OD_ORDER_ID				/* 주문 PK */
+		     , OOD.OD_ORDER_DETL_ID			/* 주문상세 PK */
+		     , OOD.ODID						/* 주문번호 */
+		  FROM OD_ORDER_DETL OOD
+		 WHERE OOD.ORDER_STATUS_CD = #{orderStatusCd}	/* 배송완료 */
+		   /* 배송완료일에 자동 구매확정기간을 더한 날짜가 현재일보다 작거나 같은 경우 자동 구매확정 처리 */
+		   AND (DATE_FORMAT(OOD.DC_DT, '%Y-%m-%d 00:00:00') + INTERVAL #{buyFinalizedDay} DAY) <![CDATA[<=]]> DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00')
+		   AND (OOD.ORDER_CNT - OOD.CANCEL_CNT) > 0
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 구매확정 변경 (배송완료 -> 구매확정)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.03.31		이규한          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putBuyFinalizedInfo">
+		/* buyFinalized.putBuyFinalizedInfo */
+		UPDATE OD_ORDER_DETL OOD
+		   SET OOD.ORDER_STATUS_CD		= #{orderStatusCd}	/* 정상주문상태 */
+		     , OOD.BF_ID 				= #{createId}		/* 구매확정등록자 */
+		     , OOD.BF_DT 				= NOW()				/* 구매확정일자 */
+		 WHERE OOD.OD_ORDER_ID 			= #{odOrderId}
+		   AND OOD.OD_ORDER_DETL_ID 	= #{odOrderDetlId}
+		   AND OOD.ODID					= #{odid}
+	</update>
+
+</mapper>

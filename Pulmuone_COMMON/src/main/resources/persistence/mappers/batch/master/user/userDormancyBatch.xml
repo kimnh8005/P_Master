@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.user.UserDormancyBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 정상회원 휴면전환
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.13		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUrUserMove">
+		/*	userDormancyBatch.addUrUserMove  */
+		INSERT INTO UR_USER_MOVE (
+			UR_USER_ID, USER_NM, CREATE_DT
+		)
+		SELECT UR_USER_ID, USER_NM, NOW()
+		FROM UR_USER
+		WHERE UR_USER_ID = #{urUserId}
+	</insert>
+
+	<select id="selUrUserMoveId" resultType="long">
+		/*	userDormancyBatch.selUrUserMoveId  */
+		SELECT UR_USER_MOVE_ID
+		FROM UR_USER_MOVE
+		WHERE UR_USER_ID = #{urUserId}
+	</select>
+
+	<insert id="addUrUserMoveLog">
+		/*	userDormancyBatch.addUrUserMoveLog  */
+		INSERT INTO UR_USER_MOVE_LOG (
+			UR_USER_MOVE_ID, UR_USER_ID, CREATE_DT
+		) VALUES (
+			#{urUserMoveId}, #{urUserId}, NOW()
+		)
+	</insert>
+
+	<insert id="addUrBuyerMove">
+		/*	userDormancyBatch.addUrBuyerMove  */
+		INSERT INTO UR_BUYER_MOVE (
+			UR_USER_MOVE_ID, UR_USER_ID, CI_CD, GENDER, BDAY,
+			MAIL, LOWER_MAIL, MOBILE, UR_GROUP_ID, SMS_YN,
+			MAIL_YN, MARKETING_YN, SMS_YN_DT, MAIL_YN_DT, MARKETING_YN_DT, LEVELUP_DT, `STATUS`,
+			RECOMM_USER_ID, EVENT_JOIN_YN, RECENTLY_VIEW_YN, UR_ERP_EMPLOYEE_CD, FOREIGNER_YN,
+			CREATE_DT
+		)
+		SELECT #{urUserMoveId}, UR_USER_ID, CI_CD, GENDER, BDAY,
+			MAIL, LOWER_MAIL, MOBILE, UR_GROUP_ID, SMS_YN,
+			MAIL_YN, MARKETING_YN, SMS_YN_DT, MAIL_YN_DT, MARKETING_YN_DT, LEVELUP_DT, `STATUS`,
+			RECOMM_USER_ID, EVENT_JOIN_YN, RECENTLY_VIEW_YN, UR_ERP_EMPLOYEE_CD, FOREIGNER_YN,
+			NOW()
+		FROM UR_BUYER
+		WHERE UR_USER_ID = #{urUserId}
+	</insert>
+
+	<delete id="delUserBuyer">
+		/*	userDormancyBatch.delUserBuyer	*/
+		DELETE FROM UR_BUYER
+		WHERE UR_USER_ID = #{urUserId}
+	</delete>
+
+	<update id="putUserMove">
+		/*	userDormancyBatch.putUserMove  */
+		UPDATE UR_USER
+		SET USER_STATUS = 0
+			,USER_NM = ''
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 전환 대상자 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.10.20		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getTargetDormant" resultType="long">
+		/*	userDormancyBatch.getTargetDormant	*/
+		SELECT UA.UR_USER_ID
+		FROM UR_ACCOUNT UA
+			INNER JOIN UR_BUYER UB ON UA.UR_USER_ID = UB.UR_USER_ID
+		WHERE DATEDIFF(NOW(), UA.LAST_LOGIN_DT) >= #{day}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 전환 완료 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.20		최윤지          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getUserDormancyBatchInfoResultMap" type="kr.co.pulmuone.v1.batch.user.dormancy.dto.vo.UserDormancyBatchResultVo">
+        <result column="UR_USER_ID" property="urUserId" />
+        <result column="LOGIN_ID" property="loginId" />
+        <result column="CREATE_DT" property="createDate" />
+     	<result column="MAIL" property="mail" />
+        <result column="MOBILE" property="mobile" />
+    </resultMap>
+	<select id="getUserDormancyBatchInfo" resultMap="getUserDormancyBatchInfoResultMap">
+		/*	userDormancyBatch.getUserDormancyBatchInfo  */
+		SELECT
+			   UBM.UR_USER_ID
+			  ,DATE_FORMAT(UBM.CREATE_DT,'%Y-%m-%d') AS CREATE_DT
+			  ,FN_DECRYPT(UBM.MAIL) AS MAIL
+			  ,FN_DECRYPT(UBM.MOBILE) AS MOBILE
+			  ,UU.LOGIN_ID
+		FROM UR_BUYER_MOVE UBM
+		INNER JOIN UR_USER UU ON UBM.UR_USER_ID = UU.UR_USER_ID
+		WHERE UBM.UR_USER_ID = #{urUserId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 전환 예정 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.28		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getUserDormancyExpected" resultMap="getUserDormancyBatchInfoResultMap">
+		/*	userDormancyBatch.getUserDormancyExpected  */
+		SELECT
+			UU.UR_USER_ID
+			,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 30 DAY),'%Y-%m-%d') AS CREATE_DT
+			,FN_DECRYPT(UB.MAIL) AS MAIL
+			,FN_DECRYPT(UB.MOBILE) AS MOBILE
+			,UU.LOGIN_ID
+		FROM
+			UR_USER UU
+			JOIN UR_BUYER UB ON UU.UR_USER_ID = UB.UR_USER_ID
+		WHERE
+			UU.UR_USER_ID = #{urUserId}
+	</select>
+</mapper>
+

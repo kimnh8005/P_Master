@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.inside.ClaimExcelUploadMapper">
+
+   	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 클레임 엑셀 업로드 대상 정보 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.27		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimExcelTargetList" resultType="kr.co.pulmuone.v1.order.claim.dto.ClaimInfoExcelUploadDto">
+        /* claimExcelUpload.getClaimExcelTargetList */
+		SELECT
+			IF_CLAIM_EXCEL_INFO_ID
+		FROM
+			IF_CLAIM_EXCEL_INFO T1
+		WHERE
+				BATCH_STATUS_CD = #{batchStatusCd}
+			AND EXISTS
+			(
+				SELECT 'X' FROM IF_CLAIM_EXCEL_SUCC S1
+				WHERE
+					S1.IF_CLAIM_EXCEL_INFO_ID = T1.IF_CLAIM_EXCEL_INFO_ID
+			)
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	* description 		: 클레임 엑셀 업로드 성공 정보 대상 정보 조회
+	* @
+	* @ 수정일			수정자          수정내용
+	* @ ──────────────────────────────────────────────────────────────────────
+	* @ 2021.04.27		이명수          최초생성
+	* @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimChangeSuccExcelTargetList" resultType="kr.co.pulmuone.v1.order.claim.dto.vo.ClaimInfoExcelUploadSuccessVo">
+        /* claimExcelUpload.getClaimChangeSuccExcelTargetList */
+		SELECT
+			ICES.IF_CLAIM_EXCEL_INFO_ID,
+			ICES.IF_CLAIM_EXCEL_SUCC_ID,
+			ICES.ODID,
+			ICES.OD_ORDER_DETL_SEQ,
+			ICES.CLAIM_CNT,
+			CASE WHEN OOD.ORDER_STATUS_CD IN ('IR','IC','DR') THEN '취소'
+				 WHEN OOD.ORDER_STATUS_CD IN ('DI','DC','BF') THEN '반품'
+				 ELSE IFNULL(ICES.CLAIM_STATUS_TP, '')
+				END AS CLAIM_STATUS_TP,
+			ICES.PS_CLAIM_BOS_ID,
+			ICES.RETURNS_YN,
+			ICES.CONSULT_MSG,
+			CONCAT(OOD.ODID, '∀', CASE WHEN OOD.ORDER_STATUS_CD IN ('IR','IC','DR') THEN '취소'
+									   WHEN OOD.ORDER_STATUS_CD IN ('DI','DC','BF') THEN '반품'
+									   ELSE IFNULL(ICES.CLAIM_STATUS_TP, '')
+				END, '∀', ICES.RETURNS_YN, '∀',
+				   CASE WHEN IFNULL(OOD.ORDER_CNT-OOD.CANCEL_CNT,0)-CAST(ICES.CLAIM_CNT AS SIGNED) <![CDATA[<]]>  0
+							THEN CONCAT('F',IFNULL(OOD.ORDER_CNT-OOD.CANCEL_CNT,0))
+						ELSE ''
+					   END, '∀', OOD.ORDER_STATUS_CD) AS EXCEL_GROUP
+		FROM
+			IF_CLAIM_EXCEL_SUCC ICES
+				LEFT JOIN OD_ORDER_DETL OOD
+						  ON ICES.ODID = OOD.ODID AND ICES.OD_ORDER_DETL_SEQ = OOD.OD_ORDER_DETL_SEQ
+		WHERE
+			ICES.IF_CLAIM_EXCEL_INFO_ID = #{ifIfDayExcelInfoId}
+		ORDER BY ICES.ODID ASC, ICES.OD_ORDER_DETL_SEQ ASC
+	</select>
+
+   	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: 클레임 엑셀 업로드 주문 처리상태 업데이트
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.04.27		이명수          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+	<update id="putClaimChangeExcelInfo">
+        /* claimExcelUpload.putClaimChangeExcelInfo */
+        UPDATE
+			IF_CLAIM_EXCEL_INFO
+        SET
+			IF_CLAIM_EXCEL_INFO_ID = IF_CLAIM_EXCEL_INFO_ID
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchStartDateTime)">
+        	,BATCH_START_DT = #{batchStartDateTime}
+        	</if>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchEndDateTime)">
+        	,BATCH_END_DT = #{batchEndDateTime}
+        	</if>
+        	<if test="batchExecutionTime > 0">
+        	,BATCH_EXEC_TIME = #{batchExecutionTime}
+        	</if>
+        	<if test="successCount > 0">
+        	,SUCC_CNT = #{successCount}
+        	</if>
+        	<if test="failCount > 0">
+        	,FAIL_CNT = #{failCount} + FAIL_CNT
+        	</if>
+			<if test="updateCount > 0">
+			,UPDATE_CNT = #{updateCount}
+			</if>
+        	<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(batchStatusCd)">
+        	,BATCH_STATUS_CD = #{batchStatusCd}
+        	</if>
+        WHERE
+			IF_CLAIM_EXCEL_INFO_ID = #{ifClaimExcelInfoId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * description 		: 클레임 엑셀 업로드 주문 정보 조회
+	  * @
+	  * @ 수정일				수정자          수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021.05.13		김명진          최초생성
+	  * @
+	 ────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderInfoByOdid" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRegisterRequestDto">
+		/* claimExcelUpload.getOrderInfoByOdid */
+		SELECT
+			OD_ORDER_ID,
+		    ODID
+		FROM
+			OD_ORDER
+		WHERE
+			ODID = #{odid}
+	</select>
+
+	<select id="getOrderInfoByTarckingNumber" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimRegisterRequestDto">
+		/* claimExcelUpload.getOrderInfoByTarckingNumber */
+		SELECT
+			OD.OD_ORDER_ID,
+		    OD.ODID,
+		    OC.TARGET_TP,
+		    OC.RETURNS_YN
+		FROM OD_ORDER OD
+		INNER JOIN OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+		WHERE OD.ODID = #{odid}
+		AND OC.OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * description 		: 클레임 엑셀 업로드 주문 상세 정보 조회
+	  * @
+	  * @ 수정일				수정자          수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021.05.13		김명진          최초생성
+	  * @
+	 ────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDetlInfoListByExcelUploadInfo" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+		/* claimExcelUpload.getOrderDetlInfoListByExcelUploadInfo */
+		SELECT
+			T1.OD_ORDER_ID,
+			T1.OD_ORDER_DETL_ID,
+			T1.OD_ORDER_DETL_SEQ,
+			T1.ORDER_CNT,
+		    T1.CANCEL_CNT,
+			T1.CLAIM_CNT,
+			T1.GOODS_NM,
+			T1.UR_WAREHOUSE_ID,
+			T1.IL_GOODS_ID,
+		    T1.ORDER_STATUS_CD,
+		    T1.SHIPPING_DT,
+		    T1.PS_CLAIM_BOS_ID,
+			T1.BOS_CLAIM_LARGE_ID,
+			T1.BOS_CLAIM_MIDDLE_ID,
+			T1.BOS_CLAIM_SMALL_ID
+		FROM
+		(
+			<foreach collection="claimInfoExcelUploadSuccessVoList" item="claimInfoExcelUploadSuccessVo" separator="UNION ALL">
+				SELECT
+					OOD.OD_ORDER_ID,
+					OOD.OD_ORDER_DETL_ID,
+					OOD.OD_ORDER_DETL_SEQ,
+					OOD.ORDER_CNT,
+				    OOD.CANCEL_CNT,
+					#{claimInfoExcelUploadSuccessVo.claimCnt} AS CLAIM_CNT,
+				    OOD.GOODS_NM,
+					OOD.UR_WAREHOUSE_ID,
+					OOD.IL_GOODS_ID,
+				    OOD.ORDER_STATUS_CD,
+					DATE_FORMAT(OOD.SHIPPING_DT, '%Y-%m-%d') AS SHIPPING_DT,
+					#{claimInfoExcelUploadSuccessVo.psClaimBosId} AS PS_CLAIM_BOS_ID,
+					IFNULL((SELECT L_CLAIM_CTGRY_ID FROM PS_CLAIM_BOS WHERE PS_CLAIM_BOS_ID = #{claimInfoExcelUploadSuccessVo.psClaimBosId}), 0) AS BOS_CLAIM_LARGE_ID,
+					IFNULL((SELECT M_CLAIM_CTGRY_ID FROM PS_CLAIM_BOS WHERE PS_CLAIM_BOS_ID = #{claimInfoExcelUploadSuccessVo.psClaimBosId}), 0) AS BOS_CLAIM_MIDDLE_ID,
+					IFNULL((SELECT S_CLAIM_CTGRY_ID FROM PS_CLAIM_BOS WHERE PS_CLAIM_BOS_ID = #{claimInfoExcelUploadSuccessVo.psClaimBosId}), 0) AS BOS_CLAIM_SMALL_ID
+				FROM
+					OD_ORDER OD
+				INNER JOIN
+					OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+				WHERE
+					OD.ODID = #{claimInfoExcelUploadSuccessVo.odid}
+				AND
+					OOD.OD_ORDER_DETL_SEQ = #{claimInfoExcelUploadSuccessVo.odOrderDetlSeq}
+			</foreach>
+		) T1
+	</select>
+
+	<select id="getOrderDetlInfoListByTarckingNumber" resultType="kr.co.pulmuone.v1.order.claim.dto.OrderClaimGoodsInfoDto">
+		/* claimExcelUpload.getOrderDetlInfoListByTarckingNumber */
+		SELECT
+			OOD.OD_ORDER_ID,
+			OOD.OD_ORDER_DETL_ID,
+			OOD.OD_ORDER_DETL_SEQ,
+			OOD.ORDER_CNT,
+			OOD.CANCEL_CNT,
+			OCD.CLAIM_CNT,
+			OOD.GOODS_NM,
+			OOD.UR_WAREHOUSE_ID,
+			OOD.IL_GOODS_ID,
+			OCD.PS_CLAIM_BOS_ID,
+			OCD.BOS_CLAIM_LARGE_ID,
+			OCD.BOS_CLAIM_MIDDLE_ID,
+			OCD.BOS_CLAIM_SMALL_ID
+		FROM OD_ORDER OD
+		INNER JOIN OD_ORDER_DETL OOD ON OD.OD_ORDER_ID = OOD.OD_ORDER_ID
+		INNER JOIN OD_CLAIM OC ON OD.OD_ORDER_ID = OC.OD_ORDER_ID
+		INNER JOIN OD_CLAIM_DETL OCD ON OC.OD_CLAIM_ID = OCD.OD_CLAIM_ID AND OOD.OD_ORDER_DETL_ID = OCD.OD_ORDER_DETL_ID
+		WHERE OD.ODID = #{odid}
+		AND OC.OD_CLAIM_ID = #{odClaimId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * description 		: 클레임 엑셀 업로드 성공 정보 수정
+	  * @
+	  * @ 수정일				수정자          수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021.07.22		김명진          최초생성
+	  * @
+	 ────────────────────────────────────────────────────────────────────────-->
+	<update id="putIfClaimExcelSucc">
+		/* claimExcelUpload.putIfClaimExcelSucc */
+		UPDATE	IF_CLAIM_EXCEL_SUCC
+		SET		CLAIM_CREATE_YN = 'Y'
+		WHERE	IF_CLAIM_EXCEL_INFO_ID = #{ifClaimExcelInfoId}
+		AND		IF_CLAIM_EXCEL_SUCC_ID IN
+		<foreach collection="claimInfoExcelUploadSuccessVoList" item="claimInfoExcelUploadSuccessVo" separator="," open="(" close=")">
+        #{claimInfoExcelUploadSuccessVo.ifClaimExcelSuccId}
+		</foreach>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * description 		: 클레임 엑셀 업로드 성공 정보 수정
+	  * @
+	  * @ 수정일				수정자          수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021.07.22		김명진          최초생성
+	  * @
+ 	────────────────────────────────────────────────────────────────────────-->
+	<update id="putIfClaimExcelFail">
+		/* claimExcelUpload.putIfClaimExcelFail */
+		UPDATE	IF_CLAIM_EXCEL_SUCC
+		SET		FAIL_MSG = #{claimExcelFailMsg}
+		WHERE	IF_CLAIM_EXCEL_INFO_ID = #{ifClaimExcelInfoId}
+		AND		IF_CLAIM_EXCEL_SUCC_ID IN
+		<foreach collection="claimInfoExcelUploadSuccessVoList" item="claimInfoExcelUploadSuccessVo" separator="," open="(" close=")">
+			#{claimInfoExcelUploadSuccessVo.ifClaimExcelSuccId}
+		</foreach>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * description 		: 주문상담내용 등록
+	  * @
+	  * @ 수정일				수정자          수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021.05.13		김명진          최초생성
+	  * @
+	 ────────────────────────────────────────────────────────────────────────-->
+	<insert id="addOrderConsult">
+		/* claimExcelUpload.addOrderConsult */
+		INSERT INTO OD_CONSULT
+		(
+			OD_ORDER_ID
+			, OD_CONSULT_TYPE
+			, CONSULT_MSG
+			, CREATE_ID
+			, CREATE_DT
+			, MODIFY_ID
+			, MODIFY_DT
+		)
+		VALUES
+		(
+			#{odOrderId}
+			, #{odConsultType}
+			, #{odConsultMsg}
+			, #{createId}
+			, NOW()
+			, #{createId}
+			, NOW()
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	  * description 		: 클레임 귀책 사유 조회
+	  * @
+	  * @ 수정일				수정자          수정내용
+	  * @ ──────────────────────────────────────────────────────────────────────
+	  * @ 2021.05.13		김명진          최초생성
+	  * @
+	 ────────────────────────────────────────────────────────────────────────-->
+	<select id="getClaimTargetTpByPsClaimBosId" resultType="String">
+		/* claimExcelUpload.getClaimTargetTpByPsClaimBosId */
+		SELECT	PCC.TARGET_TP
+		FROM	PS_CLAIM_BOS PCB
+		INNER JOIN
+		    	PS_CLAIM_CTGRY PCC ON PCB.S_CLAIM_CTGRY_ID = PCC.PS_CLAIM_CTGRY_ID
+		WHERE	PCB.PS_CLAIM_BOS_ID = #{psClaimBosId}
+		ORDER BY PCB.MODIFY_DT DESC
+		LIMIT 1
+	</select>
+</mapper>
+
+

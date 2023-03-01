@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.shopping.ShoppingRecentlyBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근본상품정리 - N 일동안 미접속 비회원 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNonMemberRecently" resultType="long">
+		/*	shoppingRecentlyBatch.getNonMemberRecently	*/
+		SELECT SP_RECENTLY_VIEW_ID
+		FROM SP_RECENTLY_VIEW
+		WHERE DATEDIFF(NOW(), LAST_VIEW_DT) <![CDATA[ >= ]]> #{targetDay}
+			AND UR_USER_ID IS NULL
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근본상품정리 - 조회불가 전환된 상품 조회(WHERE 문 : searchIndex.xml 참고)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getDoNotSearchGoodsId" resultType="long">
+		/*	shoppingRecentlyBatch.getDoNotSearchGoodsId	*/
+		SELECT SPV.IL_GOODS_ID
+		FROM SP_RECENTLY_VIEW SPV
+		WHERE IL_GOODS_ID NOT IN (
+			SELECT T.IL_GOODS_ID
+			FROM  SP_RECENTLY_VIEW T
+				JOIN IL_GOODS A ON T.IL_GOODS_ID = A.IL_GOODS_ID
+				INNER JOIN IL_ITEM B ON A.IL_ITEM_CD = B.IL_ITEM_CD
+				JOIN IL_GOODS_PRICE P ON P.IL_GOODS_ID = A.IL_GOODS_ID AND P.USE_YN = 'Y' AND NOW() BETWEEN P.PRICE_START_DT AND P.PRICE_END_DT
+				JOIN IL_GOODS_CTGRY C ON C.IL_GOODS_ID = A.IL_GOODS_ID
+				JOIN IL_CTGRY CC ON CC.IL_CTGRY_ID = C.IL_CTGRY_ID AND CC.USE_YN = 'Y' AND CC.DISP_YN = 'Y'
+				JOIN IL_CTGRY_PRNTS_INFO_DE PC ON PC.IL_CTGRY_ID = C.IL_CTGRY_ID
+				JOIN (select A.IL_GOODS_ID, B.CTGRY_ID_DEPTH1, C.CTGRY_NM
+					from IL_GOODS_CTGRY A, IL_CTGRY_PRNTS_INFO B, IL_CTGRY C
+					where  A.IL_CTGRY_ID = B.IL_CTGRY_ID
+					AND B.CTGRY_ID_DEPTH1 = C.IL_CTGRY_ID
+					and A.BASIC_YN = 'Y'
+					and A.MALL_DIV = 'MALL_DIV.PULMUONE') MAIN_CTGRY ON MAIN_CTGRY.IL_GOODS_ID = A.IL_GOODS_ID
+				JOIN IL_GOODS_SHIPPING_TEMPLATE H ON H.IL_GOODS_ID = A.IL_GOODS_ID AND H.UR_WAREHOUSE_ID = A.UR_WAREHOUSE_ID
+				JOIN IL_SHIPPING_TEMPLATE HH ON HH.ORIG_IL_SHIPPING_TMPL_ID = H.ORIG_IL_SHIPPING_TMPL_ID AND HH.DEL_YN = 'N'
+			WHERE A.SALE_STATUS in ('SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM')
+				AND A.DISP_YN = 'Y'
+				AND A.DEL_YN = 'N'
+				AND NOW() BETWEEN A.SALE_START_DT AND A.SALE_END_DT
+			 	AND A.GOODS_TP NOT IN ('GOODS_TYPE.GIFT','GOODS_TYPE.ADDITIONAL','GOODS_TYPE.GIFT_FOOD_MARKETING')
+			GROUP BY T.IL_GOODS_ID
+			)
+		GROUP BY SPV.IL_GOODS_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근본상품삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delRecentlyByIdList">
+		/*	shoppingRecentlyBatch.delRecentlyByIdList	*/
+		DELETE FROM SP_RECENTLY_VIEW
+		WHERE SP_RECENTLY_VIEW_ID IN  (
+		<foreach item="spRecentlyViewId" index="index" collection="spRecentlyViewIdList" open="" separator="," close="">
+			#{spRecentlyViewId}
+		</foreach>
+		)
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 최근본상품삭제
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.02		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<delete id="delRecentlyByGoodsIdList">
+		/*	shoppingRecentlyBatch.delRecentlyByGoodsIdList	*/
+		DELETE FROM SP_RECENTLY_VIEW
+		WHERE IL_GOODS_ID IN  (
+		<foreach item="goodsId" index="index" collection="goodsIdList" open="" separator="," close="">
+			#{goodsId}
+		</foreach>
+		)
+	</delete>
+
+</mapper>

@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.order.MallOrderDailyDetailMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일일배송 현재 배송지 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDailyShippingZone" resultType="kr.co.pulmuone.v1.order.order.dto.mall.MallOrderDailyShippingZoneHistListDto">
+		/*	mallOrderDailyDetail.getOrderDailyShippingZone  */
+		SELECT
+			FN_DECRYPT(OSZ.RECV_ADDR1) AS RECV_ADDR1,
+			FN_DECRYPT(OSZ.RECV_ADDR2) AS RECV_ADDR2,
+			DATE_FORMAT(OSZ.CREATE_DT, '%Y-%m-%d') AS APPLY_DT_FROM,
+			CURRENT_DATE() AS APPLY_DT_TO
+		FROM
+			OD_ORDER OD
+		INNER JOIN
+			OD_SHIPPING_ZONE OSZ ON OD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		WHERE
+			OD.OD_ORDER_ID = #{odOrderId}
+		AND
+			OSZ.OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일일배송 배송지 변경 이력 목록 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.02.16		김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDailyShippingZoneHistList" resultType="kr.co.pulmuone.v1.order.order.dto.mall.MallOrderDailyShippingZoneHistListDto">
+		/*	mallOrderDailyDetail.getOrderDailyShippingZoneHistList  */
+		SELECT
+			FN_DECRYPT(OSZH.RECV_ADDR1) AS RECV_ADDR1,
+			FN_DECRYPT(OSZH.RECV_ADDR2) AS RECV_ADDR2,
+			IFNULL((
+				SELECT
+					DATE_FORMAT(A.CREATE_DT, '%Y-%m-%d')
+				FROM
+					OD_SHIPPING_ZONE_HIST A
+				WHERE
+					A.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+				AND
+					A.OD_SHIPPING_ZONE_HIST_ID <![CDATA[<]]> OSZH.OD_SHIPPING_ZONE_HIST_ID
+				ORDER BY A.OD_SHIPPING_ZONE_HIST_ID DESC
+				LIMIT 1
+			), DATE_FORMAT(OSZH.CREATE_DT, '%Y-%m-%d')) AS APPLY_DT_FROM,
+			DATE_FORMAT(OSZH.CREATE_DT, '%Y-%m-%d') AS APPLY_DT_TO
+		FROM
+			OD_ORDER OD
+		INNER JOIN
+			OD_SHIPPING_ZONE OSZ ON OD.OD_ORDER_ID = OSZ.OD_ORDER_ID
+		INNER JOIN
+			OD_SHIPPING_ZONE_HIST OSZH ON OSZ.OD_SHIPPING_ZONE_ID = OSZH.OD_SHIPPING_ZONE_ID
+		WHERE
+			OD.OD_ORDER_ID = #{odOrderId}
+		AND
+			OSZ.OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+		ORDER BY OSZH.OD_SHIPPING_ZONE_HIST_ID DESC
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일일배송 배송지 리스트 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.14		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDailyShippingZoneList" resultType="kr.co.pulmuone.v1.order.order.dto.mall.MallOrderDailyShippingZoneHistListDto">
+		/*	mallOrderDailyDetail.getOrderDailyShippingZoneList  */
+		SELECT
+			A.DELIVERY_DT AS APPLY_DT_FROM
+			,IFNULL(DATE_SUB(LEAD(A.DELIVERY_DT, 1) OVER (ORDER BY A.DELIVERY_DT),INTERVAL 1 DAY),
+					(SELECT OODDS.DELIVERY_DT FROM OD_ORDER_DETL_DAILY OODD JOIN OD_ORDER_DETL_DAILY_SCH OODDS ON OODD.OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+												<where>
+													<choose>
+														<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(promotionYn, "Y")'>
+															AND OODD.DAILY_PACK_YN = 'N'
+															AND OODD.OD_ORDER_ID = #{odOrderId}
+														</when>
+														<otherwise>
+															AND OODD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+														</otherwise>
+													</choose>
+												</where>
+					 						 ORDER BY OD_ORDER_DETL_DAILY_SCH_SEQ DESC LIMIT 1)
+			) AS APPLY_DT_TO
+			,FN_DECRYPT(OSZ.RECV_NM)		AS RECV_NM
+			,FN_DECRYPT(OSZ.RECV_ZIP_CD)	AS RECV_ZIP_CD
+			,FN_DECRYPT(OSZ.RECV_ADDR1) AS RECV_ADDR1
+			,FN_DECRYPT(OSZ.RECV_ADDR2) AS RECV_ADDR2
+			,OSZ.RECV_BLD_NO
+			,IF(NOW() BETWEEN A.DELIVERY_DT AND IFNULL(DATE_SUB(LEAD(A.DELIVERY_DT, 1) OVER (ORDER BY A.DELIVERY_DT),INTERVAL 1 DAY),A.DELIVERY_DT),'Y','N') AS NOW_YN
+			,OSZ.OD_SHIPPING_ZONE_ID
+		FROM (
+			SELECT
+			OODD.OD_ORDER_DETL_ID
+			,OODDS.OD_ORDER_DETL_DAILY_SCH_SEQ
+			,OODDS.DELIVERY_DT
+			,OODDS.OD_SHIPPING_ZONE_ID
+			,IFNULL(LAG(OODDS.OD_SHIPPING_ZONE_ID) OVER (ORDER BY OODDS.DELIVERY_DT), '') AS PREV_OD_SHIPPING_ZONE_ID
+			FROM OD_ORDER_DETL_DAILY OODD
+			JOIN OD_ORDER_DETL_DAILY_SCH OODDS ON OODD.OD_ORDER_DETL_DAILY_ID = OODDS.OD_ORDER_DETL_DAILY_ID
+			JOIN OD_ORDER_DETL OOD ON OODD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+			WHERE
+				OOD.GOODS_DAILY_TP = 'GOODS_DAILY_TP.GREENJUICE'
+			  	AND OODDS.USE_YN = 'Y'
+				<choose>
+					<when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(promotionYn, "Y")'>
+						AND OODD.DAILY_PACK_YN = 'N'
+						AND OODD.OD_ORDER_ID = #{odOrderId}
+					</when>
+					<otherwise>
+						AND OODD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+					</otherwise>
+				</choose>
+			ORDER BY DELIVERY_DT
+		)A
+			JOIN OD_SHIPPING_ZONE OSZ ON A.OD_SHIPPING_ZONE_ID = OSZ.OD_SHIPPING_ZONE_ID
+		WHERE
+		    A.OD_SHIPPING_ZONE_ID <![CDATA[<>]]> A.PREV_OD_SHIPPING_ZONE_ID
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 주문상세PK로 일일상품 정보 조회
+	 * @
+	 * @ 수정일          수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.15     천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderDailyDetailByOdOrderDetlIdResultMap" type="kr.co.pulmuone.v1.order.order.dto.mall.MallOrderDetailGoodsDto">
+		<result column="OD_ORDER_DETL_ID"			property="odOrderDetlId"/>
+		<result column="PROMOTION_TP"				property="promotionTp"/>
+		<result column="GOODS_TP_CD"				property="goodsTpCd"/>
+		<result column="OD_ORDER_ID"				property="odOrderId"/>
+		<result column="GOODS_DAILY_TP"				property="goodsDailyTp"/>
+		<result column="OD_SHIPPING_ZONE_ID"		property="odShippingZoneId"/>
+		<result column="OD_ORDER_DETL_CHILD_ID"		property="odOrderDetlChildId"/>
+		<result column="ODID"						property="odid"/>
+		<result column="OD_ORDER_ID"				property="odOrderId"/>
+	</resultMap>
+	<select id="getOrderDailyDetailByOdOrderDetlId" resultMap="getOrderDailyDetailByOdOrderDetlIdResultMap">
+		/*  mallOrderDailyDetail.getOrderDailyDetailByOdOrderDetlId  */
+		SELECT TBL.*
+			 , IFNULL(T1.OD_ORDER_DETL_ID,TBL.OD_ORDER_DETL_ID) AS OD_ORDER_DETL_CHILD_ID
+			 , OO.ODID
+			 , OO.OD_ORDER_ID
+		FROM (
+				 SELECT OOD.OD_ORDER_DETL_ID         AS OD_ORDER_DETL_ID
+					  , IFNULL(OOD.PROMOTION_TP, '') AS PROMOTION_TP
+					  , OOD.GOODS_TP_CD              AS GOODS_TP_CD
+					  , OOD.OD_ORDER_ID              AS OD_ORDER_ID
+					  , OOD.GOODS_DAILY_TP
+					  , OOD.OD_SHIPPING_ZONE_ID
+				 FROM OD_ORDER_DETL OOD
+				 WHERE OOD.OD_ORDER_DETL_ID = #{odOrderDetlId}
+				 UNION ALL
+				 SELECT OODP.OD_ORDER_DETL_ID         AS OD_ORDER_DETL_ID
+					  , IFNULL(OODP.PROMOTION_TP, '') AS PROMOTION_TP
+					  , OODP.GOODS_TP_CD              AS GOODS_TP_CD
+					  , OODP.OD_ORDER_ID              AS OD_ORDER_ID
+					  , ''                            AS GOODS_DAILY_TP
+					  , ''                            AS OD_SHIPPING_ZONE_ID
+				 FROM OD_ORDER_DETL_PACK OODP
+				 WHERE OODP.OD_ORDER_DETL_ID = #{odOrderDetlId}
+			 )TBL
+		INNER JOIN OD_ORDER OO ON OO.OD_ORDER_ID = TBL.OD_ORDER_ID
+		LEFT JOIN OD_ORDER_DETL T1 ON TBL.OD_ORDER_DETL_ID = T1.OD_ORDER_DETL_PARENT_ID
+		LIMIT 1
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 주문배송지PK 정보로 배송타입 조회
+	 * @
+	 * @ 수정일          수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.07.15     김명진          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDailyDetailDeliveryTypeByOdShippingZoneId" resultType="string">
+		/*  mallOrderDailyDetail.getOrderDailyDetailDeliveryTypeByOdShippingZoneId  */
+		SELECT	DELIVERY_TYPE
+		FROM	OD_SHIPPING_ZONE
+		WHERE	OD_SHIPPING_ZONE_ID = #{odShippingZoneId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 일일상품 배송지 변경이력 count 조회
+	 * @
+	 * @ 수정일          수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.22     천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderDailyShippingZoneChangeCount" resultType="int">
+		/*  mallOrderDailyDetail.getOrderDailyShippingZoneChangeCount  */
+		SELECT
+			COUNT(*)
+		FROM(SELECT
+				*
+			FROM
+				OD_ORDER_DETL_DAILY_SCH
+			WHERE
+					OD_ORDER_DETL_DAILY_ID IN (SELECT OD_ORDER_DETL_DAILY_ID FROM OD_ORDER_DETL_DAILY
+												   WHERE OD_ORDER_DETL_ID IN
+													   <choose>
+														   <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(promotionType, 'CART_PROMOTION_TP.GREENJUICE_SELECT')">
+															   (SELECT OD_ORDER_DETL_ID FROM OD_ORDER_DETL WHERE OD_ORDER_DETL_PARENT_ID = #{odOrderDetlId})
+														   </when>
+														   <otherwise>
+															   (#{odOrderDetlId})
+														   </otherwise>
+													   </choose>
+												   )
+			GROUP BY OD_SHIPPING_ZONE_ID
+		)TBL
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 주문PK로 같은 일일상품유형의 주문상세PK 조회
+	 * @
+	 * @ 수정일          수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.14     천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOrderDailyDetailByOdOrderIdResultMap" type="kr.co.pulmuone.v1.order.order.dto.mall.MallOrderDetailGoodsDto">
+		<result column="OD_ORDER_DETL_ID"		property="odOrderDetlId"/>
+		<result column="PROMOTION_TP"			property="promotionTp"/>
+		<result column="OD_ORDER_ID"			property="odOrderId"/>
+		<result column="ODID"					property="odid"/>
+		<result column="OD_SHIPPING_ZONE_ID"	property="odShippingZoneId"/>
+	</resultMap>
+	<select id="getOrderDailyDetailByOdOrderId" resultMap="getOrderDailyDetailByOdOrderIdResultMap">
+		/*  mallOrderDailyDetail.getOrderDailyDetailByOdOrderId  */
+		SELECT
+			OOD.OD_ORDER_DETL_ID
+			,IFNULL(OOD.PROMOTION_TP,'') AS PROMOTION_TP
+			,OOD.OD_ORDER_ID
+			,OOD.ODID
+			,OOD.OD_SHIPPING_ZONE_ID
+		FROM
+		    OD_ORDER_DETL OOD
+			JOIN OD_ORDER_DETL_DAILY OODD ON OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+/*
+			LEFT JOIN OD_CLAIM OC ON OC.OD_ORDER_ID = OOD.OD_ORDER_ID
+			LEFT JOIN OD_CLAIM_DETL OCD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+ */
+		WHERE
+			OOD.OD_ORDER_ID = #{odOrderId}
+			AND OOD.GOODS_DAILY_TP = #{goodsDailyTp}
+/*			AND OCD.OD_CLAIM_DETL_ID IS NULL	*/
+		  	<![CDATA[AND OOD.ORDER_CNT - OOD.CANCEL_CNT > 0]]>
+		  	AND OODD.DAILY_BULK_YN = 'N'
+		GROUP BY OOD.OD_ORDER_DETL_ID
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description      : 주문상세PK로 주문건내 같은 일일상품유형의 상품PK 조회
+	 * @
+	 * @ 수정일          수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.06.14     천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOrderGoodsIdListByOdOrderDetlId" resultType="long">
+		/*  mallOrderDailyDetail.getOrderGoodsIdListByOdOrderDetlId  */
+		SELECT
+			OOD.IL_GOODS_ID
+		FROM
+			OD_ORDER_DETL OOD
+				JOIN (
+				SELECT
+					OD_ORDER_ID
+					 ,GOODS_DAILY_TP
+				FROM
+					OD_ORDER_DETL
+				WHERE
+					OD_ORDER_DETL_ID = #{odOrderDetlId}
+			)TBL ON OOD.OD_ORDER_ID = TBL.OD_ORDER_ID AND OOD.GOODS_DAILY_TP = TBL.GOODS_DAILY_TP
+			JOIN OD_ORDER_DETL_DAILY OODD ON OOD.OD_ORDER_DETL_ID = OODD.OD_ORDER_DETL_ID
+/*
+			LEFT JOIN OD_CLAIM OC ON OC.OD_ORDER_ID = OOD.OD_ORDER_ID
+			LEFT JOIN OD_CLAIM_DETL OCD ON OCD.OD_ORDER_DETL_ID = OOD.OD_ORDER_DETL_ID
+ */
+		WHERE
+/*			OCD.OD_CLAIM_DETL_ID IS NULL	*/
+		    <![CDATA[OOD.ORDER_CNT - OOD.CANCEL_CNT > 0]]>
+		  	AND OODD.DAILY_BULK_YN = 'N'
+		GROUP BY OOD.OD_ORDER_DETL_ID
+	</select>
+
+</mapper>

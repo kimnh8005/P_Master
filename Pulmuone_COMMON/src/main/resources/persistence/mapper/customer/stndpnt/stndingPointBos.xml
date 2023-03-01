@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper	namespace="kr.co.pulmuone.v1.comm.mapper.customer.stndpnt.StandingPointMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+		* description : 상품입점 상담 관리 목록조회 * @ * @ 수정일 수정자 수정내용 * @ ──────────────────────────────────────────────────────────────────────
+		* @ 2021.02.18 안치열 최초생성 * @ ──────────────────────────────────────────────────────────────────────── -->
+	<resultMap id="getStandingPointListMap" type="kr.co.pulmuone.v1.customer.stndpnt.dto.vo.GetStandingPointListResultVo">
+		<result column="COMP_NM" property="compNm" />
+		<result column="QUESTION" property="question" />
+		<result column="MANAGER_UR_USER_ID" property="managerUrUserId" />
+		<result column="MANAGER_NAME" property="managerUserName" />
+		<result column="ADDRESS" property="address" />
+		<result column="MOBILE" property="mobile" />
+		<result column="TEL" property="tel" />
+		<result column="EMAIL" property="email" />
+		<result column="QUESTION_STAT" property="questionStat" />
+		<result column="QUESTION_STAT_NAME" property="questionStatName" />
+		<result column="APPR_USER_ID" property="apprUserId" />
+		<result column="APPR_USER_NAME" property="apprUserName" />
+		<result column="CREATE_DT" property="createDt" />
+		<result column="CS_STAND_PNT_ID" property="csStandPntId" />
+	</resultMap>
+  <select id="getStandingPointList" resultMap="getStandingPointListMap">
+            /* standingPointBos.getStandingPointList */
+            SELECT  SPQ.COMP_NM
+                  , CASE WHEN CHAR_LENGTH(SPQ.QUESTION) <![CDATA[>]]> 30 THEN CONCAT(SUBSTR(SPQ.QUESTION, 1 ,30),'...')
+	 			  		ELSE SPQ.QUESTION
+	 			  	END AS QUESTION
+                  , SPQ.MANAGER_UR_USER_ID
+                  <!-- , CASE WHEN SPQ.MANAGER_UR_USER_ID <![CDATA[<>]]>  0 THEN  FN_DECRYPT(U.USER_NM)
+                  	     ELSE SPQ.MANAGER_NM
+                  	END AS MANAGER_NAME -->
+                  , SPQ.MANAGER_NM AS MANAGER_NAME
+                  , CONCAT(SPQ.ADDRESS1, ' ', SPQ.ADDRESS2) AS ADDRESS
+                  , SPQ.MOBILE
+                  , SPQ.TEL
+                  , SPQ.EMAIL
+                  , SPQ.QUESTION_STAT
+                  , FN_COMN_CODE_DIC( SPQ.QUESTION_STAT) AS QUESTION_STAT_NAME
+                  , SPQ.APPR_USER_ID
+                  , FN_DECRYPT(US.USER_NM) AS APPR_USER_NAME
+                  , SPQ.CREATE_DT
+                  , SPQ.CS_STAND_PNT_ID
+            FROM    CS_STAND_PNT_QNA SPQ
+                                LEFT JOIN UR_USER US  ON US.UR_USER_ID = SPQ.APPR_USER_ID
+      <where>
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+          <choose>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.COMPANY")'>
+              AND   SPQ.COMP_NM LIKE CONCAT('%',#{findKeyword},'%')
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.MANAGER")'>
+              AND   FN_DECRYPT(U.USER_NM) = #{findKeyword}
+            </when>
+            <when test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.QUESTION")'>
+              AND   SPQ.QUESTION LIKE CONCAT('%',#{findKeyword},'%')
+            </when>
+          </choose>
+        </if>
+          <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSearchStatList)">
+            <if test="apprSearchStatList.size() > 0"> <!-- 문의상태 -->
+              AND   SPQ.QUESTION_STAT IN
+                                          <foreach collection="apprSearchStatList" item="apprSearchStat" index="index" separator="," open="(" close=")">
+                                            #{apprSearchStat}
+                                          </foreach>
+            </if>
+          </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateStart)">
+              AND   SPQ.CREATE_DT <![CDATA[>=]]> DATE_FORMAT(#{createDateStart}, '%Y-%m-%d 00:00:00')
+            </if>
+            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(createDateEnd)">
+              AND   SPQ.CREATE_DT <![CDATA[<=]]> DATE_FORMAT(#{createDateEnd}, '%Y-%m-%d 23:59:59')
+            </if>
+      </where>
+            ORDER BY SPQ.CREATE_DT DESC
+  </select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+		* description : 상품입점 상담 관리 리스트 엑셀 다운로드 * @ * @ 수정일 수정자 수정내용 * @ ──────────────────────────────────────────────────────────────────────
+		* @ 2021.02.18 안치열 * @ ──────────────────────────────────────────────────────────────────────── -->
+	<select id="getStandingPointExportExcel" resultMap="getStandingPointListMap">
+		/* standingPointBos.getStandingPointExportExcel */
+		SELECT A.*
+		FROM (
+		SELECT SPQ.COMP_NM
+		, SPQ.QUESTION
+		, SPQ.MANAGER_UR_USER_ID
+		<!-- , CASE WHEN SPQ.MANAGER_UR_USER_ID <![CDATA[<>]]>  0 THEN  FN_DECRYPT(U.USER_NM)
+                  	     ELSE SPQ.MANAGER_NM
+                  	END AS MANAGER_NAME -->
+        , IFNULL(SPQ.MANAGER_NM,'') AS MANAGER_NAME
+		, CONCAT(IFNULL(SPQ.ADDRESS1,''), ' ', IFNULL(SPQ.ADDRESS2,'')) AS ADDRESS
+		, IFNULL(SPQ.MOBILE,'') AS MOBILE
+		, IFNULL(SPQ.TEL, '') AS TEL
+		, IFNULL(SPQ.EMAIL,'') AS EMAIL
+		, SPQ.QUESTION_STAT
+		, FN_COMN_CODE_DIC( SPQ.QUESTION_STAT) AS QUESTION_STAT_NAME
+		, SPQ.APPR_USER_ID
+		, IFNULL(FN_DECRYPT(US.USER_NM),'') AS APPR_USER_NAME
+		, SPQ.CREATE_DT
+		FROM CS_STAND_PNT_QNA SPQ
+		LEFT JOIN UR_USER US ON US.UR_USER_ID = SPQ.APPR_USER_ID
+		) AS A
+		WHERE 1=1
+		<if
+			test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(findKeyword)">
+			<choose>
+				<when
+					test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.COMPANY")'>
+					AND A.COMP_NM LIKE CONCAT('%',#{findKeyword},'%')
+				</when>
+				<when
+					test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.MANAGER")'>
+					AND A.MANAGER_NAME = #{findKeyword}
+				</when>
+				<when
+					test='@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(searchSelect, "SEARCH_SELECT.QUESTION")'>
+					AND A.QUESTION LIKE CONCAT('%',#{findKeyword},'%')
+				</when>
+			</choose>
+		</if>
+		<if
+			test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(apprSearchStatList)">
+			<if test="apprSearchStatList.size() > 0"> <!-- 문의상태 -->
+				AND A.QUESTION_STAT IN
+				<foreach collection="apprSearchStatList" item="apprSearchStat" index="index" separator="," open="(" close=")">
+					#{apprSearchStat}
+				</foreach>
+			</if>
+		</if>
+		ORDER BY A.CREATE_DT DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+		* description : 상품입점 상담 관리 상세조회 * @ * @ 수정일 수정자 수정내용 * @ ──────────────────────────────────────────────────────────────────────
+		* @ 2021.02.18 안치열 최초생성 * @ ──────────────────────────────────────────────────────────────────────── -->
+	<resultMap id="getDetailStandingPointMap" type="kr.co.pulmuone.v1.customer.stndpnt.dto.vo.GetStandingPointListResultVo">
+		<result column="COMP_NM" property="compNm" />
+		<result column="QUESTION" property="question" />
+		<result column="MANAGER_UR_USER_ID" property="managerUrUserId" />
+		<result column="MANAGER_NAME" property="managerUserName" />
+		<result column="ADDRESS" property="address" />
+		<result column="MOBILE" property="mobile" />
+		<result column="TEL" property="tel" />
+		<result column="EMAIL" property="email" />
+		<result column="CREATE_DT" property="createDt" />
+		<result column="CS_STAND_PNT_ID" property="csStandPntId" />
+		<result column="QUESTION_STAT" property="questionStat" />
+		<result column="QUESTION_STAT_NAME" property="questionStatName" />
+		<result column="APPR_USER_ID" property="apprUserId" />
+		<result column="APPR_USER_NAME" property="apprUserName" />
+	</resultMap>
+	<select id="getDetailStandingPoint" resultMap="getDetailStandingPointMap">
+		/* standingPointBos.getDetailStandingPoint */
+		SELECT
+		SPQ.CS_STAND_PNT_ID
+		, SPQ.COMP_NM
+		, SPQ.COMP_CEO_NM
+		, SPQ.BIZ_REG_NUM
+		, SPQ.QUESTION
+		<!-- , CASE WHEN SPQ.MANAGER_UR_USER_ID <![CDATA[<>]]>  0 THEN  FN_DECRYPT(U.USER_NM)
+                  	     ELSE SPQ.MANAGER_NM
+                  	END AS MANAGER_NAME -->
+        , SPQ.MANAGER_NM AS MANAGER_NAME
+		, CONCAT(SPQ.ADDRESS1, ' ', SPQ.ADDRESS2) AS ADDRESS
+		, SPQ.MOBILE
+		, SPQ.TEL
+		, SPQ.EMAIL
+		, SPQ.QUESTION_STAT
+		, FN_COMN_CODE_DIC( SPQ.QUESTION_STAT) AS QUESTION_STAT_NAME
+		, SPQ.APPR_USER_ID
+		, FN_DECRYPT(US.USER_NM) AS APPR_USER_NAME
+		, SPQ.CREATE_DT
+		FROM CS_STAND_PNT_QNA SPQ
+		LEFT JOIN UR_USER US ON	US.UR_USER_ID = SPQ.APPR_USER_ID
+		WHERE CS_STAND_PNT_ID =	#{csStandPntId}
+	</select>
+
+
+	<resultMap id="getStandingPointAttachResultMap" type="kr.co.pulmuone.v1.customer.stndpnt.dto.vo.GetStandingPointAttachResultVo">
+		<result column="CS_STAND_PNT_ATTC_ID" property="csStandPntAttcId" />
+		<result column="FILE_PATH" property="filePath" />
+		<result column="CS_STAND_PNT_ID" property="csStandPntId" />
+		<result column="FILE_NM" property="fileNm" />
+		<result column="REAL_FILE_NM" property="realFileNm" />
+	</resultMap>
+
+	<select id="getStandingPointAttach" resultMap="getStandingPointAttachResultMap">
+		/* standingPointBos.getStandingPointAttach */
+		SELECT
+		CS_STAND_PNT_ATTC_ID
+		,FILE_PATH
+		,CS_STAND_PNT_ID
+		,FILE_NM
+		,REAL_FILE_NM
+		FROM CS_STAND_PNT_QNA_ATTC
+		WHERE CS_STAND_PNT_ID = #{csStandPntId}
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+		* description : 상품문의 문의상태 수정 * @ * @ 수정일 수정자 수정내용 * @ ──────────────────────────────────────────────────────────────────────
+		* @ 2021.02.26 안치열 최초생성 * @ ──────────────────────────────────────────────────────────────────────── -->
+	<update id="putStandingPointStatus">
+		/* standingPointBos.putStandingPointStatus */
+		UPDATE CS_STAND_PNT_QNA
+		SET QUESTION_STAT = #{questionStat},
+			APPR_USER_ID= #{userVo.userId}
+		WHERE CS_STAND_PNT_ID = #{csStandPntId}
+	</update>
+
+</mapper>
+
+

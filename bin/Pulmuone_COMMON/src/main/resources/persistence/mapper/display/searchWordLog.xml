@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.display.SearchWordLogMapper">
+    <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 전시관리  - 인기검색어 리스트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.01		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+    <resultMap id="getSearchWordLogResultMap" type="kr.co.pulmuone.v1.display.dictionary.dto.vo.SearchWordLogVo">
+        <result column="RANKING"                  property="no" />
+        <result column="SEARCH_WORD"        property="searchWord"/>
+        <result column="SEARCH_ITEM_CNT"    property="searchItemCnt"/>
+        <result column="SEARCH_CNT"         property="searchCnt"/>
+    </resultMap>
+
+    <select id="getSearchWordLogList" resultMap="getSearchWordLogResultMap" parameterType="kr.co.pulmuone.v1.display.dictionary.dto.SearchWordLogConditionDto">
+        /* searchWordLog.getSearchWordLogList */
+        SELECT
+              RANK() OVER(ORDER BY SUM(SEARCH_CNT) DESC) AS RANKING
+            , SEARCH_WORD
+            , SUM(SEARCH_CNT) SEARCH_CNT
+            , truncate(AVG(SEARCH_ITEM_CNT), 0) SEARCH_ITEM_CNT
+        FROM DP_SEARCH_WORD_LOG_SUMMARY
+        WHERE SEARCH_DT BETWEEN #{startCreateDate}  AND #{endCreateDate}
+        GROUP BY SEARCH_WORD
+    </select>
+
+    <select id="getSearchWordLogListCount" resultType="int" parameterType="kr.co.pulmuone.v1.display.dictionary.dto.SearchWordLogConditionDto">
+        /* searchWordLog.getSearchWordLogListCount */
+        SELECT COUNT(*)
+        FROM (
+            SELECT
+                  RANK() OVER(ORDER BY SUM(SEARCH_CNT) DESC) AS RANKING
+                , SEARCH_WORD
+                , SUM(SEARCH_CNT) SEARCH_CNT
+                , truncate(AVG(SEARCH_ITEM_CNT), 0) SEARCH_ITEM_CNT
+            FROM DP_SEARCH_WORD_LOG_SUMMARY
+            WHERE SEARCH_DT BETWEEN #{startCreateDate}  AND #{endCreateDate}
+            GROUP BY SEARCH_WORD
+        ) A
+    </select>
+
+    <insert id="addSearchWordLog">
+        /* searchWordLog.addSearchWordLog */
+        INSERT INTO DP_SEARCH_WORD_LOG
+        (
+            SEARCH_DT, SEARCH_WORD, SEARCH_CNT, SEARCH_ITEM_CNT, CREATE_DT
+        )
+        VALUES
+        (
+            NOW()
+            , #{keyword}
+            , 1
+            , #{count}
+            , NOW()
+        )
+    </insert>
+
+    <delete id="deleteSearchWordLogSummary">
+        /* searchWordLog.deleteSearchWordLogSummary */
+        DELETE FROM DP_SEARCH_WORD_LOG_SUMMARY
+        WHERE SEARCH_DT = #{targetDate}
+    </delete>
+
+
+    <insert id="insertSearchWordLogSummary">
+        /* searchWordLog.insertSearchWordLogSummary */
+        INSERT INTO DP_SEARCH_WORD_LOG_SUMMARY
+        (
+            SEARCH_DT
+            , RANKING
+            , SEARCH_WORD
+            , SEARCH_CNT
+            , SEARCH_ITEM_CNT
+            , CREATE_DT
+        )
+        SELECT
+                  SEARCH_DT
+                , RANK() OVER(ORDER BY SUM(SEARCH_CNT) DESC) AS RANKING
+                , SEARCH_WORD
+                , SUM(SEARCH_CNT) SEARCH_CNT
+                , TRUNCATE(AVG(SEARCH_ITEM_CNT), 0) SEARCH_ITEM_CNT
+                , NOW() AS CREATE_DT
+        FROM DP_SEARCH_WORD_LOG
+        WHERE DATE_FORMAT(SEARCH_DT, '%Y-%m-%d') = #{targetDate}
+        GROUP BY SEARCH_WORD
+    </insert>
+
+    <delete id="deleteOldSearchWordLog">
+        /* searchWordLog.deleteOldSearchWordLog */
+        DELETE FROM DP_SEARCH_WORD_LOG
+        WHERE DATE_FORMAT(SEARCH_DT, '%Y-%m-%d') <![CDATA[ < ]]> DATE_FORMAT(DATE_ADD(NOW(), INTERVAL  -7 DAY), '%Y-%m-%d')
+    </delete>
+
+
+</mapper>
+
+

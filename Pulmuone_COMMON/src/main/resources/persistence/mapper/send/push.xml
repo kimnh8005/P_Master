@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.send.push.SendPushMapper">
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 모바일 푸시발송이력 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.25		jg          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap type="kr.co.pulmuone.v1.send.push.dto.vo.GetPushSendListResultVo" id="getPushSendListResultMap" >
+        <result column="ADVERT_AND_NOTICE_TYPE_NAME" property="advertAndNoticeTypeName" />
+        <result column="DEVICE_TYPE_NAME" property="deviceTypeName" />
+        <result column="PUSH_MANAGEMENT_TITLE" property="pushManagementTitle" />
+        <result column="PUSH_CONTENT" property="pushContent" />
+        <result column="PUSH_LINK" property="pushLink" />
+        <result column="PUSH_SEND_TOTAL" property="pushSendTotal" />
+        <result column="PUSH_TOTAL" property="pushTotal" />
+        <result column="PUSH_SEND_DATE" property="pushSendDate" />
+        <result column="OPEN_TOTAL" property="openTotal" />
+        <result column="CLOSE_TOTAL" property="closeTotal" />
+        <result column="SENDER_ID" property="senderId" />
+    </resultMap>
+    <select id="getPushSendList" resultMap="getPushSendListResultMap">
+        /* push.getPushSendList */
+        SELECT
+        	FN_COMN_CODE_DIC(SMP.PUSH_SEND_TP) AS ADVERT_AND_NOTICE_TYPE_NAME /* 광고 공지타입명 */
+        	, FN_COMN_CODE_DIC(SMP.OS_TP) AS DEVICE_TYPE_NAME /* 기기타입명 */
+        	, SMP.NAME AS PUSH_MANAGEMENT_TITLE /* 푸시 관리 제목 */
+        	, SMP.CONTENT AS PUSH_CONTENT /* 푸시내용 */
+        	, SMP.LINK AS PUSH_LINK /* 푸시링크 */
+        	, (SELECT COUNT(1) FROM SN_PUSH_SEND WHERE SN_MANUAL_PUSH_ID = SMP.SN_MANUAL_PUSH_ID AND SEND_YN = 'Y') AS PUSH_SEND_TOTAL /* 푸시전송결과 (발송) */
+        	, (SELECT COUNT(1) FROM SN_PUSH_SEND WHERE SN_MANUAL_PUSH_ID = SMP.SN_MANUAL_PUSH_ID) AS PUSH_TOTAL /* 푸시전송결과 (전체) */
+        	, (SELECT COUNT(1) FROM SN_PUSH_SEND WHERE SN_MANUAL_PUSH_ID = SMP.SN_MANUAL_PUSH_ID AND OPEN_YN = 'Y') AS OPEN_TOTAL /* 읽음여부 (Y) */
+        	, (SELECT COUNT(1) FROM SN_PUSH_SEND WHERE SN_MANUAL_PUSH_ID = SMP.SN_MANUAL_PUSH_ID AND OPEN_YN = 'N') AS CLOSE_TOTAL /* 읽음여부 (N) */
+        	, DATE_FORMAT(SMP.RESERVE_DT, '%Y-%m-%d') AS PUSH_SEND_DATE /* 푸시발송일 */
+        	, UU.LOGIN_ID AS SENDER_ID /* 발송관리자 */
+        FROM
+        	SN_MANUAL_PUSH SMP
+        JOIN UR_USER UU  ON UU.UR_USER_ID = SMP.CREATE_ID
+        <where>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pushSendDateStart)">
+	            <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(pushSendDateEnd)">
+	                AND SMP.RESERVE_DT BETWEEN #{pushSendDateStart} AND (#{pushSendDateEnd} + INTERVAL 1 DAY - INTERVAL 1 SECOND)
+	            </if>
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(managementTitle)">
+	            AND SMP.NAME LIKE CONCAT(#{managementTitle},'%')
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(advertAndNoticeType)">
+	            AND SMP.PUSH_SEND_TP = #{advertAndNoticeType}
+	        </if>
+	        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(sendGroup) and @kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(sendGroup, 'APP_OS_TYPE.ALL')">
+	        	AND SMP.OS_TP = #{sendGroup}
+	        </if>
+        </where>
+
+        ORDER BY SMP.SN_MANUAL_PUSH_ID DESC
+    </select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 푸시발송정보 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.02     jg          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPushManual" useGeneratedKeys="true" keyProperty="manualPushId">
+        /* push.addPushManual */
+        INSERT INTO SN_MANUAL_PUSH (
+        RESERVE_YN
+        , RESERVE_DT
+        , OS_TP
+        , NAME
+        , PUSH_TP
+        , IOS_TITLE
+        , ANDROID_TITLE
+        <!-- , ANDROID_SUB_TITLE -->
+        , CONTENT
+        , IMAGE
+        , LINK
+        , SEND_YN
+        , CREATE_ID
+        , CREATE_DT
+        , PUSH_SEND_TP
+        ) VALUES (
+        #{reserveYn}
+        <choose>
+            <when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(reserveYn,'Y')">
+                , STR_TO_DATE(#{reservationDate},'%Y-%m-%d %H:%i')
+            </when>
+            <otherwise>
+                , NOW()
+            </otherwise>
+        </choose>
+        , #{deviceType}
+        , #{administratorTitle}
+        , #{pushSendType}
+        , #{pushTitleIos}
+        , #{pushTitleAndroid}
+        <!-- , #{pushSubTitleAndroid} -->
+        , #{content}
+        , #{imageUrl}
+        , #{pushLink}
+        , 'N'
+        , #{createId}
+        , NOW()
+        , #{advertAndNoticeType}
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 회원별푸시발송정보 등록
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.07.02     jg          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addPushIssue" useGeneratedKeys="true" keyProperty="pushSendId">
+        /* push.addPushIssue */
+        INSERT INTO SN_PUSH_SEND (
+                                   SN_DEVICE_INFO_ID
+                                 , SN_MANUAL_PUSH_ID
+                                 , SEND_YN
+                                 , OPEN_YN
+                                 , CREATE_DT
+        ) VALUES (
+                     #{deviceInfoId}
+                 , #{manualPushId}
+                 , 'N'
+                 , 'N'
+                 , NOW()
+                 )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 모바일 푸시 발송 (전체) 발송회원 기기정보 조회
+     * @
+     * @ 수정일            수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.06.30     jg          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getSendUserDeviceListResultMap" type="kr.co.pulmuone.v1.send.push.dto.vo.GetSendUserDeviceListResultVo">
+        <result column="DEVICE_INFO_ID" property="deviceInfoId" />
+        <result column="DEVICE_TYPE" property="deviceType" />
+    </resultMap>
+
+    <!-- 모바일 푸시 발송 (전체) 발송회원 기기정보 조회 -->
+    <select id="getSendUserDeviceList" resultMap="getSendUserDeviceListResultMap">
+        /* push.getSendUserDeviceList */
+        SELECT SDI.SN_DEVICE_INFO_ID AS DEVICE_INFO_ID /* 모바일디바이스정보 ID */
+            , SDI.OS_TP AS DEVICE_TYPE /* 기기타입 */
+        FROM SN_DEVICE_INFO SDI
+            LEFT OUTER JOIN UR_USER UU ON UU.UR_USER_ID = SDI.UR_USER_ID AND UU.USER_TP = 'USER_TYPE.BUYER'
+            LEFT OUTER JOIN UR_BUYER UB ON UB.UR_USER_ID = UU.UR_USER_ID
+        WHERE SDI.PUSH_YN = 'Y'
+        <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEquals(sendGroup,'APP_OS_TYPE.ALL')">
+        	AND SDI.OS_TP = #{sendGroup}
+        </if>
+        <!-- <if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(sendGroup,'UPLOAD_USER')"> 발송그룹 : 업로드 회원
+            AND UU.LOGIN_ID IN
+            <foreach collection="uploadUserList" item="uploadUser" separator="," open="(" close=")">
+                #{uploadUser.userId}
+            </foreach>
+        </if> -->
+    </select>
+</mapper>

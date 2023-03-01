@@ -1,0 +1,324 @@
+<div class="wrap-location">
+	 <h1 class="title"></h1>
+	 <span class="location"></span>
+</div>
+<div class="fb__sect">
+    <form id="searchForm" name="searchForm" onsubmit="return false">
+        <table class="datatable v-type">
+            <colgroup>
+                <col style="width:15%">
+                <col style="width:35%">
+                <col style="width:15%">
+                <col style="width:35%">
+            </colgroup>
+            <tbody>
+                <tr>
+                    <th scope="row"><label for="searchPoTpName">발주유형명</label></th>
+                    <td>
+                        <div class="complex-condition">
+							<input id="searchPoTpName" class="comm-input" name="searchPoTpName" type="text">
+                        </div>
+                    </td>
+                    <th scope="row"><label for="searchUrSupplierId">ERP 발주유형</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="searchErpTotp" name="searchErpTotp" class="fb__custom__select" type="text" style="width:300px;">
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="searchPoType">발주유형구분</label></th>
+                    <td>
+                    	<div id="searchPoType" class="radios-wrapper fb__custom__radio"></div>
+                    </td>
+                    <th scope="row"><label for="searchUrSupplierId">공급업체</label></th>
+                    <td>
+                        <div class="complex-condition">
+                            <input id="searchUrSupplierId" name="searchUrSupplierId" class="fb__custom__select" type="text" style="width:300px;">
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="searchPoType">발주일</label></th>
+                    <td colspan="3">
+                    	<div class="complex-condition multi-divs">
+                    		<div class="multi-divs__item">
+                    			<input id="searchScType" name="searchScType" class="fb__custom__select" type="text" style="width:80px;">
+                    		</div>
+	                    	<div class="multi-divs__item">
+	                    		<div id="searchScheduled" class="checkbox-wrapper fb__custom__checkbox " ></div>
+	                    	</div>
+
+	                    </div>
+
+
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+         <!-- button area-->
+        <div class="btn-area">
+            <button id="fnSearch" class="btn-point btn-l" type="button" onclick="$scope.fnSearch()">조회</button>
+            <button id="fnClear" class="btn-white btn-l formClear-btn" type="button" onclick="$scope.fnClear()">초기화</button>
+        </div>
+        <!-- button area End -->
+    </form>
+</div>
+<!-- 그리드 영역  -->
+<div class="fb__sect grid-sect new">
+    <div class="wrap-tit" style="width: 100%">
+        <div class="ea-title">
+            <h3>목록</h3>
+        </div>
+        <div class="ea-title">
+            <span>총 <em id="countTotalSpan">0</em> 건 검색</span>
+        </div>
+        <span class="btn-area">
+            <button id="fnNew" class="btn-point btn-m" type="button" auth-remove="SAVE" onclick="$scope.fnNew()">신규</button>
+        </span>
+    </div>
+    <div id="aGrid" ></div>
+</div>
+
+<div id="kendoPopup" style="display:none">
+    <div id="contents" class="pop-contents">
+        <form id="inputForm" name="inputForm" method="post" enctype="multipart/form-data" onsubmit="return false;">
+        		<input type="hidden" name="ilPoTpId" id="ilPoTpId" />
+            <table class="datatable v-type">
+                <colgroup>
+	                <col style="width:12%">
+	                <col>
+                </colgroup>
+                <tbody>
+                    <tr>
+                        <th scope="row"><span class="req-star-front"><label for="poTypeName">발주유형명</label></span></th>
+                        <td>
+                            <div class="complex-condition">
+                                <input id="poTpNm" class="comm-input" name="poTpNm" type="text" maxlength="20" required="required">
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><span class="req-star-front"><label for="urSupplierId">공급업체</label></span></th>
+                        <td>
+                            <div class="complex-condition">
+                                <input id="urSupplierId" name="urSupplierId" class="select-box" type="text" style="width:300px;" required="required">
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><span class="req-star-front"><label for="poType">발주유형구분</label></span></th>
+                        <td>
+                        	<div id="poTp" class="radios-wrapper fb__custom__radio" required="required"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><span class="req-star-front"><label for="erpPoType">ERP 발주유형</label></span></th>
+                        <td>
+                            <div class="complex-condition">
+                                <input id="erpPoTp" name="erpPoTp" class="select-box" type="text" style="width:300px;" required="required">
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                        	<span class="req-star-front"><label for="poChkDates">발주일</label></span>
+                        </th>
+                        <td>
+                        	입고예정일 일괄 :&nbsp;&nbsp;
+                        	<input id="scheduleAll" class="comm-input" name="scheduleAll" type="text" value="">
+                        	&nbsp;&nbsp;
+                        	<button id="fnSelectUser" type="button" class="set-btn-type2" onclick="$scope.fnChangeScheduleDate()">변경</button>
+                        	이동요청일 일괄 :&nbsp;&nbsp;
+                        	<input id="moveReqAll" class="comm-input" name="moveReqAll" type="text" value="">
+                        	&nbsp;&nbsp;
+                        	<button id="fnSelectUser" type="button" class="set-btn-type2" onclick="$scope.fnChangeMoveReqDate()">변경</button>
+                        	<span id="poReqAreaAll" style="display: none">
+								PO요청일 일괄 :&nbsp;&nbsp;
+                        		<input id="poReqAll" class="comm-input" name="poReqAll" type="text" value="">
+                        		&nbsp;&nbsp;
+                        		<button id="fnSelectUser" type="button" class="set-btn-type2" onclick="$scope.gnChangePoReqDate()">변경</button>
+                        	</span>
+                        </td>
+                    </tr>
+                    <tr>
+	                    <td colspan="2">
+	                        <table class="datatable v-type">
+	                            <colgroup>
+	                                <col style="width:12.5%">
+	                                <col style="width:12.5%">
+	                                <col style="width:12.5%">
+	                                <col style="width:12.5%">
+	                                <col style="width:12.5%">
+	                                <col style="width:12.5%">
+	                                <col style="width:12.5%">
+	                                <col style="width:12.5%">
+	                            </colgroup>
+	                            <tbody>
+	                            <tr>
+	                                <th scope="row" colspan="8">
+	                                	<div class="complex-condition multi-divs">
+                    						<div class="multi-divs__item">
+												<span class="req-star-front"> 발주일 </span>
+                    						</div>
+                    						<!--
+                    						<div class="multi-divs__item">
+												<div id="poDateDiffByItemArea" style="display: none">
+					                            	<input type="checkbox" id="poPerItemYn" name="poPerItemYn" value="Y" >
+													<label for="poPerItemYn">품목별 상이</label>
+												</div>
+											</div>
+											-->
+
+                    					</div>
+	                                </th>
+	                            </tr>
+	                            <tr>
+	                                <th style="text-align: center;">
+	                                	<input type="checkbox" id="checkAllWeek" name="checkAllWeek"/>
+	                                </th>
+	                                <th style="text-align: center;">
+	                                	월&nbsp;&nbsp;&nbsp;
+	                                	<input type="checkbox" id="checkMon" name="checkMon" value=""/>
+	                               	</th>
+	                                <th style="text-align: center;">
+	                                	화&nbsp;&nbsp;&nbsp;
+	                                	<input type="checkbox" id="checkTue" name="checkTue" value=""/>
+	                                </th>
+	                                <th style="text-align: center;">
+	                                	수&nbsp;&nbsp;&nbsp;
+	                                	<input type="checkbox" id="checkWed" name="checkWed" value=""/>
+	                                </th>
+	                                <th style="text-align: center;">
+	                                	목&nbsp;&nbsp;&nbsp;
+	                                	<input type="checkbox" id="checkThu" name="checkThu" value=""/>
+	                                </th>
+	                                <th style="text-align: center;">
+	                                	금&nbsp;&nbsp;&nbsp;
+	                                	<input type="checkbox" id="checkFri" name="checkFri" value=""/>
+	                                </th>
+	                                <th style="text-align: center;">
+	                                	토&nbsp;&nbsp;&nbsp;
+	                                	<input type="checkbox" id="checkSat" name="checkSat" value=""/>
+	                                </th>
+	                                <th style="text-align: center;">
+	                                	일&nbsp;&nbsp;&nbsp;
+	                                	<input type="checkbox" id="checkSun" name="checkSun" value=""/>
+	                                </th>
+	                            </tr>
+	                            <tr>
+	                                <td scope="row">
+	                                	<label for="schedule">입고예정일</label>
+	                                </td>
+	                                <td>
+	                                	<input id="scheduledMon" class="comm-input" name="scheduledMon" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="scheduledTue" class="comm-input" name="scheduledTue" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="scheduledWed" class="comm-input" name="scheduledWed" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="scheduledThu" class="comm-input" name="scheduledThu" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="scheduledFri" class="comm-input" name="scheduledFri" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="scheduledSat" class="comm-input" name="scheduledSat" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="scheduledSun" class="comm-input" name="scheduledSun" type="text" value="" style="width:130px">
+	                                </td>
+	                            </tr>
+	                            <tr>
+	                                <td scope="row">
+	                                	<label for="moveReq">이동요청일</label>
+	                                </td>
+	                                <td>
+	                                	<input id="moveReqMon" class="comm-input" name="moveReqMon" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="moveReqTue" class="comm-input" name="moveReqTue" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="moveReqWed" class="comm-input" name="moveReqWed" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="moveReqThu" class="comm-input" name="moveReqThu" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="moveReqFri" class="comm-input" name="moveReqFri" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="moveReqSat" class="comm-input" name="moveReqSat" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="moveReqSun" class="comm-input" name="moveReqSun" type="text" value="" style="width:130px">
+	                                </td>
+	                            </tr>
+	                            <tr id="poReqArea" style="display: none">
+	                                <td scope="row">
+	                                	<label for="poReq">PO요청일</label>
+	                                </td>
+	                                <td>
+	                                	<input id="poReqMon" class="comm-input" name="poReqMon" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="poReqTue" class="comm-input" name="poReqTue" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="poReqWed" class="comm-input" name="poReqWed" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="poReqThu" class="comm-input" name="poReqThu" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="poReqFri" class="comm-input" name="poReqFri" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="poReqSat" class="comm-input" name="poReqSat" type="text" value="" style="width:130px">
+	                                </td>
+	                                <td>
+	                                	<input id="poReqSun" class="comm-input" name="poReqSun" type="text" value="" style="width:130px">
+	                                </td>
+	                            </tr>
+	                            </tbody>
+	                        </table>
+	                    </td>
+	                </tr>
+
+                    <tr>
+                        <th scope="row"><span class="req-star-front"><label for="poDeadline">발주마감시간</label></span></th>
+                        <td>
+                            <div class="complex-condition">
+                                <input id="poDeadlineHour" name="poDeadlineHour" class="select-box" type="text" style="width:80px;" required="required"> 시 &nbsp;
+                                <input id="poDeadlineMin" name="poDeadlineMin" class="select-box" type="text" style="width:80px;" required="required"> 분
+                            </div>
+                        </td>
+                    </tr>
+                    <tr modArea>
+                        <th scope="row"><label for="regFormRadio">등록일자</label></th>
+                        <td>
+                            <div class="complex-condition">
+                                <span id="createDate"></span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr modArea>
+                        <th scope="row"><label for="regFormRadio">수정일자</label></th>
+                        <td>
+                            <div class="complex-condition">
+                                <span id="modifyDate"></span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+        <span class="btn-area align-center">
+			<button type="button"  id="fnSave" 	class="fb-btn btn-l btn-point" auth-remove="SAVE" onclick="$scope.fnSave()">	저장	</button>
+		</span>
+    </div>
+</div>

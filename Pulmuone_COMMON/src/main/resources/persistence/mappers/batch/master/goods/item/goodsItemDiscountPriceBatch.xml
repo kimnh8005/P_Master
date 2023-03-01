@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.item.BatchGoodsItemDiscountPriceMapper">
+
+	<!-- 품목상세 resultMap -->
+    <resultMap id="getGoodsIdByItemInfoResultMap" type="kr.co.pulmuone.v1.goods.item.dto.vo.ItemInfoVo">
+        <result column="GOODS_ID" property="goodsId" />
+        <result column="ITEM_CODE" property="itemCode" />
+        <result column="ITEM_TYPE" property="itemType" />
+        <result column="ITEM_NAME" property="itemName" />
+        <result column="ITEM_BARCODE" property="itemBarcode" />
+        <result column="ERP_IF_YN" property="erpIfYn" />
+        <result column="ERP_STOCK_IF_YN" property="erpStockIfYn" />
+        <result column="CATEGORY_STANDARD_ID" property="categoryStandardId" />
+        <result column="SUPPLIER_ID" property="supplierId" />
+        <result column="BRAND_ID" property="brandId" />
+        <result column="STORAGE_METHOD_TYPE" property="storageMethodType" />
+        <result column="TAX_YN" property="taxYn" />
+        <result column="ITEM_PRICE_ID" property="itemPriceId" />
+        <result column="ITEM_PRICE_START_DATE" property="itemPriceStartDate" />
+        <result column="ITEM_PRICE_END_DATE" property="itemPriceEndDate" />
+        <result column="ITEM_STANDARD_PRICE" property="itemStandardPrice" />
+        <result column="ITEM_RECOMMENDED_PRICE" property="itemRecommendedPrice" />
+    </resultMap>
+
+	 <!--───────────────────────────────────────────────────────────────────────
+     * description : 품목코드 별 상품 리스트 조회(묶음 상품 제외)
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.16     강윤경          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+
+    <select id="getGoodsIdListByItemCd" resultMap="getGoodsIdByItemInfoResultMap">
+        /* goodsItemDiscountPriceBatch.getGoodsIdListByItemCd */
+        SELECT
+               IL_GOODS_ID AS GOODS_ID /* 상품 ID */
+               , IL_ITEM_CD AS ITEM_CODE /* 품목코드 */
+          FROM IL_GOODS
+         WHERE IL_ITEM_CD = #{ilItemCode}
+         	AND GOODS_TP != 'GOODS_TYPE.PACKAGE' /* 묶음 상품 제외 */
+
+    </select>
+
+  <!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 일반상품 > 품목 가격정보 Update(프로시져 호출)
+	 * @
+	 * @ 수정일			수정자		  수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.12.07		임상건		  최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="spGoodsPriceUpdateWhenItemPriceChanges" statementType="CALLABLE" >
+		/* goodsItemDiscountPriceBatch.spGoodsPriceUpdateWhenItemPriceChanges */
+		CALL SP_GOODS_PRICE_UPDATE_WHEN_ITEM_PRICE_CHANGES(
+			#{ilItemCode}
+		,	#{inDebugFlag}
+		)
+	</update>
+
+	<update id="spPackageGoodsPriceUpdateWhenItemPriceChanges" statementType="CALLABLE" >
+		/* goodsItemDiscountPriceBatch.spPackageGoodsPriceUpdateWhenItemPriceChanges */
+		CALL SP_PACKAGE_GOODS_PRICE_UPDATE_WHEN_ITEM_PRICE_CHANGES(
+			#{inDebugFlag}
+		)
+	</update>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목가격원본 저장 by Erp 상품
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.02		ykk          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemPriceOrig" >
+			/* goodsItemDiscountPriceBatch.addItemPriceOrig */
+			INSERT INTO IL_ITEM_PRICE_ORIG(
+			     IL_ITEM_CD         /* 품목 PK    */
+				,START_DT           /* 적용 시작일	*/
+				,STANDARD_PRICE     /* 원가       */
+				,RECOMMENDED_PRICE  /* 정상가     */
+				,SYSTEM_UPDATE_YN
+				,MANAGER_UPDATE_YN
+				,CREATE_ID
+				,CREATE_DT
+			)
+			VALUES
+			(
+				 #{ilItemCode}
+				,DATE_FORMAT(IFNULL(#{startDate}, ADDDATE(CURDATE(),1)),'%Y-%m-%d')
+				,#{standardPrice}
+				,#{recommendedPrice}
+				,'Y'
+				,'Y'
+				,#{createId}
+				,NOW()
+			)
+			ON	DUPLICATE KEY
+			UPDATE
+				 STANDARD_PRICE = #{standardPrice}
+				,RECOMMENDED_PRICE	= #{recommendedPrice}
+				,MODIFY_ID = #{modifyId}
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 품목 할인 저장
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		ykk          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addItemDiscount" >
+		/* goodsItemDiscountPriceBatch.addItemDiscount */
+		INSERT INTO IL_ITEM_DISCOUNT (
+		      IL_ITEM_CD			/* 품목 PK	*/
+			, DISCOUNT_TP           /* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ERP_EVENT:올가할인, IMMEDIATE:즉시할인)	*/
+			, DISCOUNT_START_DT     /* 할인 시작일	*/
+			, DISCOUNT_END_DT       /* 할인 종료일	*/
+			, DISCOUNT_METHOD_TP    /* 상품할인 방법 유형 공통코드(GOODS_DISCOUNT_METHOD_TP - FIXED_PRICE:고정가할인, FIXED_RATE:정률할인)	*/
+			, DISCOUNT_SALE_PRICE   /* 할인판매가	*/
+			, USE_YN				/* 사용여부(Y:사용) */
+			, CREATE_ID             /* 등록자	*/
+
+		)
+		VALUES
+		(
+			 #{ilItemCode}
+			,#{discountType}
+			, STR_TO_DATE( CONCAT( REPLACE( #{discountStartDate} , '-', '' ) , '000000' ) , '%Y%m%d%H%i%s' )
+			, STR_TO_DATE( CONCAT( REPLACE( #{discountEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' )
+			,#{discountMethodType}
+			,#{discountSalePrice}
+			,'Y'
+			,#{createId}
+		)
+	    ON DUPLICATE KEY UPDATE
+	    	  DISCOUNT_END_DT = #{discountEndDate}
+	    	, DISCOUNT_METHOD_TP = #{discountMethodType}
+	    	, DISCOUNT_RATIO = NULL
+	    	, DISCOUNT_SALE_PRICE = #{discountSalePrice}
+	    	, USE_YN = 'Y'
+
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 할인 저장 by 배치
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		ykk          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addGoodsDiscountByBatch" >
+			/* goodsItemDiscountPriceBatch.addGoodsDiscountByBatch */
+			INSERT INTO IL_GOODS_DISCOUNT
+			(
+			      IL_GOODS_ID			/* 상품 PK */
+				, DISCOUNT_TP           /* 상품할인 유형 공통코드(GOODS_DISCOUNT_TP - PRIORITY:우선할인, ORGA:올가할인, IMMEDIATE:즉시할인)*/
+				, DISCOUNT_START_DT     /* 할인 시작일*/
+				, DISCOUNT_END_DT       /* 할인 종료일*/
+				, DISCOUNT_METHOD_TP    /* 상품할인 방법 유형 공통코드(GOODS_DISCOUNT_METHOD_TP - FIXED_PRICE:고정가할인, FIXED_RATE:정률할인)*/
+				, DISCOUNT_SALE_PRICE   /* 할인판매가*/
+				, USE_YN				/* 사용여부(Y:사용)*/
+				, CREATE_ID             /* 등록자*/
+			)
+			VALUES
+			(
+				 #{ilGoodsId}
+				,#{discountType}
+				, STR_TO_DATE( CONCAT( REPLACE( #{discountStartDate} , '-', '' ) , '000000' ) , '%Y%m%d%H%i%s' )
+				, STR_TO_DATE( CONCAT( REPLACE( #{discountEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' )
+				,#{discountMethodType}
+				,#{discountSalePrice}
+				,'Y'
+				,#{createId}
+			)
+			ON	DUPLICATE KEY
+			UPDATE
+				 DISCOUNT_END_DT = STR_TO_DATE( CONCAT( REPLACE( #{discountEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' )
+				,DISCOUNT_METHOD_TP= #{discountMethodType}
+				,DISCOUNT_SALE_PRICE= #{discountSalePrice}
+				,USE_YN= 'Y'
+				,MODIFY_ID = #{modifyId}
+
+	</insert>
+
+	<update id="putGoodsDiscountByBatch" >
+		UPDATE
+			IL_GOODS_DISCOUNT
+		SET
+			DISCOUNT_END_DT = STR_TO_DATE( CONCAT( REPLACE( #{discountEndDate}, '-', '' ) , '235959' ) , '%Y%m%d%H%i%s' )
+			, DISCOUNT_METHOD_TP= #{discountMethodType}
+			, DISCOUNT_SALE_PRICE= #{discountSalePrice}
+			, USE_YN= 'Y'
+			, MODIFY_ID = #{modifyId}
+			, MODIFY_DT = NOW()
+			, PRICE_CHANGE_PROC_YN = 'N'
+			, PRICE_CHANGE_PROC_DT = '1900-01-01 00:00:00'
+		WHERE
+			IL_GOODS_DISCOUNT_ID = #{ilGoodsDiscountId}
+	</update>
+
+	<select id="checkDuplicateErpDiscount" resultType="Long">
+		SELECT
+			IL_GOODS_DISCOUNT_ID
+		FROM
+			IL_GOODS_DISCOUNT
+		WHERE
+			IL_GOODS_ID = #{ilGoodsId}
+			AND DISCOUNT_TP = 'GOODS_DISCOUNT_TP.ERP_EVENT'
+			AND DISCOUNT_START_DT = #{discountStartDate}
+		LIMIT 1
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 상품 할인 배치에 의한 배치여부, 변경여부 변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.16		ykk          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putGoodsBatchChange" >
+			/* goodsItemDiscountPriceBatch.putGoodsBatchChange */
+			UPDATE IL_GOODS
+			SET
+				 BATCH_PRICE_CHANGE_DT	= NOW()
+				,PRICE_CHANGE_PROC_YN = 'N'
+			WHERE
+				IL_GOODS_ID = #{ilGoodsId}
+
+	</update>
+
+	<insert id="addItemPriceDiscountIfTemp">
+		/* goodsItemDiscountPriceBatch.addItemPriceDiscountIfTemp */
+		INSERT INTO IL_ITEM_PRICE_DISCOUNT_IF_TEMP (
+			IF_SEQ
+			, IL_ITEM_CD
+			, START_DT
+			, END_DT
+			, STANDARD_PRICE
+			, RECOMMENDED_PRICE
+			, NORMAL_STANDARD_PRICE
+			, NORMAL_RECOMMENDED_PRICE
+			, SALE_TYPE
+		)
+		VALUES (
+			#{ifSeq}
+			, #{ilItemCd}
+			, #{startDt}
+			, #{endDt}
+			, #{standardPrice}
+			, #{recommendedPrice}
+			, #{normalStandardPrice}
+			, #{normalRecommendedPrice}
+			, #{saleType}
+		)
+	</insert>
+
+	<delete id="delItemPriceDiscountIfTemp">
+		/* goodsItemDiscountPriceBatch.delItemPriceDiscountIfTemp */
+		DELETE FROM IL_ITEM_PRICE_DISCOUNT_IF_TEMP
+	</delete>
+
+	<select id="getItemPriceDiscountIfTempList" resultType="kr.co.pulmuone.v1.goods.itemprice.dto.vo.ItemPriceDiscountIfTempVo">
+		/* goodsItemDiscountPriceBatch.getItemPriceDiscountIfTempList */
+		SELECT
+			IIPDIT.IL_ITEM_PRICE_DISCOUNT_IF_TEMP_ID
+			, IIPDIT.IF_SEQ
+			, IIPDIT.IL_ITEM_CD
+			, IIPDIT.START_DT
+			, IIPDIT.END_DT
+			, IIPDIT.STANDARD_PRICE
+			, IIPDIT.RECOMMENDED_PRICE
+			, IIPDIT.NORMAL_STANDARD_PRICE
+			, IIPDIT.NORMAL_RECOMMENDED_PRICE
+			, IIPDIT.SALE_TYPE
+		FROM
+			IL_ITEM_PRICE_DISCOUNT_IF_TEMP IIPDIT
+			INNER JOIN IL_ITEM ITEM
+				ON IIPDIT.IL_ITEM_CD = ITEM.IL_ITEM_CD
+	</select>
+
+</mapper>

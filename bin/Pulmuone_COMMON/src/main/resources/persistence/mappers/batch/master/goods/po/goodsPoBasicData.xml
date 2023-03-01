@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.goods.po.BatchGoodsPoBasicDataMapper">
+    <!--───────────────────────────────────────────────────────────────────────
+         * description 		: 발주용 기본 데이터 생성 및 업데이트 배치
+         * @
+         * @ 수정일			수정자          수정내용
+         * @ ──────────────────────────────────────────────────────────────────────
+         * @ 2021.09.07		남기승
+         * @
+        ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addGoodsPoBasicData">
+        /* goodsPoBasicData.addGoodsPoBasicData */
+        INSERT INTO IL_PO
+        (
+            IL_ITEM_WAREHOUSE_ID
+            , BASE_DT
+            , TARGET_STOCK
+            , OUTBOUND_1WEEK_TOTAL
+            , OUTBOUND_2WEEK_TOTAL
+            , OUTBOUND_3WEEK_TOTAL
+            , OUTBOUND_60DAYS_TOTAL
+            , OUTBOUND_1WEEK_AVG
+            , OUTBOUND_2WEEK_AVG
+            , OUTBOUND_3WEEK_AVG
+            , OUTBOUND_DAY_AVG
+            , NON_ERP_EVENT_ORDER_AVG
+            , ERP_EVENT_ORDER_AVG
+            , EVENT_YN
+            , IL_ITEM_CD
+            , UR_SUPPLIER_WAREHOUSE_ID
+            , UR_WAREHOUSE_ID
+            , UR_SUPPLIER_ID
+            , IL_PO_TP_ID
+            , IL_CTGRY_STD_PRNTS_INFO_ID
+            , IL_GOODS_ID
+            , MEMO
+        )
+        SELECT
+        *
+        FROM
+        (
+            SELECT T.IL_ITEM_WAREHOUSE_ID AS IL_ITEM_WAREHOUSE_ID
+                 , T.BASE_DATE AS BASE_DT
+                 , CEIL((T.TARGET_STOCK_RATIO/100) * (T.OUTBOUND_60DAYS_TOTAL/60)) AS TARGET_STOCK
+                 , T.OUTBOUND_1WEEK_TOTAL AS OUTBOUND_1WEEK_TOTAL
+                 , T.OUTBOUND_2WEEK_TOTAL AS OUTBOUND_2WEEK_TOTAL
+                 , T.OUTBOUND_3WEEK_TOTAL AS OUTBOUND_3WEEK_TOTAL
+                 , T.OUTBOUND_60DAYS_TOTAL AS OUTBOUND_60DAYS_TOTAL
+                 , ROUND(T.OUTBOUND_1WEEK_TOTAL/7, 1) AS OUTBOUND_1WEEK_AVG
+                 , ROUND(T.OUTBOUND_2WEEK_TOTAL/7, 1) AS OUTBOUND_2WEEK_AVG
+                 , ROUND(T.OUTBOUND_3WEEK_TOTAL/7, 1) AS OUTBOUND_3WEEK_AVG
+                 , ROUND(T.OUTBOUND_60DAYS_TOTAL/60, 1) AS OUTBOUND_DAY_AVG
+                 , T.NON_ERP_EVENT_ORDER_AVG + T.AVG_NORMAL_PRODUCT_ORDER_CNT AS NON_ERP_EVENT_ORDER_AVG
+                 , T.ERP_EVENT_ORDER_AVG + T.AVG_DISCOUNT_PRODUCT_ORDER_CNT AS ERP_EVENT_ORDER_AVG
+                 , T.EVENT_YN
+                 , T.IL_ITEM_CD
+                 , T.UR_SUPPLIER_WAREHOUSE_ID
+                 , T.UR_WAREHOUSE_ID
+                 , T.UR_SUPPLIER_ID
+                 , T.IL_PO_TP_ID
+                 , T.IL_CTGRY_STD_PRNTS_INFO_ID
+                 , T.IL_GOODS_ID
+                 , (
+                    SELECT MEMO FROM IL_PO WHERE IL_PO_ID = ( SELECT MAX(IL_PO_ID) FROM IL_PO WHERE IL_ITEM_WAREHOUSE_ID = T.IL_ITEM_WAREHOUSE_ID )
+                    ) AS MEMO
+            FROM (
+                SELECT A.IL_ITEM_CD
+                     , B.IL_GOODS_ID
+                     , C.IL_ITEM_WAREHOUSE_ID
+                     , D.UR_SUPPLIER_WAREHOUSE_ID
+                     , E.UR_WAREHOUSE_ID
+                     , F.UR_SUPPLIER_ID
+                     , G.IL_PO_TP_ID
+                     , J.IL_CTGRY_STD_PRNTS_INFO_ID
+                     , INPUT_DATE.CUR_DATE
+                     , INPUT_DATE.BASE_DATE
+                     , INPUT_DATE.DATE_DIFF
+                     , IFNULL((
+                                CASE
+                                    WHEN C.IL_STOCK_DEADLINE_ID IS NOT NULL AND C.IL_STOCK_DEADLINE_ID != '' AND C.IL_STOCK_DEADLINE_ID != 0
+                                    THEN (
+                                            SELECT ISD.TARGET_STOCK_RATIO
+                                            FROM IL_STOCK_DEADLINE ISD
+                                            WHERE ISD.IL_STOCK_DEADLINE_ID = C.IL_STOCK_DEADLINE_ID
+                                         )
+                                    ELSE (
+                                            SELECT ISD.TARGET_STOCK_RATIO
+                                            FROM IL_STOCK_DEADLINE ISD
+                                            WHERE ISD.BASIC_YN = 'Y'
+                                            AND ISD.UR_SUPPLIER_ID = F.UR_SUPPLIER_ID
+                                            AND ISD.UR_WAREHOUSE_ID IN (E.UR_WAREHOUSE_ID, 0)
+                                            AND ISD.DISTRIBUTION_PERIOD <![CDATA[ <= ]]> A.DISTRIBUTION_PERIOD
+                                            ORDER BY ISD.UR_WAREHOUSE_ID DESC, ISD.DISTRIBUTION_PERIOD DESC
+                                            LIMIT 1
+                                         )
+                                    END
+                                ), 0) AS TARGET_STOCK_RATIO /* 목표재고율 */
+                     , IFNULL(IPOC.OUTBOUND_1WEEK_TOTAL, 0) AS OUTBOUND_1WEEK_TOTAL
+                     , IFNULL(IPOC.OUTBOUND_2WEEK_TOTAL, 0) AS OUTBOUND_2WEEK_TOTAL
+                     , IFNULL(IPOC.OUTBOUND_3WEEK_TOTAL, 0) AS OUTBOUND_3WEEK_TOTAL
+                     , IFNULL(IPOC.OUTBOUND_60DAYS_TOTAL + (IFNULL(LDACI.AVG_DELIVERY_CNT, 0)*60), 0) AS OUTBOUND_60DAYS_TOTAL
+                     , CASE WHEN IFNULL(IPOC.NOT_EVT_ORDER_CNT, 0) = 0 THEN 0
+                            ELSE ROUND(IFNULL(IPOC.NOT_EVT_ORDER_CNT, 0) / IFNULL(IPOC.NOT_EVT_DT_CNT, 1), 1)
+                            END AS NON_ERP_EVENT_ORDER_AVG
+                     , CASE WHEN IFNULL(IPOC.EVT_ORDER_CNT, 0) = 0 THEN 0
+                            ELSE ROUND(IFNULL(IPOC.EVT_ORDER_CNT, 0) / IFNULL(IPOC.EVT_DT_CNT, 1))
+                            END AS ERP_EVENT_ORDER_AVG
+                     , IFNULL(IPOC.EVENT_YN, 'N') AS EVENT_YN
+                     , IFNULL(LDACI.AVG_NORMAL_PRODUCT_ORDER_CNT, 0) AS AVG_NORMAL_PRODUCT_ORDER_CNT
+                     , IFNULL(LDACI.AVG_DISCOUNT_PRODUCT_ORDER_CNT, 0) AS AVG_DISCOUNT_PRODUCT_ORDER_CNT
+                FROM IL_ITEM A
+                    INNER JOIN IL_GOODS B
+                        ON B.IL_ITEM_CD = A.IL_ITEM_CD
+                               AND B.SALE_STATUS IN ('SALE_STATUS.WAIT', 'SALE_STATUS.ON_SALE', 'SALE_STATUS.OUT_OF_STOCK_BY_SYSTEM', 'SALE_STATUS.OUT_OF_STOCK_BY_MANAGER')
+                               AND B.GOODS_TP IN ('GOODS_TYPE.NORMAL', 'GOODS_TYPE.GIFT', 'GOODS_TYPE.ADDITIONAL', 'GOODS_TYPE.GIFT_FOOD_MARKETING')
+                    INNER JOIN IL_ITEM_WAREHOUSE C
+                        ON C.IL_ITEM_CD = A.IL_ITEM_CD
+                    INNER JOIN UR_SUPPLIER_WAREHOUSE D
+                        ON D.UR_SUPPLIER_WAREHOUSE_ID = C.UR_SUPPLIER_WAREHOUSE_ID
+                               AND D.UR_SUPPLIER_ID = A.UR_SUPPLIER_ID
+                               AND D.UR_WAREHOUSE_ID = B.UR_WAREHOUSE_ID
+                    INNER JOIN UR_WAREHOUSE E
+                        ON E.UR_WAREHOUSE_ID = D.UR_WAREHOUSE_ID
+                               AND E.STOCK_ORDER_YN = 'Y'
+                    INNER JOIN UR_SUPPLIER F
+                        ON F.UR_SUPPLIER_ID = D.UR_SUPPLIER_ID
+                    INNER JOIN IL_PO_TP G
+                        ON G.IL_PO_TP_ID = C.IL_PO_TP_ID
+                    INNER JOIN IL_CTGRY_STD_PRNTS_INFO J
+                        ON J.IL_CTGRY_STD_ID = A.IL_CTGRY_STD_ID
+                    JOIN (
+                            SELECT CURDATE() AS CUR_DATE
+                                 , #{baseDt} AS BASE_DATE
+                                 , DATEDIFF(#{baseDt}, CURDATE()) AS DATE_DIFF
+                            FROM DUAL
+                          ) AS INPUT_DATE
+                    LEFT JOIN IL_PO IP
+                        ON IP.IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+                               AND IP.BASE_DT = INPUT_DATE.BASE_DATE
+                    LEFT JOIN IL_PO_ORDER_CAL IPOC
+                        ON IPOC.IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+                               AND IPOC.BASE_DT = INPUT_DATE.CUR_DATE
+                    LEFT JOIN (
+                                SELECT LDACI.BASE_DT
+									, (
+										SELECT
+											IIW.IL_ITEM_WAREHOUSE_ID
+										FROM IL_ITEM_WAREHOUSE IIW
+											INNER JOIN UR_SUPPLIER_WAREHOUSE USW
+												ON USW.UR_SUPPLIER_WAREHOUSE_ID = IIW.UR_SUPPLIER_WAREHOUSE_ID
+											INNER JOIN UR_SUPPLIER US
+												ON US.UR_SUPPLIER_ID = USW.UR_SUPPLIER_ID
+											INNER JOIN UR_WAREHOUSE UW
+												ON UW.UR_WAREHOUSE_ID = USW.UR_WAREHOUSE_ID
+										WHERE
+											IIW.IL_ITEM_CD = LDACI.ITEM_CD
+											AND USW.UR_SUPPLIER_ID = (
+												CASE
+													WHEN LDACI.SHOP_CD = 'PULSHOP' THEN PF_ID.UR_SUPPLIER_ID
+													WHEN LDACI.SHOP_CD = 'ORGASHOP' THEN OG_ID.UR_SUPPLIER_ID
+													ELSE 0
+												END
+											)
+											AND USW.UR_WAREHOUSE_ID = (
+												CASE
+													WHEN LDACI.UR_WAREHOUSE_ID = 'WAREHOUSE_YONGIN_ID' THEN YONGIN_ID.PS_VAL
+													WHEN LDACI.UR_WAREHOUSE_ID = 'WAREHOUSE_BAEKAM_ID' THEN BAEKAM_ID.PS_VAL
+													ELSE 0
+												END
+											)
+										LIMIT 1
+									) AS IL_ITEM_WAREHOUSE_ID
+                                     , LDACI.ITEM_CD AS IL_ITEM_CD
+                                     , LDACI.AVG_DELIVERY_CNT
+                                     , LDACI.AVG_NORMAL_PRODUCT_ORDER_CNT
+                                     , LDACI.AVG_DISCOUNT_PRODUCT_ORDER_CNT
+                                FROM LEGACY_DAILY_AVG_CNT_IF LDACI
+                                    JOIN (
+                                            SELECT UR_SUPPLIER_ID
+                                            FROM UR_SUPPLIER
+                                            WHERE SUPPLIER_CD = 'PF'
+                                          ) PF_ID
+                                    JOIN (
+                                            SELECT UR_SUPPLIER_ID
+                                            FROM UR_SUPPLIER
+                                            WHERE SUPPLIER_CD = 'OG'
+                                          ) OG_ID
+                                    JOIN (
+                                            SELECT PS_VAL
+                                            FROM PS_CONFIG
+                                            WHERE PS_KEY = 'WAREHOUSE_BAEKAM_ID'
+                                          ) BAEKAM_ID
+                                    JOIN (
+                                            SELECT PS_VAL
+                                            FROM PS_CONFIG
+                                            WHERE PS_KEY = 'WAREHOUSE_YONGIN_ID'
+                                          ) YONGIN_ID
+                                WHERE BASE_DT = CURDATE()
+                            ) LDACI
+								ON LDACI.IL_ITEM_WAREHOUSE_ID = C.IL_ITEM_WAREHOUSE_ID
+                WHERE A.EXTINCTION_YN = 'N'
+                AND (
+                        IP.IL_PO_ID IS NULL
+                        OR (
+                            (IP.BASE_DT = INPUT_DATE.BASE_DATE)
+                            AND DATE_FORMAT(IP.SNAPSHOT_DT, '%Y%m%d') <![CDATA[ < ]]> INPUT_DATE.CUR_DATE
+                            )
+                      )
+                GROUP BY C.IL_ITEM_WAREHOUSE_ID
+                ) T
+        ) TT
+        ON DUPLICATE KEY UPDATE
+            IL_ITEM_WAREHOUSE_ID = TT.IL_ITEM_WAREHOUSE_ID
+            , BASE_DT = TT.BASE_DT
+            , TARGET_STOCK = TT.TARGET_STOCK
+            , OUTBOUND_1WEEK_TOTAL = TT.OUTBOUND_1WEEK_TOTAL
+            , OUTBOUND_2WEEK_TOTAL = TT.OUTBOUND_2WEEK_TOTAL
+            , OUTBOUND_3WEEK_TOTAL = TT.OUTBOUND_3WEEK_TOTAL
+            , OUTBOUND_60DAYS_TOTAL = TT.OUTBOUND_60DAYS_TOTAL
+            , OUTBOUND_1WEEK_AVG = TT.OUTBOUND_1WEEK_AVG
+            , OUTBOUND_2WEEK_AVG = TT.OUTBOUND_2WEEK_AVG
+            , OUTBOUND_3WEEK_AVG = TT.OUTBOUND_3WEEK_AVG
+            , OUTBOUND_DAY_AVG = TT.OUTBOUND_DAY_AVG
+            , NON_ERP_EVENT_ORDER_AVG = TT.NON_ERP_EVENT_ORDER_AVG
+            , ERP_EVENT_ORDER_AVG = TT.ERP_EVENT_ORDER_AVG
+            , EVENT_YN = TT.EVENT_YN
+            , IL_ITEM_CD = TT.IL_ITEM_CD
+            , UR_SUPPLIER_WAREHOUSE_ID = TT.UR_SUPPLIER_WAREHOUSE_ID
+            , UR_WAREHOUSE_ID = TT.UR_WAREHOUSE_ID
+            , UR_SUPPLIER_ID = TT.UR_SUPPLIER_ID
+            , IL_PO_TP_ID = TT.IL_PO_TP_ID
+            , IL_CTGRY_STD_PRNTS_INFO_ID = TT.IL_CTGRY_STD_PRNTS_INFO_ID
+            , IL_GOODS_ID = TT.IL_GOODS_ID
+    </insert>
+</mapper>

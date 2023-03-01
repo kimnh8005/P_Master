@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.order.order.OutmallOrderDetailListMapper">
+
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 이력관리 > 외무몰
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.15		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getOutmallOrderDetailListResultMap" type="kr.co.pulmuone.v1.od.order.dto.vo.GetOutmallOrderDetailListResultVo">
+		<result column="RNUM" property="rowNumber" />
+		<result column="EMPLOYEE_YN" property="employeeYn" />
+		<result column="USER_NM" property="userName" />
+		<result column="LOGIN_ID" property="loginId" />
+		<result column="MOBILE" property="mobile" />
+		<result column="MAIL" property="mail" />
+		<result column="CREATE_DT" property="createDate" />
+		<result column="MODIFY_DT" property="modifyDate" />
+		<result column="UR_USER_ID" property="urUserId" />
+	</resultMap>
+	<select id="getOutmallOrderDetailList" resultMap="getOutmallOrderDetailListResultMap">
+		/*	userDormant.getOutmallOrderDetailList  */
+		SELECT
+			@ROWNUM := @ROWNUM +1 AS RNUM
+			,TBL.*
+		FROM(
+		SELECT
+		IF(IFNULL(UBM.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+		,FN_DECRYPT(UU.USER_NM) AS USER_NM
+		,UU.LOGIN_ID
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MOBILE), FN_DECRYPT(UBM.MOBILE)) AS MOBILE
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MAIL), FN_DECRYPT(UBM.MAIL)) AS MAIL
+		,DATE_FORMAT(UUML.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		,CASE WHEN UUML.MODIFY_DT IS NULL THEN '-'
+		ELSE DATE_FORMAT(UUML.MODIFY_DT, '%Y-%m-%d')
+		END AS MODIFY_DT
+		,UU.UR_USER_ID
+		FROM
+		UR_USER_MOVE_LOG UUML
+		LEFT JOIN UR_USER UU ON UUML.UR_USER_ID = UU.UR_USER_ID
+		LEFT JOIN UR_BUYER UB ON UUML.UR_USER_ID = UB.UR_USER_ID
+		LEFT JOIN UR_BUYER_MOVE UBM ON UUML.UR_USER_ID = UBM.UR_USER_ID
+		JOIN (SELECT @ROWNUM := 0) R
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND UUML.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startModifyDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endModifyDate)">
+					AND UUML.MODIFY_DT BETWEEN #{startModifyDate} AND #{endModifyDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</if>
+		ORDER BY UUML.UR_USER_MOVE_LOG_ID ASC
+		) TBL
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND TBL.USER_NM IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND TBL.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+					AND TBL.MOBILE LIKE CONCAT('%',#{mobile},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+					AND TBL.MAIL LIKE CONCAT('%',#{mail},'%')
+				</if>
+			</otherwise>
+		</choose>
+		ORDER BY RNUM DESC
+	</select>
+
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 이력관리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.15		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getOutmallOrderDetailListCount" resultType="int" >
+		/*	userDormant.getOutmallOrderDetailListCount	*/
+		SELECT
+		COUNT(*)
+		FROM(
+		SELECT
+		IF(IFNULL(UBM.UR_ERP_EMPLOYEE_CD, '') = '','N','Y') AS EMPLOYEE_YN
+		,FN_DECRYPT(UU.USER_NM) AS USER_NM
+		,UU.LOGIN_ID
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MOBILE), FN_DECRYPT(UBM.MOBILE)) AS MOBILE
+		,IF(UU.USER_STATUS = 1 ,FN_DECRYPT(UB.MAIL), FN_DECRYPT(UBM.MAIL)) AS MAIL
+		,DATE_FORMAT(UUML.CREATE_DT, '%Y-%m-%d') AS CREATE_DT
+		,CASE WHEN UUML.MODIFY_DT IS NULL THEN '-'
+		ELSE DATE_FORMAT(UUML.MODIFY_DT, '%Y-%m-%d')
+		END AS MODIFY_DT
+		FROM
+		UR_USER_MOVE_LOG UUML
+		LEFT JOIN UR_USER UU ON UUML.UR_USER_ID = UU.UR_USER_ID
+		LEFT JOIN UR_BUYER UB ON UUML.UR_USER_ID = UB.UR_USER_ID
+		LEFT JOIN UR_BUYER_MOVE UBM ON UUML.UR_USER_ID = UBM.UR_USER_ID
+		WHERE 1 = 1
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEmpty(condiValueArray)">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(userType)">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'NORMAL')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') = ''
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(userType,'EMPLOYEE')">
+						AND IFNULL(UB.UR_ERP_EMPLOYEE_CD, '') != ''
+					</when>
+				</choose>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startCreateDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endCreateDate)">
+					AND UUML.CREATE_DT BETWEEN #{startCreateDate} AND #{endCreateDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startModifyDate)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endModifyDate)">
+					AND UUML.MODIFY_DT BETWEEN #{startModifyDate} AND #{endModifyDate} + INTERVAL 1 DAY - INTERVAL 1 SECOND
+				</if>
+			</if>
+		</if>
+		) TBL
+		WHERE 1 = 1
+		<choose>
+			<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(condiValueArray)">
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'userName')">
+					AND TBL.USER_NM IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(condiType,'loginId')">
+					AND TBL.LOGIN_ID IN
+					<foreach collection="condiValueArray" item="condiValueArray" separator="," open="(" close=")">
+						#{condiValueArray}
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mobile)">
+					AND TBL.MOBILE LIKE CONCAT('%',#{mobile},'%')
+				</if>
+				<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(mail)">
+					AND TBL.MAIL LIKE CONCAT('%',#{mail},'%')
+				</if>
+			</otherwise>
+		</choose>
+	</select>
+
+</mapper>
+

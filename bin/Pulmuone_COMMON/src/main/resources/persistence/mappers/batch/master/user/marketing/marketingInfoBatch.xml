@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mappers.batch.master.user.marketing.MarketingInfoBatchMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 마케팅 정보 수신동의 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.01.28		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getTargetMarketingInfoResultMap" type="kr.co.pulmuone.v1.batch.user.marketing.dto.MarketingInfoBatchDto">
+        <result column="UR_USER_ID" 	property="urUserId" />
+        <result column="USER_NAME" 		property="userName" />
+     	<result column="MAIL" 			property="mail" />
+        <result column="MOBILE" 		property="mobile" />
+        <result column="MAIL_YN" 		property="mailYn" />
+        <result column="SMS_YN" 		property="smsYn" />
+     	<result column="MAIL_YN_DT" 	property="mailYnDate" />
+        <result column="SMS_YN_DT" 		property="smsYnDate" />
+        <result column="MAIL_INFO" 		property="mailInfo" />
+        <result column="SMS_INFO" 		property="smsInfo" />
+    </resultMap>
+	<select id="getTargetMarketingInfo" resultMap="getTargetMarketingInfoResultMap">
+		/*	marketingInfoBatch.getTargetMarketingInfo  */
+		SELECT
+			UB.UR_USER_ID
+			,FN_DECRYPT(UU.USER_NM) AS USER_NAME
+			,FN_DECRYPT(UB.MAIL) AS MAIL
+			,FN_DECRYPT(UB.MOBILE) AS MOBILE
+			,IF(UB.MAIL_YN = 'Y','예','아니오') AS MAIL_YN
+			,IF(UB.SMS_YN = 'Y','예','아니오') AS SMS_YN
+			,UB.MAIL_YN_DT
+			,UB.SMS_YN_DT
+			,CASE WHEN UB.MAIL_YN = 'Y' THEN CONCAT('예 (',DATE_FORMAT(UB.MAIL_YN_DT,'%Y-%m-%d'),')')
+				  ELSE '아니오'
+				  END AS MAIL_INFO
+			,CASE WHEN UB.SMS_YN = 'Y' THEN CONCAT('예 (',DATE_FORMAT(UB.SMS_YN_DT,'%Y-%m-%d'),')')
+				  ELSE '아니오'
+				  END AS SMS_INFO
+		FROM
+			UR_BUYER UB
+			JOIN UR_USER UU ON UU.UR_USER_ID = UB.UR_USER_ID
+		WHERE
+			(UB.SMS_YN = 'Y'
+			AND DATE_FORMAT(UB.SMS_YN_DT,'%Y-%m') = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL -11 MONTH), '%Y-%m'))
+			OR
+			(UB.MAIL_YN = 'Y'
+			AND DATE_FORMAT(UB.MAIL_YN_DT,'%Y-%m') = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL -11 MONTH), '%Y-%m'))
+	</select>
+</mapper>
+

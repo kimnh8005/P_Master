@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.promotion.serialnumber.SerialNumberMapper">
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 카테고리 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.08.04		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.serialnumber.dto.vo.GetSerialNumberListResultVo" id="getCategoryResultMap">
+		<result column="NO"  property="no"  />
+		<result column="NO_EXCEL"  property="noExcel"  />
+		<result column="SERIAL_NUMBER"  property="serialNumber" />
+		<result column="SERIAL_SIZE"  property="serialSize" />
+		<result column="SERIAL_FRONT"  property="serialFront" />
+		<result column="SERIAL_BACK"  property="serialBack" />
+		<result column="CREATE_DT"  property="createDate" />
+		<result column="STATUS"  property="status"  />
+		<result column="STATUS_NAME"  property="statusName"  />
+		<result column="LOGIN_ID"  property="loginId"  />
+		<result column="UR_USER_ID"  property="urUserId"  />
+		<result column="USER_NAME"  property="userName"  />
+		<result column="ISSUE_START_DT"  property="issueStartDate"  />
+		<result column="ISSUE_END_DT"  property="issueEndDate"  />
+		<result column="ISSUE_PERIOD"  property="issuePeriod"  />
+		<result column="USE_DT"  property="useDate"  />
+		<result column="PM_SERIAL_NUMBER_ID"  property="pmSerialNumberId"  />
+	</resultMap>
+	<select id="getSerialNumberList" resultMap="getCategoryResultMap">
+		/*	serialNumber.getSerialNumberList	*/
+		SELECT
+				T.*
+		FROM	(
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberTp,'SERIAL_NUMBER_TYPE.FIXED_VALUE')">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+						SELECT
+							PP.FIX_SERIAL_NUMBER AS SERIAL_NUMBER
+			 				,(SELECT MAX(CREATE_DT) FROM PM_COUPON_STATUS_HISTORY PPSH WHERE PP.PM_COUPON_ID = PPSH.PM_COUPON_ID AND PPSH.APPR_STAT = 'APPR_STAT.APPROVED')
+			 				/*,FN_COMN_CODE_DIC(PCI.STATUS)  AS  STATUS_NAME*/
+						    , DIC_COUPON_STATUS.DIC_MST_NM  AS  STATUS_NAME
+			 				, UU.LOGIN_ID
+			 				, FN_DECRYPT(UU.USER_NM) AS USER_NAME
+							, PP.ISSUE_START_DT
+							, PP.ISSUE_END_DT
+							, PCI.CREATE_DT AS USE_DT
+							, PCI.CREATE_DT
+						FROM PM_COUPON_ISSUE PCI
+						JOIN PM_COUPON PP ON PCI.PM_COUPON_ID = PP.PM_COUPON_ID
+						LEFT JOIN UR_USER UU ON UU.UR_USER_ID = PCI.UR_USER_ID
+						LEFT JOIN (
+								SELECT SCC.ST_COMN_CODE_ID
+									, GDM.DIC_MST_NM
+								FROM ST_COMN_CODE SCC
+								INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+								WHERE SCC.ST_COMN_CODE_MST_CD = 'COUPON_STATUS'
+						) DIC_COUPON_STATUS ON DIC_COUPON_STATUS.ST_COMN_CODE_ID = PCI.STATUS
+						WHERE PCI.PM_COUPON_ID =  #{parentId}
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValueList)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.SERIALNUMBER')">
+									AND PP.FIX_SERIAL_NUMBER IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_ID')">
+									AND UU.LOGIN_ID IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+							</choose>
+						</if>
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'Y')">
+								AND PCI.STATUS = 'COUPON_STATUS.USE'
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'N')">
+								AND PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+							</when>
+						</choose>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startUseDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endUseDate)">
+								AND PCI.CREATE_DT BETWEEN DATE_FORMAT(#{startUseDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endUseDate}, '%Y-%m-%d 23:59:59')
+						    </if>
+						</if>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+						SELECT
+							PP.FIX_SERIAL_NUMBER AS SERIAL_NUMBER
+			 				,(SELECT MAX(CREATE_DT) FROM PM_POINT_STATUS_HISTORY PPSH WHERE PP.PM_POINT_ID = PPSH.PM_POINT_ID AND PPSH.APPR_STAT = 'APPR_STAT.APPROVED')
+			 				,'사용' AS STATUS_NAME
+			 				,'Y' AS STATUS
+			 				, UU.LOGIN_ID
+			 				, FN_DECRYPT(UU.USER_NM) AS USER_NAME
+							, PP.ISSUE_START_DT
+							, PP.ISSUE_END_DT
+							, PPU.CREATE_DT AS USE_DT
+							, PPU.CREATE_DT
+						FROM PM_POINT_USED_DETL PPUD
+						JOIN PM_POINT PP ON PPUD.PM_POINT_ID = PP.PM_POINT_ID
+						LEFT JOIN UR_USER UU ON UU.UR_USER_ID = PPUD.UR_USER_ID
+						JOIN PM_POINT_USED PPU ON PPU.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+						WHERE PPUD.PM_POINT_ID = #{parentId}
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValueList)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.SERIALNUMBER')">
+									AND PP.FIX_SERIAL_NUMBER IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_ID')">
+									AND UU.LOGIN_ID IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+							</choose>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startUseDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endUseDate)">
+								AND PPU.CREATE_DT BETWEEN DATE_FORMAT(#{startUseDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endUseDate}, '%Y-%m-%d 23:59:59')
+
+						    </if>
+						</if>
+
+					</if>
+				</when>
+				<otherwise>
+					SELECT
+						 FN_DECRYPT(PSN.SERIAL_NUMBER) AS SERIAL_NUMBER
+						, LENGTH(PSN.SERIAL_NUMBER) -4 AS SERIAL_SIZE
+						, LEFT(PSN.SERIAL_NUMBER,2) AS SERIAL_FRONT
+						, RIGHT(PSN.SERIAL_NUMBER,2) AS SERIAL_BACK
+						, PSN.PM_SERIAL_NUMBER_ID
+						, PSN.CREATE_DT
+						, PSN.STATUS
+						/*, FN_COMN_CODE_DIC(PSN.STATUS) AS STATUS_NAME*/
+					  	,DIC_SERIAL_NUMBER_STATUS.DIC_MST_NM AS STATUS_NAME
+						, UU.LOGIN_ID
+						, PSN.UR_USER_ID
+						, FN_DECRYPT(UU.USER_NM) AS USER_NAME
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+								, PC.ISSUE_START_DT
+								, PC.ISSUE_END_DT
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+								, PP.ISSUE_START_DT
+								, PP.ISSUE_END_DT
+							</when>
+						</choose>
+						, PSN.USE_DT
+					FROM PM_SERIAL_NUMBER PSN
+					LEFT JOIN UR_USER UU
+						ON UU.UR_USER_ID = PSN.UR_USER_ID
+					LEFT JOIN (
+						SELECT SCC.ST_COMN_CODE_ID
+							, GDM.DIC_MST_NM
+						FROM ST_COMN_CODE SCC
+						INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+						WHERE SCC.ST_COMN_CODE_MST_CD = 'SERIAL_NUMBER_STATUS'
+					) DIC_SERIAL_NUMBER_STATUS ON DIC_SERIAL_NUMBER_STATUS.ST_COMN_CODE_ID = PSN.STATUS
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+							LEFT JOIN PM_COUPON PC
+								ON PC.PM_COUPON_ID = PSN.PM_COUPON_ID
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+							LEFT JOIN PM_POINT PP
+								ON PP.PM_POINT_ID = PSN.PM_POINT_ID
+						</when>
+					</choose>
+					<where>
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+								AND PC.PM_COUPON_ID = #{parentId}
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+								AND PP.PM_POINT_ID = #{parentId}
+							</when>
+						</choose>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValueList)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.SERIALNUMBER')">
+									AND PSN.SERIAL_NUMBER IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											FN_ENCRYPT(#{item})
+										</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_ID')">
+									AND UU.LOGIN_ID IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+
+							</choose>
+						</if>
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'Y')">
+								AND PSN.STATUS = 'SERIAL_NUMBER_STATUS.USE'
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'N')">
+								AND PSN.STATUS = 'SERIAL_NUMBER_STATUS.ISSUED'
+							</when>
+						</choose>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startUseDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endUseDate)">
+								AND PSN.USE_DT BETWEEN DATE_FORMAT(#{startUseDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endUseDate}, '%Y-%m-%d 23:59:59')
+						    </if>
+						</if>
+					</where>
+					AND PSN.APPROVAL_YN = 'Y'
+				</otherwise>
+			</choose>
+		) T
+		<where>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_NAME')">
+			AND T.USER_NAME IN
+				<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+					#{item}
+				</foreach>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberTp,'SERIAL_NUMBER_TYPE.FIXED_VALUE')">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'Y')">
+						AND T.STATUS = 'Y'
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'N')">
+						AND T.STATUS <![CDATA[<>]]> 'Y'
+					</when>
+				</choose>
+			</if>
+		</if>
+		</where>
+		ORDER BY T.CREATE_DT DESC, T.SERIAL_NUMBER
+	</select>
+
+
+	<select id="serialNumberListExcel" resultMap="getCategoryResultMap">
+		/*	serialNumber.serialNumberListExcel	*/
+		SELECT
+				T.*
+		FROM	(
+			<choose>
+				<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberTp,'SERIAL_NUMBER_TYPE.FIXED_VALUE')">
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+						SELECT
+							PP.FIX_SERIAL_NUMBER AS SERIAL_NUMBER
+			 				,(SELECT MAX(CREATE_DT) FROM PM_COUPON_STATUS_HISTORY PPSH WHERE PP.PM_COUPON_ID = PPSH.PM_COUPON_ID AND PPSH.APPR_STAT = 'APPR_STAT.APPROVED')
+			 				/*,FN_COMN_CODE_DIC(PCI.STATUS)  AS  STATUS_NAME*/
+							, DIC_COUPON_STATUS.DIC_MST_NM  AS  STATUS_NAME
+			 				, IFNULL(UU.LOGIN_ID,'') AS LOGIN_ID
+			 				, IFNULL(FN_DECRYPT(UU.USER_NM), '') AS USER_NAME
+							, PP.ISSUE_START_DT
+							, PP.ISSUE_END_DT
+							, CONCAT(PP.ISSUE_START_DT,'~',PP.ISSUE_END_DT) AS ISSUE_PERIOD
+							, IFNULL(PCI.CREATE_DT, '') AS USE_DT
+							, PCI.CREATE_DT
+						FROM PM_COUPON_ISSUE PCI
+						JOIN PM_COUPON PP ON PCI.PM_COUPON_ID = PP.PM_COUPON_ID
+						LEFT JOIN UR_USER UU ON UU.UR_USER_ID = PCI.UR_USER_ID
+						LEFT JOIN (
+							SELECT SCC.ST_COMN_CODE_ID
+								, GDM.DIC_MST_NM
+							FROM ST_COMN_CODE SCC
+							INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+							WHERE SCC.ST_COMN_CODE_MST_CD = 'COUPON_STATUS'
+						) DIC_COUPON_STATUS ON DIC_COUPON_STATUS.ST_COMN_CODE_ID = PCI.STATUS
+						WHERE PCI.PM_COUPON_ID =  #{parentId}
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValueList)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.SERIALNUMBER')">
+									AND PP.FIX_SERIAL_NUMBER IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_ID')">
+									AND UU.LOGIN_ID IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+							</choose>
+						</if>
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'Y')">
+								AND PCI.STATUS = 'COUPON_STATUS.USE'
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'N')">
+								AND PCI.STATUS = 'COUPON_STATUS.NOTUSE'
+							</when>
+						</choose>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startUseDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endUseDate)">
+								AND PCI.CREATE_DT BETWEEN DATE_FORMAT(#{startUseDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endUseDate}, '%Y-%m-%d 23:59:59')
+						    </if>
+						</if>
+					</if>
+					<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+						SELECT
+							PP.FIX_SERIAL_NUMBER AS SERIAL_NUMBER
+			 				,(SELECT MAX(CREATE_DT) FROM PM_POINT_STATUS_HISTORY PPSH WHERE PP.PM_POINT_ID = PPSH.PM_POINT_ID AND PPSH.APPR_STAT = 'APPR_STAT.APPROVED')
+			 				,'사용' AS STATUS_NAME
+			 				,'Y' AS STATUS
+			 				, IFNULL(UU.LOGIN_ID, '') AS LOGIN_ID
+			 				, IFNULL(FN_DECRYPT(UU.USER_NM), '') AS USER_NAME
+							, PP.ISSUE_START_DT
+							, PP.ISSUE_END_DT
+							, CONCAT(PP.ISSUE_START_DT,'~',PP.ISSUE_END_DT) AS ISSUE_PERIOD
+							, IFNULL(PPU.CREATE_DT,'') AS USE_DT
+							, PPU.CREATE_DT
+						FROM PM_POINT_USED_DETL PPUD
+						JOIN PM_POINT PP ON PPUD.PM_POINT_ID = PP.PM_POINT_ID
+						LEFT JOIN UR_USER UU ON UU.UR_USER_ID = PPUD.UR_USER_ID
+						JOIN PM_POINT_USED PPU ON PPU.PM_POINT_USED_ID = PPUD.PM_POINT_USED_ID
+						WHERE PPUD.PM_POINT_ID = #{parentId}
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValueList)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.SERIALNUMBER')">
+									AND PP.FIX_SERIAL_NUMBER IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_ID')">
+									AND UU.LOGIN_ID IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+							</choose>
+						</if>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startUseDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endUseDate)">
+								AND PPU.CREATE_DT BETWEEN DATE_FORMAT(#{startUseDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endUseDate}, '%Y-%m-%d 23:59:59')
+						    </if>
+						</if>
+
+					</if>
+				</when>
+				<otherwise>
+					SELECT
+						 FN_DECRYPT(PSN.SERIAL_NUMBER) AS SERIAL_NUMBER
+						, LENGTH(PSN.SERIAL_NUMBER) -4 AS SERIAL_SIZE
+						, LEFT(PSN.SERIAL_NUMBER,2) AS SERIAL_FRONT
+						, RIGHT(PSN.SERIAL_NUMBER,2) AS SERIAL_BACK
+						, PSN.PM_SERIAL_NUMBER_ID
+						, PSN.CREATE_DT
+						, PSN.STATUS
+						/*, FN_COMN_CODE_DIC(PSN.STATUS) AS STATUS_NAME*/
+						, DIC_SERIAL_NUMBER_STATUS.DIC_MST_NM AS STATUS_NAME
+						, IFNULL(UU.LOGIN_ID,'') AS LOGIN_ID
+						, PSN.UR_USER_ID
+						, IFNULL(FN_DECRYPT(UU.USER_NM),'') AS USER_NAME
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+								, PC.ISSUE_START_DT
+								, PC.ISSUE_END_DT
+								, CONCAT(PC.ISSUE_START_DT,'~',PC.ISSUE_END_DT) AS ISSUE_PERIOD
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+								, PP.ISSUE_START_DT
+								, PP.ISSUE_END_DT
+								, CONCAT(PP.ISSUE_START_DT,'~',PP.ISSUE_END_DT) AS ISSUE_PERIOD
+							</when>
+						</choose>
+						, IFNULL(PSN.USE_DT,'') AS USE_DT
+					FROM PM_SERIAL_NUMBER PSN
+					LEFT JOIN UR_USER UU
+						ON UU.UR_USER_ID = PSN.UR_USER_ID
+					LEFT JOIN (
+						SELECT SCC.ST_COMN_CODE_ID
+							, GDM.DIC_MST_NM
+						FROM ST_COMN_CODE SCC
+						INNER JOIN GB_DIC_MST GDM ON GDM.GB_DIC_MST_ID = SCC.GB_DIC_MST_ID
+						WHERE SCC.ST_COMN_CODE_MST_CD = 'SERIAL_NUMBER_STATUS'
+					) DIC_SERIAL_NUMBER_STATUS ON DIC_SERIAL_NUMBER_STATUS.ST_COMN_CODE_ID = PSN.STATUS
+					<choose>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+							LEFT JOIN PM_COUPON PC
+								ON PC.PM_COUPON_ID = PSN.PM_COUPON_ID
+						</when>
+						<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+							LEFT JOIN PM_POINT PP
+								ON PP.PM_POINT_ID = PSN.PM_POINT_ID
+						</when>
+					</choose>
+					<where>
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.COUPON')">
+								AND PC.PM_COUPON_ID = #{parentId}
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+								AND PP.PM_POINT_ID = #{parentId}
+							</when>
+						</choose>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(searchValueList)">
+							<choose>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.SERIALNUMBER')">
+									AND PSN.SERIAL_NUMBER IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+								<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_ID')">
+									AND UU.LOGIN_ID IN
+										<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+											#{item}
+										</foreach>
+								</when>
+
+							</choose>
+						</if>
+						<choose>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'Y')">
+								AND PSN.STATUS = 'SERIAL_NUMBER_STATUS.USE'
+							</when>
+							<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'N')">
+								AND PSN.STATUS = 'SERIAL_NUMBER_STATUS.ISSUED'
+							</when>
+						</choose>
+						<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(startUseDate)">
+							<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isNotEmpty(endUseDate)">
+								AND PSN.USE_DT BETWEEN DATE_FORMAT(#{startUseDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{endUseDate}, '%Y-%m-%d 23:59:59')
+						    </if>
+						</if>
+					</where>
+					AND PSN.APPROVAL_YN = 'Y'
+				</otherwise>
+			</choose>
+		) T
+		<where>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberSearchCondition,'SEARCH_SELECT.USER_NAME')">
+			AND T.USER_NAME IN
+				<foreach collection="searchValueList" item="item" separator="," open="(" close=")">
+					#{item}
+				</foreach>
+		</if>
+		<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberTp,'SERIAL_NUMBER_TYPE.FIXED_VALUE')">
+			<if test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(useType,'SERIAL_NUMBER_USE_TYPE.POINT')">
+				<choose>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'Y')">
+						AND T.STATUS = 'Y'
+					</when>
+					<when test="@kr.co.pulmuone.v1.comm.util.StringUtil@isEquals(serialNumberUseCondition,'N')">
+						AND T.STATUS <![CDATA[<>]]> 'Y'
+					</when>
+				</choose>
+			</if>
+		</if>
+		</where>
+		ORDER BY T.CREATE_DT DESC, T.SERIAL_NUMBER
+	</select>
+
+	<select id="putSerialNumberCancel_bak">
+		SELECT
+			<foreach collection="pmSerialNumberIdList" item="item" separator=",">
+				#{item}
+			</foreach>
+		FROM DUAL
+	</select>
+
+	<update id="putSerialNumberCancel">
+		/*serialNumber.putSerialNumberCancel*/
+		<foreach item="updateData" index="index" collection="list"  separator="; ">
+		UPDATE PM_SERIAL_NUMBER
+		SET STATUS = 'SERIAL_NUMBER_STATUS.ABORT'
+		WHERE PM_SERIAL_NUMBER_ID = #{updateData.pmSerialNumberId}
+		</foreach>
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 이용권 등록 정보 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.09		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap type="kr.co.pulmuone.v1.promotion.serialnumber.dto.vo.CommonGetSerialNumberInfoVo" id="getSerialNumberInfoResultMap">
+		<result column="COUPON_SERIAL"  property="couponSerial" />
+		<result column="POINT_SERIAL"  property="pointSerial"  />
+		<result column="USE_SERIAL"  property="useSerial"  />
+		<result column="COUPON_FIX_SERIAL"  property="couponFixSerial" />
+		<result column="POINT_FIX_SERIAL"  property="pointFixSerial"  />
+		<result column="PM_SERIAL_NUMBER_ID"  property="pmSerialNumberId"  />
+	</resultMap>
+	<select id="getSerialNumberInfo" resultMap="getSerialNumberInfoResultMap">
+		/*	serialNumber.getSerialNumberInfo	*/
+		SELECT (SELECT PM_COUPON_ID AS CNT FROM PM_SERIAL_NUMBER WHERE SERIAL_NUMBER = (SELECT FN_ENCRYPT(#{serialNumber})) AND USE_TP = 'SERIAL_NUMBER_USE_TYPE.COUPON' AND STATUS = 'SERIAL_NUMBER_STATUS.ISSUED' AND APPROVAL_YN = 'Y' LIMIT 1) AS COUPON_SERIAL
+			,(SELECT PM_POINT_ID AS CNT FROM PM_SERIAL_NUMBER WHERE SERIAL_NUMBER = (SELECT FN_ENCRYPT(#{serialNumber})) AND USE_TP = 'SERIAL_NUMBER_USE_TYPE.POINT' AND STATUS = 'SERIAL_NUMBER_STATUS.ISSUED' AND APPROVAL_YN = 'Y' LIMIT 1) AS POINT_SERIAL
+			,(SELECT COUNT(1) AS CNT FROM PM_SERIAL_NUMBER WHERE SERIAL_NUMBER = (SELECT FN_ENCRYPT(#{serialNumber})) AND STATUS = 'SERIAL_NUMBER_STATUS.USE' AND APPROVAL_YN = 'Y' LIMIT 1) AS USE_SERIAL
+			,(SELECT PM_COUPON_ID AS CNT FROM PM_COUPON WHERE FIX_SERIAL_NUMBER = #{serialNumber} ORDER BY PM_COUPON_ID DESC LIMIT 1) AS COUPON_FIX_SERIAL
+			,(SELECT PM_POINT_ID AS CNT FROM PM_POINT WHERE FIX_SERIAL_NUMBER = #{serialNumber} ORDER BY PM_POINT_ID DESC LIMIT 1) AS POINT_FIX_SERIAL
+			,(SELECT PM_SERIAL_NUMBER_ID FROM PM_SERIAL_NUMBER WHERE SERIAL_NUMBER = (SELECT FN_ENCRYPT(#{serialNumber})) AND STATUS = 'SERIAL_NUMBER_STATUS.ISSUED' AND APPROVAL_YN = 'Y') AS PM_SERIAL_NUMBER_ID
+		FROM dual
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 개별난수번호 사용처리
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.09.11		이원호          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putSerialNumberSetUse">
+		/*	serialNumber.putSerialNumberSetUse	*/
+		UPDATE PM_SERIAL_NUMBER
+		SET STATUS = 'SERIAL_NUMBER_STATUS.USE'
+			,USE_DT = NOW()
+			,UR_USER_ID = #{urUserId}
+		WHERE PM_SERIAL_NUMBER_ID = #{pmSerialNumberId}
+	</update>
+
+	<update id="redeemSerialNumber">
+		/*	serialNumber.redeemSerialNumber	*/
+		UPDATE PM_SERIAL_NUMBER
+		SET STATUS = 'SERIAL_NUMBER_STATUS.USE'
+			,USE_DT = NOW()
+			,UR_USER_ID = #{urUserId}
+		WHERE SERIAL_NUMBER = (SELECT FN_ENCRYPT(#{serialNumber}))
+	</update>
+
+
+</mapper>

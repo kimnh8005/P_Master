@@ -1,0 +1,690 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.pulmuone.v1.comm.mapper.user.certification.UserCertificationMapper">
+
+	<select id="getisCheckLogin" resultType="int">
+		/*	certification.getisCheckLogin 	*/
+		SELECT count(*) as TOTAL
+		FROM UR_USER A
+		JOIN UR_CERTIFICATION B ON (A.UR_USER_ID = B.UR_USER_ID)
+		WHERE
+	        LOWER ( A.LOGIN_ID) = LOWER (#{loginId})
+	         AND B.PASSWORD = #{encryptPassword}
+	</select>
+
+	<resultMap id="GetLoginDataMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetLoginDataResultVo" >
+		<result column="UR_USER_ID"                          property="urUserId"  />
+		<result column="FAIL_CNT"                            property="failCnt"  />
+		<result column="TMPRR_YN"                            property="tmprrYn"  />
+		<result column="STATUS"                              property="status"  />
+		<result column="DEFAULT_PWD_CHANGE_PERIOD"           property="defaultPwdChangePeriod"  />
+		<result column="DEFAULT_PWD_FAIL_LIMIT_COUNT"        property="defaultPwdFailLimitCount"  />
+		<result column="PWD_CHANGE_DT"                       property="pwdChangeDate"  />
+		<result column="PASSWORD_CHANGE_THREEMON_OVER_YN"    property="passwordChangeThreeMonOverYn"  />
+		<result column="SMS_YN"                              property="smsYn"  />
+		<result column="SMS_YN_DATE"                         property="smsYnDate"  />
+		<result column="SMS_YN_DATE_ONE_YEAR_OVER_YN"        property="smsYnDateOneYearOverYn"  />
+		<result column="MAIL_YN"                             property="mailYn"  />
+		<result column="MAIL_YN_DATE"                        property="mailYnDate"  />
+		<result column="MAIL_YN_DATE_ONE_YEAR_OVER_YN"       property="mailYnDateOneYearOverYn"  />
+		<result column="UR_LOGIN_FAIL_COUNT"                 property="urLoginFailCount"  />
+		<result column="TMPRR_EXPIRATION_YN"                 property="tmprrExpirationYn"  />
+
+	</resultMap>
+	<select id="getLoginData" resultMap="GetLoginDataMap">
+		/*	certification.getLoginData 	*/
+		SELECT
+			  UC.UR_USER_ID
+			, UC.FAIL_CNT
+			, UC.TMPRR_YN
+			, UB.STATUS
+			,(select IFNULL( ST.ENV_VAL,90) from ST_ENV  ST	    where ST.ST_ENV_ID ='25') as DEFAULT_PWD_CHANGE_PERIOD
+			,(select IFNULL( ST.ENV_VAL,5) from ST_ENV  ST      where ST.ST_ENV_ID ='24') as DEFAULT_PWD_FAIL_LIMIT_COUNT
+			, UC.PWD_CHANGE_DT
+			, CASE WHEN TIMESTAMPDIFF (DAY,UC.PWD_CHANGE_DT ,now() ) <![CDATA[>]]>
+					(select IFNULL( ST.ENV_VAL,90) from ST_ENV  ST
+				    where ST.ST_ENV_ID ='25')
+			    THEN  'Y' ELSE 'N' END    AS PASSWORD_CHANGE_THREEMON_OVER_YN /* 비밀번호 변경주기를 넘으면  Y */
+			,UB.SMS_YN
+			,DATE_FORMAT(UB.SMS_YN_DT , '%Y-%m-%d') AS SMS_YN_DATE
+			,CASE WHEN   TIMESTAMPDIFF (YEAR ,UB.SMS_YN_DT ,now() ) <![CDATA[>]]> 0    THEN 'Y' ELSE 'N' END        AS SMS_YN_DATE_ONE_YEAR_OVER_YN /* 1년  넘으면 Y */
+			,UB.MAIL_YN
+			,DATE_FORMAT(UB.MAIL_YN_DT , '%Y-%m-%d') AS MAIL_YN_DATE
+			,CASE WHEN   TIMESTAMPDIFF (YEAR ,UB.MAIL_YN_DT  ,now() ) <![CDATA[>]]> 0    THEN 'Y' ELSE 'N' END      AS MAIL_YN_DATE_ONE_YEAR_OVER_YN /* 1년  넘으면 Y */
+			,(select IFNULL( ST.ENV_VAL,5) from ST_ENV  ST
+				    where ST.ST_ENV_ID ='24') AS UR_LOGIN_FAIL_COUNT
+			,IF(UC.TMPRR_EXPIRATION_DT <![CDATA[<=]]> NOW() ,'Y','N') AS TMPRR_EXPIRATION_YN
+		FROM UR_CERTIFICATION UC
+		    INNER JOIN UR_USER UU
+		    ON  UU.UR_USER_ID = UC.UR_USER_ID
+		    LEFT OUTER JOIN UR_BUYER UB
+		    ON  UB.UR_USER_ID = UC.UR_USER_ID
+		WHERE  LOWER(UU.LOGIN_ID) = #{loginId}
+	</select>
+
+	<resultMap id="GetStopReasonMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetStopReasonResultVo" >
+		<result column="REASON"    property="reason"  />
+	</resultMap>
+	<select id="getStopReason" resultMap="GetStopReasonMap">
+		/*	certification.GetStopReason 	*/
+	      SELECT REASON
+	      FROM UR_BUYER_STATUS_LOG
+	      WHERE UR_USER_ID = #{urUserId}
+	      AND STATUS = 'BUYER_STATUS.STOP'
+	      ORDER BY UR_BUYER_STATUS_LOG_ID DESC
+	      LIMIT 0,1
+	</select>
+
+	<update id="putLoginFailCountIncrease">
+		/*	certification.PutLoginFailCountIncrease 	*/
+		UPDATE UR_CERTIFICATION SET
+			FAIL_CNT = FAIL_CNT + 1
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<update id="putLoginFailCountClear"  >
+		/*	certification.PutLoginFailCountClear 	*/
+		UPDATE UR_CERTIFICATION SET
+			FAIL_CNT = 0
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<resultMap id="GetBuyerSessionDataMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetBuyerSessionDataResultVo" >
+		<result column="UR_USER_ID"    property="urUserId"  />
+		<result column="LOGIN_ID"    property="loginId"  />
+		<result column="USER_NAME"    property="userName"  />
+		<result column="UR_ERP_EMPLOYEE_CD"    property="urErpEmployeeCode"  />
+		<result column="USER_MOBILE"    property="userMobile"  />
+		<result column="USER_MAIL"    property="userEmail"  />
+		<result column="UR_GROUP_ID"    property="urGroupId"  />
+	</resultMap>
+	<select id="getBuyerSessionData" resultMap="GetBuyerSessionDataMap">
+		/*	certification.GetBuyerSessionData 	*/
+		SELECT
+			A.UR_USER_ID
+			, C.LOGIN_ID
+			, FN_DECRYPT(C.USER_NM) AS USER_NAME
+			, E.UR_ERP_EMPLOYEE_CD
+			, FN_DECRYPT(A.MOBILE) AS USER_MOBILE
+			, FN_DECRYPT(A.MAIL) AS USER_MAIL
+			, A.UR_GROUP_ID
+		FROM
+			UR_BUYER A
+		INNER JOIN UR_USER C ON  A.UR_USER_ID = C.UR_USER_ID
+		INNER JOIN UR_GROUP G ON A.UR_GROUP_ID = G.UR_GROUP_ID
+		LEFT JOIN UR_ERP_EMPLOYEE E ON (E.UR_ERP_EMPLOYEE_CD = A.UR_ERP_EMPLOYEE_CD AND E.USE_YN = 'Y' AND E.ERP_USER_STATUS IN ('EMPLOYEE_STATUS.NORMAL','EMPLOYEE_STATUS.ADMINISTRATIVE_LEAVE'))
+		WHERE
+			A.UR_USER_ID = #{urUserId}
+	</select>
+
+	<insert id="addConnectionLog">
+		/*	certification.addConnectionLog 	*/
+		INSERT INTO UR_CONNECT_LOG(
+			SERVICE
+			,UR_PCID_CD
+			,IP
+			,LOGIN_DT
+			,SUCCESS_YN
+			,UR_USER_ID
+		)VALUES(
+			'SERVICE_TYPE.MALL'
+			,#{urPcidCd}
+			,#{ip}
+			,NOW()
+			,#{successYn}
+			,#{urUserId}
+		)
+
+		<selectKey resultType="String" keyProperty="urConnectLogId" order="AFTER">
+	        SELECT LAST_INSERT_ID()
+	    </selectKey>
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		:  본인인증 정보 조회 - 가입가능 체크 ci파라미터
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.06.17		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="checkDuplicateCIMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetcheckDuplicateCIResultVo" >
+		<result column="CHECK_CODE"    property="checkCode"  />
+	</resultMap>
+	<select id="checkDuplicateCI" resultMap="checkDuplicateCIMap">
+	/*	certification.checkDuplicateCI 가입가능 체크	*/
+		SELECT IFNULL(
+		(SELECT (CASE WHEN STATUS = 'BUYER_STATUS.STOP' THEN 'STOP' ELSE 'BASIC' END) AS CHECK_CODE
+		FROM UR_BUYER
+		WHERE CI_CD  = #{ciCd}
+		UNION ALL
+		SELECT (CASE WHEN STATUS = 'BUYER_STATUS.STOP' THEN 'STOP' ELSE 'BASIC' END) AS CHECK_CODE
+		FROM UR_BUYER_MOVE
+		WHERE CI_CD  =  #{ciCd}
+		UNION ALL
+		SELECT 'DROP' AS CHECK_CODE
+		FROM UR_USER_DROP
+		WHERE CI_CD  =  #{ciCd}
+		LIMIT 1)
+		, 'OK') AS CHECK_CODE
+	</select>
+
+	<resultMap id="getFindMaskingLoginIdMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetFindMaskingLoginIdResultVo" >
+		<result column="MASKING_LOGIN_ID"    property="maskingLoginId"  />
+	</resultMap>
+	<select id="getFindMaskingLoginId" resultMap="getFindMaskingLoginIdMap">
+		/*	certification.getFindMaskingLoginId  아이디 찾기 */
+	    SELECT RPAD(SUBSTRING(Z.LOGIN_ID, 1, TEXT_LENGTH-4),TEXT_LENGTH,'*') AS MASKING_LOGIN_ID
+	    FROM
+	    (
+			SELECT
+				A.LOGIN_ID,LENGTH(A.LOGIN_ID) AS TEXT_LENGTH
+			FROM UR_USER A
+			INNER JOIN UR_BUYER B ON A.UR_USER_ID = B.UR_USER_ID
+			WHERE
+				A.USER_NM = ( SELECT FN_ENCRYPT(#{userName}))
+				AND B.MOBILE = ( SELECT FN_ENCRYPT( #{mobile}))
+			UNION
+			SELECT
+				A.LOGIN_ID,LENGTH(A.LOGIN_ID) AS TEXT_LENGTH
+			FROM UR_USER A
+				INNER JOIN UR_USER_MOVE uum ON A.UR_USER_ID = uum.UR_USER_ID
+				INNER JOIN UR_BUYER_MOVE B ON uum.UR_USER_MOVE_ID = B.UR_USER_MOVE_ID
+			WHERE uum.USER_NM = ( SELECT  FN_ENCRYPT(#{userName}))
+			AND B.MOBILE = ( SELECT FN_ENCRYPT(#{mobile}))
+			LIMIT 0,1
+		) Z
+	</select>
+
+	<resultMap id="getFindLoginIdMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetFindLoginIdResultVo" >
+		<result column="LOGIN_ID"    property="loginId"  />
+	</resultMap>
+	<select id="getFindLoginId" resultMap="getFindLoginIdMap">
+		/*	certification.getFindLoginId 전체아이디 찾기 조회	*/
+		SELECT
+			A.LOGIN_ID
+		FROM UR_USER A
+		INNER JOIN UR_BUYER B ON A.UR_USER_ID = B.UR_USER_ID
+		WHERE
+			A.USER_NM =  ( SELECT   FN_ENCRYPT(#{userName}))
+			AND B.MOBILE = ( SELECT  FN_ENCRYPT(#{mobile}))
+			AND B.CI_CD = #{ciCd}
+		UNION
+
+		SELECT
+			A.LOGIN_ID
+		FROM UR_USER A
+			INNER JOIN UR_USER_MOVE uum ON A.UR_USER_ID = uum.UR_USER_ID
+			INNER JOIN UR_BUYER_MOVE B ON uum.UR_USER_MOVE_ID = B.UR_USER_MOVE_ID
+		WHERE
+			uum.USER_NM =  ( SELECT  FN_ENCRYPT(#{userName}))
+			AND B.MOBILE =  ( SELECT FN_ENCRYPT(#{mobile}))
+			AND B.CI_CD = #{ciCd}
+		LIMIT 0,1
+	</select>
+
+
+	<resultMap id="getFindPasswordMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetFindPasswordResultVo" >
+		<result column="LOGIN_ID"    property="loginId"  />
+	</resultMap>
+	<select id="getFindPassword" resultMap="getFindPasswordMap">
+		/*	certification.getFindPassword 비밀번호찾기	*/
+		SELECT
+			A.LOGIN_ID
+		FROM UR_USER A
+		INNER JOIN UR_BUYER B ON A.UR_USER_ID = B.UR_USER_ID
+		WHERE
+			A.USER_NM =   ( SELECT FN_ENCRYPT(#{userName}))
+			AND B.MOBILE =  ( SELECT FN_ENCRYPT(#{mobile}))
+			AND A.LOGIN_ID = #{loginId}
+		UNION
+		SELECT
+			A.LOGIN_ID
+		FROM UR_USER A
+			INNER JOIN UR_USER_MOVE uum ON A.UR_USER_ID = uum.UR_USER_ID
+			INNER JOIN UR_BUYER_MOVE B ON uum.UR_USER_MOVE_ID = B.UR_USER_MOVE_ID
+		WHERE uum.USER_NM =  ( SELECT  FN_ENCRYPT(#{userName}))
+		AND B.MOBILE =  ( SELECT FN_ENCRYPT(#{mobile}))
+		AND A.LOGIN_ID = #{loginId}
+
+		LIMIT 0,1
+	</select>
+
+
+	<resultMap id="getFindPasswordCIMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetFindPasswordCIResultVo" >
+		<result column="UR_USER_ID"    property="urUserId"  />
+	</resultMap>
+	<select id="getFindPasswordCI" resultMap="getFindPasswordCIMap">
+		/*	certification.getFindPasswordCI 비밀번호 찾기 (본인인증 체크)	*/
+		SELECT
+			A.UR_USER_ID
+		FROM UR_USER A
+		INNER JOIN UR_BUYER B ON A.UR_USER_ID = B.UR_USER_ID
+		WHERE
+			A.USER_NM =  ( SELECT  FN_ENCRYPT(#{userName}))
+			AND B.MOBILE = ( SELECT  FN_ENCRYPT(#{mobile}))
+			AND A.LOGIN_ID = #{loginId}
+			AND B.CI_CD = #{ciCd}
+		UNION
+
+		SELECT
+			A.UR_USER_ID
+		FROM UR_USER A
+			INNER JOIN UR_USER_MOVE uum ON A.UR_USER_ID = uum.UR_USER_ID
+			INNER JOIN UR_BUYER_MOVE B ON uum.UR_USER_MOVE_ID = B.UR_USER_MOVE_ID
+		WHERE
+			uum.USER_NM =  ( SELECT  FN_ENCRYPT(#{userName}))
+			AND B.MOBILE =  ( SELECT FN_ENCRYPT(#{mobile}))
+			AND A.LOGIN_ID = #{loginId}
+			AND B.CI_CD = #{ciCd}
+		LIMIT 0,1
+	</select>
+
+
+	<update id="putPasswordChangeCd">
+		/*	certification.putPasswordChangeCd 비밀번호 찾기 (본인인증 체크)	*/
+		UPDATE UR_CERTIFICATION SET PWD_CHANGE_CD = #{passwordChangeCd} WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+		<select  id="getBeforeUserDropYn" resultType="String">
+		/*	certification.getBeforeUserDropYn 	*/
+		 SELECT  CASE WHEN COUNT(UR_USER_ID)>0   THEN 'Y'ELSE 'N' END AS beforeUserDropYn
+     FROM UR_USER_DROP
+     WHERE   CI_CD = #{ciCd}
+	</select>
+
+
+
+
+	<update id="putAutoLoginKey">
+		/*	certification.putAutoLoginKey 자동로그인 키 업데이트  */
+		UPDATE UR_CERTIFICATION SET AUTO_LOGIN_KEY = #{autoLoginKey} WHERE UR_USER_ID = #{urUserId}
+	</update>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: SOCIAL_ID로 회원 UR_USER_ID 확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getSocialLoginDataMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetSocialLoginDataResultVo" >
+		<result column="LOGIN_ID"    property="loginId"  />
+		<result column="ENCRYPT_PASSWORD"    property="encryptPassword"  />
+	</resultMap>
+	<select id="getSocialLoginData" resultMap="getSocialLoginDataMap">
+		/*	certification.getSocialLoginData	*/
+		SELECT
+			u.LOGIN_ID
+			, c.PASSWORD AS ENCRYPT_PASSWORD
+		FROM
+			UR_SOCIAL s
+			JOIN UR_USER u ON (s.UR_USER_ID=u.UR_USER_ID)
+			JOIN UR_CERTIFICATION c ON (u.UR_USER_ID=c.UR_USER_ID)
+		WHERE
+			s.PROVIDER = #{provider}
+			AND s.SOCIAL_ID = #{socialId}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: SNS 사용자 정보 추가
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.22		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<insert id="addUserSocial" parameterType="HashMap">
+		/*	certification.addUserSocial	*/
+		INSERT INTO UR_SOCIAL(
+			UR_USER_ID
+			,PROVIDER
+			,SOCIAL_ID
+			,NAME
+		)VALUES(
+			#{urUserId}
+			,#{provider}
+			,#{socialId}
+			,FN_ENCRYPT(#{name})
+		)
+	</insert>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 회원접속로그 로그아웃 시간 업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.23		천혜현          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putConnectionLogout" parameterType="String">
+		/*	certification.putConnectionLogout	*/
+		UPDATE UR_CONNECT_LOG
+		SET    LOGOUT_DT = NOW()
+		WHERE
+			   UR_CONNECT_LOG_ID = #{urConnectLogId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 동일비밀번호인지 확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getCheckSamePasswordCnt" parameterType="String" resultType="int">
+		/*	certification.getCheckSamePasswordCnt	*/
+		SELECT 	COUNT(*) AS SAME_PASSWORD_COUNT
+		FROM UR_CERTIFICATION
+		WHERE PWD_CHANGE_CD = #{passwordChangeCd}
+		AND  PASSWORD =  #{password}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putPassword" parameterType="String">
+		/*	certification.putPassword	*/
+		UPDATE UR_CERTIFICATION
+		SET       PASSWORD =  #{password}
+				 ,PWD_CHANGE_CD = ''
+			     ,PWD_CHANGE_DT = NOW()
+			     ,TMPRR_YN = 'N'
+		WHERE PWD_CHANGE_CD = #{passwordChangeCd}
+		AND IFNULL(PWD_CHANGE_CD, '') != ''
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비밀번호다음에변경
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putNextPassword" parameterType="String">
+		/*	certification.putNextPassword	*/
+		UPDATE UR_CERTIFICATION
+		SET  PWD_CHANGE_DT = NOW()
+			,PWD_CHANGE_CD = ''
+		WHERE UR_USER_ID = #{urUserId}
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비회원 로그인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getNonMemberOrder" resultType="int">
+		/*	certification.getNonMemberOrder	*/
+		SELECT COUNT(*) AS COUNT
+		FROM OD_ORDER
+		WHERE BUYER_NM =   ( SELECT FN_ENCRYPT(#{buyerName}))
+			AND BUYER_HP = ( SELECT  FN_ENCRYPT(#{buyerMobile}))
+			AND ORDER_YN = 'Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 관리자 비회원 주문 생성시 CI update
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2021.04.22		홍진영          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putNonMemberOrderCI">
+		/*	certification.putNonMemberOrderCI	*/
+		UPDATE OD_ORDER
+		SET  GUEST_CI = #{ciCd}
+		WHERE BUYER_NM =   ( SELECT FN_ENCRYPT(#{buyerName}))
+			AND BUYER_HP = ( SELECT  FN_ENCRYPT(#{buyerMobile}))
+			AND ORDER_YN = 'Y'
+			AND IFNULL(GUEST_CI,'') = ''
+			AND IFNULL(UR_USER_ID, 0) = 0
+	</update>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 비회원 주문조회 (본인인증 체크)
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<select id="getNonMemberOrderCI" resultType="int">
+		/*	certification.getNonMemberOrderCI	*/
+		SELECT COUNT(*)
+		FROM OD_ORDER
+		WHERE BUYER_NM =  ( SELECT FN_ENCRYPT(#{buyerName}))
+			AND BUYER_HP = ( SELECT  FN_ENCRYPT(#{buyerMobile}))
+			AND GUEST_CI = #{ciCd}
+			AND ORDER_YN = 'Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 휴면회원 CI 조회
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<select id="isCheckBuyerMoveInfo" resultType="int">
+		/*	certification.isCheckBuyerMoveInfo	*/
+		SELECT COUNT(*)  as COUNT
+		FROM UR_USER uu
+			JOIN UR_BUYER_MOVE ubm ON (uu.UR_USER_ID = ubm.UR_USER_ID )
+			JOIN UR_CERTIFICATION uc ON (uu.UR_USER_ID = uc.UR_USER_ID )
+		WHERE LOWER( uu.LOGIN_ID) = LOWER(#{loginId})
+		AND ubm.CI_CD =#{ciCd}
+		AND uc.PASSWORD = #{encryptPassword}
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: SOCIAL_ID로 회원 UR_USER_ID 확인
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.24		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<resultMap id="getBuyerCertificationByAutoLoginKeyMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.GetBuyerCertificationByAutoLoginKeyResponseVo" >
+		<result column="LOGIN_ID"    property="loginId"  />
+		<result column="ENCRYPT_PASSWORD"    property="encryptPassword"  />
+	</resultMap>
+	<select id="getBuyerCertificationByAutoLoginKey" resultMap="getBuyerCertificationByAutoLoginKeyMap">
+		/*	certification.getBuyerCertificationByAutoLoginKey	*/
+		SELECT
+			u.LOGIN_ID
+			, c.PASSWORD AS ENCRYPT_PASSWORD
+		FROM
+			UR_CERTIFICATION c
+			JOIN UR_USER u ON (u.UR_USER_ID=c.UR_USER_ID)
+		WHERE
+			c.UR_USER_ID = #{urUserId}
+			AND c.AUTO_LOGIN_KEY = #{autoLoginKey}
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: 임직원 인증
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+
+	<select id="getEmployeesCertification" parameterType="String" resultType="int">
+		/*	certification.getEmployeesCertification	*/
+		SELECT COUNT(*) AS COUNT
+		FROM UR_ERP_EMPLOYEE
+		WHERE UR_ERP_EMPLOYEE_CD = #{urErpEmployeeCode}
+			AND (LOWER(FN_DECRYPT(ERP_EMAIL)) = LOWER(#{email}) OR FN_DECRYPT(ERP_NM) = #{email})
+			AND USE_YN ='Y'
+	</select>
+
+	<!--───────────────────────────────────────────────────────────────────────
+
+	 * description 		: 임직원이 이미 등록됐는지 확인
+	 * @
+	 * @ 수정일			수정자          수정내용`
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<select id="getIsUrBuyerEmployeesExistCnt" parameterType="String" resultType="int">
+		/*	certification.getIsUrBuyerEmployeesExistCnt	*/
+		SELECT COUNT(*) AS COUNT
+		FROM UR_BUYER
+		WHERE UR_ERP_EMPLOYEE_CD = #{urErpEmployeeCode}
+	</select>
+	<!--───────────────────────────────────────────────────────────────────────
+	 * description 		: UR_BUYER 에 임직원정보업데이트
+	 * @
+	 * @ 수정일			수정자          수정내용
+	 * @ ──────────────────────────────────────────────────────────────────────
+	 * @ 2020.07.21		김경민          최초생성
+	 * @
+	────────────────────────────────────────────────────────────────────────-->
+	<update id="putUrBuyerForEmployees" parameterType="String">
+		/*	certification.putUrBuyerForEmployees	*/
+		UPDATE  UR_BUYER
+		SET  UR_ERP_EMPLOYEE_CD = #{urErpEmployeeCode}
+		WHERE  UR_USER_ID = #{urUserId}
+	</update>
+
+	  <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 비밀번호 확인
+     * @ 비밀번호가 맞을때만 0 없거나 틀리면 1
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.27		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="isPasswordCorrect" resultType="int" parameterType="String">
+		/*	certification.isPasswordCorrect	*/
+		SELECT
+		CASE
+		     WHEN COUNT(UC.UR_USER_ID)>0 and  UC.PASSWORD = #{encryptPassword} THEN 0
+		     WHEN COUNT(UC.UR_USER_ID)>0 and  UC.PASSWORD <![CDATA[ <> ]]> #{encryptPassword} THEN 1
+		     ELSE 1 END AS  COUNT
+		FROM UR_CERTIFICATION UC
+		WHERE UC.UR_USER_ID  = #{urUserId}
+	</select>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description 		: 비밀번호변경발급코드 조회
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.08.27		김경민          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <select id="getPasswordChangeCd" resultType="String" parameterType="String">
+		/*	certification.getPasswordChangeCd	*/
+		SELECT 	PWD_CHANGE_CD
+		FROM UR_CERTIFICATION UC
+		WHERE UC.UR_USER_ID  = #{urUserId}
+	</select>
+
+
+	  <!--───────────────────────────────────────────────────────────────────────
+     * description 		: SNS 로그인 계정 연결끊기
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.11		천혜현          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="unlinkAccount" >
+		/*	certification.unlinkAccount	*/
+		DELETE FROM UR_SOCIAL
+		WHERE
+			SOCIAL_ID    = #{user_id}
+			AND PROVIDER = #{provider}   /* SNS_PROVIDER.KAKAO   SNS_PROVIDER.NAVER  */
+	</delete>
+
+	<!--───────────────────────────────────────────────────────────────────────
+     * description 		: SNS 로그인 계정 전체 연결끊기
+     * @
+     * @ 수정일			수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.02.28		홍진영          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <delete id="unlinkAllAccount" >
+		/*	certification.unlinkAllAccount	*/
+		DELETE FROM UR_SOCIAL
+		WHERE
+			UR_USER_ID  = #{urUserId}
+	</delete>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 로그인 인증정보 등록
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2020.09.15     손진구          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <insert id="addCertification" useGeneratedKeys="true" keyProperty="certificationId">
+        /* certification.addCertification */
+        INSERT INTO UR_CERTIFICATION
+        (
+          UR_USER_ID
+        , LOGIN_ID
+        , PASSWORD
+        , PWD_CHANGE_CD
+        , AUTO_LOGIN_KEY
+        , FAIL_CNT
+        , PWD_CHANGE_DT
+        , TMPRR_YN
+        , CREATE_DT
+        )
+        VALUES
+        (
+          #{userId}
+        , #{loginId}
+        , #{password}
+        , #{passwordChangeCode}
+        , #{autoLoginKey}
+        , 0
+        , NOW()
+        , #{tempPasswordYn}
+        , NOW()
+        )
+    </insert>
+
+    <!--───────────────────────────────────────────────────────────────────────
+     * description      : 임직원 회원 인증 결과 정보 조회
+     * @
+     * @ 수정일         수정자          수정내용
+     * @ ──────────────────────────────────────────────────────────────────────
+     * @ 2021.01.18     최윤지          최초생성
+     * @
+    ────────────────────────────────────────────────────────────────────────-->
+    <resultMap id="getEmployeeCertificationInfoResultMap" type="kr.co.pulmuone.v1.user.certification.dto.vo.EmployeeCertificationResultVo" >
+		<result column="UR_ERP_EMPLOYEE_CD"                  property="urErpEmployeeCd"  />
+		<result column="MAIL"                          	  	 property="mail"  />
+		<result column="MOBILE"                          	 property="mobile"  />
+	</resultMap>
+    <select id="getEmployeeCertificationInfo" resultMap="getEmployeeCertificationInfoResultMap">
+	 /* certification.getEmployeeCertificationInfo */
+	 SELECT
+	        UEE.UR_ERP_EMPLOYEE_CD
+    	   ,FN_DECRYPT(UEE.ERP_EMAIL) AS MAIL
+    	   ,REPLACE(FN_DECRYPT(UEE.ERP_PHONE),'-','') AS MOBILE
+	  FROM  UR_ERP_EMPLOYEE UEE
+	 WHERE  UEE.UR_ERP_EMPLOYEE_CD = #{urErpEmployeeCd}
+    </select>
+</mapper>
